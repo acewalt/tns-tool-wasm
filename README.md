@@ -78,6 +78,8 @@ Do not open `index.html` with `file://`, because browsers block `fetch()` calls 
 - The browser cannot write directly to local Windows paths, so files are handled through upload and download.
 - For a fully offline version, Pyodide and JSZip assets would need to be bundled locally.
 
+## Any bugs, questions, or suggestions are completely welcome.
+
 ## Credits
 
 Developed and implemented by Andres Mauricio Chaparro Pena.
