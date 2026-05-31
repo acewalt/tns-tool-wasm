@@ -10,7 +10,7 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Video Demo
 
-Coming soon.
+[(https://youtu.be/hfIYs-ALf5Y)](https://youtu.be/hfIYs-ALf5Y)
 
 ## Main Features
 
