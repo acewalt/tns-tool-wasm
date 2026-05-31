@@ -13,6 +13,11 @@ const I18N = {
     openXmlFolder: "Abrir carpeta XML",
     embedXml: "Incrustar en XML",
     saveXmlZip: "Guardar XML ZIP",
+    documentSettings: "Ajuste de documento",
+    documentName: "Nombre",
+    documentType: "Tipo",
+    libraryAccess: "Acceso a libreria",
+    arguments: "Argumentos",
     runSyntax: "Ejecutar sintaxis",
     format: "Format",
     resolve: "Resolver",
@@ -72,6 +77,11 @@ const I18N = {
     openXmlFolder: "Open XML folder",
     embedXml: "Embed in XML",
     saveXmlZip: "Save XML ZIP",
+    documentSettings: "Document settings",
+    documentName: "Name",
+    documentType: "Type",
+    libraryAccess: "Library access",
+    arguments: "Arguments",
     runSyntax: "Run syntax",
     format: "Format",
     resolve: "Resolve",
@@ -131,6 +141,11 @@ const I18N = {
     openXmlFolder: "Ouvrir dossier XML",
     embedXml: "Incruster en XML",
     saveXmlZip: "Enregistrer ZIP XML",
+    documentSettings: "Parametres du document",
+    documentName: "Nom",
+    documentType: "Type",
+    libraryAccess: "Acces bibliotheque",
+    arguments: "Arguments",
     runSyntax: "Analyser syntaxe",
     format: "Format",
     resolve: "Resoudre",
@@ -577,7 +592,7 @@ function spanToken(className, value) {
 }
 
 function highlightTiLine(line, variables) {
-  const keywords = new Set(["Define", "LibPriv", "Prgm", "Local", "If", "Then", "Else", "EndIf", "Disp", "Request", "EndPrgm"]);
+  const keywords = new Set(["Define", "LibPriv", "LibPub", "Prgm", "Func", "Local", "If", "Then", "Else", "ElseIf", "EndIf", "Disp", "Request", "Return", "EndPrgm", "EndFunc"]);
   let output = "";
   let index = 0;
   while (index < line.length) {
@@ -697,7 +712,7 @@ function xmlLog(message) {
 }
 
 function setXmlDoctorEnabled(enabled) {
-  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
+  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#xml-programs").disabled = !enabled;
@@ -744,9 +759,13 @@ for index, candidate in enumerate(XMLScanner(Path("${xmlDoctor.sourcePath}")).sc
     items.append({
         "index": index,
         "program_name": candidate.program_name or candidate.file.stem,
+        "original_name": candidate.program_name or candidate.file.stem,
         "file": str(candidate.file),
         "path": candidate.path,
         "kind": candidate.kind,
+        "document_type": candidate.document_type,
+        "library_access": candidate.library_access,
+        "parameters": candidate.parameters or "",
         "code": code,
     })
 json.dumps(items)
@@ -757,7 +776,7 @@ json.dumps(items)
   for (const item of xmlDoctor.candidates) {
     const option = document.createElement("option");
     option.value = String(item.index);
-    option.textContent = `${item.program_name} (${item.file.split("/").pop()})`;
+    option.textContent = `${item.program_name} [${item.document_type || "Basic"}] (${item.file.split("/").pop()})`;
     combo.append(option);
   }
   if (!xmlDoctor.candidates.length) {
@@ -782,6 +801,77 @@ function selectXmlProgram(index) {
   updateXmlLineNumbers();
   renderXmlAnalysis({ errors: 0, warnings: 0, infos: 0, diagnostics: [] });
   xmlLog(`Programa seleccionado: ${xmlDoctor.current.program_name}`);
+}
+
+function detectXmlDocumentType(text) {
+  const first = text.split("\n").find((line) => line.trim())?.trim().toLowerCase() || "";
+  return first === "func" ? "Func" : "Prgm";
+}
+
+function coerceXmlDocumentType(text, documentType) {
+  const start = documentType === "Func" ? "Func" : "Prgm";
+  const end = documentType === "Func" ? "EndFunc" : "EndPrgm";
+  const lines = text.split("\n");
+  if (!lines.length) return `${start}\n${end}`;
+  if (/^\s*(Prgm|Func)\s*$/i.test(lines[0] || "")) lines[0] = start;
+  else lines.unshift(start);
+  if (/^\s*(EndPrgm|EndFunc)\s*$/i.test(lines[lines.length - 1] || "")) lines[lines.length - 1] = end;
+  else lines.push(end);
+  return lines.join("\n");
+}
+
+function refreshXmlProgramOptions() {
+  const combo = document.querySelector("#xml-programs");
+  combo.innerHTML = "";
+  for (const item of xmlDoctor.candidates) {
+    const option = document.createElement("option");
+    option.value = String(item.index);
+    option.textContent = `${item.program_name} [${item.document_type || "Basic"}] (${item.file.split("/").pop()})`;
+    combo.append(option);
+  }
+  if (xmlDoctor.current) combo.value = String(xmlDoctor.current.index);
+}
+
+function openXmlDocumentSettings() {
+  if (!xmlDoctor.current) return;
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal">
+      <h2>${escapeHtml(t("documentSettings"))}</h2>
+      <label class="resolver-option"><span>${escapeHtml(t("documentName"))}</span><input id="doc-name" value="${escapeHtml(xmlDoctor.current.program_name || "")}"></label>
+      <label class="resolver-option"><span>${escapeHtml(t("documentType"))}</span><select id="doc-type"><option>Prgm</option><option>Func</option></select></label>
+      <label class="resolver-option"><span>${escapeHtml(t("libraryAccess"))}</span><select id="doc-access"><option>None</option><option>LibPriv</option><option>LibPub</option></select></label>
+      <label class="resolver-option"><span>${escapeHtml(t("arguments"))}</span><input id="doc-params" value="${escapeHtml(xmlDoctor.current.parameters || "")}"></label>
+      <div class="modal-actions">
+        <button type="button" id="doc-cancel">${escapeHtml(t("cancel"))}</button>
+        <button type="button" id="doc-apply">${escapeHtml(t("apply"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  backdrop.querySelector("#doc-type").value = xmlDoctor.current.document_type || detectXmlDocumentType(document.querySelector("#xml-code").value);
+  backdrop.querySelector("#doc-access").value = xmlDoctor.current.library_access || "None";
+  backdrop.querySelector("#doc-cancel").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#doc-apply").addEventListener("click", () => {
+    const name = backdrop.querySelector("#doc-name").value.trim();
+    const documentType = backdrop.querySelector("#doc-type").value;
+    const libraryAccess = backdrop.querySelector("#doc-access").value;
+    const parameters = backdrop.querySelector("#doc-params").value.trim();
+    if (!name) return;
+    xmlDoctor.current.program_name = name;
+    xmlDoctor.current.document_type = documentType;
+    xmlDoctor.current.library_access = libraryAccess;
+    xmlDoctor.current.parameters = parameters;
+    document.querySelector("#xml-code").value = coerceXmlDocumentType(document.querySelector("#xml-code").value, documentType);
+    refreshXmlProgramOptions();
+    xmlDoctor.embedded = false;
+    xmlDoctor.lastReport = null;
+    xmlDoctor.lastDiff = "";
+    updateXmlLineNumbers();
+    renderXmlAnalysis({ errors: 0, warnings: 0, infos: 0, diagnostics: [] });
+    xmlLog(`${t("documentSettings")}: ${name}, ${documentType}, ${libraryAccess}`);
+    backdrop.remove();
+  });
 }
 
 function renderXmlAnalysis(report) {
@@ -838,6 +928,8 @@ function goToXmlLine(line) {
 async function runXmlSyntax() {
   const code = document.querySelector("#xml-code").value;
   pyodide.globals.set("wasm_xml_code", code);
+  pyodide.globals.set("wasm_xml_parameters", xmlDoctor.current?.parameters || "");
+  pyodide.globals.set("wasm_xml_known_functions", (xmlDoctor.candidates || []).filter((item) => item.document_type === "Func").map((item) => item.program_name));
   const payload = await pyodide.runPythonAsync(`
 import json
 import importlib
@@ -845,7 +937,11 @@ import sys
 if "ti_syntax" in sys.modules:
     importlib.reload(sys.modules["ti_syntax"])
 from ti_syntax import analyze_ti_code
-report = analyze_ti_code(wasm_xml_code)
+report = analyze_ti_code(
+    wasm_xml_code,
+    parameters=wasm_xml_parameters,
+    known_functions=set(wasm_xml_known_functions.to_py()),
+)
 json.dumps({
     "errors": len(report.errors),
     "warnings": len(report.warnings),
@@ -1043,7 +1139,11 @@ async function embedXmlCode() {
     throw new Error("Corrige los errores antes de incrustar el XML.");
   }
   pyodide.globals.set("wasm_xml_code", document.querySelector("#xml-code").value);
-  pyodide.globals.set("wasm_xml_program", xmlDoctor.current.program_name);
+  pyodide.globals.set("wasm_xml_program", xmlDoctor.current.original_name || xmlDoctor.current.program_name);
+  pyodide.globals.set("wasm_xml_new_name", xmlDoctor.current.program_name);
+  pyodide.globals.set("wasm_xml_document_type", xmlDoctor.current.document_type || detectXmlDocumentType(document.querySelector("#xml-code").value));
+  pyodide.globals.set("wasm_xml_library_access", xmlDoctor.current.library_access || "None");
+  pyodide.globals.set("wasm_xml_parameters", xmlDoctor.current.parameters || "");
   await pyodide.runPythonAsync(`
 from pathlib import Path
 from xml_updater import XMLUpdater
@@ -1051,6 +1151,10 @@ XMLUpdater(Path("${xmlDoctor.sourcePath}")).update_program(
     wasm_xml_program,
     wasm_xml_code,
     out_dir=Path("${xmlDoctor.stagePath}"),
+    new_name=wasm_xml_new_name,
+    document_type=wasm_xml_document_type,
+    library_access=wasm_xml_library_access,
+    parameters=wasm_xml_parameters,
 )
 `);
   xmlDoctor.embedded = true;
@@ -1496,6 +1600,7 @@ function wireEvents() {
   document.querySelector("#xml-syntax-btn").addEventListener("click", () => runXmlSyntax().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-autofix-btn").addEventListener("click", () => autoFixXml().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-format-btn").addEventListener("click", () => formatXmlCode().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#xml-document-btn").addEventListener("click", openXmlDocumentSettings);
   document.querySelector("#xml-resolve-btn").addEventListener("click", () => resolveXmlProblems().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-changes-btn").addEventListener("click", showXmlChanges);
   document.querySelector("#xml-embed-btn").addEventListener("click", () => embedXmlCode().catch((err) => xmlLog(`ERROR: ${err.message}`)));

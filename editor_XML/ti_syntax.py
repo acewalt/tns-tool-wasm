@@ -82,6 +82,8 @@ VALID_COMMANDS = {
     "approx",
     "circle",
     "clrio",
+    "break",
+    "cycle",
     "define",
     "delvar",
     "disp",
@@ -112,6 +114,7 @@ VALID_COMMANDS = {
     "if",
     "input",
     "label",
+    "lbl",
     "line",
     "local",
     "log",
@@ -386,9 +389,21 @@ BUILTIN_NAMES = VALID_COMMANDS | {
     "min",
     "max",
     "abs",
+    "augment",
+    "colaugment",
+    "dim",
+    "expr",
+    "instring",
     "int",
+    "intdiv",
+    "left",
     "line",
+    "mid",
+    "newmat",
+    "not",
+    "right",
     "circle",
+    "cycle",
     "drawarc",
     "drawcircle",
     "drawline",
@@ -406,6 +421,7 @@ BUILTIN_NAMES = VALID_COMMANDS | {
     "setwindow",
     "round",
     "rand",
+    "when",
 }
 
 RESERVED_NAMES = {"and", "define", "else", "elseif", "endif", "endfor", "endloop", "endprgm", "endtry", "endwhile", "false", "for", "func", "if", "local", "loop", "or", "prgm", "return", "then", "true", "try", "while"}
@@ -418,20 +434,33 @@ IF_RE = re.compile(r"^\s*If\b(.*)$", re.IGNORECASE)
 ASSIGN_RE = re.compile(r"(.+?)(?:->|→)\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
 
 
-def analyze_ti_code(text: str) -> SyntaxReport:
+def analyze_ti_code(
+    text: str,
+    parameters: str | None = None,
+    known_functions: set[str] | None = None,
+) -> SyntaxReport:
     report = SyntaxReport()
     lines = _split_lines(text)
     if_stack: list[int] = []
     block_stack: list[tuple[str, int]] = []
     try_stack: list[list[object]] = []
-    prgm_seen = False
-    endprgm_seen = False
+    document_start_seen = False
+    document_end_seen = False
+    document_kind: str | None = None
     menu_options: set[str] = set()
     tested_options: list[tuple[int, str]] = []
 
     if not lines:
         report.diagnostics.append(ti_error(910, 0, "Programa vacio"))
         return report
+
+    if parameters:
+        for raw_name in parameters.split(","):
+            name = raw_name.strip()
+            if _is_identifier(name):
+                report.variables.add(name)
+                report.variable_lines.setdefault(name, 1)
+                report.assigned.add(name)
 
     for number, raw_line in enumerate(lines, 1):
         line = raw_line.strip()
@@ -446,7 +475,13 @@ def analyze_ti_code(text: str) -> SyntaxReport:
         _check_invalid_implied_multiply(report, number, raw_line, report.variables | report.assigned)
         _check_assignment_errors(report, number, raw_line, report.variables | report.assigned)
         _check_missing_function_parenthesis(report, number, raw_line)
-        _check_function_references(report, number, raw_line, report.variables | report.assigned)
+        _check_function_references(
+            report,
+            number,
+            raw_line,
+            report.variables | report.assigned,
+            known_functions or set(),
+        )
         _check_subscripts(report, number, raw_line)
         _check_ans_usage(report, number, raw_line)
 
@@ -455,25 +490,31 @@ def analyze_ti_code(text: str) -> SyntaxReport:
             lower_command = command.lower()
             if lower_command not in VALID_COMMANDS and not _looks_like_expression(line) and not _looks_like_function_call(line):
                 report.diagnostics.append(ti_error(410, number, f"Comando desconocido: {command}"))
-            if lower_command == "exit" and not _has_any_open_block(block_stack, {"for", "while", "loop"}):
+            if lower_command in {"break", "cycle", "exit"} and not _has_any_open_block(block_stack, {"for", "while", "loop"}):
                 report.diagnostics.append(ti_error(560, number, f"{command} fuera de Loop/For/While"))
-            if lower_command == "return" and not prgm_seen:
+            if lower_command == "return" and not document_start_seen:
                 report.diagnostics.append(ti_error(550, number, "Return fuera de programa o funcion"))
 
-        if line.lower() == "prgm":
-            if prgm_seen:
-                report.diagnostics.append(ti_error(730, number, "Prgm duplicado"))
-            if endprgm_seen:
-                report.diagnostics.append(ti_error(730, number, "Prgm aparece despues de EndPrgm"))
-            prgm_seen = True
-            report.infos.append(f"[INFO] Linea {number}: Prgm detectado")
+        if line.lower() in {"prgm", "func"}:
+            start_name = "Prgm" if line.lower() == "prgm" else "Func"
+            if document_start_seen:
+                report.diagnostics.append(ti_error(730, number, f"{start_name} duplicado"))
+            if document_end_seen:
+                report.diagnostics.append(ti_error(730, number, f"{start_name} aparece despues del cierre del documento"))
+            document_start_seen = True
+            document_kind = start_name
+            report.infos.append(f"[INFO] Linea {number}: {start_name} detectado")
             continue
 
-        if line.lower() == "endprgm":
-            if endprgm_seen:
-                report.diagnostics.append(ti_error(730, number, "EndPrgm duplicado"))
-            endprgm_seen = True
-            report.infos.append(f"[INFO] Linea {number}: EndPrgm detectado")
+        if line.lower() in {"endprgm", "endfunc"}:
+            end_name = "EndPrgm" if line.lower() == "endprgm" else "EndFunc"
+            expected = "EndFunc" if document_kind == "Func" else "EndPrgm"
+            if document_end_seen:
+                report.diagnostics.append(ti_error(730, number, f"{end_name} duplicado"))
+            if document_kind and end_name != expected:
+                report.diagnostics.append(ti_error(730, number, f"Se esperaba {expected}, no {end_name}"))
+            document_end_seen = True
+            report.infos.append(f"[INFO] Linea {number}: {end_name} detectado")
             continue
 
         local_match = LOCAL_RE.match(line)
@@ -501,13 +542,16 @@ def analyze_ti_code(text: str) -> SyntaxReport:
             report.if_count += 1
             report.block_counts["If"] = report.block_counts.get("If", 0) + 1
             if " then" not in line.lower():
-                report.diagnostics.append(ti_error(740, number, "Missing Then in the If..EndIf block"))
+                if ":" not in line:
+                    report.diagnostics.append(ti_error(740, number, "Missing Then in the If..EndIf block"))
+                    if_stack.append(number)
+                    block_stack.append(("if", number))
             else:
                 condition = re.split(r"\bThen\b", condition, flags=re.IGNORECASE)[0].strip()
                 if not condition:
                     report.diagnostics.append(ti_error(20, number, "Condicion vacia"))
-            if_stack.append(number)
-            block_stack.append(("if", number))
+                if_stack.append(number)
+                block_stack.append(("if", number))
             report.infos.append(f"[INFO] Linea {number}: Inicio bloque If")
             tested_options.extend(_menu_tests(number, line))
 
@@ -571,16 +615,19 @@ def analyze_ti_code(text: str) -> SyntaxReport:
             report.assigned.add(destination)
             report.used.discard(destination)
             _collect_used_vars(report, assign_match.group(1), number)
+        elif lower_first in {"goto", "lbl", "label"}:
+            pass
         else:
             _collect_used_vars(report, line, number)
 
         menu_options.update(_displayed_menu_options(line))
         _check_division_by_zero(report, number, line)
 
-    if not prgm_seen:
-        report.diagnostics.append(ti_error(730, 1, "Programa no empieza con Prgm"))
-    if not endprgm_seen:
-        report.diagnostics.append(ti_error(730, len(lines), "Programa no termina con EndPrgm"))
+    if not document_start_seen:
+        report.diagnostics.append(ti_error(730, 1, "Documento no empieza con Prgm o Func"))
+    if not document_end_seen:
+        expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
+        report.diagnostics.append(ti_error(730, len(lines), f"Documento no termina con {expected_end}"))
     for start_line in if_stack:
         report.diagnostics.append(ti_error(730, start_line, "If sin EndIf correspondiente"))
     for block, start_line in block_stack:
@@ -644,8 +691,9 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
     if_stack: list[int] = []
     actions: list[str] = []
     seen_local_lines: set[str] = set()
-    prgm_seen = False
-    endprgm_seen = False
+    document_start_seen = False
+    document_end_seen = False
+    document_kind = "Prgm"
 
     for raw_line in original_lines:
         line = raw_line.rstrip()
@@ -662,21 +710,28 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
         if stripped.lower() == "endif" and if_stack:
             if_stack.pop()
 
-        if stripped.lower() == "prgm":
-            if prgm_seen:
-                actions.append("[100%] Eliminado Prgm duplicado")
+        if stripped.lower() in {"prgm", "func"}:
+            start_name = "Prgm" if stripped.lower() == "prgm" else "Func"
+            if document_start_seen:
+                actions.append(f"[100%] Eliminado {start_name} duplicado")
                 continue
-            prgm_seen = True
+            document_start_seen = True
+            document_kind = start_name
 
-        if stripped.lower() == "endprgm":
-            if endprgm_seen:
-                actions.append("[100%] Eliminado EndPrgm duplicado")
+        if stripped.lower() in {"endprgm", "endfunc"}:
+            end_name = "EndPrgm" if stripped.lower() == "endprgm" else "EndFunc"
+            expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
+            if document_end_seen:
+                actions.append(f"[100%] Eliminado {end_name} duplicado")
                 continue
             while if_stack:
                 fixed_lines.append("EndIf")
                 if_stack.pop()
                 actions.append("[100%] Anadido EndIf faltante")
-            endprgm_seen = True
+            if end_name != expected_end:
+                line = expected_end
+                actions.append(f"[100%] Corregido cierre a {expected_end}")
+            document_end_seen = True
 
         if LOCAL_RE.match(stripped):
             line, removed_names = _dedupe_local_line(line)
@@ -704,12 +759,13 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
         if_stack.pop()
         actions.append("[100%] Anadido EndIf faltante")
 
-    if not prgm_seen:
+    if not document_start_seen:
         fixed_lines.insert(0, "Prgm")
         actions.append("[100%] Anadido Prgm inicial")
-    if not endprgm_seen:
-        fixed_lines.append("EndPrgm")
-        actions.append("[100%] Anadido EndPrgm final")
+    if not document_end_seen:
+        expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
+        fixed_lines.append(expected_end)
+        actions.append(f"[100%] Anadido {expected_end} final")
 
     fixed = "\n".join(fixed_lines)
     diff = "\n".join(
@@ -911,12 +967,20 @@ def _check_missing_function_parenthesis(report: SyntaxReport, line_number: int, 
             report.diagnostics.append(ti_error(680, line_number, f"Missing ( after {name}"))
 
 
-def _check_function_references(report: SyntaxReport, line_number: int, line: str, known_names: set[str]) -> None:
+def _check_function_references(
+    report: SyntaxReport,
+    line_number: int,
+    line: str,
+    known_names: set[str],
+    known_functions: set[str],
+) -> None:
     clean = _strip_strings_keep_layout(line)
     for match in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", clean):
         name = match.group(1)
         lower = name.lower()
         if lower in BUILTIN_NAMES or lower in COMMAND_SIGNATURES or lower in COMMAND_STYLE_SIGNATURES:
+            continue
+        if name in known_functions or lower in {item.lower() for item in known_functions}:
             continue
         if name in known_names:
             report.diagnostics.append(ti_error(960, line_number, f"Variable no declarada: {name}", "La TI interpreta este caso como llamada a funcion, no multiplicacion implicita."))
@@ -1060,6 +1124,7 @@ def _is_identifier(text: str) -> bool:
 
 def _collect_used_vars(report: SyntaxReport, text: str, line_number: int) -> None:
     clean = re.sub(r'"[^"]*"', "", text)
+    clean = re.sub(r"\b(?:Goto|Lbl|Label)\s+[A-Za-z_][A-Za-z0-9_]*", "", clean, flags=re.IGNORECASE)
     clean = re.sub(r"\b[A-Za-z_][A-Za-z0-9_]*\s*(?=\()", "", clean)
     for name in IDENT_RE.findall(clean):
         lower = name.lower()

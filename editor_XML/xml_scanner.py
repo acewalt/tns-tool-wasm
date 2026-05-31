@@ -45,6 +45,9 @@ class XMLCandidate:
     text: str
     code_text: str | None = None
     widget_type: str | None = None
+    document_type: str | None = None
+    library_access: str | None = None
+    parameters: str | None = None
 
     @property
     def code_hash(self) -> str | None:
@@ -88,6 +91,8 @@ class XMLScanner:
             text = element.text or ""
 
             if lname == "v" and text:
+                symbol_type = self._symbol_document_type(element, parent_map)
+                code_text = text if self._looks_like_basic_code(text, symbol_type) else None
                 candidates.append(
                     XMLCandidate(
                         file=xml_file,
@@ -95,7 +100,10 @@ class XMLScanner:
                         kind="symbol_value",
                         program_name=self._symbol_name(element, parent_map),
                         text=text,
-                        code_text=text,
+                        code_text=code_text,
+                        document_type=symbol_type,
+                        library_access=self._symbol_library_access(element, parent_map),
+                        parameters=self._symbol_parameters(element, parent_map),
                     )
                 )
 
@@ -108,6 +116,8 @@ class XMLScanner:
                         program_name=self._program_editor_name(element, parent_map),
                         text=text,
                         code_text=self._extract_define_body(text),
+                        document_type=self._program_editor_type(element, parent_map),
+                        library_access=self._program_editor_visibility(element, parent_map),
                     )
                 )
 
@@ -120,6 +130,8 @@ class XMLScanner:
                         program_name=self._program_editor_name(element, parent_map),
                         text=text,
                         widget_type="TI.ProgramEditor",
+                        document_type=self._program_editor_type(element, parent_map),
+                        library_access=self._program_editor_visibility(element, parent_map),
                     )
                 )
 
@@ -132,6 +144,8 @@ class XMLScanner:
                         program_name=self._program_editor_name(element, parent_map),
                         text="",
                         widget_type="TI.ProgramEditor",
+                        document_type=self._program_editor_type(element, parent_map),
+                        library_access=self._program_editor_visibility(element, parent_map),
                     )
                 )
 
@@ -141,6 +155,13 @@ class XMLScanner:
     def _extract_define_body(text: str) -> str | None:
         match = re.match(r"(?s)^Define\s+.*?=\s*\n?(.*)$", text)
         return match.group(1) if match else None
+
+    @staticmethod
+    def _looks_like_basic_code(text: str, document_type: str | None = None) -> bool:
+        if document_type in {"Prgm", "Func"}:
+            return True
+        first = text.replace("\r", "\n").split("\n", 1)[0].lstrip(": ").strip().lower()
+        return first in {"prgm", "func"}
 
     @staticmethod
     def _symbol_name(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str | None:
@@ -154,6 +175,45 @@ class XMLScanner:
         return None
 
     @staticmethod
+    def _symbol_parent(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> ET.Element | None:
+        current = parent_map.get(element)
+        while current is not None:
+            if local_name(current.tag) == "e":
+                return current
+            current = parent_map.get(current)
+        return None
+
+    @staticmethod
+    def _symbol_document_type(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str | None:
+        parent = XMLScanner._symbol_parent(element, parent_map)
+        if parent is None:
+            return None
+        symbol_type = parent.attrib.get("t")
+        if symbol_type == "7":
+            return "Prgm"
+        if symbol_type == "6":
+            return "Func"
+        return None
+
+    @staticmethod
+    def _symbol_library_access(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str | None:
+        parent = XMLScanner._symbol_parent(element, parent_map)
+        if parent is None:
+            return None
+        flag = parent.attrib.get("f", "0")
+        return {"0": "None", "65536": "LibPub", "196608": "LibPriv"}.get(flag, f"flag:{flag}")
+
+    @staticmethod
+    def _symbol_parameters(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str | None:
+        parent = XMLScanner._symbol_parent(element, parent_map)
+        if parent is None:
+            return None
+        for child in parent:
+            if local_name(child.tag) == "p":
+                return (child.text or "").strip()
+        return None
+
+    @staticmethod
     def _program_editor_name(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str | None:
         current = element
         while current is not None:
@@ -163,6 +223,30 @@ class XMLScanner:
                         return (child.text or "").strip() or None
             current = parent_map.get(current)
         return None
+
+    @staticmethod
+    def _program_editor_field(
+        element: ET.Element,
+        parent_map: dict[ET.Element, ET.Element],
+        field_name: str,
+    ) -> str | None:
+        current = element
+        while current is not None:
+            if local_name(current.tag) == "wdgt" and current.attrib.get("type") == "TI.ProgramEditor":
+                for child in current.iter():
+                    if namespace_uri(child.tag) == TI_PROGRAM_EDITOR_NS and local_name(child.tag) == field_name:
+                        return (child.text or "").strip() or None
+            current = parent_map.get(current)
+        return None
+
+    @staticmethod
+    def _program_editor_type(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str | None:
+        return XMLScanner._program_editor_field(element, parent_map, "type")
+
+    @staticmethod
+    def _program_editor_visibility(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str | None:
+        value = XMLScanner._program_editor_field(element, parent_map, "visibility")
+        return value.strip() if value else None
 
     @staticmethod
     def _element_path(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str:
@@ -203,6 +287,12 @@ def format_scan_report(candidates: Iterable[XMLCandidate]) -> str:
             lines.append(f"  code_length: {code_len}")
         if candidate.widget_type:
             lines.append(f"  widget_type: {candidate.widget_type}")
+        if candidate.document_type:
+            lines.append(f"  document_type: {candidate.document_type}")
+        if candidate.library_access:
+            lines.append(f"  library_access: {candidate.library_access}")
+        if candidate.parameters:
+            lines.append(f"  parameters: {candidate.parameters}")
         if candidate.text:
             lines.append(f"  text: {short_text(candidate.text)}")
     return "\n".join(lines)

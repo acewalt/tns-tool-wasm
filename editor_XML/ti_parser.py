@@ -36,6 +36,10 @@ class TIParser:
                     current.append(ch)
                     i += 1
                     continue
+                elif ch == ":" and not stack and self._should_keep_inline_if_separator("".join(current)):
+                    current.append(ch)
+                    i += 1
+                    continue
                 elif ch == ":" and not stack:
                     statements.append(self._clean_statement_boundary("".join(current)))
                     current = []
@@ -51,6 +55,12 @@ class TIParser:
     @staticmethod
     def _clean_statement_boundary(statement: str) -> str:
         return statement.strip("\r\n")
+
+    @staticmethod
+    def _should_keep_inline_if_separator(statement: str) -> bool:
+        compact = statement.strip()
+        lower = compact.lower()
+        return lower.startswith("if ") and " then" not in lower and ":" not in compact
 
     def to_multiline(self, text: str) -> str:
         return "\n".join(self.split_statements(text))

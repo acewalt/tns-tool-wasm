@@ -20,6 +20,10 @@ class XMLUpdater:
         multiline_text: str,
         out_dir: Path | None = None,
         in_place: bool = False,
+        new_name: str | None = None,
+        document_type: str | None = None,
+        library_access: str | None = None,
+        parameters: str | None = None,
     ) -> list[Path]:
         if out_dir is None and not in_place:
             raise ValueError("Use out_dir or in_place=True.")
@@ -33,7 +37,15 @@ class XMLUpdater:
         for xml_file in self._iter_target_xml_files(target):
             if XMLScanner._is_artifact(xml_file):
                 continue
-            changed = self._update_file(xml_file, program_name, multiline_text)
+            changed = self._update_file(
+                xml_file,
+                program_name,
+                multiline_text,
+                new_name=new_name,
+                document_type=document_type,
+                library_access=library_access,
+                parameters=parameters,
+            )
             if changed:
                 written.append(xml_file)
         return written
@@ -60,22 +72,33 @@ class XMLUpdater:
         return sorted(target.rglob("*.xml"))
 
     @staticmethod
-    def _update_file(xml_file: Path, program_name: str, multiline_text: str) -> bool:
+    def _update_file(
+        xml_file: Path,
+        program_name: str,
+        multiline_text: str,
+        new_name: str | None = None,
+        document_type: str | None = None,
+        library_access: str | None = None,
+        parameters: str | None = None,
+    ) -> bool:
         tree = ET.parse(xml_file)
         root = tree.getroot()
         parent_map = {child: parent for parent in root.iter() for child in parent}
         changed = False
+        target_name = new_name or program_name
 
         for element in root.iter():
             if local_name(element.tag) == "v":
                 name = XMLScanner._symbol_name(element, parent_map)
                 if name == program_name:
+                    XMLUpdater._update_symbol_metadata(element, parent_map, target_name, document_type, library_access, parameters)
                     element.text = XMLUpdater._serialize_like_existing(multiline_text, element.text or "")
                     changed = True
 
             if namespace_uri(element.tag) == TI_PROGRAM_EDITOR_NS and local_name(element.tag) == "laststoredexpr":
                 name = XMLScanner._program_editor_name(element, parent_map)
                 if name == program_name and element.text:
+                    XMLUpdater._update_program_editor_metadata(element, parent_map, target_name, document_type, library_access)
                     existing_code = XMLScanner._extract_define_body(element.text) or element.text
                     new_code = XMLUpdater._serialize_like_existing(multiline_text, existing_code)
                     element.text = XMLUpdater._replace_define_body(element.text, new_code)
@@ -84,8 +107,9 @@ class XMLUpdater:
             if namespace_uri(element.tag) == TI_PROGRAM_EDITOR_NS and local_name(element.tag) == "editor":
                 name = XMLScanner._program_editor_name(element, parent_map)
                 if name == program_name:
+                    XMLUpdater._update_program_editor_metadata(element, parent_map, target_name, document_type, library_access)
                     element.text = XMLUpdater._build_program_editor_tree(
-                        program_name,
+                        target_name,
                         multiline_text,
                         element.text or "",
                     )
@@ -94,6 +118,61 @@ class XMLUpdater:
         if changed:
             XMLUpdater._write_canonical_xml(tree, xml_file)
         return changed
+
+    @staticmethod
+    def _update_symbol_metadata(
+        value_element: ET.Element,
+        parent_map: dict[ET.Element, ET.Element],
+        new_name: str,
+        document_type: str | None,
+        library_access: str | None,
+        parameters: str | None,
+    ) -> None:
+        parent = XMLScanner._symbol_parent(value_element, parent_map)
+        if parent is None:
+            return
+        if document_type in {"Prgm", "Func"}:
+            parent.set("t", "6" if document_type == "Func" else "7")
+        if library_access:
+            parent.set("f", {"None": "0", "LibPub": "65536", "LibPriv": "196608"}.get(library_access, parent.attrib.get("f", "0")))
+        name_node = None
+        params_node = None
+        for child in parent:
+            if local_name(child.tag) == "n":
+                name_node = child
+            elif local_name(child.tag) == "p":
+                params_node = child
+        if name_node is not None:
+            name_node.text = new_name
+        if params_node is None:
+            params_node = ET.Element("p")
+            value_index = list(parent).index(value_element)
+            parent.insert(value_index, params_node)
+        params_node.text = parameters or ""
+
+    @staticmethod
+    def _update_program_editor_metadata(
+        element: ET.Element,
+        parent_map: dict[ET.Element, ET.Element],
+        new_name: str,
+        document_type: str | None,
+        library_access: str | None,
+    ) -> None:
+        current = element
+        while current is not None:
+            if local_name(current.tag) == "wdgt" and current.attrib.get("type") == "TI.ProgramEditor":
+                for child in current.iter():
+                    if namespace_uri(child.tag) != TI_PROGRAM_EDITOR_NS:
+                        continue
+                    lname = local_name(child.tag)
+                    if lname == "name":
+                        child.text = new_name
+                    elif lname == "type" and document_type in {"Prgm", "Func"}:
+                        child.text = document_type
+                    elif lname == "visibility" and library_access:
+                        child.text = "" if library_access == "None" else f"{library_access} "
+                return
+            current = parent_map.get(current)
 
     @staticmethod
     def _replace_define_body(original: str, new_code: str) -> str:
@@ -108,6 +187,8 @@ class XMLUpdater:
             separator = "\r:"
         elif "\n:" in existing_code:
             separator = "\n:"
+        elif ":" in existing_code:
+            separator = ":"
         else:
             separator = "\r:"
         return _SERIALIZER.from_multiline(multiline_text, separator=separator)
