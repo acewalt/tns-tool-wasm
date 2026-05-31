@@ -423,7 +423,7 @@ async function initPyodideRuntime() {
   pyodide.FS.mkdirTree("/work");
 
   for (const file of PYTHON_FILES) {
-    const response = await fetch(`../${file}?v=${SOURCE_VERSION}`, { cache: "no-store" });
+    const response = await fetch(`./${file}?v=${SOURCE_VERSION}`, { cache: "no-store" });
     if (!response.ok) {
       throw new Error(`No se pudo cargar ${file}: HTTP ${response.status}`);
     }
@@ -1114,7 +1114,7 @@ async function getPythonCode() {
 async function getTemplateBytes() {
   const template = document.querySelector("#template-file").files[0];
   if (template) return new Uint8Array(await template.arrayBuffer());
-  const response = await fetch("../convert/plantilla.tns");
+  const response = await fetch("./convert/plantilla.tns");
   if (!response.ok) throw new Error("No se pudo cargar convert/plantilla.tns.");
   return new Uint8Array(await response.arrayBuffer());
 }
