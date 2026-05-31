@@ -1,0 +1,10 @@
+name=Document.xml
+header=*TIMLP0601
+method=13
+flags=0
+crc32=0x6D43D28C
+compressed_size=509
+uncompressed_size=1152
+local_offset=0
+data_offset=48
+file_magic=*TIMLP0601

@@ -1,0 +1,21 @@
+Para generar un .exe en Windows:
+
+1. Instala PyInstaller:
+python -m pip install pyinstaller
+
+2. Genera el ejecutable:
+python -m PyInstaller tns_tool.spec
+
+3. El .exe quedara en:
+dist\tns_tool.exe
+
+Uso sugerido del .exe:
+- tns_tool.exe menu
+- tns_tool.exe menu --lang en
+- tns_tool.exe quick programa.py
+- tns_tool.exe build --interactive --output salida.tns
+
+La herramienta intenta usar `plantilla.tns` automaticamente:
+- primero desde la carpeta actual
+- luego junto al `.exe`
+- y tambien desde el paquete interno de PyInstaller si fue empaquetada
