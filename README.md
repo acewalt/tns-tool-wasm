@@ -1,77 +1,96 @@
-# TNS Tool WASM/Web
+# TNS Tool WASM
 
-Primer scaffold web para portar TNS Tool al navegador con Pyodide/WebAssembly.
+TNS Tool WASM is an experimental web port of TNS Tool for TI-Nspire workflows.
 
-## Que incluye
+It runs in the browser with Pyodide/WebAssembly and provides a visual interface for converting, inspecting, editing, and validating TI-Nspire related files without using the original command-line workflow.
 
-- Carga los modulos Python actuales dentro de Pyodide.
-- Carga `pycryptodome` desde el repositorio oficial de Pyodide.
-- Permite decodificar `.tns` normal a un ZIP con XML.
-- Permite crear `.tns` normal desde una carpeta XML.
-- Permite crear Python Program `.tns` desde codigo Python y plantilla.
-- Permite extraer `q.py` desde un Python Program `.tns`.
-- Incluye un analizador basico para Python usando el mismo `PythonSyntaxAnalyzer`.
-- Organiza la app en modulos desplegables:
-  - `TNS normal`
-  - `Python Program`
-  - `Syntax Doctor XML`
-- Tiene selector de idioma con banderas `ES`, `EN`, `FR` en la cabecera. La seleccion se guarda en `localStorage`.
-- Incluye una primera recreacion web de `Syntax Doctor XML`:
-  - abrir XML individual o carpeta `.tns.xml`
-  - listar programas detectados
-  - previsualizar codigo en formato humano
-  - ejecutar sintaxis
-  - aplicar Auto Fix
-  - mostrar cambios
-  - resolver variables no declaradas con sugerencias, declaracion nueva o ignorar
-  - marcar lineas con errores/advertencias usando puntos rojos/amarillos
-  - resaltado visual del codigo:
-    - comandos/palabras clave en azul
-    - strings en verde oscuro
-    - flecha, `&` y `·` fuera de strings en rojo
-    - variables locales en negro cursiva
-  - incrustar en XML y descargar ZIP resultante
-  - desplegar/ocultar el modulo desde un boton principal
-- Incluye una primera recreacion web de `Syntax Doctor PY` dentro de `Python Program`:
-  - desplegar/ocultar desde boton
-  - ejecutar sintaxis con el core compartido
-  - Auto Fix
-  - mostrar cambios
-  - guardar de vuelta al bloque inline
-  - descargar `.py`
-  - resaltado Python estilo TI-Nspire:
-    - keywords en azul
-    - strings en verde claro
-    - operadores `=`, `==`, `+`, `-`, `/`, `*`, `.` en rojo
-    - variables, funciones, numeros y delimitadores en negro regular
+## Live Demo
 
-## Como probar
+https://acewalt.github.io/tns-tool-wasm/
 
-Desde la raiz del proyecto:
+## Video Demo
+
+Coming soon.
+
+## Main Features
+
+- Decode normal `.tns` files into XML folders.
+- Rebuild normal `.tns` files from XML folders.
+- Create Python Program `.tns` files from Python code and a template.
+- Extract `q.py` from Python Program `.tns` files.
+- Work directly in the browser using file upload/download.
+- Interface available in Spanish, English, and French.
+
+## Syntax Doctor XML
+
+Syntax Doctor XML is a visual editor for TI-Nspire XML program blocks.
+
+It includes:
+
+- Open a single XML file or a `.tns.xml` folder.
+- Detect editable program blocks.
+- Preview XML program code in a human-readable format.
+- Run syntax diagnostics.
+- Apply safe Auto Fix corrections.
+- Resolve ambiguous variables manually with suggestions.
+- Show Auto Fix changes before saving.
+- Format code by removing empty lines and trimming spacing.
+- Mark error and warning lines with visual indicators.
+- Highlight TI-Nspire code using calculator-like colors.
+- Embed the edited code back into XML.
+- Download the resulting XML as a ZIP.
+
+## Syntax Doctor PY
+
+Syntax Doctor PY is a browser-based Python editor for Python Program workflows.
+
+It includes:
+
+- Run Python syntax checks through the shared Python analyzer.
+- Detect unsupported f-strings and non-ASCII characters.
+- Apply safe Auto Fix corrections.
+- Show Auto Fix changes.
+- Save edited code back into the inline Python block.
+- Download the edited code as a `.py` file.
+- Highlight Python code with a TI-Nspire-inspired color scheme.
+
+## Local Testing
+
+From the repository root:
 
 ```powershell
 python -m http.server 8000
 ```
 
-Luego abre:
+Then open:
 
 ```text
-http://localhost:8000/wasm_web/
+http://localhost:8000/
 ```
 
-No lo abras con doble click como `file://`, porque el navegador bloquea `fetch()` para cargar los modulos Python.
+Do not open `index.html` with `file://`, because browsers block `fetch()` calls needed to load the Python modules.
 
-## Limitaciones
+## Technical Notes
 
-- Tkinter no existe en WASM/browser; la GUI debe rehacerse en HTML/CSS/JS.
-- El navegador no puede escribir directamente en rutas de Windows. Todo se maneja con subida/descarga de archivos.
-- El editor XML visual y los modales avanzados se deben portar pantalla por pantalla.
-- `Syntax Doctor XML` web ya existe con el flujo funcional principal del escritorio. Todavia se puede mejorar el resaltado de sintaxis fino con una capa visual sobre el editor.
-- Esta base usa CDN para Pyodide y JSZip; para una version offline hay que copiar esos assets localmente.
+- Pyodide is loaded from the official CDN.
+- JSZip is loaded from CDN for ZIP generation.
+- Python modules are loaded into Pyodide at runtime.
+- The browser cannot write directly to local Windows paths, so files are handled through upload and download.
+- For a fully offline version, Pyodide and JSZip assets would need to be bundled locally.
 
-## Siguiente fase recomendada
+## Credits
 
-1. Separar definitivamente `core` de `gui`.
-2. Crear endpoints/funciones de motor sin `Path` obligatorio, preferiblemente `bytes -> bytes`.
-3. Rehacer `Syntax Doctor XML` y `Syntax Doctor PY` como componentes web.
-4. Empaquetar una PWA offline.
+Developed and implemented by Andres Mauricio Chaparro Pena.
+
+Reverse-engineering packaging logic and base structure are attributed to MaksimirKurtov and the open TnsTools project:
+
+- MaksimirKurtov: https://tiplanet.org/forum/memberlist.php?mode=viewprofile&u=393033
+- TnsTools: https://tiplanet.org/forum/viewtopic.php?t=27393&p=280845#p280845
+
+The original idea and technical mentoring for the WebAssembly/Web port are attributed to Adriweb:
+
+- Adriweb: https://tiplanet.org/forum/memberlist.php?mode=viewprofile&u=1381
+
+## Disclaimer
+
+TNS Tool WASM is an independent software-development project and is not affiliated with, sponsored by, authorized by, or officially associated with Texas Instruments.
