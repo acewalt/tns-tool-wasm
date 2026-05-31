@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-05-30-ti-syntax-codes-v2";
+const SOURCE_VERSION = "2026-05-31-secondary-i18n-logs-local";
 
 const I18N = {
   es: {
@@ -13,6 +13,38 @@ const I18N = {
     openXmlFolder: "Abrir carpeta XML",
     embedXml: "Incrustar en XML",
     saveXmlZip: "Guardar XML ZIP",
+    documentInspector: "Inspector de documento",
+    addFunc: "Agregar Func",
+    documentSummary: "Resumen",
+    documentElements: "Elementos",
+    openLua: "Ver Lua",
+    editLua: "Editar Lua",
+    addLuaWidget: "Agregar Lua ScriptApp",
+    runLuaSyntax: "Ejecutar sintaxis Lua",
+    saveLuaXml: "Guardar Lua en XML",
+    luaSyntaxOk: "Sintaxis Lua basica OK.",
+    luaSaved: "Lua guardado en staging. Use Guardar XML ZIP para descargarlo.",
+    noEditablePrograms: "No se encontraron programas editables en el XML.",
+    editableBlocksLoaded: "Cargados {count} bloques editables.",
+    selectedProgram: "Programa seleccionado: {name}",
+    luaScriptAdded: "Lua ScriptApp agregado en una nueva card.",
+    funcAdded: "Func agregada: {name}",
+    analysisDone: "Analisis completado. Errores: {errors}, advertencias: {warnings}.",
+    autoFixApplied: "Auto Fix aplicado. Use Mostrar cambios para revisar.",
+    autoFixNoChanges: "Auto Fix no encontro cambios seguros.",
+    formatApplied: "Format aplicado. Use Mostrar cambios para revisar.",
+    formatNoChanges: "Format no encontro cambios.",
+    noAutoFixChanges: "No hay cambios de Auto Fix para mostrar.",
+    codeEmbedded: "Codigo incrustado en staging. Use Guardar XML ZIP para descargarlo.",
+    xmlZipDownloaded: "XML ZIP descargado.",
+    pyDoctorOpened: "Syntax Doctor PY abierto.",
+    pyInlineUpdated: "Codigo enviado al bloque inline de Python Program.",
+    pyInlineLogUpdated: "Codigo Python inline actualizado desde Syntax Doctor PY.",
+    pyFileDownloaded: "Archivo .py descargado.",
+    viewValue: "Ver valor",
+    viewXml: "Ver XML",
+    viewDetails: "Ver detalle",
+    close: "Cerrar",
     documentSettings: "Ajuste de documento",
     documentName: "Nombre",
     documentType: "Tipo",
@@ -77,6 +109,38 @@ const I18N = {
     openXmlFolder: "Open XML folder",
     embedXml: "Embed in XML",
     saveXmlZip: "Save XML ZIP",
+    documentInspector: "Document inspector",
+    addFunc: "Add Func",
+    documentSummary: "Summary",
+    documentElements: "Elements",
+    openLua: "View Lua",
+    editLua: "Edit Lua",
+    addLuaWidget: "Add Lua ScriptApp",
+    runLuaSyntax: "Run Lua syntax",
+    saveLuaXml: "Save Lua to XML",
+    luaSyntaxOk: "Basic Lua syntax OK.",
+    luaSaved: "Lua saved to staging. Use Save XML ZIP to download it.",
+    noEditablePrograms: "No editable programs were found in the XML.",
+    editableBlocksLoaded: "Loaded {count} editable blocks.",
+    selectedProgram: "Selected program: {name}",
+    luaScriptAdded: "Lua ScriptApp added in a new card.",
+    funcAdded: "Func added: {name}",
+    analysisDone: "Analysis completed. Errors: {errors}, warnings: {warnings}.",
+    autoFixApplied: "Auto Fix applied. Use Show changes to review.",
+    autoFixNoChanges: "Auto Fix found no safe changes.",
+    formatApplied: "Format applied. Use Show changes to review.",
+    formatNoChanges: "Format found no changes.",
+    noAutoFixChanges: "No Auto Fix changes to show.",
+    codeEmbedded: "Code embedded in staging. Use Save XML ZIP to download it.",
+    xmlZipDownloaded: "XML ZIP downloaded.",
+    pyDoctorOpened: "Syntax Doctor PY opened.",
+    pyInlineUpdated: "Code sent to the Python Program inline block.",
+    pyInlineLogUpdated: "Python inline code updated from Syntax Doctor PY.",
+    pyFileDownloaded: ".py file downloaded.",
+    viewValue: "View value",
+    viewXml: "View XML",
+    viewDetails: "View details",
+    close: "Close",
     documentSettings: "Document settings",
     documentName: "Name",
     documentType: "Type",
@@ -141,6 +205,38 @@ const I18N = {
     openXmlFolder: "Ouvrir dossier XML",
     embedXml: "Incruster en XML",
     saveXmlZip: "Enregistrer ZIP XML",
+    documentInspector: "Inspecteur du document",
+    addFunc: "Ajouter Func",
+    documentSummary: "Resume",
+    documentElements: "Elements",
+    openLua: "Voir Lua",
+    editLua: "Editer Lua",
+    addLuaWidget: "Ajouter Lua ScriptApp",
+    runLuaSyntax: "Analyser syntaxe Lua",
+    saveLuaXml: "Enregistrer Lua dans XML",
+    luaSyntaxOk: "Syntaxe Lua basique OK.",
+    luaSaved: "Lua enregistre dans staging. Utilisez Enregistrer ZIP XML pour le telecharger.",
+    noEditablePrograms: "Aucun programme editable trouve dans le XML.",
+    editableBlocksLoaded: "{count} blocs editables charges.",
+    selectedProgram: "Programme selectionne : {name}",
+    luaScriptAdded: "Lua ScriptApp ajoute dans une nouvelle carte.",
+    funcAdded: "Func ajoutee : {name}",
+    analysisDone: "Analyse terminee. Erreurs : {errors}, avertissements : {warnings}.",
+    autoFixApplied: "Auto Fix applique. Utilisez Voir changements pour verifier.",
+    autoFixNoChanges: "Auto Fix n'a trouve aucun changement sur.",
+    formatApplied: "Format applique. Utilisez Voir changements pour verifier.",
+    formatNoChanges: "Format n'a trouve aucun changement.",
+    noAutoFixChanges: "Aucun changement Auto Fix a afficher.",
+    codeEmbedded: "Code incruste dans staging. Utilisez Enregistrer ZIP XML pour le telecharger.",
+    xmlZipDownloaded: "ZIP XML telecharge.",
+    pyDoctorOpened: "Syntax Doctor PY ouvert.",
+    pyInlineUpdated: "Code envoye au bloc inline de Python Program.",
+    pyInlineLogUpdated: "Code Python inline mis a jour depuis Syntax Doctor PY.",
+    pyFileDownloaded: "Fichier .py telecharge.",
+    viewValue: "Voir valeur",
+    viewXml: "Voir XML",
+    viewDetails: "Voir detail",
+    close: "Fermer",
     documentSettings: "Parametres du document",
     documentName: "Nom",
     documentType: "Type",
@@ -369,6 +465,7 @@ const xmlDoctor = {
   current: null,
   lastDiff: "",
   embedded: false,
+  stagePrepared: false,
   lastReport: null,
   issueLines: new Map(),
 };
@@ -462,6 +559,17 @@ sys.path.insert(0, "/home/pyodide/editor_XML")
   setXmlDoctorEnabled(false);
   setPyDoctorEnabled(false);
   log("Runtime WASM listo.");
+}
+
+async function ensureCryptoPackage() {
+  try {
+    await pyodide.runPythonAsync("import Crypto");
+  } catch {
+    if (statusEl) statusEl.textContent = "Cargando pycryptodome...";
+    await pyodide.loadPackage("pycryptodome");
+    await pyodide.runPythonAsync("import Crypto");
+    if (statusEl) statusEl.textContent = t("ready");
+  }
 }
 
 function clearDir(path) {
@@ -712,7 +820,7 @@ function xmlLog(message) {
 }
 
 function setXmlDoctorEnabled(enabled) {
-  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
+  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#xml-programs").disabled = !enabled;
@@ -735,6 +843,7 @@ async function loadXmlDoctorFiles(files, mode) {
     await writeFileToFs(file, `${xmlDoctor.sourcePath}/${rel}`);
   }
   xmlDoctor.embedded = false;
+  xmlDoctor.stagePrepared = false;
   xmlDoctor.lastDiff = "";
   xmlDoctor.lastReport = null;
   xmlDoctor.issueLines.clear();
@@ -742,6 +851,8 @@ async function loadXmlDoctorFiles(files, mode) {
 }
 
 async function scanXmlPrograms() {
+  const scanPath = xmlDoctor.stagePrepared ? xmlDoctor.stagePath : xmlDoctor.sourcePath;
+  pyodide.globals.set("wasm_xml_scan_path", scanPath);
   const payload = await pyodide.runPythonAsync(`
 import json
 from pathlib import Path
@@ -749,7 +860,7 @@ from xml_scanner import XMLScanner
 from ti_parser import ti_serialized_to_multiline
 
 items = []
-for index, candidate in enumerate(XMLScanner(Path("${xmlDoctor.sourcePath}")).scan()):
+for index, candidate in enumerate(XMLScanner(Path(wasm_xml_scan_path)).scan()):
     if not candidate.code_text:
         continue
     try:
@@ -781,12 +892,12 @@ json.dumps(items)
   }
   if (!xmlDoctor.candidates.length) {
     setXmlDoctorEnabled(false);
-    xmlLog("No se encontraron programas editables en el XML.");
+    xmlLog(t("noEditablePrograms"));
     return;
   }
   setXmlDoctorEnabled(true);
   selectXmlProgram(xmlDoctor.candidates[0].index);
-  xmlLog(`Cargados ${xmlDoctor.candidates.length} bloques editables.`);
+  xmlLog(tf("editableBlocksLoaded", { count: xmlDoctor.candidates.length }));
 }
 
 function selectXmlProgram(index) {
@@ -800,7 +911,1100 @@ function selectXmlProgram(index) {
   xmlDoctor.issueLines.clear();
   updateXmlLineNumbers();
   renderXmlAnalysis({ errors: 0, warnings: 0, infos: 0, diagnostics: [] });
-  xmlLog(`Programa seleccionado: ${xmlDoctor.current.program_name}`);
+  xmlLog(tf("selectedProgram", { name: xmlDoctor.current.program_name }));
+}
+
+async function inspectXmlDocument() {
+  const inspectPath = xmlDoctor.stagePrepared ? xmlDoctor.stagePath : xmlDoctor.sourcePath;
+  pyodide.globals.set("wasm_xml_inspect_path", inspectPath);
+  const payload = await pyodide.runPythonAsync(`
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name, namespace_uri
+
+root_path = Path(wasm_xml_inspect_path)
+items = []
+summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "basic_blocks": 0, "symbols": 0}
+
+def element_path(element, parent_map):
+    parts = []
+    current = element
+    while current is not None:
+        parent = parent_map.get(current)
+        name = local_name(current.tag)
+        if parent is not None:
+            same = [child for child in parent if local_name(child.tag) == name]
+            if len(same) > 1:
+                name = f"{name}[{same.index(current)+1}]"
+        parts.append(name)
+        current = parent
+    return "/" + "/".join(reversed(parts))
+
+for xml_file in sorted(root_path.rglob("*.xml")):
+    if any(part.startswith("_") for part in xml_file.parts):
+        continue
+    summary["files"] += 1
+    tree = ET.parse(xml_file)
+    root = tree.getroot()
+    parent_map = {child: parent for parent in root.iter() for child in parent}
+
+    def raw_xml(element):
+        return ET.tostring(element, encoding="unicode", short_empty_elements=False)
+
+    def child_text(element, wanted_ns, wanted_name):
+        for child in element.iter():
+            if namespace_uri(child.tag) == wanted_ns and local_name(child.tag) == wanted_name:
+                return (child.text or "").strip()
+        return ""
+
+    for element in root.iter():
+        lname = local_name(element.tag)
+        ns = namespace_uri(element.tag)
+        if lname == "card":
+            summary["cards"] += 1
+            items.append({"type": "Card", "name": f"Card {summary['cards']}", "file": str(xml_file), "path": element_path(element, parent_map), "detail": element.attrib, "raw_xml": raw_xml(element)})
+        elif lname == "wdgt":
+            summary["widgets"] += 1
+            widget_type = element.attrib.get("type", "Unknown widget")
+            detail = dict(element.attrib)
+            content = ""
+            content_label = ""
+            if widget_type == "TI.ProgramEditor":
+                pe_ns = "urn:TI.ProgramEditor"
+                detail.update({
+                    "name": child_text(element, pe_ns, "name"),
+                    "type": child_text(element, pe_ns, "type"),
+                    "visibility": child_text(element, pe_ns, "visibility"),
+                })
+                content = child_text(element, pe_ns, "laststoredexpr")
+                content_label = "ProgramEditor"
+            elif widget_type == "TI.Scratchpad":
+                sp_ns = "urn:TI.Scratchpad"
+                rows = []
+                for erow in element.iter():
+                    if namespace_uri(erow.tag) == sp_ns and local_name(erow.tag) == "erow":
+                        entry = child_text(erow, sp_ns, "entr")
+                        exact = child_text(erow, sp_ns, "exct")
+                        display = child_text(erow, sp_ns, "disp")
+                        rows.append(f"Entrada: {entry}\\nExacto: {exact}\\nResultado: {display}")
+                content = "\\n\\n".join(rows)
+                content_label = "Scratchpad"
+            items.append({"type": "Widget", "name": widget_type, "file": str(xml_file), "path": element_path(element, parent_map), "detail": detail, "content": content, "content_label": content_label, "raw_xml": raw_xml(element)})
+        elif lname == "script":
+            text = element.text or ""
+            if text:
+                summary["lua_scripts"] += 1
+                items.append({"type": "Lua Script", "name": f"Lua Script {summary['lua_scripts']}", "file": str(xml_file), "path": element_path(element, parent_map), "detail": {"length": len(text)}, "content": text, "content_label": "Lua", "raw_xml": raw_xml(element)})
+        elif lname == "e":
+            summary["symbols"] += 1
+            name = ""
+            value = ""
+            params = ""
+            for child in element:
+                child_name = local_name(child.tag)
+                if child_name == "n":
+                    name = (child.text or "").strip()
+                elif child_name == "v":
+                    value = child.text or ""
+                elif child_name == "p":
+                    params = (child.text or "").strip()
+            symbol_type = {"6": "Func", "7": "Prgm"}.get(element.attrib.get("t"), "Symbol")
+            if symbol_type in {"Func", "Prgm"}:
+                summary["basic_blocks"] += 1
+            items.append({"type": symbol_type, "name": name or "(sin nombre)", "file": str(xml_file), "path": element_path(element, parent_map), "detail": {"t": element.attrib.get("t"), "f": element.attrib.get("f"), "parameters": params, "length": len(value)}, "content": value if symbol_type not in {"Func", "Prgm"} else "", "content_label": "Value", "raw_xml": raw_xml(element)})
+
+json.dumps({"summary": summary, "items": items})
+`);
+  return JSON.parse(payload);
+}
+
+async function ensureXmlStageCopy() {
+  if (xmlDoctor.stagePrepared) return;
+  await pyodide.runPythonAsync(`
+import shutil
+from pathlib import Path
+src = Path("${xmlDoctor.sourcePath}")
+dst = Path("${xmlDoctor.stagePath}")
+if dst.exists():
+    shutil.rmtree(dst)
+dst.mkdir(parents=True, exist_ok=True)
+if src.is_file():
+    shutil.copy2(src, dst / src.name)
+else:
+    for item in src.rglob("*"):
+        rel = item.relative_to(src)
+        target = dst / rel
+        if item.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        elif item.suffix.lower() == ".xml":
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(item, target)
+`);
+  xmlDoctor.stagePrepared = true;
+}
+
+async function saveLuaScriptToStage(item, content) {
+  await ensureXmlStageCopy();
+  pyodide.globals.set("wasm_lua_file", item.file);
+  pyodide.globals.set("wasm_lua_path", item.path);
+  pyodide.globals.set("wasm_lua_content", content);
+  await pyodide.runPythonAsync(`
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+source_file = Path(wasm_lua_file)
+try:
+    rel = source_file.relative_to(stage_root)
+except ValueError:
+    try:
+        rel = source_file.relative_to(source_root)
+    except ValueError:
+        rel = Path(source_file.name)
+xml_file = stage_root / rel
+tree = ET.parse(xml_file)
+root = tree.getroot()
+parent_map = {child: parent for parent in root.iter() for child in parent}
+
+def element_path(element):
+    parts = []
+    current = element
+    while current is not None:
+        parent = parent_map.get(current)
+        name = local_name(current.tag)
+        if parent is not None:
+            same = [child for child in parent if local_name(child.tag) == name]
+            if len(same) > 1:
+                name = f"{name}[{same.index(current)+1}]"
+        parts.append(name)
+        current = parent
+    return "/" + "/".join(reversed(parts))
+
+for element in root.iter():
+    if element_path(element) == wasm_lua_path:
+        element.text = wasm_lua_content
+        body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+        xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+        break
+else:
+    raise RuntimeError("Lua script path not found in staging XML")
+`);
+  xmlDoctor.embedded = true;
+  xmlLog(t("luaSaved"));
+}
+
+async function addLuaScriptAppToStage() {
+  await ensureXmlStageCopy();
+  const currentFile = xmlDoctor.current?.file || "";
+  pyodide.globals.set("wasm_lua_current_file", currentFile);
+  pyodide.globals.set("wasm_lua_default", `platform.apilevel = '2.0'
+
+function on.paint(gc)
+    gc:setColorRGB(0, 0, 0)
+    gc:drawString("Hello Lua", 20, 20, "top")
+end
+`);
+  const payload = await pyodide.runPythonAsync(`
+import json
+import uuid
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+current_file = Path(wasm_lua_current_file) if wasm_lua_current_file else None
+xml_file = None
+if current_file:
+    try:
+        rel = current_file.relative_to(source_root)
+    except ValueError:
+        rel = Path(current_file.name)
+    candidate = stage_root / rel
+    if candidate.exists():
+        xml_file = candidate
+if xml_file is None:
+    problem_files = sorted(
+        [p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")],
+        key=lambda p: p.name.lower(),
+    )
+    xml_files = problem_files or sorted(stage_root.rglob("*.xml"))
+    if xml_files:
+        xml_file = xml_files[0]
+if xml_file is None:
+    raise RuntimeError("No XML file available for Lua widget")
+try:
+    rel = xml_file.relative_to(stage_root)
+    source_file = xml_file
+except ValueError:
+    source_file = xml_file
+tree = ET.parse(xml_file)
+root = tree.getroot()
+prob_ns = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+sc_ns = "urn:TI.ScriptApp"
+ET.register_namespace("", prob_ns)
+ET.register_namespace("sc", sc_ns)
+
+def q(ns, name):
+    return f"{{{ns}}}{name}" if ns else name
+
+card = ET.Element(q(prob_ns, "card"), {"clay": "0", "h1": "10000", "h2": "10000", "w1": "10000", "w2": "10000"})
+dummy = ET.SubElement(card, q(prob_ns, "isDummyCard"))
+dummy.text = "0"
+flag = ET.SubElement(card, q(prob_ns, "flag"))
+flag.text = "0"
+wdgt = ET.SubElement(card, q(prob_ns, "wdgt"), {"type": "TI.ScriptApp", "ver": "1.0"})
+ET.SubElement(wdgt, q(sc_ns, "mFlags")).text = "1024"
+ET.SubElement(wdgt, q(sc_ns, "value")).text = "0"
+ET.SubElement(wdgt, q(sc_ns, "cry")).text = "0"
+ET.SubElement(wdgt, q(sc_ns, "legal")).text = "none"
+ET.SubElement(wdgt, q(sc_ns, "schk")).text = "false"
+ET.SubElement(wdgt, q(sc_ns, "guid")).text = uuid.uuid4().hex.upper()
+script = ET.SubElement(wdgt, q(sc_ns, "script"), {"version": "512", "id": "0"})
+script.text = wasm_lua_default
+root.append(card)
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+
+parent_map = {child: parent for parent in root.iter() for child in parent}
+def element_path(element):
+    parts = []
+    current = element
+    while current is not None:
+        parent = parent_map.get(current)
+        name = local_name(current.tag)
+        if parent is not None:
+            same = [child for child in parent if local_name(child.tag) == name]
+            if len(same) > 1:
+                name = f"{name}[{same.index(current)+1}]"
+        parts.append(name)
+        current = parent
+    return "/" + "/".join(reversed(parts))
+
+json.dumps({
+    "type": "Lua Script",
+    "name": "Lua Script nuevo",
+    "file": str(source_file),
+    "path": element_path(script),
+    "detail": {"length": len(wasm_lua_default), "created": "true"},
+    "content": wasm_lua_default,
+    "content_label": "Lua",
+    "raw_xml": ET.tostring(script, encoding="unicode", short_empty_elements=False),
+})
+`);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  xmlLog(t("luaScriptAdded"));
+  return JSON.parse(payload);
+}
+
+async function addBasicFuncToStage() {
+  await ensureXmlStageCopy();
+  const currentFile = xmlDoctor.current?.file || "";
+  pyodide.globals.set("wasm_func_current_file", currentFile);
+  const payload = await pyodide.runPythonAsync(`
+import json
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+current_file = Path(wasm_func_current_file) if wasm_func_current_file else None
+xml_file = None
+if current_file:
+    try:
+        rel = current_file.relative_to(stage_root)
+    except ValueError:
+        try:
+            rel = current_file.relative_to(source_root)
+        except ValueError:
+            rel = Path(current_file.name)
+    candidate = stage_root / rel
+    if candidate.exists():
+        xml_file = candidate
+if xml_file is None:
+    problem_files = sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p: p.name.lower())
+    xml_files = problem_files or sorted(stage_root.rglob("*.xml"))
+    if xml_files:
+        xml_file = xml_files[0]
+if xml_file is None:
+    raise RuntimeError("No XML file available for Func")
+
+tree = ET.parse(xml_file)
+root = tree.getroot()
+prob_ns = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+def q(name):
+    return f"{{{prob_ns}}}{name}" if prob_ns else name
+
+sym = None
+for child in root:
+    if local_name(child.tag) == "sym":
+        sym = child
+        break
+if sym is None:
+    sym = ET.Element(q("sym"))
+    root.insert(0, sym)
+
+existing = set()
+for element in sym:
+    if local_name(element.tag) == "e":
+        for child in element:
+            if local_name(child.tag) == "n" and child.text:
+                existing.add(child.text.strip())
+
+base = "nueva_func"
+name = base
+counter = 1
+while name in existing:
+    counter += 1
+    name = f"{base}_{counter}"
+
+entry = ET.SubElement(sym, q("e"), {"t": "6", "f": "0", "c": "0"})
+ET.SubElement(entry, q("n")).text = name
+ET.SubElement(entry, q("p")).text = ""
+ET.SubElement(entry, q("v")).text = "Func\\r:Return 0\\r:EndFunc"
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+json.dumps({"name": name, "file": str(xml_file)})
+`);
+  const result = JSON.parse(payload);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  await scanXmlPrograms();
+  const created = xmlDoctor.candidates.find((item) => item.program_name === result.name);
+  if (created) selectXmlProgram(created.index);
+  xmlLog(tf("funcAdded", { name: result.name }));
+}
+
+function showTextModal(title, content) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal inspector-modal">
+      <h2>${escapeHtml(title)}</h2>
+      <pre class="inspector-code">${escapeHtml(content || "")}</pre>
+      <div class="modal-actions">
+        <button type="button" id="text-close">${escapeHtml(t("close"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  backdrop.querySelector("#text-close").addEventListener("click", () => backdrop.remove());
+}
+
+function closeDocumentInspectorModals() {
+  for (const modalBackdrop of document.querySelectorAll(".modal-backdrop")) {
+    if (modalBackdrop.querySelector(".inspector-modal")) {
+      modalBackdrop.remove();
+    }
+  }
+}
+
+function analyzeLuaBasic(code) {
+  const errors = [];
+  const warnings = [];
+  const stack = [];
+  const delimiterStack = [];
+  const lines = code.split("\n");
+  const cleanedLines = stripLuaCode(code);
+  const tiApi = luaTiApiSpec();
+  const userDefinedFunctions = collectLuaUserFunctions(cleanedLines);
+  const knownGlobals = new Set(["math", "string", "table", "coroutine", "os", "io", "pairs", "ipairs", "type", "tonumber", "tostring", "print", "error", "pcall", "xpcall", "require", "assert", "select", "unpack", "on", "platform", "timer", "var", "gc", "toolpalette", "D2Editor", "image", "physics", "locale", "clipboard", "cursor", "document"]);
+  lines.forEach((raw, index) => {
+    const lineNumber = index + 1;
+    const parsed = stripLuaStringsAndComments(raw);
+    if (parsed.unclosedString) errors.push({ level: "ERROR", line: lineNumber, message: "Cadena sin cerrar" });
+    const line = cleanedLines[index] || "";
+    const compact = line.trim();
+    for (const char of line) {
+      if ("([{".includes(char)) {
+        delimiterStack.push({ char, line: lineNumber });
+      } else if (")]}".includes(char)) {
+        const expected = { ")": "(", "]": "[", "}": "{" }[char];
+        const last = delimiterStack[delimiterStack.length - 1];
+        if (last && last.char === expected) delimiterStack.pop();
+        else errors.push({ level: "ERROR", line: lineNumber, message: `Delimitador extra: ${char}` });
+      }
+    }
+    if (/\bif\b/.test(line) && !/\bthen\b/.test(line)) {
+      errors.push({ level: "ERROR", line: lineNumber, message: "If sin then" });
+    }
+    if (/\belseif\b/.test(line) && !/\bthen\b/.test(line)) {
+      errors.push({ level: "ERROR", line: lineNumber, message: "Elseif sin then" });
+    }
+    if (/\bwhile\b/.test(line) && !/\bdo\b/.test(line)) {
+      errors.push({ level: "ERROR", line: lineNumber, message: "While sin do" });
+    }
+    if (/\bfor\b/.test(line) && !/\bdo\b/.test(line)) {
+      errors.push({ level: "ERROR", line: lineNumber, message: "For sin do" });
+    }
+    handleLuaBlocks(line, lineNumber, stack, errors);
+    validateLuaTiCalls(line, raw, lineNumber, tiApi, knownGlobals, userDefinedFunctions, errors, warnings);
+  });
+  for (const item of stack) {
+    errors.push({ level: "ERROR", line: item.line, message: `${item.word} sin ${item.expected}` });
+  }
+  for (const item of delimiterStack) {
+    errors.push({ level: "ERROR", line: item.line, message: `Delimitador sin cerrar: ${item.char}` });
+  }
+  return { errors, warnings };
+}
+
+function stripLuaCode(code) {
+  const lines = code.split("\n");
+  const cleaned = [];
+  let inLongComment = false;
+  let inLongString = false;
+  for (const raw of lines) {
+    let line = "";
+    let quote = "";
+    let escaped = false;
+    for (let i = 0; i < raw.length; i += 1) {
+      const two = raw.slice(i, i + 2);
+      const four = raw.slice(i, i + 4);
+      if (inLongComment) {
+        if (two === "]]") {
+          inLongComment = false;
+          line += "  ";
+          i += 1;
+        } else {
+          line += " ";
+        }
+        continue;
+      }
+      if (inLongString) {
+        if (two === "]]") {
+          inLongString = false;
+          line += "  ";
+          i += 1;
+        } else {
+          line += " ";
+        }
+        continue;
+      }
+      if (!quote && four === "--[[") {
+        inLongComment = true;
+        line += "    ";
+        i += 3;
+        continue;
+      }
+      if (!quote && two === "--") {
+        line += " ".repeat(raw.length - i);
+        break;
+      }
+      if (!quote && two === "[[") {
+        inLongString = true;
+        line += "  ";
+        i += 1;
+        continue;
+      }
+      const char = raw[i];
+      if (quote) {
+        if (escaped) escaped = false;
+        else if (char === "\\") escaped = true;
+        else if (char === quote) quote = "";
+        line += " ";
+        continue;
+      }
+      if (char === '"' || char === "'") {
+        quote = char;
+        line += " ";
+        continue;
+      }
+      line += char;
+    }
+    cleaned.push(line);
+  }
+  return cleaned;
+}
+
+function handleLuaBlocks(line, lineNumber, stack, errors) {
+  const tokens = line.match(/\b(local\s+function|function|if|for|while|repeat|else|elseif|end|until)\b/g) || [];
+  for (const rawToken of tokens) {
+    const token = rawToken === "local function" ? "function" : rawToken;
+    if (token === "function") stack.push({ word: "function", expected: "end", line: lineNumber });
+    else if (token === "if") stack.push({ word: "if", expected: "end", line: lineNumber });
+    else if (token === "for") stack.push({ word: "for", expected: "end", line: lineNumber });
+    else if (token === "while") stack.push({ word: "while", expected: "end", line: lineNumber });
+    else if (token === "repeat") stack.push({ word: "repeat", expected: "until", line: lineNumber });
+    else if (token === "else" || token === "elseif") {
+      const lastIf = [...stack].reverse().find((item) => item.word === "if");
+      if (!lastIf) errors.push({ level: "ERROR", line: lineNumber, message: `${token} sin if asociado` });
+    } else if (token === "end" || token === "until") {
+      const last = stack.pop();
+      if (!last || last.expected !== token) errors.push({ level: "ERROR", line: lineNumber, message: `${token} inesperado` });
+    }
+  }
+}
+
+function collectLuaUserFunctions(cleanedLines) {
+  const names = new Set();
+  for (const line of cleanedLines) {
+    const fn = /^\s*function\s+([A-Za-z_][A-Za-z0-9_]*(?:(?:\.|:)[A-Za-z_][A-Za-z0-9_]*)*)\s*\(/.exec(line);
+    if (fn) names.add(fn[1].replace(/:/g, "."));
+    const assigned = /^\s*([A-Za-z_][A-Za-z0-9_]*(?:(?:\.|:)[A-Za-z_][A-Za-z0-9_]*)*)\s*=\s*function\s*\(/.exec(line);
+    if (assigned) names.add(assigned[1].replace(/:/g, "."));
+  }
+  return names;
+}
+
+function luaTiApiSpec() {
+  const arg = (min, max = min) => ({ min, max });
+  return {
+    events: {
+      "on.paint": arg(1),
+      "on.draw": arg(1),
+      "on.create": arg(0),
+      "on.construction": arg(0),
+      "on.timer": arg(0),
+      "on.charIn": arg(1),
+      "on.escapeKey": arg(0),
+      "on.enterKey": arg(0),
+      "on.tabKey": arg(0),
+      "on.backtabKey": arg(0),
+      "on.backspaceKey": arg(0),
+      "on.deleteKey": arg(0),
+      "on.returnKey": arg(0),
+      "on.clearKey": arg(0),
+      "on.contextMenu": arg(0, 2),
+      "on.help": arg(0),
+      "on.arrowKey": arg(1),
+      "on.arrowLeft": arg(0),
+      "on.arrowRight": arg(0),
+      "on.arrowUp": arg(0),
+      "on.arrowDown": arg(0),
+      "on.mouseDown": arg(2),
+      "on.rightMouseDown": arg(2),
+      "on.mouseUp": arg(2),
+      "on.mouseMove": arg(2),
+      "on.rightMouseUp": arg(2),
+      "on.grabDown": arg(2),
+      "on.grabUp": arg(2),
+      "on.keyboardUp": arg(0),
+      "on.keyboardDown": arg(0),
+      "on.varChange": arg(1),
+      "on.getSymbolList": arg(0),
+      "on.save": arg(0),
+      "on.restore": arg(0, 1),
+      "on.cut": arg(0),
+      "on.copy": arg(0),
+      "on.paste": arg(0, 1),
+      "on.getFocus": arg(0),
+      "on.loseFocus": arg(0),
+      "on.createMathBox": arg(0, 1),
+      "on.resize": arg(0, 2),
+      "on.activate": arg(0),
+      "on.deactivate": arg(0),
+    },
+    calls: {
+      "gc.setColorRGB": arg(1, 3),
+      "gc.setFont": arg(1, 3),
+      "gc.drawString": arg(3, 4),
+      "gc.drawLine": arg(4),
+      "gc.drawRect": arg(4),
+      "gc.fillRect": arg(4, 5),
+      "gc.drawArc": arg(6),
+      "gc.fillArc": arg(6),
+      "gc.drawPolyLine": arg(1, null),
+      "gc.fillPolygon": arg(1, null),
+      "gc.getStringWidth": arg(1),
+      "gc.getStringHeight": arg(1),
+      "gc.setPen": arg(1, 4),
+      "gc.drawImage": arg(3, 6),
+      "gc.clipRect": arg(5),
+      "gc.begin": arg(0),
+      "gc.finish": arg(0),
+      "platform.apilevel": arg(0),
+      "platform.isTabletModeRendering": arg(0),
+      "platform.window.invalidate": arg(0, 4),
+      "platform.window.width": arg(0),
+      "platform.window.height": arg(0),
+      "platform.window.setFocus": arg(1),
+      "platform.withGC": arg(1, 2),
+      "platform.gc": arg(0),
+      "platform.hw": arg(0),
+      "platform.isDeviceModeRendering": arg(0),
+      "platform.isColorDisplay": arg(0),
+      "platform.registerErrorHandler": arg(1),
+      "timer.start": arg(1),
+      "timer.stop": arg(0),
+      "timer.getMilliSecCounter": arg(0),
+      "timer.purgeTasks": arg(0),
+      "var.store": arg(2),
+      "var.recall": arg(1),
+      "var.list": arg(0, 1),
+      "var.monitor": arg(1),
+      "var.unmonitor": arg(1),
+      "var.makeNumericList": arg(1),
+      "var.recallAt": arg(2, 3),
+      "var.recallstr": arg(1),
+      "var.storeAt": arg(3, 4),
+      "toolpalette.register": arg(1, 2),
+      "toolpalette.enable": arg(1, 3),
+      "toolpalette.disable": arg(1, 3),
+      "toolpalette.enableCopy": arg(1),
+      "toolpalette.enableCut": arg(1),
+      "toolpalette.enablePaste": arg(1),
+      "locale.name": arg(0),
+      "clipboard.addText": arg(1),
+      "clipboard.getText": arg(0),
+      "cursor.hide": arg(0),
+      "cursor.show": arg(0),
+      "cursor.set": arg(1),
+      "document.markChanged": arg(0),
+      "D2Editor.newRichText": arg(0),
+      "D2Editor.createMathBox": arg(0),
+      "D2Editor.createChemBox": arg(0),
+      "D2Editor.getExpression": arg(0),
+      "D2Editor.getExpressionSelection": arg(0),
+      "D2Editor.getText": arg(0),
+      "D2Editor.hasFocus": arg(0),
+      "D2Editor.isVisible": arg(0),
+      "D2Editor.move": arg(2),
+      "D2Editor.registerFilter": arg(0, 1),
+      "D2Editor.resize": arg(2),
+      "D2Editor.setBorder": arg(1),
+      "D2Editor.setBorderColor": arg(1),
+      "D2Editor.setColorable": arg(1),
+      "D2Editor.setDisable2DinRT": arg(1),
+      "D2Editor.setExpression": arg(0, null),
+      "D2Editor.setFocus": arg(0, 1),
+      "D2Editor.setFontSize": arg(1),
+      "D2Editor.setMainFont": arg(2),
+      "D2Editor.setReadOnly": arg(0, 1),
+      "D2Editor.setSelectable": arg(0, 1),
+      "D2Editor.setSizeChangeListener": arg(1),
+      "D2Editor.setTextChangeListener": arg(1),
+      "D2Editor.setText": arg(0, null),
+      "D2Editor.setTextColor": arg(1),
+      "D2Editor.setVisible": arg(1),
+      "D2Editor.setWordWrapWidth": arg(1),
+    },
+  };
+}
+
+function validateLuaTiCalls(line, rawLine, lineNumber, tiApi, knownGlobals, userDefinedFunctions, errors, warnings) {
+  const eventDef = /^\s*function\s+(on\.[A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)/.exec(line);
+  if (eventDef) {
+    const spec = tiApi.events[eventDef[1]];
+    if (spec) {
+      const eventArgs = splitLuaArgs(eventDef[2]);
+      if (eventArgs.confident) validateLuaArgCount(eventDef[1], eventArgs.args.length, spec, lineNumber, errors);
+    }
+  }
+  const callPattern = /\b([A-Za-z_][A-Za-z0-9_]*(?:(?:\.|:)[A-Za-z_][A-Za-z0-9_]*)+)\s*\(/g;
+  let match;
+  while ((match = callPattern.exec(line)) !== null) {
+    const rawName = match[1];
+    const normalized = rawName.replace(/:/g, ".");
+    if (userDefinedFunctions.has(normalized)) continue;
+    const root = normalized.split(".")[0];
+    if (!knownGlobals.has(root)) continue;
+    const openIndex = rawLine.indexOf("(", match.index + rawName.length);
+    const closeIndex = findMatchingParenRaw(rawLine, openIndex);
+    if (closeIndex < 0) continue;
+    const argInfo = splitLuaArgs(rawLine.slice(openIndex + 1, closeIndex));
+    const spec = tiApi.calls[normalized] || tiApi.calls[normalized.replace(/^platform\.window\./, "platform.window.")];
+    if (spec && argInfo.confident) validateLuaArgCount(rawName, argInfo.args.length, spec, lineNumber, errors);
+  }
+}
+
+function validateLuaArgCount(name, received, spec, line, errors) {
+  if (received < spec.min) {
+    errors.push({ level: "ERROR", line, message: `${name}: pocos argumentos. Esperados ${spec.min}, recibidos ${received}` });
+  } else if (spec.max !== null && received > spec.max) {
+    errors.push({ level: "ERROR", line, message: `${name}: demasiados argumentos. Esperados ${spec.max}, recibidos ${received}` });
+  }
+}
+
+function findMatchingParen(line, openIndex) {
+  let depth = 0;
+  for (let i = openIndex; i < line.length; i += 1) {
+    if (line[i] === "(") depth += 1;
+    else if (line[i] === ")") {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function findMatchingParenRaw(line, openIndex) {
+  let depth = 0;
+  let quote = "";
+  let escaped = false;
+  for (let i = openIndex; i < line.length; i += 1) {
+    const char = line[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === quote) quote = "";
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === "(") depth += 1;
+    else if (char === ")") {
+      depth -= 1;
+      if (depth === 0) return i;
+    }
+  }
+  return -1;
+}
+
+function splitLuaArgs(text) {
+  const trimmed = text.trim();
+  if (!trimmed) return { args: [], confident: true };
+  const args = [];
+  let depth = 0;
+  let quote = "";
+  let escaped = false;
+  let start = 0;
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === quote) quote = "";
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === "-" && text[i + 1] === "-") {
+      break;
+    }
+    if ("([{".includes(char)) depth += 1;
+    else if (")]}".includes(char)) depth -= 1;
+    else if (char === "," && depth === 0) {
+      args.push(text.slice(start, i).trim());
+      start = i + 1;
+    }
+  }
+  args.push(text.slice(start).trim());
+  return { args: args.filter((arg) => arg.length > 0), confident: !quote && depth === 0 };
+}
+
+function stripLuaStringsAndComments(line) {
+  let clean = "";
+  let quote = "";
+  let escaped = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    const next = line[i + 1] || "";
+    if (!quote && char === "-" && next === "-") {
+      clean += " ".repeat(line.length - i);
+      return { clean, unclosedString: false };
+    }
+    if (quote) {
+      if (escaped) {
+        escaped = false;
+      } else if (char === "\\") {
+        escaped = true;
+      } else if (char === quote) {
+        quote = "";
+      }
+      clean += " ";
+      continue;
+    }
+    if (char === '"' || char === "'") {
+      quote = char;
+      clean += " ";
+      continue;
+    }
+    clean += char;
+  }
+  return { clean, unclosedString: Boolean(quote) };
+}
+
+function highlightLuaLine(line) {
+  const keywords = new Set([
+    "and", "break", "do", "else", "elseif", "end", "false", "for", "function",
+    "if", "in", "local", "nil", "not", "or", "repeat", "return", "then", "true",
+    "until", "while",
+  ]);
+  let output = "";
+  let index = 0;
+  while (index < line.length) {
+    if (line.slice(index, index + 2) === "--") {
+      output += `<span class="tok-comment">${escapeHtml(line.slice(index))}</span>`;
+      break;
+    }
+    const char = line[index];
+    if (char === '"' || char === "'") {
+      const quote = char;
+      let end = index + 1;
+      let escaped = false;
+      while (end < line.length) {
+        const current = line[end];
+        if (current === quote && !escaped) {
+          end += 1;
+          break;
+        }
+        escaped = current === "\\" && !escaped;
+        if (current !== "\\") escaped = false;
+        end += 1;
+      }
+      output += spanToken("tok-lua-string", line.slice(index, end));
+      index = end;
+      continue;
+    }
+    const number = /^\d+(?:\.\d+)?/.exec(line.slice(index));
+    if (number) {
+      output += spanToken("tok-plain", number[0]);
+      index += number[0].length;
+      continue;
+    }
+    if ("=+-/*.%<>#~".includes(char)) {
+      if ((char === "=" || char === "<" || char === ">" || char === "~") && line[index + 1] === "=") {
+        output += spanToken("tok-op-red", line.slice(index, index + 2));
+        index += 2;
+      } else {
+        output += spanToken("tok-op-red", char);
+        index += 1;
+      }
+      continue;
+    }
+    const ident = /^[A-Za-z_][A-Za-z0-9_]*/.exec(line.slice(index));
+    if (ident) {
+      const word = ident[0];
+      output += keywords.has(word) ? spanToken("tok-keyword", word) : spanToken("tok-plain", word);
+      index += word.length;
+      continue;
+    }
+    output += spanToken("tok-plain", char);
+    index += 1;
+  }
+  return output || " ";
+}
+
+function showLuaEditor(item) {
+  const initialLuaContent = decodeXmlTextEntities(item.content || "");
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal lua-modal">
+      <div class="lua-toolbar">
+        <h2>${escapeHtml(t("editLua"))}: ${escapeHtml(item.name)}</h2>
+        <span id="lua-line-label">Linea: 1 Col: 1 Total: 1</span>
+        <button type="button" id="lua-syntax">${escapeHtml(t("runLuaSyntax"))}</button>
+        <button type="button" id="lua-save">${escapeHtml(t("saveLuaXml"))}</button>
+        <button type="button" id="lua-cancel">${escapeHtml(t("cancel"))}</button>
+      </div>
+      <div class="lua-doctor-grid">
+        <div class="lua-code-shell">
+          <div id="lua-lines" class="line-numbers"></div>
+          <div class="lua-editor-wrap">
+            <pre id="lua-highlight" class="lua-highlight" aria-hidden="true"></pre>
+            <textarea id="lua-editor" class="lua-editor" spellcheck="false">${escapeHtml(initialLuaContent)}</textarea>
+          </div>
+        </div>
+        <aside class="lua-side">
+          <h3>${escapeHtml(t("analysisSummary"))}</h3>
+          <div class="summary-row">
+            <div class="summary error"><img src="./icon/error.png" alt="" /><strong id="lua-errors">0</strong><span>${escapeHtml(t("errors"))}</span></div>
+            <div class="summary warning"><img src="./icon/advertencia.png" alt="" /><strong id="lua-warnings">0</strong><span>${escapeHtml(t("warnings"))}</span></div>
+            <div class="summary info"><img src="./icon/perfecto.png" alt="" /><strong id="lua-info">0</strong><span>${escapeHtml(t("info"))}</span></div>
+          </div>
+          <h3>${escapeHtml(t("problemList"))}</h3>
+          <table class="problem-table lua-problem-table">
+            <thead><tr><th>${escapeHtml(t("type"))}</th><th>${escapeHtml(t("line"))}</th><th>${escapeHtml(t("description"))}</th></tr></thead>
+            <tbody id="lua-problems"></tbody>
+          </table>
+          <h3>Log Lua</h3>
+          <pre id="lua-log" class="mini-log"></pre>
+        </aside>
+      </div>
+      <div class="modal-actions">
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  const editor = backdrop.querySelector("#lua-editor");
+  const lines = backdrop.querySelector("#lua-lines");
+  const highlight = backdrop.querySelector("#lua-highlight");
+  const label = backdrop.querySelector("#lua-line-label");
+  const log = backdrop.querySelector("#lua-log");
+  const problems = backdrop.querySelector("#lua-problems");
+  const issueLines = new Map();
+  const updateLabel = () => {
+    const before = editor.value.slice(0, editor.selectionStart).split("\n");
+    const line = before.length;
+    const col = before[before.length - 1].length + 1;
+    const total = Math.max(1, editor.value.split("\n").length);
+    label.textContent = `Linea: ${line} Col: ${col} Total: ${total}`;
+  };
+  const updateHighlight = () => {
+    highlight.innerHTML = editor.value.split("\n").map((line, index) => {
+      const severity = issueLines.get(index + 1) || "";
+      return `<div class="code-line ${severity.toLowerCase()}">${highlightLuaLine(line)}</div>`;
+    }).join("");
+    highlight.scrollTop = editor.scrollTop;
+    highlight.scrollLeft = editor.scrollLeft;
+  };
+  const updateLines = () => {
+    const total = Math.max(1, editor.value.split("\n").length);
+    lines.innerHTML = Array.from({ length: total }, (_, index) => {
+      const severity = issueLines.get(index + 1) || "";
+      return `<div class="line-row ${severity.toLowerCase()}"><span class="dot"></span><span>${index + 1}</span></div>`;
+    }).join("");
+    lines.scrollTop = editor.scrollTop;
+  };
+  const analyze = () => {
+    const diagnostics = analyzeLuaBasic(editor.value);
+    issueLines.clear();
+    backdrop.querySelector("#lua-errors").textContent = String(diagnostics.errors.length);
+    backdrop.querySelector("#lua-warnings").textContent = String(diagnostics.warnings.length);
+    backdrop.querySelector("#lua-info").textContent = diagnostics.errors.length ? "0" : "1";
+    const allDiagnostics = [...diagnostics.errors, ...diagnostics.warnings];
+    for (const diag of allDiagnostics) {
+      if (diag.line && !issueLines.has(diag.line)) issueLines.set(diag.line, diag.level);
+    }
+    problems.innerHTML = allDiagnostics.map((diag) => `<tr class="${diag.level}" data-line="${diag.line}"><td>${diag.level}</td><td>${diag.line}</td><td>${escapeHtml(diag.message)}</td></tr>`).join("");
+    for (const row of problems.querySelectorAll("tr")) {
+      row.addEventListener("dblclick", () => {
+        const line = Number(row.dataset.line || "0");
+        const pos = editor.value.split("\n").slice(0, Math.max(0, line - 1)).join("\n").length + (line > 1 ? 1 : 0);
+        editor.focus();
+        editor.setSelectionRange(pos, pos);
+        editor.scrollTop = Math.max(0, (line - 1) * 18 - 80);
+        lines.scrollTop = editor.scrollTop;
+        highlight.scrollTop = editor.scrollTop;
+        updateLabel();
+      });
+    }
+    log.textContent = allDiagnostics.length
+      ? allDiagnostics.map((diag) => `[${diag.level}] Linea ${diag.line}: ${diag.message}`).join("\n")
+      : t("luaSyntaxOk");
+    updateLines();
+    updateHighlight();
+    updateLabel();
+  };
+  editor.addEventListener("input", () => {
+    updateLines();
+    updateHighlight();
+    updateLabel();
+  });
+  editor.addEventListener("keyup", updateLabel);
+  editor.addEventListener("click", updateLabel);
+  editor.addEventListener("select", updateLabel);
+  editor.addEventListener("scroll", () => {
+    lines.scrollTop = editor.scrollTop;
+    highlight.scrollTop = editor.scrollTop;
+    highlight.scrollLeft = editor.scrollLeft;
+  });
+  backdrop.querySelector("#lua-syntax").addEventListener("click", analyze);
+  updateLines();
+  updateHighlight();
+  updateLabel();
+  analyze();
+  backdrop.querySelector("#lua-cancel").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#lua-save").addEventListener("click", async () => {
+    try {
+      const content = backdrop.querySelector("#lua-editor").value;
+      const xmlContent = encodeXmlTextEntities(content);
+      await saveLuaScriptToStage(item, xmlContent);
+      item.content = xmlContent;
+      closeDocumentInspectorModals();
+      backdrop.remove();
+      await openDocumentInspector();
+    } catch (error) {
+      xmlLog(`ERROR: ${error.message}`);
+    }
+  });
+}
+
+function decodeXmlTextEntities(text) {
+  const area = document.createElement("textarea");
+  area.innerHTML = text || "";
+  return area.value;
+}
+
+function encodeXmlTextEntities(text) {
+  return (text || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;");
+}
+
+async function openDocumentInspector() {
+  const data = await inspectXmlDocument();
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  const summary = data.summary || {};
+  const sortedItems = [...(data.items || [])].sort((a, b) => {
+    const rank = (item) => item.type === "Lua Script" ? 0 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 1 : item.type === "Card" ? 2 : 3;
+    return rank(a) - rank(b) || String(a.file).localeCompare(String(b.file)) || String(a.path).localeCompare(String(b.path));
+  });
+  const rows = sortedItems.map((item, index) => {
+    const detail = item.detail ? Object.entries(item.detail).map(([key, value]) => `${key}: ${value}`).join(", ") : "";
+    const contentAction = item.content
+      ? item.type === "Lua Script"
+        ? `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`
+        : `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(item.content_label === "Scratchpad" ? t("viewDetails") : t("viewValue"))}</button>`
+      : "";
+    const xmlAction = item.raw_xml ? `<button type="button" class="mini-action xml-action" data-index="${index}">${escapeHtml(t("viewXml"))}</button>` : "";
+    const action = `${contentAction}${xmlAction}`;
+    return `<tr><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.name)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td><td>${action}</td></tr>`;
+  }).join("");
+  backdrop.innerHTML = `
+    <div class="modal inspector-modal">
+      <h2>${escapeHtml(t("documentInspector"))}</h2>
+      <h3>${escapeHtml(t("documentSummary"))}</h3>
+      <div class="inspector-summary">
+        <span>XML: ${summary.files || 0}</span>
+        <span>Cards: ${summary.cards || 0}</span>
+        <span>Widgets: ${summary.widgets || 0}</span>
+        <span>Lua: ${summary.lua_scripts || 0}</span>
+        <span>Basic: ${summary.basic_blocks || 0}</span>
+        <span>Symbols: ${summary.symbols || 0}</span>
+      </div>
+      <h3>${escapeHtml(t("documentElements"))}</h3>
+      <div class="inspector-table-wrap">
+        <table class="problem-table inspector-table">
+          <thead><tr><th>Tipo</th><th>Nombre</th><th>Archivo</th><th>Path</th><th>Detalle</th><th>Acciones</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="add-lua-widget">${escapeHtml(t("addLuaWidget"))}</button>
+        <button type="button" id="inspector-close">${escapeHtml(t("close"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  backdrop.querySelector("#inspector-close").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#add-lua-widget").addEventListener("click", async () => {
+    try {
+      const item = await addLuaScriptAppToStage();
+      showLuaEditor(item);
+    } catch (error) {
+      xmlLog(`ERROR: ${error.message}`);
+    }
+  });
+  for (const button of backdrop.querySelectorAll(".view-action")) {
+    button.addEventListener("click", () => {
+      const item = sortedItems[Number(button.dataset.index)];
+      showTextModal(`${item.content_label || item.type}: ${item.name}`, item.content || "");
+    });
+  }
+  for (const button of backdrop.querySelectorAll(".xml-action")) {
+    button.addEventListener("click", () => {
+      const item = sortedItems[Number(button.dataset.index)];
+      showTextModal(`XML: ${item.type} ${item.name}`, item.raw_xml || "");
+    });
+  }
+  for (const button of backdrop.querySelectorAll(".edit-lua-action")) {
+    button.addEventListener("click", () => {
+      const item = sortedItems[Number(button.dataset.index)];
+      showLuaEditor(item);
+    });
+  }
 }
 
 function detectXmlDocumentType(text) {
@@ -837,12 +2041,18 @@ function openXmlDocumentSettings() {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
-    <div class="modal">
+    <div class="modal document-modal">
       <h2>${escapeHtml(t("documentSettings"))}</h2>
-      <label class="resolver-option"><span>${escapeHtml(t("documentName"))}</span><input id="doc-name" value="${escapeHtml(xmlDoctor.current.program_name || "")}"></label>
-      <label class="resolver-option"><span>${escapeHtml(t("documentType"))}</span><select id="doc-type"><option>Prgm</option><option>Func</option></select></label>
-      <label class="resolver-option"><span>${escapeHtml(t("libraryAccess"))}</span><select id="doc-access"><option>None</option><option>LibPriv</option><option>LibPub</option></select></label>
-      <label class="resolver-option"><span>${escapeHtml(t("arguments"))}</span><input id="doc-params" value="${escapeHtml(xmlDoctor.current.parameters || "")}"></label>
+      <div class="document-form">
+        <label for="doc-name">${escapeHtml(t("documentName"))}</label>
+        <input id="doc-name" value="${escapeHtml(xmlDoctor.current.program_name || "")}">
+        <label for="doc-type">${escapeHtml(t("documentType"))}</label>
+        <select id="doc-type"><option>Prgm</option><option>Func</option></select>
+        <label for="doc-access">${escapeHtml(t("libraryAccess"))}</label>
+        <select id="doc-access"><option>None</option><option>LibPriv</option><option>LibPub</option></select>
+        <label for="doc-params">${escapeHtml(t("arguments"))}</label>
+        <input id="doc-params" value="${escapeHtml(xmlDoctor.current.parameters || "")}">
+      </div>
       <div class="modal-actions">
         <button type="button" id="doc-cancel">${escapeHtml(t("cancel"))}</button>
         <button type="button" id="doc-apply">${escapeHtml(t("apply"))}</button>
@@ -865,6 +2075,7 @@ function openXmlDocumentSettings() {
     document.querySelector("#xml-code").value = coerceXmlDocumentType(document.querySelector("#xml-code").value, documentType);
     refreshXmlProgramOptions();
     xmlDoctor.embedded = false;
+    xmlDoctor.stagePrepared = false;
     xmlDoctor.lastReport = null;
     xmlDoctor.lastDiff = "";
     updateXmlLineNumbers();
@@ -962,7 +2173,7 @@ json.dumps({
 `);
   const report = JSON.parse(payload);
   renderXmlAnalysis(report);
-  xmlLog(`Analisis completado. Errores: ${report.errors}, advertencias: ${report.warnings}.`);
+  xmlLog(tf("analysisDone", { errors: report.errors, warnings: report.warnings }));
   return report;
 }
 
@@ -985,9 +2196,9 @@ json.dumps({"fixed": fixed, "diff": diff})
     document.querySelector("#xml-code").value = result.fixed;
     updateXmlLineNumbers();
     xmlDoctor.embedded = false;
-    xmlLog("Auto Fix aplicado. Use Mostrar cambios para revisar.");
+    xmlLog(t("autoFixApplied"));
   } else {
-    xmlLog("Auto Fix no encontro cambios seguros.");
+    xmlLog(t("autoFixNoChanges"));
   }
   await runXmlSyntax();
 }
@@ -1011,9 +2222,9 @@ json.dumps({"formatted": formatted, "diff": diff})
     document.querySelector("#xml-code").value = result.formatted;
     updateXmlLineNumbers();
     xmlDoctor.embedded = false;
-    xmlLog("Format aplicado. Use Mostrar cambios para revisar.");
+    xmlLog(t("formatApplied"));
   } else {
-    xmlLog("Format no encontro cambios.");
+    xmlLog(t("formatNoChanges"));
   }
   await runXmlSyntax();
 }
@@ -1123,7 +2334,7 @@ async function resolveXmlProblems() {
 
 function showXmlChanges() {
   if (!xmlDoctor.lastDiff) {
-    xmlLog("No hay cambios de Auto Fix para mostrar.");
+    xmlLog(t("noAutoFixChanges"));
     return;
   }
   const win = window.open("", "_blank", "width=900,height=600");
@@ -1138,6 +2349,8 @@ async function embedXmlCode() {
   if (report.errors > 0) {
     throw new Error("Corrige los errores antes de incrustar el XML.");
   }
+  const updateBasePath = xmlDoctor.stagePrepared ? xmlDoctor.stagePath : xmlDoctor.sourcePath;
+  pyodide.globals.set("wasm_xml_update_in_place", Boolean(xmlDoctor.stagePrepared));
   pyodide.globals.set("wasm_xml_code", document.querySelector("#xml-code").value);
   pyodide.globals.set("wasm_xml_program", xmlDoctor.current.original_name || xmlDoctor.current.program_name);
   pyodide.globals.set("wasm_xml_new_name", xmlDoctor.current.program_name);
@@ -1147,18 +2360,31 @@ async function embedXmlCode() {
   await pyodide.runPythonAsync(`
 from pathlib import Path
 from xml_updater import XMLUpdater
-XMLUpdater(Path("${xmlDoctor.sourcePath}")).update_program(
-    wasm_xml_program,
-    wasm_xml_code,
-    out_dir=Path("${xmlDoctor.stagePath}"),
-    new_name=wasm_xml_new_name,
-    document_type=wasm_xml_document_type,
-    library_access=wasm_xml_library_access,
-    parameters=wasm_xml_parameters,
-)
+updater = XMLUpdater(Path("${updateBasePath}"))
+if wasm_xml_update_in_place:
+    updater.update_program(
+        wasm_xml_program,
+        wasm_xml_code,
+        in_place=True,
+        new_name=wasm_xml_new_name,
+        document_type=wasm_xml_document_type,
+        library_access=wasm_xml_library_access,
+        parameters=wasm_xml_parameters,
+    )
+else:
+    updater.update_program(
+        wasm_xml_program,
+        wasm_xml_code,
+        out_dir=Path("${xmlDoctor.stagePath}"),
+        new_name=wasm_xml_new_name,
+        document_type=wasm_xml_document_type,
+        library_access=wasm_xml_library_access,
+        parameters=wasm_xml_parameters,
+    )
 `);
   xmlDoctor.embedded = true;
-  xmlLog("Codigo incrustado en staging. Use Guardar XML ZIP para descargarlo.");
+  xmlDoctor.stagePrepared = true;
+  xmlLog(t("codeEmbedded"));
 }
 
 async function saveXmlZip() {
@@ -1169,12 +2395,13 @@ async function saveXmlZip() {
   collectFiles(xmlDoctor.stagePath, zip);
   const blob = await zip.generateAsync({ type: "uint8array" });
   downloadBytes("syntax_doctor_xml_output.zip", blob, "application/zip");
-  xmlLog("XML ZIP descargado.");
+  xmlLog(t("xmlZipDownloaded"));
 }
 
 async function decodeNormalTns() {
   const file = document.querySelector("#decode-file").files[0];
   if (!file) return;
+  await ensureCryptoPackage();
   clearDir("/work/decode");
   await writeFileToFs(file, "/work/input.tns");
   log(`Decodificando ${file.name}...`);
@@ -1193,6 +2420,7 @@ decode_tns_file(Path("/work/input.tns"), Path("/work/decode"))
 async function buildNormalTns() {
   const files = [...document.querySelector("#build-xml-folder").files];
   if (!files.length) return;
+  await ensureCryptoPackage();
   clearDir("/work/xml_in");
   for (const file of files) {
     await writeFileToFs(file, `/work/xml_in/${folderRelativePath(file)}`);
@@ -1290,7 +2518,7 @@ async function openPyDoctor() {
   updatePyLineLabel();
   updatePyHighlight();
   renderPyAnalysis({ errors: 0, warnings: 0, info: 0, diagnostics: [] });
-  pyLog("Syntax Doctor PY abierto.");
+  pyLog(t("pyDoctorOpened"));
 }
 
 function pyLog(message) {
@@ -1356,7 +2584,7 @@ json.dumps({
 `);
   const report = JSON.parse(payload);
   renderPyAnalysis(report);
-  pyLog(`Analisis completado. Errores: ${report.errors}, advertencias: ${report.warnings}.`);
+  pyLog(tf("analysisDone", { errors: report.errors, warnings: report.warnings }));
   return report;
 }
 
@@ -1378,9 +2606,9 @@ json.dumps({"fixed": fixed, "changes": changes})
     updateDoctorLineNumbers("py", pyDoctor.issueLines);
     updatePyLineLabel();
     updatePyHighlight();
-    pyLog("Auto Fix aplicado. Use Mostrar cambios para revisar.");
+    pyLog(t("autoFixApplied"));
   } else {
-    pyLog("Auto Fix no encontro cambios seguros.");
+    pyLog(t("autoFixNoChanges"));
   }
   for (const change of pyDoctor.lastChanges) pyLog(change);
   await runPyDoctorSyntax();
@@ -1388,7 +2616,7 @@ json.dumps({"fixed": fixed, "changes": changes})
 
 function showPyChanges() {
   if (!pyDoctor.lastChanges.length || pyDoctor.lastOriginal === pyDoctor.lastFixed) {
-    pyLog("No hay cambios de Auto Fix para mostrar.");
+    pyLog(t("noAutoFixChanges"));
     return;
   }
   const before = pyDoctor.lastOriginal.split("\n");
@@ -1531,13 +2759,13 @@ function showAbout() {
 function savePyDoctorBlock() {
   const code = document.querySelector("#py-code").value;
   document.querySelector("#py-inline").value = code;
-  pyLog("Codigo enviado al bloque inline de Python Program.");
-  log("Codigo Python inline actualizado desde Syntax Doctor PY.");
+  pyLog(t("pyInlineUpdated"));
+  log(t("pyInlineLogUpdated"));
 }
 
 function downloadPyDoctorFile() {
   downloadBytes("syntax_doctor.py", new TextEncoder().encode(document.querySelector("#py-code").value), "text/x-python");
-  pyLog("Archivo .py descargado.");
+  pyLog(t("pyFileDownloaded"));
 }
 
 function wireEvents() {
@@ -1600,6 +2828,8 @@ function wireEvents() {
   document.querySelector("#xml-syntax-btn").addEventListener("click", () => runXmlSyntax().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-autofix-btn").addEventListener("click", () => autoFixXml().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-format-btn").addEventListener("click", () => formatXmlCode().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#xml-inspector-btn").addEventListener("click", () => openDocumentInspector().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#xml-add-func-btn").addEventListener("click", () => addBasicFuncToStage().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-document-btn").addEventListener("click", openXmlDocumentSettings);
   document.querySelector("#xml-resolve-btn").addEventListener("click", () => resolveXmlProblems().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-changes-btn").addEventListener("click", showXmlChanges);

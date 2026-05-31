@@ -6,6 +6,9 @@
   --muted: #64748b;
   --accent: #0f766e;
   --accent-strong: #0b5d57;
+  --button-bg: #dbeafe;
+  --button-text: #2563eb;
+  --button-hover: #bfdbfe;
 }
 
 * {
@@ -102,6 +105,7 @@ body {
   min-width: 150px;
   padding: 8px 14px;
   background: #172033;
+  color: #ffffff;
 }
 
 .about-button:hover {
@@ -151,21 +155,29 @@ textarea {
 
 button {
   border: 0;
-  border-radius: 8px;
-  background: var(--accent);
-  color: white;
-  padding: 10px 14px;
+  border-radius: 999px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  padding: 9px 15px;
   cursor: pointer;
-  font-weight: 600;
+  font-weight: 700;
+  box-shadow: 0 1px 0 rgb(37 99 235 / 10%);
+  transition: transform 160ms ease, background 160ms ease, box-shadow 160ms ease;
+  white-space: nowrap;
 }
 
 button:hover {
-  background: var(--accent-strong);
+  background: var(--button-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgb(37 99 235 / 14%);
 }
 
 button:disabled {
   cursor: not-allowed;
   background: #9ca3af;
+  color: #ffffff;
+  transform: none;
+  box-shadow: none;
 }
 
 .actions {
@@ -225,6 +237,11 @@ button:disabled {
   gap: 14px;
 }
 
+.module-grid:not(.collapsed),
+.doctor-panel:not(.collapsed) {
+  animation: revealPanel 260ms ease both;
+}
+
 .module-grid.collapsed {
   display: none;
 }
@@ -236,17 +253,19 @@ button:disabled {
 .doctor-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
   margin-bottom: 12px;
 }
 
 .doctor-toolbar h2 {
-  margin-right: 12px;
+  flex: 0 0 100%;
+  margin: 0 0 4px;
 }
 
 .doctor-toolbar select {
-  min-width: 220px;
+  min-width: min(320px, 100%);
+  max-width: 100%;
   margin-left: auto;
   padding: 8px;
   border: 1px solid var(--line);
@@ -256,17 +275,32 @@ button:disabled {
 #xml-line-label {
   color: var(--muted);
   white-space: nowrap;
+  margin-left: 0;
 }
 
 .file-button {
   width: auto;
   margin: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 9px 12px;
-  color: var(--text);
+  border-radius: 999px;
+  padding: 8px 14px;
+  color: var(--button-text);
   cursor: pointer;
   background: #fff;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.secondary-button {
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--button-text);
+  box-shadow: none;
+}
+
+.secondary-button:hover {
+  background: #f8fbff;
+  box-shadow: 0 8px 20px rgb(37 99 235 / 10%);
 }
 
 .doctor-grid {
@@ -566,6 +600,250 @@ button:disabled {
 
 .about-modal {
   width: min(920px, calc(100vw - 28px));
+}
+
+.document-modal {
+  width: min(640px, calc(100vw - 28px));
+}
+
+.inspector-modal {
+  width: min(1100px, calc(100vw - 28px));
+}
+
+.lua-modal {
+  width: min(1240px, calc(100vw - 28px));
+}
+
+.lua-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.lua-toolbar h2 {
+  margin: 0 auto 0 0;
+}
+
+#lua-line-label {
+  color: var(--muted);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.lua-doctor-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+  gap: 12px;
+}
+
+.lua-code-shell {
+  display: grid;
+  grid-template-columns: 54px minmax(0, 1fr);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #fff;
+  height: 560px;
+}
+
+.lua-editor-wrap {
+  position: relative;
+  height: 560px;
+  overflow: hidden;
+  background: #fff;
+}
+
+.lua-highlight,
+.lua-editor {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: 12px;
+  border: 0;
+  outline: 0;
+  font: 13px/1.45 Consolas, monospace;
+  tab-size: 4;
+  white-space: pre;
+}
+
+.lua-highlight {
+  color: #111827;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.lua-editor {
+  resize: none;
+  background: transparent;
+  color: transparent;
+  caret-color: #0f766e;
+  overflow: auto;
+}
+
+.lua-editor::selection {
+  background: rgb(147 197 253 / 55%);
+}
+
+.lua-side {
+  min-height: 560px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.lua-problem-table {
+  display: block;
+  max-height: 190px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  margin-bottom: 10px;
+}
+
+.lua-problem-table thead,
+.lua-problem-table tbody,
+.lua-problem-table tr {
+  display: table;
+  width: 100%;
+  table-layout: fixed;
+}
+
+.lua-problem-table tbody {
+  display: block;
+}
+
+.lua-problem-table tr.ERROR {
+  color: #dc2626;
+  font-weight: 700;
+  background: #fef2f2;
+}
+
+.lua-problem-table tr.WARNING {
+  color: #b45309;
+  font-weight: 700;
+  background: #fffbeb;
+}
+
+.tok-comment {
+  color: #64748b;
+  font-style: italic;
+}
+
+.tok-lua-string {
+  color: #008000;
+}
+
+.inspector-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.inspector-summary span {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: #f8fafc;
+  color: var(--text);
+  font-weight: 700;
+}
+
+.inspector-table-wrap {
+  max-height: 430px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.inspector-table {
+  min-width: 1120px;
+  table-layout: fixed;
+}
+
+.inspector-table th:nth-child(1),
+.inspector-table td:nth-child(1) {
+  width: 110px;
+}
+
+.inspector-table th:nth-child(2),
+.inspector-table td:nth-child(2) {
+  width: 170px;
+}
+
+.inspector-table th:nth-child(3),
+.inspector-table td:nth-child(3) {
+  width: 150px;
+}
+
+.inspector-table th:nth-child(4),
+.inspector-table td:nth-child(4) {
+  width: 280px;
+}
+
+.inspector-table th:nth-child(6),
+.inspector-table td:nth-child(6) {
+  width: 220px;
+}
+
+.inspector-table td {
+  overflow-wrap: anywhere;
+  vertical-align: top;
+}
+
+.mini-action {
+  padding: 6px 10px;
+  margin: 2px;
+  border-radius: 999px;
+}
+
+@keyframes revealPanel {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.992);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.inspector-code {
+  max-height: 560px;
+  overflow: auto;
+  padding: 12px;
+  border-radius: 10px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font: 12px/1.5 Consolas, monospace;
+  white-space: pre;
+}
+
+.document-form {
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  gap: 12px 14px;
+  align-items: center;
+}
+
+.document-form label {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.document-form input,
+.document-form select {
+  width: 100%;
+  min-width: 0;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--text);
+  font: inherit;
 }
 
 .about-modal h3 {

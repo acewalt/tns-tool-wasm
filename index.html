@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260531-secondary-i18n-logs-local" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script defer src="./app.js"></script>
+    <script defer src="./app.js?v=20260531-secondary-i18n-logs-local"></script>
   </head>
   <body>
     <header class="shell-header">
@@ -42,7 +42,9 @@
           <label class="file-button"><span data-i18n="openXmlFolder">Abrir carpeta XML</span> <input id="xml-folder" type="file" webkitdirectory multiple hidden /></label>
           <button id="xml-embed-btn" disabled data-i18n="embedXml">Incrustar en XML</button>
           <button id="xml-save-btn" disabled data-i18n="saveXmlZip">Guardar XML ZIP</button>
-          <button id="xml-document-btn" disabled data-i18n="documentSettings">Ajuste de documento</button>
+          <button id="xml-inspector-btn" class="secondary-button" disabled data-i18n="documentInspector">Inspector de documento</button>
+          <button id="xml-add-func-btn" disabled data-i18n="addFunc">Agregar Func</button>
+          <button id="xml-document-btn" class="secondary-button" disabled data-i18n="documentSettings">Ajuste de documento</button>
           <button id="xml-syntax-btn" disabled data-i18n="runSyntax">Ejecutar sintaxis</button>
           <button id="xml-autofix-btn" disabled>Auto Fix</button>
           <button id="xml-format-btn" disabled data-i18n="format">Format</button>
