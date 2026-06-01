@@ -1,6 +1,6 @@
-const statusEl = document.querySelector("#runtime-status");
+﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-05-31-secondary-i18n-logs-local";
+const SOURCE_VERSION = "2026-06-01-luajs-preview-gsub-local";
 
 const I18N = {
   es: {
@@ -9,10 +9,13 @@ const I18N = {
     xmlDoctorDesc: "Editor visual para revisar, corregir e incrustar codigo dentro de XML.",
     openXmlDoctor: "Abrir Syntax Doctor XML",
     hideXmlDoctor: "Ocultar Syntax Doctor XML",
+    openTns: "Abrir TNS",
     openXml: "Abrir XML",
     openXmlFolder: "Abrir carpeta XML",
     embedXml: "Incrustar en XML",
     saveXmlZip: "Guardar XML ZIP",
+    createTnsFromDoctor: "Crear TNS",
+    newXmlProject: "Nuevo",
     documentInspector: "Inspector de documento",
     addFunc: "Agregar Func",
     documentSummary: "Resumen",
@@ -22,6 +25,7 @@ const I18N = {
     addLuaWidget: "Agregar Lua ScriptApp",
     runLuaSyntax: "Ejecutar sintaxis Lua",
     saveLuaXml: "Guardar Lua en XML",
+    previewLua: "Preview Lua",
     luaSyntaxOk: "Sintaxis Lua basica OK.",
     luaSaved: "Lua guardado en staging. Use Guardar XML ZIP para descargarlo.",
     noEditablePrograms: "No se encontraron programas editables en el XML.",
@@ -45,6 +49,8 @@ const I18N = {
     viewXml: "Ver XML",
     viewDetails: "Ver detalle",
     close: "Cerrar",
+    copyLog: "Copiar log",
+    logCopied: "Log copiado al portapapeles.",
     documentSettings: "Ajuste de documento",
     documentName: "Nombre",
     documentType: "Tipo",
@@ -105,10 +111,13 @@ const I18N = {
     xmlDoctorDesc: "Visual editor to inspect, fix, and embed code inside XML.",
     openXmlDoctor: "Open Syntax Doctor XML",
     hideXmlDoctor: "Hide Syntax Doctor XML",
+    openTns: "Open TNS",
     openXml: "Open XML",
     openXmlFolder: "Open XML folder",
     embedXml: "Embed in XML",
     saveXmlZip: "Save XML ZIP",
+    createTnsFromDoctor: "Create TNS",
+    newXmlProject: "New",
     documentInspector: "Document inspector",
     addFunc: "Add Func",
     documentSummary: "Summary",
@@ -118,6 +127,7 @@ const I18N = {
     addLuaWidget: "Add Lua ScriptApp",
     runLuaSyntax: "Run Lua syntax",
     saveLuaXml: "Save Lua to XML",
+    previewLua: "Preview Lua",
     luaSyntaxOk: "Basic Lua syntax OK.",
     luaSaved: "Lua saved to staging. Use Save XML ZIP to download it.",
     noEditablePrograms: "No editable programs were found in the XML.",
@@ -141,6 +151,8 @@ const I18N = {
     viewXml: "View XML",
     viewDetails: "View details",
     close: "Close",
+    copyLog: "Copy log",
+    logCopied: "Log copied to clipboard.",
     documentSettings: "Document settings",
     documentName: "Name",
     documentType: "Type",
@@ -201,10 +213,13 @@ const I18N = {
     xmlDoctorDesc: "Editeur visuel pour inspecter, corriger et incruster du code dans le XML.",
     openXmlDoctor: "Ouvrir Syntax Doctor XML",
     hideXmlDoctor: "Masquer Syntax Doctor XML",
+    openTns: "Ouvrir TNS",
     openXml: "Ouvrir XML",
     openXmlFolder: "Ouvrir dossier XML",
     embedXml: "Incruster en XML",
     saveXmlZip: "Enregistrer ZIP XML",
+    createTnsFromDoctor: "Creer TNS",
+    newXmlProject: "Nouveau",
     documentInspector: "Inspecteur du document",
     addFunc: "Ajouter Func",
     documentSummary: "Resume",
@@ -214,6 +229,7 @@ const I18N = {
     addLuaWidget: "Ajouter Lua ScriptApp",
     runLuaSyntax: "Analyser syntaxe Lua",
     saveLuaXml: "Enregistrer Lua dans XML",
+    previewLua: "Apercu Lua",
     luaSyntaxOk: "Syntaxe Lua basique OK.",
     luaSaved: "Lua enregistre dans staging. Utilisez Enregistrer ZIP XML pour le telecharger.",
     noEditablePrograms: "Aucun programme editable trouve dans le XML.",
@@ -237,6 +253,8 @@ const I18N = {
     viewXml: "Voir XML",
     viewDetails: "Voir detail",
     close: "Fermer",
+    copyLog: "Copier log",
+    logCopied: "Log copie dans le presse-papiers.",
     documentSettings: "Parametres du document",
     documentName: "Nom",
     documentType: "Type",
@@ -820,7 +838,7 @@ function xmlLog(message) {
 }
 
 function setXmlDoctorEnabled(enabled) {
-  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
+  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#xml-programs").disabled = !enabled;
@@ -850,6 +868,26 @@ async function loadXmlDoctorFiles(files, mode) {
   await scanXmlPrograms();
 }
 
+async function openTnsInXmlDoctor(file) {
+  if (!file) return;
+  await ensureCryptoPackage();
+  clearDir(xmlDoctor.sourcePath);
+  clearDir(xmlDoctor.stagePath);
+  await writeFileToFs(file, "/work/xml_doctor_input.tns");
+  await pyodide.runPythonAsync(`
+from pathlib import Path
+from tnstools import decode_tns_file
+decode_tns_file(Path("/work/xml_doctor_input.tns"), Path("${xmlDoctor.sourcePath}"))
+`);
+  xmlDoctor.embedded = false;
+  xmlDoctor.stagePrepared = false;
+  xmlDoctor.lastDiff = "";
+  xmlDoctor.lastReport = null;
+  xmlDoctor.issueLines.clear();
+  await scanXmlPrograms();
+  xmlLog(`TNS abierto: ${file.name}`);
+}
+
 async function scanXmlPrograms() {
   const scanPath = xmlDoctor.stagePrepared ? xmlDoctor.stagePath : xmlDoctor.sourcePath;
   pyodide.globals.set("wasm_xml_scan_path", scanPath);
@@ -859,7 +897,15 @@ from pathlib import Path
 from xml_scanner import XMLScanner
 from ti_parser import ti_serialized_to_multiline
 
-items = []
+def body_score(code):
+    lines = []
+    for line in code.replace("\\r", "\\n").split("\\n"):
+        clean = line.strip().lstrip(":").strip().lower()
+        if clean and clean not in {"prgm", "endprgm", "func", "endfunc"}:
+            lines.append(clean)
+    return len(lines)
+
+items_by_key = {}
 for index, candidate in enumerate(XMLScanner(Path(wasm_xml_scan_path)).scan()):
     if not candidate.code_text:
         continue
@@ -867,7 +913,7 @@ for index, candidate in enumerate(XMLScanner(Path(wasm_xml_scan_path)).scan()):
         code = ti_serialized_to_multiline(candidate.code_text)
     except Exception:
         code = candidate.code_text
-    items.append({
+    item = {
         "index": index,
         "program_name": candidate.program_name or candidate.file.stem,
         "original_name": candidate.program_name or candidate.file.stem,
@@ -878,7 +924,16 @@ for index, candidate in enumerate(XMLScanner(Path(wasm_xml_scan_path)).scan()):
         "library_access": candidate.library_access,
         "parameters": candidate.parameters or "",
         "code": code,
-    })
+    }
+    key = (item["program_name"], item["file"], item["document_type"])
+    current = items_by_key.get(key)
+    current_score = body_score(current["code"]) if current else -1
+    new_score = body_score(code)
+    if current is None or (new_score, len(code)) > (current_score, len(current["code"])):
+        items_by_key[key] = item
+items = list(items_by_key.values())
+for index, item in enumerate(items):
+    item["index"] = index
 json.dumps(items)
 `);
   xmlDoctor.candidates = JSON.parse(payload);
@@ -1795,6 +1850,7 @@ function showLuaEditor(item) {
         <h2>${escapeHtml(t("editLua"))}: ${escapeHtml(item.name)}</h2>
         <span id="lua-line-label">Linea: 1 Col: 1 Total: 1</span>
         <button type="button" id="lua-syntax">${escapeHtml(t("runLuaSyntax"))}</button>
+        <button type="button" id="lua-preview">${escapeHtml(t("previewLua"))}</button>
         <button type="button" id="lua-save">${escapeHtml(t("saveLuaXml"))}</button>
         <button type="button" id="lua-cancel">${escapeHtml(t("cancel"))}</button>
       </div>
@@ -1900,6 +1956,9 @@ function showLuaEditor(item) {
     highlight.scrollLeft = editor.scrollLeft;
   });
   backdrop.querySelector("#lua-syntax").addEventListener("click", analyze);
+  backdrop.querySelector("#lua-preview").addEventListener("click", () => showLuaPreview(editor.value).catch((error) => {
+    log.textContent += `\n[ERROR] Preview Lua: ${error.message}`;
+  }));
   updateLines();
   updateHighlight();
   updateLabel();
@@ -1908,9 +1967,8 @@ function showLuaEditor(item) {
   backdrop.querySelector("#lua-save").addEventListener("click", async () => {
     try {
       const content = backdrop.querySelector("#lua-editor").value;
-      const xmlContent = encodeXmlTextEntities(content);
-      await saveLuaScriptToStage(item, xmlContent);
-      item.content = xmlContent;
+      await saveLuaScriptToStage(item, content);
+      item.content = content;
       closeDocumentInspectorModals();
       backdrop.remove();
       await openDocumentInspector();
@@ -1931,6 +1989,1119 @@ function encodeXmlTextEntities(text) {
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;");
+}
+
+async function createNewXmlProject() {
+  clearDir(xmlDoctor.sourcePath);
+  clearDir(xmlDoctor.stagePath);
+  for (const name of ["Document.xml", "Problem1.xml"]) {
+    const response = await fetch(`./templates/blank_tns_xml/${name}?v=${SOURCE_VERSION}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`No se pudo cargar plantilla ${name}: HTTP ${response.status}`);
+    pyodide.FS.writeFile(`${xmlDoctor.sourcePath}/${name}`, await response.text());
+  }
+  xmlDoctor.embedded = false;
+  xmlDoctor.stagePrepared = false;
+  xmlDoctor.lastDiff = "";
+  xmlDoctor.issueLines.clear();
+  await scanXmlPrograms();
+}
+
+async function createTnsFromXmlDoctor() {
+  const nameError = tiDocumentNameError(xmlDoctor.current?.program_name || "");
+  if (nameError) throw new Error(nameError);
+  if (!xmlDoctor.embedded) await embedXmlCode();
+  await ensureCryptoPackage();
+  const outputName = xmlDoctorTnsOutputName();
+  pyodide.globals.set("wasm_xml_tns_output", `/work/${outputName}`);
+  await pyodide.runPythonAsync(`
+from pathlib import Path
+from tnstools import build_tns_from_xml
+build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_xml_tns_output))
+`);
+  downloadBytes(outputName, pyodide.FS.readFile(`/work/${outputName}`));
+}
+
+function xmlDoctorTnsOutputName() {
+  const rawName = xmlDoctor.current?.program_name || "documento";
+  const safeName = rawName.normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Za-z0-9_]+/g, "_")
+    .replace(/^_+/, "")
+    .slice(0, 15) || "documento";
+  const index = Number.isFinite(Number(xmlDoctor.current?.index)) ? Number(xmlDoctor.current.index) + 1 : 1;
+  return `${safeName}_output_${index}.tns`;
+}
+
+function tiDocumentNameError(name) {
+  if (!name) return "Nombre de documento vacio.";
+  if (name.length > 15) return "Nombre de variable de libreria invalido: no debe exceder 15 caracteres.";
+  if (name.includes(".")) return "Nombre de variable de libreria invalido: no debe contener un punto.";
+  if (name.startsWith("_")) return "Nombre de variable de libreria invalido: no debe comenzar con guion bajo.";
+  if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(name)) return "Nombre de variable de libreria invalido: debe comenzar con una letra y usar solo letras, numeros o guion bajo.";
+  return "";
+}
+
+async function showLuaPreview(code) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal lua-preview-modal">
+      <h2>${escapeHtml(t("previewLua"))}</h2>
+      <canvas id="lua-preview-canvas" width="318" height="212"></canvas>
+      <div class="preview-controls">
+        <button type="button" data-event="on.enterKey">Enter</button>
+        <button type="button" data-event="on.escapeKey">Esc</button>
+        <button type="button" data-event="on.arrowLeft">Left</button>
+        <button type="button" data-event="on.arrowRight">Right</button>
+        <button type="button" data-event="on.arrowUp">Up</button>
+        <button type="button" data-event="on.arrowDown">Down</button>
+      </div>
+      <pre id="lua-preview-log" class="mini-log"></pre>
+      <div class="modal-actions">
+        <button type="button" id="lua-preview-copy-log">${escapeHtml(t("copyLog"))}</button>
+        <button type="button" id="lua-preview-close">${escapeHtml(t("close"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  const canvas = backdrop.querySelector("#lua-preview-canvas");
+  const ctx = canvas.getContext("2d");
+  const previewLog = backdrop.querySelector("#lua-preview-log");
+  let runtime;
+  try {
+    runtime = await createLuaJsPreviewRuntime(code, ctx, canvas, previewLog);
+    runtime.boot();
+  } catch (error) {
+    previewLog.textContent = `LuaJS no pudo iniciar (${error.message}). Usando preview limitado.\n${error.stack || ""}`;
+    runtime = createLuaPreviewRuntime(code, ctx, canvas, previewLog);
+    runtime.boot();
+  }
+  for (const button of backdrop.querySelectorAll(".preview-controls button")) {
+    button.addEventListener("click", () => {
+      runtime.callEvent(button.dataset.event);
+    });
+  }
+  const keyHandler = (event) => {
+    if (!backdrop.isConnected) return;
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+    const mapped = previewKeyboardEventToLua(event);
+    if (!mapped) return;
+    event.preventDefault();
+    if (mapped.char) runtime.charIn(mapped.char);
+    else runtime.callEvent(mapped.event);
+  };
+  document.addEventListener("keydown", keyHandler);
+  backdrop.querySelector("#lua-preview-copy-log").addEventListener("click", async () => {
+    const text = previewLog.textContent || "";
+    try {
+      await navigator.clipboard.writeText(text);
+      previewLog.textContent += `${previewLog.textContent ? "\n" : ""}${t("logCopied")}`;
+    } catch (_error) {
+      const textarea = document.createElement("textarea");
+      textarea.value = text;
+      textarea.style.position = "fixed";
+      textarea.style.opacity = "0";
+      document.body.append(textarea);
+      textarea.select();
+      document.execCommand("copy");
+      textarea.remove();
+      previewLog.textContent += `${previewLog.textContent ? "\n" : ""}${t("logCopied")}`;
+    }
+    previewLog.scrollTop = previewLog.scrollHeight;
+  });
+  backdrop.querySelector("#lua-preview-close").addEventListener("click", () => {
+    document.removeEventListener("keydown", keyHandler);
+    runtime.close();
+    backdrop.remove();
+  });
+}
+
+function previewKeyboardEventToLua(event) {
+  const map = {
+    Enter: "on.enterKey",
+    Escape: "on.escapeKey",
+    ArrowLeft: "on.arrowLeft",
+    ArrowRight: "on.arrowRight",
+    ArrowUp: "on.arrowUp",
+    ArrowDown: "on.arrowDown",
+    Backspace: "on.backspaceKey",
+    Tab: event.shiftKey ? "on.backtabKey" : "on.tabKey",
+  };
+  if (map[event.key]) return { event: map[event.key] };
+  if (event.key.length === 1) return { char: event.key };
+  return null;
+}
+
+const LUAJS_RUNTIME_FILES = [
+  "vendor/luajs/lua.js",
+  "vendor/luajs/nspire/env.js",
+  "vendor/luajs/nspire/tools.js",
+  "vendor/luajs/nspire/bindings.js",
+  "vendor/luajs/nspire/platform.js",
+  "vendor/luajs/nspire/timer.js",
+  "vendor/luajs/nspire/locale.js",
+];
+
+let luaJsRuntimeSources = null;
+
+async function loadLuaJsRuntimeSources() {
+  if (luaJsRuntimeSources) return luaJsRuntimeSources;
+  luaJsRuntimeSources = [];
+  for (const file of LUAJS_RUNTIME_FILES) {
+    const response = await fetch(`./${file}?v=${SOURCE_VERSION}`, { cache: "no-store" });
+    if (!response.ok) throw new Error(`${file}: HTTP ${response.status}`);
+    luaJsRuntimeSources.push(await response.text());
+  }
+  return luaJsRuntimeSources;
+}
+
+async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl) {
+  const sources = await loadLuaJsRuntimeSources();
+  for (const source of sources) {
+    (0, eval)(source);
+  }
+  hardenLuaJsPreviewRuntime();
+
+  const safeCode = decodeXmlTextEntities(code);
+  const global = window;
+  global.canvas = canvas;
+  global.context = ctx;
+  global.SCALE = 1;
+  global._WIDTH = canvas.width;
+  global._HEIGHT = canvas.height;
+  global.G.str.on = global.lua_newtable();
+  const previewGc = global.lua_newtable();
+  const previewWindow = global.lua_newtable();
+  attachLuaJsGc(previewGc, ctx, canvas);
+  global.lua_tableset(previewWindow, "w", canvas.width);
+  global.lua_tableset(previewWindow, "h", canvas.height);
+  global.lua_tableset(previewWindow, "gc", previewGc);
+  global.lua_tableset(previewWindow, "invalidated", false);
+  global.lua_tableset(previewWindow, "width", () => [canvas.width]);
+  global.lua_tableset(previewWindow, "height", () => [canvas.height]);
+  global.lua_tableset(previewWindow, "invalidate", () => {
+    global.lua_tableset(previewWindow, "invalidated", true);
+    return [];
+  });
+  global.lua_tableset(global.G.str.platform, "window", previewWindow);
+
+  const store = {};
+  const varTable = ensureLuaJsTable("var");
+  const stringTable = ensureLuaJsTable("string");
+  const mathTable = ensureLuaJsTable("math");
+  const platformTable = ensureLuaJsTable("platform");
+  const onTable = ensureLuaJsTable("on");
+  global.G.str.platform = platformTable;
+  global.G.str.on = onTable;
+  global.lua_tableset(varTable, "store", (key, value) => {
+    store[String(key)] = value;
+    return [];
+  });
+  global.lua_tableset(varTable, "recall", (key) => [Object.prototype.hasOwnProperty.call(store, String(key)) ? store[String(key)] : null]);
+  global.lua_tableset(stringTable, "uchar", (codepoint) => [String.fromCharCode(Number(codepoint) || 0)]);
+  global.lua_tableset(stringTable, "find", luaJsStringFind);
+  global.lua_tableset(stringTable, "match", luaJsStringMatch);
+  global.lua_tableset(stringTable, "gsub", luaJsStringGsub);
+  global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global));
+
+  const userCode = global.lua_parser.parse(safeCode).split("\n").slice(19).join("\n");
+  (0, eval)(userCode);
+
+  let timerId = null;
+  function log(message) {
+    logEl.textContent += `${logEl.textContent ? "\n" : ""}${message}`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  function windowTable() {
+    return global.lua_tableget(global.G.str.platform, "window");
+  }
+  function gc() {
+    return global.lua_tableget(windowTable(), "gc");
+  }
+  function clear() {
+    canvas.width = canvas.width;
+    global.context = canvas.getContext("2d");
+    global.context.font = "20px Arial";
+  }
+  function repaint(shouldLog = false) {
+    clear();
+    try {
+      global.callEvent("paint", gc());
+    } catch (error) {
+      log(`ERROR repaint LuaJS: ${error.message}\n${compactStack(error)}`);
+      throw error;
+    }
+    global.lua_tableset(windowTable(), "invalidated", false);
+    if (shouldLog) log("Snapshot actualizado con LuaJS.");
+  }
+  function tick() {
+    try {
+      global.dotimer();
+      if (global.lua_true(global.lua_tableget(windowTable(), "invalidated"))) {
+        repaint(false);
+      }
+    } catch (error) {
+      log(`ERROR timer LuaJS: ${error.message}\n${compactStack(error)}`);
+      if (timerId) window.clearInterval(timerId);
+    }
+  }
+  function boot() {
+    clear();
+    try {
+      global.callEvent("create", gc());
+      global.callEvent("resize", canvas.width, canvas.height);
+    } catch (error) {
+      log(`ERROR boot LuaJS: ${error.message}\n${compactStack(error)}`);
+      throw error;
+    }
+    repaint(true);
+    timerId = window.setInterval(tick, 120);
+    log("Preview LuaJS activo: snapshots por timer/eventos.");
+  }
+  function callEvent(name) {
+    const eventName = name.replace(/^on\./, "");
+    try {
+      global.callEvent(eventName);
+      if (name.startsWith("on.arrow")) {
+        global.callEvent("arrowKey", eventName.replace("arrow", "").toLowerCase());
+      }
+      repaint(true);
+      log(`Evento ejecutado en LuaJS: ${name}`);
+    } catch (error) {
+      log(`ERROR evento LuaJS ${name}: ${error.message}\n${compactStack(error)}`);
+    }
+  }
+  function charIn(char) {
+    try {
+      global.callEvent("charIn", char);
+      repaint(true);
+      log(`Tecla enviada a LuaJS: ${char}`);
+    } catch (error) {
+      log(`ERROR tecla LuaJS ${char}: ${error.message}\n${compactStack(error)}`);
+    }
+  }
+  function close() {
+    if (timerId) window.clearInterval(timerId);
+  }
+  return { boot, callEvent, charIn, close };
+}
+
+function hardenLuaJsPreviewRuntime() {
+  const originalTableGet = window.lua_tableget;
+  const originalTableSet = window.lua_tableset;
+  const originalLen = window.lua_len;
+  const originalConcat = window.lua_concat;
+  const originalCall = window.lua_call;
+  const emptyIterator = () => [null, null];
+  window.lua_tableget = (table, key) => {
+    if (table == null || table === false) return null;
+    try {
+      return originalTableGet(table, key);
+    } catch (error) {
+      if (/Table is null|Unable to index key/.test(String(error?.message || ""))) return null;
+      throw error;
+    }
+  };
+  window.lua_tableset = (table, key, value) => {
+    if (table == null || table === false) return [];
+    try {
+      return originalTableSet(table, key, value);
+    } catch (error) {
+      if (/Table is null|Unable to index key/.test(String(error?.message || ""))) return [];
+      throw error;
+    }
+  };
+  window.lua_len = (value) => (value == null || value === false ? 0 : originalLen(value));
+  window.lua_concat = (left, right) => {
+    const safeLeft = left == null || left === false ? "" : left;
+    const safeRight = right == null || right === false ? "" : right;
+    try {
+      return originalConcat(safeLeft, safeRight);
+    } catch (error) {
+      if (/metatable|Unable to concat/.test(String(error?.message || ""))) {
+        return `${safeLeft ?? ""}${safeRight ?? ""}`;
+      }
+      throw error;
+    }
+  };
+  window.lua_call = (func, args = []) => {
+    if (func == null || func === false) return [];
+    try {
+      return originalCall(func, args);
+    } catch (error) {
+      if (/metatable|Could not call/.test(String(error?.message || ""))) return [];
+      throw error;
+    }
+  };
+  if (window.G?.str) {
+    window.G.str.ipairs = (table) => {
+      if (table == null || table === false || typeof table !== "object") {
+        return [emptyIterator, window.lua_newtable(), 0];
+      }
+      return [
+        (target, index) => {
+          if (target == null || target === false || typeof target !== "object") return [null, null];
+          const entry = target.arraymode ? target.uints[index] : target.uints[index + 1];
+          return entry == null ? [null, null] : [index + 1, entry];
+        },
+        table,
+        0,
+      ];
+    };
+    window.G.str.pairs = (table) => {
+      if (table == null || table === false || typeof table !== "object") {
+        return [emptyIterator, window.lua_newtable(), null];
+      }
+      const props = [];
+      for (const key in table.str || {}) props.push(key);
+      if (table.arraymode) {
+        for (let index = (table.uints?.length || 0) - 1; index >= 0; index -= 1) {
+          if (table.uints[index] != null) props.push(index + 1);
+        }
+      } else {
+        for (const key in table.uints || {}) props.push(Number(key));
+      }
+      for (const key in table.floats || {}) props.push(Number(key));
+      for (const key in table.bools || {}) props.push(key === "true");
+      let cursor = 0;
+      return [
+        (target) => {
+          while (cursor < props.length) {
+            const key = props[cursor];
+            cursor += 1;
+            const entry = window.lua_rawget(target, key);
+            if (entry != null) return [key, entry];
+          }
+          return [null, null];
+        },
+        table,
+        null,
+      ];
+    };
+  }
+}
+
+function compactStack(error) {
+  return String(error?.stack || "")
+    .split("\n")
+    .slice(0, 6)
+    .join("\n");
+}
+
+function ensureLuaJsTable(name) {
+  if (!window.G?.str) throw new Error("LuaJS global table is not initialized");
+  if (!window.G.str[name]) {
+    window.G.str[name] = window.lua_newtable();
+  }
+  return window.G.str[name];
+}
+
+function luaJsStringFind(source, pattern, init, plain) {
+  const text = String(source ?? "");
+  const start = Math.max(0, (Number(init) || 1) - 1);
+  const needle = String(pattern ?? "");
+  if (plain === true) {
+    const index = text.indexOf(needle, start);
+    return index < 0 ? [null] : [index + 1, index + needle.length];
+  }
+  const regex = luaPatternToRegExp(needle);
+  regex.lastIndex = start;
+  const match = regex.exec(text);
+  return match ? [match.index + 1, match.index + match[0].length] : [null];
+}
+
+function luaJsStringMatch(source, pattern, init) {
+  const result = luaJsStringFind(source, pattern, init);
+  if (result[0] == null) return [null];
+  return [String(source ?? "").slice(result[0] - 1, result[1])];
+}
+
+function luaJsStringGsub(source, pattern, replacement, limit) {
+  const text = String(source ?? "");
+  const max = limit == null ? Infinity : Math.max(0, Number(limit) || 0);
+  if (max === 0) return [text, 0];
+  const regex = luaPatternToRegExp(String(pattern ?? ""));
+  let count = 0;
+  const output = text.replace(regex, (...args) => {
+    if (count >= max) return args[0];
+    count += 1;
+    if (typeof replacement === "function") {
+      const captures = args.slice(1, -2);
+      const result = window.lua_call(replacement, captures.length ? captures : [args[0]])[0];
+      return result == null ? args[0] : String(result);
+    }
+    if (replacement && typeof replacement === "object") {
+      const key = args[1] ?? args[0];
+      const result = window.lua_tableget(replacement, key);
+      return result == null ? args[0] : String(result);
+    }
+    return String(replacement ?? "").replace(/%(\d)/g, (_match, index) => String(args[Number(index)] ?? ""));
+  });
+  return [output, count];
+}
+
+function luaPatternToRegExp(pattern) {
+  let output = "";
+  for (let index = 0; index < pattern.length; index += 1) {
+    const char = pattern[index];
+    if (char === "%") {
+      const next = pattern[index + 1] || "";
+      index += 1;
+      if (next === "a") output += "[A-Za-z]";
+      else if (next === "d") output += "\\d";
+      else if (next === "s") output += "\\s";
+      else if (next === "w") output += "[A-Za-z0-9_]";
+      else if (next === "0") output += "0";
+      else if (next === "1") output += "1";
+      else output += escapeRegExp(next);
+    } else if (char === "[") {
+      const end = pattern.indexOf("]", index + 1);
+      if (end > index) {
+        output += luaPatternClassToRegExp(pattern.slice(index, end + 1));
+        index = end;
+      } else {
+        output += "\\[";
+      }
+    } else if (char === "(" || char === ")") {
+      output += char;
+    } else if ("^$.*+?{}|\\".includes(char)) {
+      output += `\\${char}`;
+    } else {
+      output += char;
+    }
+  }
+  return new RegExp(output, "g");
+}
+
+function luaPatternClassToRegExp(text) {
+  let inner = text.slice(1, -1);
+  inner = inner
+    .replace(/%a/g, "A-Za-z")
+    .replace(/%d/g, "\\d")
+    .replace(/%s/g, "\\s")
+    .replace(/%w/g, "A-Za-z0-9_")
+    .replace(/%0/g, "0")
+    .replace(/%1/g, "1")
+    .replace(/%([()[\].*+?^$|{}\\/+])/g, "\\$1");
+  return `[${inner}]`;
+}
+
+function escapeRegExp(text) {
+  return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function luaJsMathEval(expr, store, global) {
+  const source = String(expr ?? "");
+  if (source.includes("true => true")) return [true];
+  const newMatMatch = /^NewMat\((\d+),\s*(\d+)\)$/i.exec(source);
+  if (newMatMatch) {
+    return [createLuaJsMatrix(Number(newMatMatch[1]), Number(newMatMatch[2]), global)];
+  }
+  if (/newMat\([^)]*\)=:kar/i.test(source) || /:kar/i.test(source)) {
+    const vars = luaJsTableToArray(global.G?.str?.v).map(String);
+    const equation = String(global.G?.str?.eql ?? store.eql ?? "");
+    const matrix = createLuaJsKarnaughMatrix(vars, equation, global);
+    global.G.str.kar = matrix;
+    store.kar = matrix;
+    return [matrix];
+  }
+  return [null];
+}
+
+function createLuaJsMatrix(rows, cols, global, fill = 0) {
+  const data = [];
+  for (let row = 0; row < rows; row += 1) {
+    const line = [];
+    for (let col = 0; col < cols; col += 1) line.push(fill);
+    data.push(global.lua_newtable(line));
+  }
+  return global.lua_newtable(data);
+}
+
+function createLuaJsKarnaughMatrix(vars, equation, global) {
+  const count = Math.max(1, Math.min(6, vars.length || 3));
+  const rowBits = Math.floor(count / 2);
+  const colBits = count - rowBits;
+  const rows = 2 ** rowBits;
+  const cols = 2 ** colBits;
+  const gray = ["", "0", "00", "000001011010", "000001011010110111101100"][Math.max(rowBits, colBits)] || "000001011010110111101100";
+  const rowCodes = createLuaJsGrayCodes(rowBits, gray);
+  const colCodes = createLuaJsGrayCodes(colBits, gray);
+  const data = [];
+  for (let row = 0; row < rows; row += 1) {
+    const line = [];
+    for (let col = 0; col < cols; col += 1) {
+      const env = {};
+      const bits = `${rowCodes[row]}${colCodes[col]}`;
+      for (let index = 0; index < count; index += 1) env[vars[index] || String.fromCharCode(97 + index)] = bits[index] === "1";
+      line.push(evaluateTiBooleanExpression(equation, env) ? 1 : 0);
+    }
+    data.push(global.lua_newtable(line));
+  }
+  return global.lua_newtable(data);
+}
+
+function createLuaJsGrayCodes(bits, graySource) {
+  if (bits <= 0) return [""];
+  const codes = [];
+  for (let index = 1; index <= 2 ** bits; index += 1) {
+    const start = index * 3 - bits;
+    const code = graySource.slice(start, start + bits);
+    codes.push(code || (index - 1).toString(2).padStart(bits, "0"));
+  }
+  return codes;
+}
+
+function evaluateTiBooleanExpression(expression, env) {
+  const text = String(expression || "")
+    .replace(/\s+/g, "")
+    .replace(/\/\(/g, "!(")
+    .replace(/\*/g, "&&")
+    .replace(/\+/g, "||")
+    .replace(/\b([A-Za-z]\w*)\b/g, (name) => (env[name] ? "true" : "false"));
+  try {
+    return Boolean(Function(`"use strict"; return (${text});`)());
+  } catch (_error) {
+    return false;
+  }
+}
+
+function luaJsTableToArray(table) {
+  if (!table || typeof table !== "object") return [];
+  const length = window.lua_len(table);
+  const values = [];
+  for (let index = 1; index <= length; index += 1) {
+    values.push(window.lua_tableget(table, index));
+  }
+  return values;
+}
+
+function attachLuaJsGc(gcTable, ctx, canvas) {
+  let fontSize = 12;
+  const setColor = (r, g = r, b = r) => {
+    ctx.fillStyle = `rgb(${Number(r) || 0}, ${Number(g) || 0}, ${Number(b) || 0})`;
+    ctx.strokeStyle = ctx.fillStyle;
+  };
+  window.lua_tableset(gcTable, "setColorRGB", (_self, r, g, b) => {
+    setColor(r, g, b);
+    return [];
+  });
+  window.lua_tableset(gcTable, "setFont", (_self, _family, style, size) => {
+    fontSize = Number(size || fontSize) || fontSize;
+    const weight = String(style || "").includes("b") ? "bold " : "";
+    const italic = String(style || "").includes("i") ? "italic " : "";
+    ctx.font = `${italic}${weight}${fontSize}px sans-serif`;
+    return [];
+  });
+  window.lua_tableset(gcTable, "setPen", (_self, thickness) => {
+    ctx.lineWidth = thickness === "thick" ? 8 : thickness === "medium" ? 3 : Number(thickness) || 1;
+    return [];
+  });
+  window.lua_tableset(gcTable, "drawString", (_self, text, x, y, pos) => {
+    const offset = { top: fontSize * 0.85, middle: fontSize * 0.35, bottom: 0, baseline: 0 }[String(pos || "bottom")] ?? 0;
+    ctx.fillText(String(text ?? ""), Number(x) || 0, (Number(y) || 0) + offset);
+    return [];
+  });
+  window.lua_tableset(gcTable, "drawLine", (_self, x1, y1, x2, y2) => {
+    ctx.beginPath();
+    ctx.moveTo(Number(x1) || 0, Number(y1) || 0);
+    ctx.lineTo(Number(x2) || 0, Number(y2) || 0);
+    ctx.stroke();
+    return [];
+  });
+  window.lua_tableset(gcTable, "drawRect", (_self, x, y, w, h) => {
+    ctx.strokeRect(Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0);
+    return [];
+  });
+  window.lua_tableset(gcTable, "fillRect", (_self, x, y, w, h) => {
+    ctx.fillRect(Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0);
+    return [];
+  });
+  window.lua_tableset(gcTable, "drawPolyLine", (_self, points) => drawLuaJsPolyline(points, false));
+  window.lua_tableset(gcTable, "drawPolygon", (_self, points) => drawLuaJsPolyline(points, false));
+  window.lua_tableset(gcTable, "fillPolygon", (_self, points) => drawLuaJsPolygon(points, true));
+  window.lua_tableset(gcTable, "drawArc", (_self, x, y, w, h, startAngle, angle) => {
+    drawLuaJsArc(ctx, x, y, w, h, startAngle, angle, false);
+    return [];
+  });
+  window.lua_tableset(gcTable, "fillArc", (_self, x, y, w, h, startAngle, angle) => {
+    drawLuaJsArc(ctx, x, y, w, h, startAngle, angle, true);
+    return [];
+  });
+  window.lua_tableset(gcTable, "getStringWidth", (_self, text) => [String(text ?? "").length * 7]);
+  window.lua_tableset(gcTable, "getStringHeight", () => [fontSize]);
+  window.lua_tableset(gcTable, "clipRect", () => []);
+  window.lua_tableset(gcTable, "drawImage", () => []);
+  window.lua_tableset(gcTable, "begin", () => []);
+  window.lua_tableset(gcTable, "finish", () => []);
+}
+
+function drawLuaJsArc(ctx, x, y, w, h, startAngle, angle, fill) {
+  const width = Math.abs(Number(w) || 0);
+  const height = Math.abs(Number(h) || 0);
+  if (!width || !height) return;
+  const left = Number(x) || 0;
+  const top = Number(y) || 0;
+  const radiusX = width / 2;
+  const radiusY = height / 2;
+  const centerX = left + radiusX;
+  const centerY = top + radiusY;
+  const start = (Number(startAngle) || 0) + 90;
+  const sweep = Number(angle) || 360;
+  const steps = Math.max(10, Math.round(Math.max(width + height, 20) / 2));
+  ctx.save();
+  ctx.beginPath();
+  if (fill) ctx.moveTo(centerX, centerY);
+  for (let step = 0; step <= steps; step += 1) {
+    const current = ((start + sweep * (step / steps)) * Math.PI) / 180;
+    const pointX = Math.sin(current) * radiusX + centerX;
+    const pointY = Math.cos(current) * radiusY + centerY;
+    if (!fill && step === 0) ctx.moveTo(pointX, pointY);
+    else ctx.lineTo(pointX, pointY);
+  }
+  if (fill) {
+    ctx.lineTo(centerX, centerY);
+    ctx.fill();
+  }
+  else ctx.stroke();
+  ctx.restore();
+}
+
+function drawLuaJsPolygon(points, fill = false) {
+  return drawLuaJsPolyline(points, fill);
+}
+
+function drawLuaJsPolyline(points, fill = false) {
+  const length = window.lua_len(points);
+  if (length < 4) return [];
+  const ctx = window.context;
+  ctx.beginPath();
+  ctx.moveTo(Number(window.lua_tableget(points, 1)) || 0, Number(window.lua_tableget(points, 2)) || 0);
+  for (let index = 3; index <= length; index += 2) {
+    ctx.lineTo(Number(window.lua_tableget(points, index)) || 0, Number(window.lua_tableget(points, index + 1)) || 0);
+  }
+  if (fill) ctx.fill();
+  else ctx.stroke();
+  return [];
+}
+
+function roundedRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, Math.abs(width) / 2, Math.abs(height) / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + width - r, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + r);
+  ctx.lineTo(x + width, y + height - r);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  ctx.lineTo(x + r, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+}
+
+function createLuaPreviewRuntime(code, ctx, canvas, logEl) {
+  const functions = extractLuaFunctions(code);
+  const env = parseLuaPreviewGlobals(code);
+  env.__canvasWidth = canvas.width;
+  env.__canvasHeight = canvas.height;
+  const state = { rendered: 0, invalidated: false, timerActive: false, fontSize: 12, fontStyle: "r", lineWidth: 1 };
+  let timerId = null;
+
+  function log(message) {
+    logEl.textContent += `${logEl.textContent ? "\n" : ""}${message}`;
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+
+  function resetCanvas() {
+    ctx.restore?.();
+    ctx.save();
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "#000000";
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = state.lineWidth;
+    ctx.font = `${state.fontSize}px sans-serif`;
+    state.rendered = 0;
+  }
+
+  function boot() {
+    resetCanvas();
+    callEvent("on.create", false);
+    repaint();
+    if (state.timerActive && functions["on.timer"]) {
+      timerId = window.setInterval(() => callEvent("on.timer", false), 250);
+    }
+    const names = Object.keys(functions).filter((name) => name.startsWith("on.")).sort();
+    log(names.length ? `Preview PCspire-lite: eventos detectados: ${names.join(", ")}` : "Preview PCspire-lite: no se detectaron eventos on.*.");
+  }
+
+  function repaint(shouldLog = true) {
+    resetCanvas();
+    executeFunction("on.paint");
+    if (shouldLog) log(state.rendered ? `Preview: ${state.rendered} llamadas graficas renderizadas.` : "Preview limitado: on.paint no genero llamadas graficas compatibles.");
+    state.invalidated = false;
+  }
+
+  function callEvent(name, shouldLog = true) {
+    let handled = false;
+    if (functions[name]) {
+      executeFunction(name);
+      handled = true;
+    } else if (name.startsWith("on.arrow") && functions["on.arrowKey"]) {
+      executeFunction("on.arrowKey", [name.replace("on.arrow", "").toLowerCase()]);
+      handled = true;
+    }
+    if (state.invalidated || handled) repaint(shouldLog);
+    if (shouldLog) log(handled ? `Evento ejecutado: ${name}` : `Evento no encontrado: ${name}`);
+  }
+
+  function executeFunction(name) {
+    if (functions[name]) executeLuaPreviewLines(functions[name], env, ctx, canvas, state);
+  }
+
+  function close() {
+    if (timerId) window.clearInterval(timerId);
+  }
+
+  return { boot, callEvent, close };
+}
+
+function luaPreviewValue(value) {
+  const text = String(value || "").trim();
+  const quoted = /^["']([\s\S]*)["']$/.exec(text);
+  if (quoted) return quoted[1].replace(/\\"/g, '"').replace(/\\'/g, "'");
+  const number = Number(text);
+  return Number.isFinite(number) ? number : text;
+}
+
+function extractLuaFunctions(code) {
+  const functions = {};
+  const lines = code.split("\n");
+  for (let i = 0; i < lines.length; i += 1) {
+    const match = /^\s*function\s+([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\s*\([^)]*\)/.exec(stripLuaLineComment(lines[i]));
+    if (!match) continue;
+    let depth = 1;
+    const body = [];
+    for (let j = i + 1; j < lines.length; j += 1) {
+      const clean = stripLuaLineComment(lines[j]);
+      const trimmed = clean.trim();
+      if (/^(?:local\s+)?function\b/.test(trimmed) || (!/^elseif\b/.test(trimmed) && /\bthen\s*$/.test(trimmed)) || /\bdo\s*$/.test(trimmed) || /^repeat\b/.test(trimmed)) depth += 1;
+      if (/^\s*(end|until\b)/.test(clean)) depth -= 1;
+      if (depth === 0) {
+        functions[match[1]] = body.join("\n");
+        i = j;
+        break;
+      }
+      body.push(lines[j]);
+    }
+  }
+  return functions;
+}
+
+function parseLuaPreviewGlobals(code) {
+  const env = {};
+  for (const rawLine of code.split("\n")) {
+    const line = stripLuaLineComment(rawLine).trim();
+    if (/^function\b/.test(line)) break;
+    const assignment = /^(?:local\s+)?([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.+)$/.exec(line);
+    if (assignment) env[assignment[1]] = evaluateLuaPreviewExpression(assignment[2], env);
+  }
+  return env;
+}
+
+function stripLuaLineComment(line) {
+  let quote = "";
+  let escaped = false;
+  for (let i = 0; i < line.length; i += 1) {
+    const char = line[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === quote) quote = "";
+      continue;
+    }
+    if (char === '"' || char === "'") quote = char;
+    else if (char === "-" && line[i + 1] === "-") return line.slice(0, i);
+  }
+  return line;
+}
+
+function executeLuaPreviewLines(body, env, ctx, canvas, state) {
+  const lines = body.split("\n");
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = stripLuaLineComment(lines[index]).trim();
+    if (!line || /^(end|else|elseif\b)/.test(line)) continue;
+
+    const inlineIf = /^if\s+(.+?)\s+then\s+(.+)$/.exec(line);
+    if (inlineIf) {
+      if (evaluateLuaPreviewCondition(inlineIf[1], env)) executeLuaPreviewLines(inlineIf[2], env, ctx, canvas, state);
+      continue;
+    }
+
+    const blockIf = /^if\s+(.+?)\s+then\s*$/.exec(line);
+    if (blockIf) {
+      const nested = collectLuaPreviewBlock(lines, index);
+      if (evaluateLuaPreviewCondition(blockIf[1], env)) executeLuaPreviewLines(nested.body, env, ctx, canvas, state);
+      else if (nested.elseBody) executeLuaPreviewLines(nested.elseBody, env, ctx, canvas, state);
+      index = nested.endIndex;
+      continue;
+    }
+
+    const plusAssign = /^([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*\1\s*([+-])\s*(.+)$/.exec(line);
+    if (plusAssign) {
+      const current = Number(env[plusAssign[1]] || 0);
+      const delta = Number(evaluateLuaPreviewExpression(plusAssign[3], env) || 0);
+      env[plusAssign[1]] = plusAssign[2] === "+" ? current + delta : current - delta;
+      continue;
+    }
+
+    const assignment = /^(?:local\s+)?([A-Za-z_][A-Za-z0-9_.]*)\s*=\s*(.+)$/.exec(line);
+    if (assignment && !/\bfunction\s*\(/.test(assignment[2])) {
+      env[assignment[1]] = evaluateLuaPreviewExpression(assignment[2], env);
+      continue;
+    }
+
+    if (/^platform\.window(?::|\.)invalidate\s*\(/.test(line)) {
+      state.invalidated = true;
+      continue;
+    }
+
+    const call = /^(gc|platform\.window|platform|timer|var)(?::|\.)([A-Za-z_][A-Za-z0-9_]*)\((.*)\)\s*$/.exec(line);
+    if (call) executeLuaPreviewCall(call[1], call[2], call[3], env, ctx, canvas, state);
+  }
+}
+
+function collectLuaPreviewBlock(lines, startIndex) {
+  let depth = 1;
+  const body = [];
+  const elseBody = [];
+  let target = body;
+  for (let i = startIndex + 1; i < lines.length; i += 1) {
+    const clean = stripLuaLineComment(lines[i]);
+    if (depth === 1 && /^\s*(else|elseif)\b/.test(clean)) {
+      target = elseBody;
+      continue;
+    }
+    if (/^\s*(?:local\s+)?function\b/.test(clean) || /\bthen\s*$/.test(clean) || /\bdo\s*$/.test(clean) || /^\s*repeat\b/.test(clean)) depth += 1;
+    if (/^\s*(end|until\b)/.test(clean)) depth -= 1;
+    if (depth === 0) return { body: body.join("\n"), elseBody: elseBody.join("\n"), endIndex: i };
+    target.push(lines[i]);
+  }
+  return { body: body.join("\n"), elseBody: elseBody.join("\n"), endIndex: lines.length - 1 };
+}
+
+function evaluateLuaPreviewCondition(text, env) {
+  const expr = text.trim();
+  const orParts = splitLuaBoolean(expr, "or");
+  if (orParts.length > 1) return orParts.some((part) => evaluateLuaPreviewCondition(part, env));
+  const andParts = splitLuaBoolean(expr, "and");
+  if (andParts.length > 1) return andParts.every((part) => evaluateLuaPreviewCondition(part, env));
+  const match = /^(.+?)\s*(==|~=|<=|>=|<|>)\s*(.+)$/.exec(expr);
+  if (!match) return Boolean(evaluateLuaPreviewExpression(text, env));
+  const left = evaluateLuaPreviewExpression(match[1], env);
+  const right = evaluateLuaPreviewExpression(match[3], env);
+  if (match[2] === "==") return left === right;
+  if (match[2] === "~=") return left !== right;
+  if (match[2] === "<=") return Number(left) <= Number(right);
+  if (match[2] === ">=") return Number(left) >= Number(right);
+  if (match[2] === "<") return Number(left) < Number(right);
+  if (match[2] === ">") return Number(left) > Number(right);
+  return false;
+}
+
+function splitLuaBoolean(text, operator) {
+  const result = [];
+  let depth = 0;
+  let quote = "";
+  let start = 0;
+  const pattern = new RegExp(`\\b${operator}\\b`, "g");
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    if (quote) {
+      if (char === quote && text[i - 1] !== "\\") quote = "";
+      continue;
+    }
+    if (char === '"' || char === "'") quote = char;
+    else if ("([{".includes(char)) depth += 1;
+    else if (")]}".includes(char)) depth -= 1;
+    if (depth === 0) {
+      pattern.lastIndex = i;
+      const match = pattern.exec(text);
+      if (match && match.index === i) {
+        result.push(text.slice(start, i).trim());
+        start = i + match[0].length;
+        i = start - 1;
+      }
+    }
+  }
+  if (result.length) result.push(text.slice(start).trim());
+  return result;
+}
+
+function evaluateLuaPreviewExpression(text, env) {
+  let value = String(text || "").trim();
+  if (value === "nil") return null;
+  value = value
+    .replace(/platform\.window(?::|\.)width\(\)/g, String(env.__canvasWidth || 320))
+    .replace(/platform\.window(?::|\.)height\(\)/g, String(env.__canvasHeight || 240))
+    .replace(/gc(?::|\.)getStringWidth\(([^()]+)\)/g, (_, arg) => {
+      const resolved = evaluateLuaPreviewExpression(arg, env);
+      return String(String(resolved ?? "").length * 7);
+    })
+    .replace(/gc(?::|\.)getStringHeight\(([^()]+)\)/g, "12")
+    .replace(/math\.floor\(([^()]+)\)/g, (_, arg) => String(Math.floor(Number(evaluateLuaPreviewExpression(arg, env)) || 0)));
+  const concatParts = splitLuaConcat(value);
+  if (concatParts.length > 1) return concatParts.map((part) => evaluateLuaPreviewExpression(part, env) ?? "").join("");
+  const mathEval = /^math\.eval\((.*)\)$/.exec(value);
+  if (mathEval) return String(evaluateLuaPreviewExpression(mathEval[1], env)).includes("true");
+  const uchar = /^string\.uchar\((.*)\)$/.exec(value);
+  if (uchar) return String.fromCharCode(Number(evaluateLuaPreviewExpression(uchar[1], env)) || 0);
+  const sub = /^string\.sub\((.*)\)$/.exec(value);
+  if (sub) {
+    const args = splitLuaArgs(sub[1]).args.map((arg) => evaluateLuaPreviewExpression(arg, env));
+    const source = String(args[0] ?? "");
+    const start = Math.max(0, (Number(args[1]) || 1) - 1);
+    const end = args[2] === undefined ? source.length : Math.max(0, Number(args[2]) || 0);
+    return source.slice(start, end);
+  }
+  const lower = /^string\.lower\((.*)\)$/.exec(value);
+  if (lower) return String(evaluateLuaPreviewExpression(lower[1], env) ?? "").toLowerCase();
+  const length = /^string\.len\((.*)\)$/.exec(value);
+  if (length) return String(evaluateLuaPreviewExpression(length[1], env) ?? "").length;
+  const recall = /^var\.recall\((.*)\)$/.exec(value);
+  if (recall) {
+    const key = String(evaluateLuaPreviewExpression(recall[1], env) ?? "");
+    return env.__varStore?.[key] ?? null;
+  }
+  const width = /^gc:getStringWidth\((.*)\)$/.exec(value) || /^gc\.getStringWidth\((.*)\)$/.exec(value);
+  if (width) return String(evaluateLuaPreviewExpression(width[1], env) ?? "").length * 7;
+  const height = /^gc:getStringHeight\((.*)\)$/.exec(value) || /^gc\.getStringHeight\((.*)\)$/.exec(value);
+  if (height) return 12;
+  const literal = luaPreviewValue(value);
+  if (literal !== value || Number.isFinite(literal)) return literal;
+  if (value === "true") return true;
+  if (value === "false") return false;
+  if (Object.prototype.hasOwnProperty.call(env, value)) return env[value];
+  if (/^[A-Za-z_][A-Za-z0-9_.]*$/.test(value)) return null;
+  const mathSafe = value.replace(/\b([A-Za-z_][A-Za-z0-9_.]*)\b/g, (name) => {
+    if (Object.prototype.hasOwnProperty.call(env, name) && Number.isFinite(Number(env[name]))) return String(env[name]);
+    return name;
+  });
+  if (/^[0-9+\-*/().\s]+$/.test(mathSafe)) {
+    try {
+      return Function(`"use strict"; return (${mathSafe});`)();
+    } catch {
+      return value;
+    }
+  }
+  return value;
+}
+
+function splitLuaConcat(text) {
+  const parts = [];
+  let depth = 0;
+  let quote = "";
+  let start = 0;
+  for (let i = 0; i < text.length - 1; i += 1) {
+    const char = text[i];
+    if (quote) {
+      if (char === quote && text[i - 1] !== "\\") quote = "";
+      continue;
+    }
+    if (char === '"' || char === "'") quote = char;
+    else if ("([{".includes(char)) depth += 1;
+    else if (")]}".includes(char)) depth -= 1;
+    else if (char === "." && text[i + 1] === "." && depth === 0) {
+      parts.push(text.slice(start, i).trim());
+      start = i + 2;
+      i += 1;
+    }
+  }
+  if (parts.length) parts.push(text.slice(start).trim());
+  return parts;
+}
+
+function executeLuaPreviewCall(root, method, rawArgs, env, ctx, canvas, state) {
+  const args = splitLuaArgs(rawArgs).args.map((arg) => evaluateLuaPreviewExpression(arg, env));
+  if (root === "timer") {
+    if (method === "start") state.timerActive = true;
+    if (method === "stop") state.timerActive = false;
+    return;
+  }
+  if (root === "var") {
+    if (!env.__varStore) env.__varStore = {};
+    if (method === "store") env.__varStore[String(args[0])] = args[1];
+    return;
+  }
+  if (root !== "gc") return;
+  if (method === "setColorRGB") {
+    const [r, g = r, b = r] = args.map(Number);
+    ctx.fillStyle = ctx.strokeStyle = `rgb(${r || 0}, ${g || 0}, ${b || 0})`;
+    state.rendered += 1;
+  } else if (method === "setFont") {
+    const size = Number(args[2] || args[1] || state.fontSize || 12) || 12;
+    const style = String(args[1] || "");
+    const weight = style.includes("b") ? "bold " : "";
+    const italic = style.includes("i") ? "italic " : "";
+    state.fontSize = size;
+    state.fontStyle = style;
+    ctx.font = `${italic}${weight}${size}px sans-serif`;
+    state.rendered += 1;
+  } else if (method === "setPen") {
+    const thickness = args[0];
+    state.lineWidth = thickness === "thick" ? 8 : thickness === "medium" ? 3 : Number(thickness) || 1;
+    ctx.lineWidth = state.lineWidth;
+    state.rendered += 1;
+  } else if (method === "fillRect") {
+    ctx.fillRect(Number(args[0]) || 0, Number(args[1]) || 0, Number(args[2]) || 0, Number(args[3]) || 0);
+    state.rendered += 1;
+  } else if (method === "drawRect") {
+    ctx.strokeRect((Number(args[0]) || 0) + 1, (Number(args[1]) || 0) + 1, Number(args[2]) || 0, Number(args[3]) || 0);
+    state.rendered += 1;
+  } else if (method === "drawLine") {
+    ctx.beginPath();
+    ctx.moveTo(Number(args[0]) || 0, Number(args[1]) || 0);
+    ctx.lineTo(Number(args[2]) || 0, Number(args[3]) || 0);
+    ctx.stroke();
+    state.rendered += 1;
+  } else if (method === "drawString") {
+    const offset = { top: 0, middle: -state.fontSize / 2, bottom: -state.fontSize, baseline: -state.fontSize + 4 }[String(args[3] || "bottom")] ?? 0;
+    ctx.fillText(String(args[0] ?? ""), Number(args[1]) || 0, (Number(args[2]) || 0) + offset);
+    state.rendered += 1;
+  } else if (method === "clipRect") {
+    const op = String(args[0] || "set");
+    if (op === "reset") {
+      ctx.restore();
+      ctx.save();
+    } else if (op === "set") {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(Number(args[1]) || 0, Number(args[2]) || 0, Number(args[3]) || canvas.width, Number(args[4]) || canvas.height);
+      ctx.clip();
+    }
+    state.rendered += 1;
+  } else if (method === "drawPolyLine" || method === "drawPolygon" || method === "fillPolygon") {
+    const points = args.map(Number).filter((value) => Number.isFinite(value));
+    if (points.length >= 4) {
+      ctx.beginPath();
+      ctx.moveTo(points[0], points[1]);
+      for (let i = 2; i < points.length; i += 2) ctx.lineTo(points[i], points[i + 1]);
+      if (method === "fillPolygon") ctx.fill();
+      else ctx.stroke();
+      state.rendered += 1;
+    }
+  } else if (method === "fillArc" || method === "drawArc") {
+    const x = Number(args[0]) || 0;
+    const y = Number(args[1]) || 0;
+    const w = Number(args[2]) || 0;
+    const h = Number(args[3]) || 0;
+    ctx.beginPath();
+    ctx.ellipse(x + w / 2, y + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, Math.PI * 2);
+    if (method === "fillArc") ctx.fill();
+    else ctx.stroke();
+    state.rendered += 1;
+  }
 }
 
 async function openDocumentInspector() {
@@ -2067,7 +3238,12 @@ function openXmlDocumentSettings() {
     const documentType = backdrop.querySelector("#doc-type").value;
     const libraryAccess = backdrop.querySelector("#doc-access").value;
     const parameters = backdrop.querySelector("#doc-params").value.trim();
-    if (!name) return;
+    const nameError = tiDocumentNameError(name);
+    if (nameError) {
+      xmlLog(`ERROR: ${nameError}`);
+      alert(nameError);
+      return;
+    }
     xmlDoctor.current.program_name = name;
     xmlDoctor.current.document_type = documentType;
     xmlDoctor.current.library_access = libraryAccess;
@@ -2811,8 +3987,10 @@ function wireEvents() {
     panel.classList.toggle("collapsed");
     syncToggleLabels();
   });
+  document.querySelector("#xml-tns-file").addEventListener("change", (event) => openTnsInXmlDoctor(event.target.files[0]).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-folder").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "folder").catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#xml-new-btn").addEventListener("click", () => createNewXmlProject().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-programs").addEventListener("change", (event) => selectXmlProgram(event.target.value));
   document.querySelector("#xml-code").addEventListener("input", () => {
     xmlDoctor.embedded = false;
@@ -2835,6 +4013,7 @@ function wireEvents() {
   document.querySelector("#xml-changes-btn").addEventListener("click", showXmlChanges);
   document.querySelector("#xml-embed-btn").addEventListener("click", () => embedXmlCode().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-save-btn").addEventListener("click", () => saveXmlZip().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#xml-create-tns-btn").addEventListener("click", () => createTnsFromXmlDoctor().catch((err) => xmlLog(`ERROR: ${err.message}`)));
 }
 
 applyLanguage(language);
@@ -2843,3 +4022,4 @@ initPyodideRuntime().catch((err) => {
   if (statusEl) statusEl.textContent = "Error";
   log(`ERROR inicializando WASM: ${err.stack || err.message}`);
 });
+

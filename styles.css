@@ -303,6 +303,16 @@ button:disabled {
   box-shadow: 0 8px 20px rgb(37 99 235 / 10%);
 }
 
+.success-button {
+  background: #d9f99d;
+  color: #3f6212;
+}
+
+.success-button:hover {
+  background: #bef264;
+  box-shadow: 0 8px 20px rgb(132 204 22 / 18%);
+}
+
 .doctor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.75fr);
@@ -612,6 +622,33 @@ button:disabled {
 
 .lua-modal {
   width: min(1240px, calc(100vw - 28px));
+}
+
+.lua-preview-modal {
+  width: min(470px, calc(100vw - 28px));
+  max-height: min(92vh, 760px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+#lua-preview-canvas {
+  width: 318px;
+  height: 212px;
+  image-rendering: auto;
+  border: 1px solid #424242;
+  border-radius: 0;
+  background: #fff;
+  display: block;
+  margin: 8px auto 12px;
+}
+
+.preview-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .lua-toolbar {
@@ -928,6 +965,14 @@ button:disabled {
   background: #0f172a;
   color: #d1fae5;
   font: 12px Consolas, monospace;
+}
+
+#lua-preview-log {
+  flex: 0 0 auto;
+  height: 180px;
+  min-height: 180px;
+  max-height: 180px;
+  white-space: pre;
 }
 
 #log {

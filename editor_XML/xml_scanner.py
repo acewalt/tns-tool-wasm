@@ -122,6 +122,7 @@ class XMLScanner:
                 )
 
             if ns == TI_PROGRAM_EDITOR_NS and lname == "editor" and text:
+                editor_type = self._program_editor_type(element, parent_map)
                 candidates.append(
                     XMLCandidate(
                         file=xml_file,
@@ -129,8 +130,9 @@ class XMLScanner:
                         kind="program_editor_visual_tree",
                         program_name=self._program_editor_name(element, parent_map),
                         text=text,
+                        code_text=self._extract_editor_tree_code(text, editor_type),
                         widget_type="TI.ProgramEditor",
-                        document_type=self._program_editor_type(element, parent_map),
+                        document_type=editor_type,
                         library_access=self._program_editor_visibility(element, parent_map),
                     )
                 )
@@ -162,6 +164,46 @@ class XMLScanner:
             return True
         first = text.replace("\r", "\n").split("\n", 1)[0].lstrip(": ").strip().lower()
         return first in {"prgm", "func"}
+
+    @staticmethod
+    def _extract_editor_tree_code(text: str, document_type: str | None) -> str | None:
+        try:
+            root = ET.fromstring(text)
+        except ET.ParseError:
+            return None
+
+        preferred = "0func" if document_type == "Func" else "0prgm"
+        target: ET.Element | None = None
+        for node in root.iter():
+            if local_name(node.tag) != "node":
+                continue
+            name = node.attrib.get("name")
+            if name == preferred:
+                target = node
+                break
+            if target is None and name in {"0prgm", "0func"}:
+                target = node
+
+        if target is None:
+            return None
+
+        body_lines: list[str] = []
+        for child in target:
+            if local_name(child.tag) != "node" or child.attrib.get("name") != "0el":
+                continue
+            line = "".join(child.itertext()).replace("\xa0", " ").strip()
+            if line:
+                body_lines.append(line)
+
+        if not body_lines:
+            body = "".join(target.itertext()).replace("\xa0", " ").strip()
+            if not body:
+                return None
+            body_lines = [line.strip() for line in body.splitlines() if line.strip()]
+
+        start = "Func" if (document_type == "Func" or target.attrib.get("name") == "0func") else "Prgm"
+        end = "EndFunc" if start == "Func" else "EndPrgm"
+        return "\n".join([start, *body_lines, end])
 
     @staticmethod
     def _symbol_name(element: ET.Element, parent_map: dict[ET.Element, ET.Element]) -> str | None:
