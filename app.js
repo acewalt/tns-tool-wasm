@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-ui-polish-dark-mobile-local";
+const SOURCE_VERSION = "2026-06-01-compact-menu-animations-local";
 
 const I18N = {
   es: {
@@ -15,7 +15,10 @@ const I18N = {
     embedXml: "Incrustar en XML",
     saveXmlZip: "Guardar XML ZIP",
     createTnsFromDoctor: "Crear TNS",
-    newXmlProject: "Nuevo",
+    fileMenu: "Archivo",
+    editMenu: "Edit",
+    saveMenu: "Guardar",
+    newXmlProject: "Nuevo documento",
     documentInspector: "Inspector de documento",
     addFunc: "Agregar Func",
     documentSummary: "Resumen",
@@ -117,7 +120,10 @@ const I18N = {
     embedXml: "Embed in XML",
     saveXmlZip: "Save XML ZIP",
     createTnsFromDoctor: "Create TNS",
-    newXmlProject: "New",
+    fileMenu: "File",
+    editMenu: "Edit",
+    saveMenu: "Save",
+    newXmlProject: "New document",
     documentInspector: "Document inspector",
     addFunc: "Add Func",
     documentSummary: "Summary",
@@ -219,7 +225,10 @@ const I18N = {
     embedXml: "Incruster en XML",
     saveXmlZip: "Enregistrer ZIP XML",
     createTnsFromDoctor: "Creer TNS",
-    newXmlProject: "Nouveau",
+    fileMenu: "Fichier",
+    editMenu: "Edition",
+    saveMenu: "Enregistrer",
+    newXmlProject: "Nouveau document",
     documentInspector: "Inspecteur du document",
     addFunc: "Ajouter Func",
     documentSummary: "Resume",
@@ -535,6 +544,21 @@ function applyTheme(nextTheme = theme) {
   }
 }
 
+function toggleCollapsible(element, afterChange = null) {
+  if (!element) return;
+  if (element.classList.contains("collapsed")) {
+    element.classList.remove("collapsed", "closing");
+    if (typeof afterChange === "function") afterChange();
+    return;
+  }
+  element.classList.add("closing");
+  window.setTimeout(() => {
+    element.classList.add("collapsed");
+    element.classList.remove("closing");
+    if (typeof afterChange === "function") afterChange();
+  }, 260);
+}
+
 function syncToggleLabels() {
   const xmlPanel = document.querySelector("#xml-doctor-panel");
   const normalModule = document.querySelector("#normal-module");
@@ -552,6 +576,36 @@ function setReady(value) {
     if (button.id === "theme-btn" || button.id === "about-btn") continue;
     button.disabled = !value;
   }
+}
+
+function closeToolMenus(except = null) {
+  for (const menu of document.querySelectorAll(".tool-menu.open")) {
+    if (except && (menu === except || menu.contains(except))) continue;
+    menu.classList.remove("open");
+  }
+}
+
+function wireToolMenus() {
+  for (const trigger of document.querySelectorAll(".menu-trigger, .nested-trigger")) {
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const menu = trigger.closest(".tool-menu");
+      const shouldOpen = !menu.classList.contains("open");
+      closeToolMenus(menu.closest(".nested-menu") ? menu.parentElement.closest(".tool-menu") : null);
+      menu.classList.toggle("open", shouldOpen);
+    });
+  }
+  for (const action of document.querySelectorAll(".menu-panel .menu-action")) {
+    action.addEventListener("click", () => {
+      if (action.classList.contains("nested-trigger")) return;
+      window.setTimeout(() => closeToolMenus(), 80);
+    });
+  }
+  document.addEventListener("click", () => closeToolMenus());
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") closeToolMenus();
+  });
 }
 
 async function initPyodideRuntime() {
@@ -1378,7 +1432,7 @@ function closeModal(backdrop, afterClose = null) {
   window.setTimeout(() => {
     if (typeof afterClose === "function") afterClose();
     backdrop.remove();
-  }, 180);
+  }, 240);
 }
 
 function analyzeLuaBasic(code) {
@@ -4680,13 +4734,11 @@ function wireEvents() {
   }
   document.querySelector("#normal-toggle-btn").addEventListener("click", () => {
     const module = document.querySelector("#normal-module");
-    module.classList.toggle("collapsed");
-    syncToggleLabels();
+    toggleCollapsible(module, syncToggleLabels);
   });
   document.querySelector("#python-toggle-btn").addEventListener("click", () => {
     const module = document.querySelector("#python-module");
-    module.classList.toggle("collapsed");
-    syncToggleLabels();
+    toggleCollapsible(module, syncToggleLabels);
   });
   document.querySelector("#decode-btn").addEventListener("click", () => decodeNormalTns().catch((err) => log(`ERROR: ${err.message}`)));
   document.querySelector("#build-xml-btn").addEventListener("click", () => buildNormalTns().catch((err) => log(`ERROR: ${err.message}`)));
@@ -4713,8 +4765,7 @@ function wireEvents() {
   document.querySelector("#py-code").addEventListener("keyup", updatePyLineLabel);
   document.querySelector("#xml-toggle-btn").addEventListener("click", () => {
     const panel = document.querySelector("#xml-doctor-panel");
-    panel.classList.toggle("collapsed");
-    syncToggleLabels();
+    toggleCollapsible(panel, syncToggleLabels);
   });
   document.querySelector("#xml-tns-file").addEventListener("change", (event) => openTnsInXmlDoctor(event.target.files[0]).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
@@ -4743,6 +4794,7 @@ function wireEvents() {
   document.querySelector("#xml-embed-btn").addEventListener("click", () => embedXmlCode().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-save-btn").addEventListener("click", () => saveXmlZip().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-create-tns-btn").addEventListener("click", () => createTnsFromXmlDoctor().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  wireToolMenus();
 }
 
 applyLanguage(language);
