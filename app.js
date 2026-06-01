@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-luajs-preview-numeric-local";
+const SOURCE_VERSION = "2026-06-01-ti-basic-project-symbols-local";
 
 const I18N = {
   es: {
@@ -3839,18 +3839,44 @@ async function runXmlSyntax() {
   const code = document.querySelector("#xml-code").value;
   pyodide.globals.set("wasm_xml_code", code);
   pyodide.globals.set("wasm_xml_parameters", xmlDoctor.current?.parameters || "");
-  pyodide.globals.set("wasm_xml_known_functions", (xmlDoctor.candidates || []).filter((item) => item.document_type === "Func").map((item) => item.program_name));
+  pyodide.globals.set("wasm_xml_known_functions", (xmlDoctor.candidates || []).map((item) => item.program_name));
+  pyodide.globals.set("wasm_xml_all_program_names", (xmlDoctor.candidates || []).map((item) => item.program_name));
+  pyodide.globals.set("wasm_xml_scan_for_symbols", xmlDoctor.stagePrepared ? xmlDoctor.stagePath : xmlDoctor.sourcePath);
   const payload = await pyodide.runPythonAsync(`
 import json
 import importlib
 import sys
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
 if "ti_syntax" in sys.modules:
     importlib.reload(sys.modules["ti_syntax"])
 from ti_syntax import analyze_ti_code
+
+known_names = set(wasm_xml_all_program_names.to_py())
+known_functions = set(wasm_xml_known_functions.to_py())
+scan_root = Path(wasm_xml_scan_for_symbols)
+for xml_file in scan_root.rglob("*.xml"):
+    try:
+        root = ET.parse(xml_file).getroot()
+    except Exception:
+        continue
+    for element in root.iter():
+        if local_name(element.tag) != "e":
+            continue
+        symbol_name = ""
+        for child in element:
+            if local_name(child.tag) == "n" and child.text:
+                symbol_name = child.text.strip()
+                known_names.add(symbol_name)
+        if symbol_name and element.attrib.get("t") in {"6", "7"}:
+            known_functions.add(symbol_name)
+
 report = analyze_ti_code(
     wasm_xml_code,
     parameters=wasm_xml_parameters,
-    known_functions=set(wasm_xml_known_functions.to_py()),
+    known_functions=known_functions,
+    known_names=known_names,
 )
 json.dumps({
     "errors": len(report.errors),

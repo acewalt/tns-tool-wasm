@@ -133,6 +133,7 @@ VALID_COMMANDS = {
     "setwindow",
     "sqrt",
     "stop",
+    "text",
     "then",
     "try",
     "while",
@@ -196,6 +197,7 @@ COMMAND_STYLE_SIGNATURES: dict[str, tuple[int, int | None]] = {
     "setcolor": (3, 3),
     "setpen": (2, 2),
     "setwindow": (4, 4),
+    "text": (1, None),
 }
 
 TI_ERROR_CODES: dict[int, str] = {
@@ -390,18 +392,37 @@ BUILTIN_NAMES = VALID_COMMANDS | {
     "max",
     "abs",
     "augment",
+    "ceiling",
+    "char",
     "colaugment",
+    "coldim",
+    "colnorm",
+    "crossp",
+    "csolve",
     "dim",
+    "eigvc",
+    "eigvl",
     "expr",
+    "factor",
+    "floor",
+    "gettype",
     "instring",
     "int",
     "intdiv",
+    "isnumtype",
     "left",
     "line",
     "mid",
     "newmat",
+    "nsolve",
     "not",
+    "ord",
+    "part",
+    "polycoeffs",
     "right",
+    "rowdim",
+    "rownorm",
+    "rref",
     "circle",
     "cycle",
     "drawarc",
@@ -421,7 +442,10 @@ BUILTIN_NAMES = VALID_COMMANDS | {
     "setwindow",
     "round",
     "rand",
+    "solve",
+    "submat",
     "when",
+    "zeros",
 }
 
 RESERVED_NAMES = {"and", "define", "else", "elseif", "endif", "endfor", "endloop", "endprgm", "endtry", "endwhile", "false", "for", "func", "if", "local", "loop", "or", "prgm", "return", "then", "true", "try", "while"}
@@ -438,9 +462,13 @@ def analyze_ti_code(
     text: str,
     parameters: str | None = None,
     known_functions: set[str] | None = None,
+    known_names: set[str] | None = None,
 ) -> SyntaxReport:
     report = SyntaxReport()
+    known_functions = known_functions or set()
+    known_names = known_names or set()
     lines = _split_lines(text)
+    is_function_document = any(line.strip().lower() == "func" for line in lines[:3])
     if_stack: list[int] = []
     block_stack: list[tuple[str, int]] = []
     try_stack: list[list[object]] = []
@@ -466,6 +494,8 @@ def analyze_ti_code(
         line = raw_line.strip()
         if not line:
             continue
+        if _is_comment_line(line):
+            continue
 
         _check_lexical(report, number, raw_line)
         _check_delimiters(report, number, raw_line)
@@ -479,8 +509,8 @@ def analyze_ti_code(
             report,
             number,
             raw_line,
-            report.variables | report.assigned,
-            known_functions or set(),
+            report.variables | report.assigned | known_names,
+            known_functions,
         )
         _check_subscripts(report, number, raw_line)
         _check_ans_usage(report, number, raw_line)
@@ -615,7 +645,7 @@ def analyze_ti_code(
             report.assigned.add(destination)
             report.used.discard(destination)
             _collect_used_vars(report, assign_match.group(1), number)
-        elif lower_first in {"goto", "lbl", "label"}:
+        elif lower_first in {"goto", "lbl", "label", "text"}:
             pass
         else:
             _collect_used_vars(report, line, number)
@@ -639,11 +669,14 @@ def analyze_ti_code(
         if not has_else:
             report.diagnostics.append(ti_error(290, int(try_line), "EndTry is missing the matching Else statement"))
 
-    if document_kind != "Func":
-        for used in sorted(report.used - report.variables - report.assigned - BUILTIN_NAMES):
-            suggestions = _suggest(used, report.variables | report.assigned)
-            detail = "Sugerencias: " + ", ".join(suggestions) if suggestions else ""
-            report.diagnostics.append(ti_error(960, report.used_lines.get(used, 0), f"Variable no declarada: {used}", detail))
+    for used in sorted(report.used - report.variables - report.assigned - known_names - BUILTIN_NAMES):
+        if is_function_document:
+            continue
+        if _is_symbolic_single_letter(used):
+            continue
+        suggestions = _suggest(used, report.variables | report.assigned)
+        detail = "Sugerencias: " + ", ".join(suggestions) if suggestions else ""
+        report.diagnostics.append(ti_error(960, report.used_lines.get(used, 0), f"Variable no declarada: {used}", detail))
 
     for name in sorted(report.variables - report.used):
         report.diagnostics.append(internal_warning(report.variable_lines.get(name, 0), f"Variable declarada pero no utilizada: {name}"))
@@ -976,6 +1009,7 @@ def _check_function_references(
     known_functions: set[str],
 ) -> None:
     clean = _strip_strings_keep_layout(line)
+    clean = _strip_matrix_literals(clean)
     for match in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", clean):
         name = match.group(1)
         lower = name.lower()
@@ -983,10 +1017,57 @@ def _check_function_references(
             continue
         if name in known_functions or lower in {item.lower() for item in known_functions}:
             continue
+        if _is_symbolic_single_letter(name):
+            continue
         if name in known_names:
             report.diagnostics.append(ti_error(960, line_number, f"Variable no declarada: {name}", "La TI interpreta este caso como llamada a funcion, no multiplicacion implicita."))
         else:
             report.diagnostics.append(ti_error(1090, line_number, f"Function is not defined: {name}"))
+
+
+def _strip_matrix_literals(text: str) -> str:
+    result = []
+    index = 0
+    while index < len(text):
+        if text.startswith("[[", index):
+            end = text.find("]]", index + 2)
+            if end >= 0:
+                result.append(" " * (end + 2 - index))
+                index = end + 2
+                continue
+        result.append(text[index])
+        index += 1
+    return "".join(result)
+
+
+def _strip_function_calls(text: str, names: set[str]) -> str:
+    result = []
+    index = 0
+    lowered_names = {name.lower() for name in names}
+    while index < len(text):
+        matched = ""
+        for name in lowered_names:
+            end_name = index + len(name)
+            if text[index:end_name].lower() != name or end_name >= len(text):
+                continue
+            before = text[index - 1] if index else ""
+            after = text[end_name]
+            before_ok = not before or not (before.isalnum() or before == "_")
+            after_ok = after.isspace() or after == "("
+            if before_ok and after_ok:
+                matched = name
+                break
+        if matched:
+            open_index = text.find("(", index + len(matched))
+            if open_index >= 0:
+                close_index = _find_matching_delimiter(text, open_index, "(", ")")
+                if close_index >= 0:
+                    result.append(" " * (close_index + 1 - index))
+                    index = close_index + 1
+                    continue
+        result.append(text[index])
+        index += 1
+    return "".join(result)
 
 
 def _check_subscripts(report: SyntaxReport, line_number: int, line: str) -> None:
@@ -1123,8 +1204,20 @@ def _is_identifier(text: str) -> bool:
     return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", text))
 
 
+def _is_symbolic_single_letter(text: str) -> bool:
+    return bool(re.fullmatch(r"[a-z]", text))
+
+
+def _is_comment_line(text: str) -> bool:
+    stripped = text.lstrip("\ufeff \t")
+    return stripped.startswith(("©", "Â©", "? ", "?\t", "(c)", "(C)", "#", "//"))
+
+
 def _collect_used_vars(report: SyntaxReport, text: str, line_number: int) -> None:
     clean = re.sub(r'"[^"]*"', "", text)
+    clean = _strip_matrix_literals(clean)
+    clean = _strip_function_calls(clean, {"solve", "nsolve", "csolve"})
+    clean = re.sub(r"(?i)^\s*Text\b.*$", "", clean)
     clean = re.sub(r"\b(?:Goto|Lbl|Label)\s+[A-Za-z_][A-Za-z0-9_]*", "", clean, flags=re.IGNORECASE)
     clean = re.sub(r"\b[A-Za-z_][A-Za-z0-9_]*\s*(?=\()", "", clean)
     for name in IDENT_RE.findall(clean):
