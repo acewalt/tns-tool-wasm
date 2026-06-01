@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-luajs-preview-click-local";
+const SOURCE_VERSION = "2026-06-01-luajs-preview-nsolve-local";
 
 const I18N = {
   es: {
@@ -2672,9 +2672,9 @@ function luaJsMathEval(expr, store, global, basicFunctions = {}) {
     global.G.str[defineMatch[1]] = (...args) => [evaluateTiBasicFunction(basicFunctions[defineMatch[1]], args, store, basicFunctions)];
     return [null];
   }
-  const nsolveMatch = /^nsolve\((.*),\s*([A-Za-z_][A-Za-z0-9_]*)\)$/i.exec(source);
+  const nsolveMatch = /^nsolve\((.*),\s*([^)]+)\)$/i.exec(source);
   if (nsolveMatch) {
-    return [evaluateTiEquationForVariable(nsolveMatch[1], nsolveMatch[2], store, basicFunctions)];
+    return [evaluateTiEquationForVariable(nsolveMatch[1], nsolveMatch[2].trim(), store, basicFunctions)];
   }
   const numeric = evaluateTiMathExpression(source, store, basicFunctions);
   if (Number.isFinite(numeric)) return [numeric];
@@ -2700,8 +2700,65 @@ function evaluateTiEquationForVariable(equation, target, store, basicFunctions) 
     const right = parts[1].trim();
     if (left === target) return evaluateTiMathExpression(right, store, basicFunctions);
     if (right === target) return evaluateTiMathExpression(left, store, basicFunctions);
+    return solveTiEquation(left, right, target, store, basicFunctions);
   }
   return evaluateTiMathExpression(equation, store, basicFunctions);
+}
+
+function solveTiEquation(left, right, target, store, basicFunctions) {
+  const fn = (value) => {
+    const scope = { ...store, [target]: value };
+    return evaluateTiMathExpression(left, scope, basicFunctions) - evaluateTiMathExpression(right, scope, basicFunctions);
+  };
+  const candidates = [0, 1, -1, 0.1, -0.1, 0.5, -0.5, 2, -2, 5, -5, 10, -10, 100, -100, 1000, -1000, 1e6, -1e6];
+  let bestX = Number(store[target]);
+  let bestY = Number.isFinite(bestX) ? Math.abs(fn(bestX)) : Infinity;
+  for (const x of candidates) {
+    const y = fn(x);
+    if (Number.isFinite(y) && Math.abs(y) < bestY) {
+      bestX = x;
+      bestY = Math.abs(y);
+    }
+    if (bestY < 1e-9) return bestX;
+  }
+  const ranges = [[-1e6, 1e6], [-1000, 1000], [-100, 100], [-10, 10], [0, 1], [0, 10], [0, 1000]];
+  for (const [min, max] of ranges) {
+    const root = bisectTiRoot(fn, min, max, 240);
+    if (Number.isFinite(root)) return root;
+  }
+  return Number.isFinite(bestX) ? bestX : 0;
+}
+
+function bisectTiRoot(fn, min, max, samples) {
+  let previousX = min;
+  let previousY = fn(previousX);
+  for (let index = 1; index <= samples; index += 1) {
+    const x = min + ((max - min) * index) / samples;
+    const y = fn(x);
+    if (!Number.isFinite(y)) continue;
+    if (Math.abs(y) < 1e-9) return x;
+    if (Number.isFinite(previousY) && previousY * y < 0) {
+      let low = previousX;
+      let high = x;
+      let fLow = previousY;
+      for (let step = 0; step < 80; step += 1) {
+        const mid = (low + high) / 2;
+        const fMid = fn(mid);
+        if (!Number.isFinite(fMid)) break;
+        if (Math.abs(fMid) < 1e-9) return mid;
+        if (fLow * fMid <= 0) {
+          high = mid;
+        } else {
+          low = mid;
+          fLow = fMid;
+        }
+      }
+      return (low + high) / 2;
+    }
+    previousX = x;
+    previousY = y;
+  }
+  return NaN;
 }
 
 function evaluateTiBasicFunction(definition, args, store, basicFunctions) {
@@ -2734,6 +2791,8 @@ function evaluateTiMathExpression(expression, scope = {}, basicFunctions = {}) {
   let expr = String(expression || "")
     .replace(/∞/g, "Infinity")
     .replace(/[−–]/g, "-")
+    .replace(/≤/g, "<=")
+    .replace(/≥/g, ">=")
     .replace(/√\s*\(/g, "sqrt(")
     .replace(//g, "e")
     .replace(/\^/g, "**");
@@ -2747,7 +2806,9 @@ function evaluateTiMathExpression(expression, scope = {}, basicFunctions = {}) {
   }
 
   expr = expr.replace(/π/g, "PI").replace(/\bpi\b/gi, "PI");
+  expr = normalizeTiChainedComparisons(expr);
   expr = expr.replace(/\b(normCdf|binomCdf|binomcdf|invNorm|nCr|ncr|exp|ln|sqrt|sin|cos|tan|abs)\s*\(/gi, (match, name) => `${name.toLowerCase()}(`);
+  expr = expr.replace(/\band\b/gi, "&&").replace(/\bor\b/gi, "||");
   expr = expr.replace(/\b[A-Za-z_][A-Za-z0-9_]*\b/g, (name) => {
     const lower = name.toLowerCase();
     if (["Infinity", "PI", "normcdf", "binomcdf", "invnorm", "ncr", "exp", "ln", "sqrt", "sin", "cos", "tan", "abs", "when"].includes(name) || ["infinity", "pi"].includes(lower)) return name;
@@ -2764,6 +2825,10 @@ function evaluateTiMathExpression(expression, scope = {}, basicFunctions = {}) {
   } catch (_error) {
     return 0;
   }
+}
+
+function normalizeTiChainedComparisons(expr) {
+  return expr.replace(/([A-Za-z0-9_.+\-*/()]+)\s*(<=|>=|<|>)\s*([A-Za-z0-9_.+\-*/()]+)\s*(<=|>=|<|>)\s*([A-Za-z0-9_.+\-*/()]+)/g, "($1 $2 $3 && $3 $4 $5)");
 }
 
 function splitTopLevel(text, delimiter) {
