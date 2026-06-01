@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-text-highlight-local";
+const SOURCE_VERSION = "2026-06-01-lua-screen-timer-local";
 
 const I18N = {
   es: {
@@ -2323,6 +2323,10 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global, basicFunctions));
   attachLuaJsD2Editor(d2EditorTable, nativeEditors);
 
+  const evalLuaJsSource = (source) => {
+    const parsed = global.lua_parser.parse(source).split("\n").slice(19).join("\n");
+    (0, eval)(parsed);
+  };
   const userCode = global.lua_parser.parse(safeCode).split("\n").slice(19).join("\n");
   for (const [name, value] of Object.entries(store)) {
     if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) global.G.str[name] = value;
@@ -2338,6 +2342,28 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     }
   }
   (0, eval)(userCode);
+  evalLuaJsSource(`
+    if WidgetManager and not WidgetManager.cleanWidgets then
+      function WidgetManager:cleanWidgets()
+        if self.widgets then
+          for _, widget in pairs(self.widgets) do
+            if widget.editor then
+              if widget.editor.setVisible then widget.editor:setVisible(false) end
+              if widget.editor.setFocus then widget.editor:setFocus(false) end
+            end
+          end
+        end
+        self.widgets = {}
+        self.focus = 0
+      end
+    end
+    if WScreen and WidgetManager and WidgetManager.cleanWidgets and not WScreen.cleanWidgets then
+      WScreen.cleanWidgets = WidgetManager.cleanWidgets
+    end
+    if Main and WidgetManager and WidgetManager.cleanWidgets and not Main.cleanWidgets then
+      Main.cleanWidgets = WidgetManager.cleanWidgets
+    end
+  `);
 
   let timerId = null;
   function log(message) {
@@ -2367,8 +2393,19 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     global.lua_tableset(windowTable(), "invalidated", false);
     if (shouldLog) log("Snapshot actualizado con LuaJS.");
   }
+  function callCurrentScreenTimer() {
+    const timerTable = global.G?.str?.timer;
+    if (!global.lua_true(global.lua_tableget(timerTable, "running"))) return;
+    const screens = global.G?.str?.Screens;
+    const count = global.lua_len(screens);
+    if (!count) return;
+    const screen = global.lua_tableget(screens, count);
+    const timerMethod = global.lua_tableget(screen, "timer");
+    if (timerMethod) global.lua_call(timerMethod, [screen]);
+  }
   function tick() {
     try {
+      callCurrentScreenTimer();
       global.dotimer();
       if (global.lua_true(global.lua_tableget(windowTable(), "invalidated"))) {
         repaint(false);
@@ -2391,9 +2428,79 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     timerId = window.setInterval(tick, 120);
     log("Preview LuaJS activo: snapshots por timer/eventos.");
   }
+  function focusedNativeEditor() {
+    for (let index = nativeEditors.length - 1; index >= 0; index -= 1) {
+      const state = nativeEditors[index];
+      if (state?.focused && state.visible !== false) return state;
+    }
+    return null;
+  }
+  function dispatchEditorFilter(filterName, args = []) {
+    const state = focusedNativeEditor();
+    if (!state?.filterTable) return false;
+    const handler = global.lua_tableget(state.filterTable, filterName);
+    if (!handler) return false;
+    const result = global.lua_call(handler, args);
+    repaint(true);
+    const consumed = result[0] !== false;
+    log(consumed ? `Evento enviado a D2Editor: ${filterName}` : `D2Editor permitio accion normal: ${filterName}`);
+    return consumed;
+  }
+  function moveEditorCursor(delta) {
+    const state = focusedNativeEditor();
+    if (!state) return false;
+    state.cursor = clampLuaJsCursor(state, state.cursor + delta);
+    repaint(true);
+    return true;
+  }
+  function insertEditorText(text) {
+    const state = focusedNativeEditor();
+    if (!state || state.readOnly) return false;
+    const cursor = clampLuaJsCursor(state, state.cursor);
+    state.text = `${state.text.slice(0, cursor)}${text}${state.text.slice(cursor)}`;
+    state.cursor = cursor + String(text).length;
+    repaint(true);
+    return true;
+  }
+  function deleteEditorText() {
+    const state = focusedNativeEditor();
+    if (!state || state.readOnly) return false;
+    const cursor = clampLuaJsCursor(state, state.cursor);
+    if (cursor <= 0) return true;
+    state.text = `${state.text.slice(0, cursor - 1)}${state.text.slice(cursor)}`;
+    state.cursor = cursor - 1;
+    repaint(true);
+    return true;
+  }
   function callEvent(name) {
     const eventName = name.replace(/^on\./, "");
+    const editorFilterMap = {
+      enterKey: "enterKey",
+      escapeKey: "escapeKey",
+      backspaceKey: "backspaceKey",
+      clearKey: "clearKey",
+      tabKey: "tabKey",
+      backtabKey: "backtabKey",
+      arrowLeft: "arrowLeft",
+      arrowRight: "arrowRight",
+      arrowUp: "arrowUp",
+      arrowDown: "arrowDown",
+    };
     try {
+      const editorFilter = editorFilterMap[eventName];
+      if (editorFilter && dispatchEditorFilter(editorFilter)) return;
+      if (eventName === "arrowLeft" && moveEditorCursor(-1)) {
+        log(`Cursor D2Editor movido: ${name}`);
+        return;
+      }
+      if (eventName === "arrowRight" && moveEditorCursor(1)) {
+        log(`Cursor D2Editor movido: ${name}`);
+        return;
+      }
+      if (eventName === "backspaceKey" && deleteEditorText()) {
+        log(`Evento aplicado en D2Editor: ${name}`);
+        return;
+      }
       global.callEvent(eventName);
       if (name.startsWith("on.arrow")) {
         global.callEvent("arrowKey", eventName.replace("arrow", "").toLowerCase());
@@ -2406,6 +2513,11 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   }
   function charIn(char) {
     try {
+      if (dispatchEditorFilter("charIn", [char])) return;
+      if (insertEditorText(char)) {
+        log(`Tecla aplicada en D2Editor: ${char}`);
+        return;
+      }
       global.callEvent("charIn", char);
       repaint(true);
       log(`Tecla enviada a LuaJS: ${char}`);
@@ -2980,6 +3092,7 @@ function attachLuaJsD2Editor(d2EditorTable, nativeEditors) {
   const createEditor = () => {
     const state = {
       text: "",
+      cursor: 0,
       x: 0,
       y: 0,
       w: 1,
@@ -2988,6 +3101,7 @@ function attachLuaJsD2Editor(d2EditorTable, nativeEditors) {
       readOnly: false,
       focused: false,
       fontSize: 10,
+      filterTable: null,
     };
     const editor = window.lua_newtable();
     nativeEditors.push(state);
@@ -3004,14 +3118,30 @@ function attachLuaJsD2Editor(d2EditorTable, nativeEditors) {
     });
     window.lua_tableset(editor, "setText", (_self, text) => {
       state.text = String(text ?? "");
+      state.cursor = state.text.length;
       return [];
     });
-    window.lua_tableset(editor, "setExpression", (_self, text) => {
-      state.text = normalizeTiRichText(String(text ?? ""));
+    window.lua_tableset(editor, "setExpression", (_self, text, cursor, selectionStart) => {
+      state.text = String(text ?? "");
+      state.cursor = clampLuaJsCursor(state, cursor ?? selectionStart ?? state.text.length);
       return [];
     });
     window.lua_tableset(editor, "getText", () => [state.text]);
     window.lua_tableset(editor, "getExpression", () => [state.text]);
+    window.lua_tableset(editor, "getExpressionSelection", () => [state.text, state.cursor, state.cursor]);
+    window.lua_tableset(editor, "setExpressionSelection", (_self, start, end) => {
+      state.cursor = clampLuaJsCursor(state, end ?? start);
+      return [];
+    });
+    window.lua_tableset(editor, "getSelection", () => [state.cursor, state.cursor]);
+    window.lua_tableset(editor, "setSelection", (_self, start, end) => {
+      state.cursor = clampLuaJsCursor(state, end ?? start);
+      return [];
+    });
+    window.lua_tableset(editor, "setSelectionRange", (_self, start, end) => {
+      state.cursor = clampLuaJsCursor(state, end ?? start);
+      return [];
+    });
     window.lua_tableset(editor, "setReadOnly", (_self, value) => {
       state.readOnly = Boolean(value);
       return [];
@@ -3030,7 +3160,16 @@ function attachLuaJsD2Editor(d2EditorTable, nativeEditors) {
       state.fontSize = Number(value) || state.fontSize;
       return [];
     });
-    for (const name of ["registerFilter", "setBorder", "setBorderColor", "setColorable", "setDisable2DinRT", "setMainFont", "setSelectable", "setSizeChangeListener", "setTextChangeListener", "setTextColor", "setWordWrapWidth"]) {
+    window.lua_tableset(editor, "registerFilter", (_self, filterTable) => {
+      state.filterTable = filterTable || null;
+      return [];
+    });
+    window.lua_tableset(editor, "createMathBox", () => {
+      if (!state.text) state.text = "\\0el {}";
+      state.cursor = clampLuaJsCursor(state, 6);
+      return [];
+    });
+    for (const name of ["setBorder", "setBorderColor", "setColorable", "setDisable2DinRT", "setMainFont", "setSelectable", "setSizeChangeListener", "setTextChangeListener", "setTextColor", "setWordWrapWidth"]) {
       window.lua_tableset(editor, name, () => []);
     }
     return editor;
@@ -3038,6 +3177,12 @@ function attachLuaJsD2Editor(d2EditorTable, nativeEditors) {
   window.lua_tableset(d2EditorTable, "newRichText", () => [createEditor()]);
   window.lua_tableset(d2EditorTable, "createMathBox", () => [createEditor()]);
   window.lua_tableset(d2EditorTable, "createChemBox", () => [createEditor()]);
+}
+
+function clampLuaJsCursor(state, value) {
+  const numeric = Number(value);
+  if (!Number.isFinite(numeric)) return String(state?.text || "").length;
+  return Math.max(0, Math.min(String(state?.text || "").length, Math.trunc(numeric)));
 }
 
 function normalizeTiRichText(text) {
@@ -3065,7 +3210,7 @@ function drawLuaJsNativeEditors(ctx, nativeEditors) {
     ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
     ctx.fillStyle = "#000000";
     ctx.font = `${Math.max(9, Number(state.fontSize) || 10)}px sans-serif`;
-    const lines = wrapLuaJsEditorText(ctx, state.text, Math.max(20, w - 8));
+    const lines = wrapLuaJsEditorText(ctx, normalizeTiRichText(state.text), Math.max(20, w - 8));
     const lineHeight = Math.max(12, (Number(state.fontSize) || 10) + 3);
     for (let index = 0; index < lines.length; index += 1) {
       const baseline = y + 4 + (index + 1) * lineHeight;

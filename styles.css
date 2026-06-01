@@ -313,6 +313,30 @@ button:disabled {
   box-shadow: 0 8px 20px rgb(132 204 22 / 18%);
 }
 
+.beige-tool-button {
+  border-color: #f4d99f;
+  background: #fdecc8;
+  color: #9a6a16;
+  font-weight: 800;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 45%), 0 1px 0 rgb(154 106 22 / 8%);
+}
+
+.beige-tool-button:hover {
+  background: #fbdc9a;
+  box-shadow: 0 8px 20px rgb(154 106 22 / 16%);
+}
+
+.green-tool-button {
+  background: #d9f99d;
+  color: #3f6212;
+  font-weight: 800;
+}
+
+.green-tool-button:hover {
+  background: #bef264;
+  box-shadow: 0 8px 20px rgb(132 204 22 / 18%);
+}
+
 .doctor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.75fr);
