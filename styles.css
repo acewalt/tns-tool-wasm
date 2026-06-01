@@ -710,6 +710,7 @@ button:disabled {
   color: #111827;
   pointer-events: none;
   overflow: hidden;
+  user-select: none;
 }
 
 .lua-editor {
@@ -722,6 +723,7 @@ button:disabled {
 
 .lua-editor::selection {
   background: transparent;
+  color: transparent;
 }
 
 .lua-side {

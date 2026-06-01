@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-luajs-preview-symbols-local";
+const SOURCE_VERSION = "2026-06-01-luajs-preview-basicfunc-local";
 
 const I18N = {
   es: {
@@ -1960,6 +1960,7 @@ function showLuaEditor(item) {
     const caret = editor.selectionStart;
     editor.setSelectionRange(caret, caret);
     editor.blur();
+    window.getSelection?.()?.removeAllRanges?.();
     showLuaPreview(editor.value, item).catch((error) => {
       log.textContent += `\n[ERROR] Preview Lua: ${error.message}`;
     });
@@ -2199,6 +2200,7 @@ tree = ET.parse(path)
 root = tree.getroot()
 variables = {}
 functions = []
+basic_functions = {}
 for element in root.iter():
     if local_name(element.tag) != "e":
         continue
@@ -2217,11 +2219,13 @@ for element in root.iter():
         continue
     if params or (value or "").lstrip().startswith(("Func", "Prgm")):
         functions.append(name)
+        if (value or "").lstrip().startswith("Func"):
+            basic_functions[name] = {"params": params, "body": value}
     else:
         converted = convert(value)
         if converted is not None:
             variables[name] = converted
-json.dumps({"variables": variables, "functions": functions})
+json.dumps({"variables": variables, "functions": functions, "basicFunctions": basic_functions})
 `);
   const raw = JSON.parse(payload);
   const convertValue = (value) => {
@@ -2231,6 +2235,7 @@ json.dumps({"variables": variables, "functions": functions})
   return {
     variables: Object.fromEntries(Object.entries(raw.variables || {}).map(([key, value]) => [key, convertValue(value)])),
     functions: raw.functions || [],
+    basicFunctions: raw.basicFunctions || {},
   };
 }
 
@@ -2288,6 +2293,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.lua_tableset(global.G.str.platform, "window", previewWindow);
 
   const store = { ...symbols.variables };
+  const basicFunctions = { ...(symbols.basicFunctions || {}) };
   const varTable = ensureLuaJsTable("var");
   const stringTable = ensureLuaJsTable("string");
   const mathTable = ensureLuaJsTable("math");
@@ -2305,15 +2311,20 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.lua_tableset(stringTable, "find", luaJsStringFind);
   global.lua_tableset(stringTable, "match", luaJsStringMatch);
   global.lua_tableset(stringTable, "gsub", luaJsStringGsub);
-  global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global));
+  global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global, basicFunctions));
 
   const userCode = global.lua_parser.parse(safeCode).split("\n").slice(19).join("\n");
   for (const [name, value] of Object.entries(store)) {
     if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) global.G.str[name] = value;
   }
+  for (const [name, definition] of Object.entries(basicFunctions)) {
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+      global.G.str[name] = (...args) => [evaluateTiBasicFunction(definition, args, store, basicFunctions)];
+    }
+  }
   for (const name of symbols.functions || []) {
     if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) && !global.G.str[name]) {
-      global.G.str[name] = () => [null];
+      global.G.str[name] = () => [0];
     }
   }
   (0, eval)(userCode);
@@ -2620,9 +2631,21 @@ function escapeRegExp(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-function luaJsMathEval(expr, store, global) {
+function luaJsMathEval(expr, store, global, basicFunctions = {}) {
   const source = String(expr ?? "");
   if (source.includes("true => true")) return [true];
+  const defineMatch = /^Define\s+([A-Za-z_][A-Za-z0-9_]*)\(([^)]*)\)=\s*(Func[\s\S]*EndFunc)$/i.exec(source);
+  if (defineMatch) {
+    basicFunctions[defineMatch[1]] = { params: defineMatch[2], body: defineMatch[3] };
+    global.G.str[defineMatch[1]] = (...args) => [evaluateTiBasicFunction(basicFunctions[defineMatch[1]], args, store, basicFunctions)];
+    return [null];
+  }
+  const nsolveMatch = /^nsolve\((.*),\s*([A-Za-z_][A-Za-z0-9_]*)\)$/i.exec(source);
+  if (nsolveMatch) {
+    return [evaluateTiEquationForVariable(nsolveMatch[1], nsolveMatch[2], store, basicFunctions)];
+  }
+  const numeric = evaluateTiMathExpression(source, store, basicFunctions);
+  if (Number.isFinite(numeric)) return [numeric];
   const newMatMatch = /^NewMat\((\d+),\s*(\d+)\)$/i.exec(source);
   if (newMatMatch) {
     return [createLuaJsMatrix(Number(newMatMatch[1]), Number(newMatMatch[2]), global)];
@@ -2636,6 +2659,131 @@ function luaJsMathEval(expr, store, global) {
     return [matrix];
   }
   return [null];
+}
+
+function evaluateTiEquationForVariable(equation, target, store, basicFunctions) {
+  const parts = splitTopLevel(String(equation), "=");
+  if (parts.length === 2) {
+    const left = parts[0].trim();
+    const right = parts[1].trim();
+    if (left === target) return evaluateTiMathExpression(right, store, basicFunctions);
+    if (right === target) return evaluateTiMathExpression(left, store, basicFunctions);
+  }
+  return evaluateTiMathExpression(equation, store, basicFunctions);
+}
+
+function evaluateTiBasicFunction(definition, args, store, basicFunctions) {
+  const params = String(definition.params || "").split(",").map((item) => item.trim()).filter(Boolean);
+  const scope = { ...store };
+  params.forEach((name, index) => {
+    scope[name] = Number(args[index]) || 0;
+  });
+  const body = String(definition.body || "")
+    .replace(/^Func:?\s*/i, "")
+    .replace(/:?\s*EndFunc\s*$/i, "");
+  let lastValue = 0;
+  for (const raw of body.split(":")) {
+    const statement = raw.trim();
+    if (!statement || /^Local\b/i.test(statement) || /^Return\b/i.test(statement)) continue;
+    const colonAssign = /^([A-Za-z_][A-Za-z0-9_]*)\s*:=\s*(.+)$/.exec(statement);
+    const arrowAssign = /^(.+?)(?:->|→)\s*([A-Za-z_][A-Za-z0-9_]*)$/.exec(statement);
+    if (colonAssign || arrowAssign) {
+      const dest = colonAssign ? colonAssign[1].trim() : arrowAssign[2].trim();
+      const expr = colonAssign ? colonAssign[2].trim() : arrowAssign[1].trim();
+      scope[dest] = evaluateTiMathExpression(expr, scope, basicFunctions);
+      continue;
+    }
+    lastValue = evaluateTiMathExpression(statement, scope, basicFunctions);
+  }
+  return lastValue;
+}
+
+function evaluateTiMathExpression(expression, scope = {}, basicFunctions = {}) {
+  let expr = String(expression || "")
+    .replace(/∞/g, "Infinity")
+    .replace(/[−–]/g, "-")
+    .replace(/√\s*\(/g, "sqrt(")
+    .replace(//g, "e")
+    .replace(/\^/g, "**");
+  expr = expr.replace(/\b(pi|π)\b/gi, "PI");
+  expr = expr.replace(/\b(normCdf|binomCdf|binomcdf|invNorm|nCr|ncr|exp|ln|sqrt|sin|cos|tan|abs)\s*\(/gi, (match, name) => `${name.toLowerCase()}(`);
+  expr = expr.replace(/\b[A-Za-z_][A-Za-z0-9_]*\b/g, (name) => {
+    const lower = name.toLowerCase();
+    if (["Infinity", "PI", "normcdf", "binomcdf", "invnorm", "ncr", "exp", "ln", "sqrt", "sin", "cos", "tan", "abs", "when"].includes(name) || ["infinity", "pi"].includes(lower)) return name;
+    if (Object.prototype.hasOwnProperty.call(basicFunctions, name)) return name;
+    if (Object.prototype.hasOwnProperty.call(scope, name)) return String(Number(scope[name]) || 0);
+    return "0";
+  });
+  try {
+    const customNames = Object.keys(basicFunctions).filter((name) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name));
+    const customFns = customNames.map((name) => (...args) => evaluateTiBasicFunction(basicFunctions[name], args, scope, basicFunctions));
+    const fn = Function("normcdf", "binomcdf", "invnorm", "ncr", "exp", "ln", "sqrt", "sin", "cos", "tan", "abs", "PI", "when", ...customNames, `"use strict"; return (${expr});`);
+    return Number(fn(normalCdf, binomCdf, invNorm, nCr, Math.exp, Math.log, Math.sqrt, Math.sin, Math.cos, Math.tan, Math.abs, Math.PI, (cond, a, b) => (cond ? a : b), ...customFns));
+  } catch (_error) {
+    return 0;
+  }
+}
+
+function splitTopLevel(text, delimiter) {
+  const parts = [];
+  let depth = 0;
+  let current = "";
+  for (const char of text) {
+    if (char === "(") depth += 1;
+    if (char === ")") depth -= 1;
+    if (char === delimiter && depth === 0) {
+      parts.push(current);
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+  parts.push(current);
+  return parts;
+}
+
+function normalCdf(a, b, mean = 0, sd = 1) {
+  return 0.5 * (1 + erf((b - mean) / (sd * Math.SQRT2))) - 0.5 * (1 + erf((a - mean) / (sd * Math.SQRT2)));
+}
+
+function erf(x) {
+  const sign = x < 0 ? -1 : 1;
+  const value = Math.abs(x);
+  const t = 1 / (1 + 0.3275911 * value);
+  const y = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-value * value);
+  return sign * y;
+}
+
+function invNorm(p, mean = 0, sd = 1) {
+  if (p <= 0) return -Infinity;
+  if (p >= 1) return Infinity;
+  let low = -10;
+  let high = 10;
+  for (let i = 0; i < 80; i += 1) {
+    const mid = (low + high) / 2;
+    const cdf = 0.5 * (1 + erf(mid / Math.SQRT2));
+    if (cdf < p) low = mid;
+    else high = mid;
+  }
+  return mean + sd * ((low + high) / 2);
+}
+
+function nCr(n, r) {
+  n = Math.round(n);
+  r = Math.round(r);
+  if (r < 0 || n < 0 || r > n) return 0;
+  r = Math.min(r, n - r);
+  let result = 1;
+  for (let i = 1; i <= r; i += 1) result = (result * (n - r + i)) / i;
+  return result;
+}
+
+function binomCdf(n, p, low, high) {
+  let sum = 0;
+  for (let k = Math.max(0, Math.round(low)); k <= Math.min(n, Math.round(high)); k += 1) {
+    sum += nCr(n, k) * p ** k * (1 - p) ** (n - k);
+  }
+  return sum;
 }
 
 function createLuaJsMatrix(rows, cols, global, fill = 0) {
