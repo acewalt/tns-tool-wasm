@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-luajs-preview-nsolve-local";
+const SOURCE_VERSION = "2026-06-01-luajs-preview-numeric-local";
 
 const I18N = {
   es: {
@@ -2310,8 +2310,9 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.G.str.platform = platformTable;
   global.G.str.on = onTable;
   global.lua_tableset(varTable, "store", (key, value) => {
-    store[String(key)] = value;
-    global.G.str[String(key)] = value;
+    const cleanValue = normalizeLuaJsNumericValue(value);
+    store[String(key)] = cleanValue;
+    global.G.str[String(key)] = cleanValue;
     return [];
   });
   global.lua_tableset(varTable, "recall", (key) => [Object.prototype.hasOwnProperty.call(store, String(key)) ? store[String(key)] : null]);
@@ -2674,10 +2675,10 @@ function luaJsMathEval(expr, store, global, basicFunctions = {}) {
   }
   const nsolveMatch = /^nsolve\((.*),\s*([^)]+)\)$/i.exec(source);
   if (nsolveMatch) {
-    return [evaluateTiEquationForVariable(nsolveMatch[1], nsolveMatch[2].trim(), store, basicFunctions)];
+    return [normalizeLuaJsNumericValue(evaluateTiEquationForVariable(nsolveMatch[1], nsolveMatch[2].trim(), store, basicFunctions))];
   }
   const numeric = evaluateTiMathExpression(source, store, basicFunctions);
-  if (Number.isFinite(numeric)) return [numeric];
+  if (Number.isFinite(numeric)) return [normalizeLuaJsNumericValue(numeric)];
   const newMatMatch = /^NewMat\((\d+),\s*(\d+)\)$/i.exec(source);
   if (newMatMatch) {
     return [createLuaJsMatrix(Number(newMatMatch[1]), Number(newMatMatch[2]), global)];
@@ -2703,6 +2704,20 @@ function evaluateTiEquationForVariable(equation, target, store, basicFunctions) 
     return solveTiEquation(left, right, target, store, basicFunctions);
   }
   return evaluateTiMathExpression(equation, store, basicFunctions);
+}
+
+function normalizeLuaJsNumericValue(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? roundForLuaPreview(value) : 0;
+  if (typeof value === "string") {
+    const numeric = Number(value.replace(/[−–]/g, "-"));
+    return Number.isFinite(numeric) ? roundForLuaPreview(numeric) : value;
+  }
+  return value;
+}
+
+function roundForLuaPreview(value) {
+  if (!Number.isFinite(value)) return 0;
+  return Math.round(value * 1e12) / 1e12;
 }
 
 function solveTiEquation(left, right, target, store, basicFunctions) {
