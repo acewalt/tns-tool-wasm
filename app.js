@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-compact-menu-animations-local";
+const SOURCE_VERSION = "2026-06-01-menu-layout-polish-local";
 
 const I18N = {
   es: {
@@ -548,15 +548,40 @@ function toggleCollapsible(element, afterChange = null) {
   if (!element) return;
   if (element.classList.contains("collapsed")) {
     element.classList.remove("collapsed", "closing");
-    if (typeof afterChange === "function") afterChange();
+    element.style.overflow = "hidden";
+    element.style.height = "0px";
+    element.style.opacity = "0";
+    window.requestAnimationFrame(() => {
+      element.style.transition = "height 320ms cubic-bezier(0.2, 0.9, 0.2, 1), opacity 260ms ease";
+      element.style.height = `${element.scrollHeight}px`;
+      element.style.opacity = "1";
+      window.setTimeout(() => {
+        element.style.height = "";
+        element.style.opacity = "";
+        element.style.overflow = "";
+        element.style.transition = "";
+        if (typeof afterChange === "function") afterChange();
+      }, 330);
+    });
     return;
   }
+  element.style.height = `${element.offsetHeight}px`;
+  element.style.overflow = "hidden";
   element.classList.add("closing");
+  window.requestAnimationFrame(() => {
+    element.style.transition = "height 260ms ease, opacity 220ms ease";
+    element.style.height = "0px";
+    element.style.opacity = "0";
+  });
   window.setTimeout(() => {
     element.classList.add("collapsed");
     element.classList.remove("closing");
+    element.style.height = "";
+    element.style.opacity = "";
+    element.style.overflow = "";
+    element.style.transition = "";
     if (typeof afterChange === "function") afterChange();
-  }, 260);
+  }, 270);
 }
 
 function syncToggleLabels() {

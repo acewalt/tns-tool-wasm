@@ -89,9 +89,9 @@ body {
 }
 
 .language-buttons button {
-  width: 44px;
+  width: 46px;
   height: 34px;
-  padding: 4px;
+  padding: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
@@ -112,11 +112,12 @@ body {
 }
 
 .language-buttons img {
-  width: calc(100% - 2px);
-  height: calc(100% - 2px);
+  width: 32px;
+  height: 22px;
   object-fit: contain;
   border-radius: 4px;
   display: block;
+  margin: auto;
 }
 
 [data-theme="dark"] .language-buttons button {
@@ -394,6 +395,12 @@ button:disabled {
 
 .menu-trigger:hover {
   transform: translateY(-2px) scale(1.04);
+  background: #254f82;
+  box-shadow: 0 12px 28px rgb(15 23 42 / 16%);
+}
+
+.green-menu-trigger:hover {
+  background: linear-gradient(135deg, var(--lime), var(--lime2));
   box-shadow: 0 0 30px rgb(183 243 77 / 35%), 0 0 80px rgb(183 243 77 / 12%);
 }
 
@@ -475,14 +482,11 @@ button:disabled {
   transform: none;
 }
 
-.menu-panel .beige-tool-button {
-  background: rgb(253 236 200 / 94%);
-  color: #9a6a16;
-}
-
+.menu-panel .beige-tool-button,
 .menu-panel .success-button {
-  background: rgb(217 249 157 / 94%);
-  color: #3f6212;
+  background: transparent;
+  color: #e5e7eb;
+  box-shadow: none;
 }
 
 .secondary-button {
@@ -1327,6 +1331,22 @@ button:disabled {
   color: #d1fae5;
   border-radius: 8px;
   font: 13px Consolas, monospace;
+}
+
+@media (max-width: 1100px) {
+  .doctor-grid,
+  .lua-doctor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .doctor-side,
+  .lua-side {
+    min-width: 0;
+  }
+
+  .summary-row {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 @media (max-width: 860px) {
