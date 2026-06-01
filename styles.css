@@ -11,6 +11,19 @@
   --button-hover: #bfdbfe;
 }
 
+[data-theme="dark"] {
+  --bg: #0b1220;
+  --panel: #111827;
+  --line: #263244;
+  --text: #e5eefb;
+  --muted: #9fb0c6;
+  --accent: #2dd4bf;
+  --accent-strong: #14b8a6;
+  --button-bg: #1e3a5f;
+  --button-text: #bfdbfe;
+  --button-hover: #254b78;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -112,6 +125,18 @@ body {
   background: #0f172a;
 }
 
+.theme-button {
+  width: 100%;
+  min-width: 150px;
+  padding: 8px 14px;
+  background: var(--button-bg);
+  color: var(--button-text);
+}
+
+.theme-button:hover {
+  background: var(--button-hover);
+}
+
 .layout {
   display: grid;
   grid-template-columns: repeat(2, minmax(320px, 1fr));
@@ -125,6 +150,41 @@ body {
   border-radius: 12px;
   padding: 16px;
   box-shadow: 0 8px 28px rgb(15 23 42 / 6%);
+}
+
+[data-theme="dark"] .shell-header,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .modal {
+  background: var(--panel);
+}
+
+[data-theme="dark"] .file-button,
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select,
+[data-theme="dark"] .code-shell,
+[data-theme="dark"] .editor-wrap,
+[data-theme="dark"] .lua-code-shell,
+[data-theme="dark"] .lua-editor-wrap,
+[data-theme="dark"] .summary,
+[data-theme="dark"] .problem-table,
+[data-theme="dark"] .lua-problem-table {
+  background: #0f172a;
+  color: var(--text);
+  border-color: var(--line);
+}
+
+[data-theme="dark"] .line-numbers {
+  background: #111827;
+  color: #9fb0c6;
+}
+
+[data-theme="dark"] #xml-highlight,
+[data-theme="dark"] #py-highlight,
+[data-theme="dark"] .lua-highlight,
+[data-theme="dark"] .tok-plain,
+[data-theme="dark"] .tok-variable {
+  color: #e5eefb;
 }
 
 .panel h2 {
@@ -675,6 +735,18 @@ button:disabled {
   margin-bottom: 10px;
 }
 
+.preview-text-capture {
+  width: min(318px, 100%);
+  margin: 0 auto 10px;
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font: 13px Consolas, monospace;
+  color: var(--text);
+  background: var(--panel);
+}
+
 .lua-toolbar {
   display: flex;
   align-items: center;
@@ -1013,15 +1085,177 @@ button:disabled {
 }
 
 @media (max-width: 860px) {
+  body {
+    font-size: 15px;
+  }
+
+  .shell-header {
+    align-items: flex-start;
+    gap: 10px;
+    padding: 14px 12px;
+  }
+
+  .shell-header img {
+    width: 42px;
+    height: 42px;
+  }
+
+  .shell-header h1 {
+    font-size: clamp(24px, 8vw, 34px);
+    line-height: 1.05;
+  }
+
+  .shell-header p {
+    font-size: 15px;
+    line-height: 1.25;
+  }
+
+  .header-actions {
+    min-width: 116px;
+    gap: 6px;
+  }
+
+  .language-buttons {
+    gap: 4px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+  }
+
+  .language-buttons button {
+    width: 36px;
+    height: 30px;
+  }
+
+  .about-button,
+  .theme-button {
+    min-width: 116px;
+    padding: 8px 10px;
+    font-size: 13px;
+  }
+
   .layout {
     grid-template-columns: 1fr;
+    padding: 10px;
+    gap: 10px;
+  }
+
+  .panel {
+    padding: 14px;
+    border-radius: 10px;
+  }
+
+  .doctor-launcher,
+  .module-launcher {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .doctor-launcher button,
+  .module-launcher button {
+    width: 100%;
   }
 
   .doctor-grid {
     grid-template-columns: 1fr;
+    min-height: 0;
   }
 
   .module-grid {
     grid-template-columns: 1fr;
+  }
+
+  .doctor-toolbar {
+    gap: 8px;
+  }
+
+  .doctor-toolbar h2 {
+    width: 100%;
+  }
+
+  .doctor-toolbar button,
+  .doctor-toolbar .file-button {
+    flex: 1 1 calc(50% - 8px);
+    text-align: center;
+    font-size: 13px;
+    padding: 9px 10px;
+  }
+
+  .doctor-toolbar select,
+  #xml-line-label,
+  #py-line-label,
+  #lua-line-label {
+    width: 100%;
+  }
+
+  .code-shell,
+  .editor-wrap,
+  #xml-code,
+  #py-code {
+    height: 420px;
+    min-height: 420px;
+    max-height: 420px;
+  }
+
+  .doctor-side,
+  .lua-side {
+    min-height: 0;
+  }
+
+  .summary-row {
+    grid-template-columns: 1fr;
+  }
+
+  .modal-backdrop {
+    align-items: flex-start;
+    padding: 12px;
+    overflow: auto;
+  }
+
+  .modal {
+    width: 100%;
+    max-height: none;
+    padding: 14px;
+  }
+
+  .lua-modal,
+  .lua-preview-modal {
+    width: 100%;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .lua-toolbar {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .lua-toolbar h2 {
+    width: 100%;
+    font-size: 28px;
+    line-height: 1.15;
+  }
+
+  .lua-toolbar button {
+    flex: 1 1 calc(50% - 8px);
+    font-size: 13px;
+  }
+
+  .lua-doctor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .lua-code-shell,
+  .lua-editor-wrap {
+    height: 420px;
+  }
+
+  #lua-preview-canvas {
+    width: min(318px, 100%);
+    height: auto;
+  }
+
+  .preview-controls button {
+    flex: 1 1 calc(33.333% - 8px);
+    padding: 9px 8px;
   }
 }

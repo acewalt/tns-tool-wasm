@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-lua-caret-key-local";
+const SOURCE_VERSION = "2026-06-01-mobile-theme-input-local";
 
 const I18N = {
   es: {
@@ -312,6 +312,7 @@ const I18N = {
 };
 
 let language = localStorage.getItem("tns-tool-language") || "es";
+let theme = localStorage.getItem("tns-tool-theme") || "light";
 
 const PROBLEM_TRANSLATIONS = {
   en: {
@@ -523,6 +524,17 @@ function applyLanguage(nextLanguage = language) {
     }
 }
 
+function applyTheme(nextTheme = theme) {
+  theme = nextTheme === "dark" ? "dark" : "light";
+  localStorage.setItem("tns-tool-theme", theme);
+  document.documentElement.dataset.theme = theme;
+  const button = document.querySelector("#theme-btn");
+  if (button) {
+    button.textContent = theme === "dark" ? "☀" : "☾";
+    button.title = theme === "dark" ? "Modo claro" : "Modo oscuro";
+  }
+}
+
 function syncToggleLabels() {
   const xmlPanel = document.querySelector("#xml-doctor-panel");
   const normalModule = document.querySelector("#normal-module");
@@ -537,6 +549,7 @@ function syncToggleLabels() {
 function setReady(value) {
   for (const button of document.querySelectorAll("button")) {
     if (button.closest("#language-buttons")) continue;
+    if (button.id === "theme-btn" || button.id === "about-btn") continue;
     button.disabled = !value;
   }
 }
@@ -2062,6 +2075,7 @@ async function showLuaPreview(code, item = null) {
         <button type="button" data-event="on.arrowUp">Up</button>
         <button type="button" data-event="on.arrowDown">Down</button>
       </div>
+      <input id="lua-preview-input" class="preview-text-capture" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Entrada: escribe simbolos aqui" />
       <pre id="lua-preview-log" class="mini-log"></pre>
       <div class="modal-actions">
         <button type="button" id="lua-preview-copy-log">${escapeHtml(t("copyLog"))}</button>
@@ -2072,6 +2086,7 @@ async function showLuaPreview(code, item = null) {
   const canvas = backdrop.querySelector("#lua-preview-canvas");
   const ctx = canvas.getContext("2d");
   const previewLog = backdrop.querySelector("#lua-preview-log");
+  const textCapture = backdrop.querySelector("#lua-preview-input");
   const symbols = item ? await loadLuaPreviewSymbols(item).catch(() => ({})) : {};
   let runtime;
   try {
@@ -2085,13 +2100,21 @@ async function showLuaPreview(code, item = null) {
   for (const button of backdrop.querySelectorAll(".preview-controls button")) {
     button.addEventListener("click", () => {
       runtime.callEvent(button.dataset.event);
+      textCapture.focus();
     });
   }
+  textCapture.addEventListener("input", () => {
+    const value = textCapture.value;
+    if (!value) return;
+    for (const char of value) runtime.charIn(char);
+    textCapture.value = "";
+  });
   canvas.addEventListener("click", (event) => {
     const rect = canvas.getBoundingClientRect();
     const x = Math.round((event.clientX - rect.left) * (canvas.width / rect.width));
     const y = Math.round((event.clientY - rect.top) * (canvas.height / rect.height));
     if (runtime.mouseClick) runtime.mouseClick(x, y);
+    textCapture.focus();
   });
   const keyHandler = (event) => {
     if (!backdrop.isConnected) return;
@@ -2103,6 +2126,7 @@ async function showLuaPreview(code, item = null) {
     else runtime.callEvent(mapped.event);
   };
   document.addEventListener("keydown", keyHandler);
+  setTimeout(() => textCapture.focus(), 50);
   backdrop.querySelector("#lua-preview-copy-log").addEventListener("click", async () => {
     const text = previewLog.textContent || "";
     try {
@@ -4641,6 +4665,7 @@ function downloadPyDoctorFile() {
 
 function wireEvents() {
   document.querySelector("#about-btn").addEventListener("click", showAbout);
+  document.querySelector("#theme-btn").addEventListener("click", () => applyTheme(theme === "dark" ? "light" : "dark"));
   for (const button of document.querySelectorAll("#language-buttons button")) {
     button.addEventListener("click", () => applyLanguage(button.dataset.lang));
   }
@@ -4712,6 +4737,7 @@ function wireEvents() {
 }
 
 applyLanguage(language);
+applyTheme(theme);
 wireEvents();
 initPyodideRuntime().catch((err) => {
   if (statusEl) statusEl.textContent = "Error";
