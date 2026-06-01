@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-ti-basic-project-symbols-local";
+const SOURCE_VERSION = "2026-06-01-text-highlight-local";
 
 const I18N = {
   es: {
@@ -718,7 +718,7 @@ function spanToken(className, value) {
 }
 
 function highlightTiLine(line, variables) {
-  const keywords = new Set(["Define", "LibPriv", "LibPub", "Prgm", "Func", "Local", "If", "Then", "Else", "ElseIf", "EndIf", "Disp", "Request", "Return", "EndPrgm", "EndFunc"]);
+  const keywords = new Set(["Define", "LibPriv", "LibPub", "Prgm", "Func", "Local", "If", "Then", "Else", "ElseIf", "EndIf", "Disp", "Request", "Text", "Return", "EndPrgm", "EndFunc"]);
   let output = "";
   let index = 0;
   while (index < line.length) {
