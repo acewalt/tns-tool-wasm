@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-luajs-preview-unicode-local";
+const SOURCE_VERSION = "2026-06-01-luajs-preview-d2editor-local";
 
 const I18N = {
   es: {
@@ -2294,11 +2294,13 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
 
   const store = { ...symbols.variables };
   const basicFunctions = { ...(symbols.basicFunctions || {}) };
+  const nativeEditors = [];
   const varTable = ensureLuaJsTable("var");
   const stringTable = ensureLuaJsTable("string");
   const mathTable = ensureLuaJsTable("math");
   const platformTable = ensureLuaJsTable("platform");
   const onTable = ensureLuaJsTable("on");
+  const d2EditorTable = ensureLuaJsTable("D2Editor");
   global.G.str.platform = platformTable;
   global.G.str.on = onTable;
   global.lua_tableset(varTable, "store", (key, value) => {
@@ -2312,6 +2314,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.lua_tableset(stringTable, "match", luaJsStringMatch);
   global.lua_tableset(stringTable, "gsub", luaJsStringGsub);
   global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global, basicFunctions));
+  attachLuaJsD2Editor(d2EditorTable, nativeEditors);
 
   const userCode = global.lua_parser.parse(safeCode).split("\n").slice(19).join("\n");
   for (const [name, value] of Object.entries(store)) {
@@ -2349,6 +2352,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     clear();
     try {
       global.callEvent("paint", gc());
+      drawLuaJsNativeEditors(ctx, nativeEditors);
     } catch (error) {
       log(`ERROR repaint LuaJS: ${error.message}\n${compactStack(error)}`);
       throw error;
@@ -2504,6 +2508,7 @@ function hardenLuaJsPreviewRuntime() {
       }
       for (const key in table.floats || {}) props.push(Number(key));
       for (const key in table.bools || {}) props.push(key === "true");
+      reorderLuaJsPairsProps(table, props);
       let cursor = 0;
       return [
         (target) => {
@@ -2520,6 +2525,20 @@ function hardenLuaJsPreviewRuntime() {
       ];
     };
   }
+}
+
+function reorderLuaJsPairsProps(table, props) {
+  const muIndex = props.indexOf("μ");
+  const sigmaIndex = props.indexOf("σ");
+  if (muIndex < 0 || sigmaIndex < 0) return props;
+  const muValue = window.lua_rawget(table, "μ");
+  const sigmaValue = window.lua_rawget(table, "σ");
+  if (muValue !== true || sigmaValue !== true) return props;
+  const insertAt = Math.min(muIndex, sigmaIndex);
+  props.splice(Math.max(muIndex, sigmaIndex), 1);
+  props.splice(Math.min(muIndex, sigmaIndex), 1);
+  props.splice(insertAt, 0, "σ", "μ");
+  return props;
 }
 
 function compactStack(error) {
@@ -2862,6 +2881,128 @@ function luaJsTableToArray(table) {
     values.push(window.lua_tableget(table, index));
   }
   return values;
+}
+
+function attachLuaJsD2Editor(d2EditorTable, nativeEditors) {
+  const createEditor = () => {
+    const state = {
+      text: "",
+      x: 0,
+      y: 0,
+      w: 1,
+      h: 1,
+      visible: true,
+      readOnly: false,
+      focused: false,
+      fontSize: 10,
+    };
+    const editor = window.lua_newtable();
+    nativeEditors.push(state);
+    window.lua_tableset(editor, "__nativeState", state);
+    window.lua_tableset(editor, "move", (_self, x, y) => {
+      state.x = Number(x) || 0;
+      state.y = Number(y) || 0;
+      return [];
+    });
+    window.lua_tableset(editor, "resize", (_self, w, h) => {
+      state.w = Math.max(1, Number(w) || 1);
+      state.h = Math.max(1, Number(h) || 1);
+      return [];
+    });
+    window.lua_tableset(editor, "setText", (_self, text) => {
+      state.text = String(text ?? "");
+      return [];
+    });
+    window.lua_tableset(editor, "setExpression", (_self, text) => {
+      state.text = normalizeTiRichText(String(text ?? ""));
+      return [];
+    });
+    window.lua_tableset(editor, "getText", () => [state.text]);
+    window.lua_tableset(editor, "getExpression", () => [state.text]);
+    window.lua_tableset(editor, "setReadOnly", (_self, value) => {
+      state.readOnly = Boolean(value);
+      return [];
+    });
+    window.lua_tableset(editor, "setFocus", (_self, value) => {
+      state.focused = Boolean(value);
+      return [];
+    });
+    window.lua_tableset(editor, "hasFocus", () => [state.focused]);
+    window.lua_tableset(editor, "setVisible", (_self, value) => {
+      state.visible = Boolean(value);
+      return [];
+    });
+    window.lua_tableset(editor, "isVisible", () => [state.visible]);
+    window.lua_tableset(editor, "setFontSize", (_self, value) => {
+      state.fontSize = Number(value) || state.fontSize;
+      return [];
+    });
+    for (const name of ["registerFilter", "setBorder", "setBorderColor", "setColorable", "setDisable2DinRT", "setMainFont", "setSelectable", "setSizeChangeListener", "setTextChangeListener", "setTextColor", "setWordWrapWidth"]) {
+      window.lua_tableset(editor, name, () => []);
+    }
+    return editor;
+  };
+  window.lua_tableset(d2EditorTable, "newRichText", () => [createEditor()]);
+  window.lua_tableset(d2EditorTable, "createMathBox", () => [createEditor()]);
+  window.lua_tableset(d2EditorTable, "createChemBox", () => [createEditor()]);
+}
+
+function normalizeTiRichText(text) {
+  return text
+    .replace(/\\0el\s*\{\s*/g, "")
+    .replace(/\}/g, "")
+    .replace(//g, "e");
+}
+
+function drawLuaJsNativeEditors(ctx, nativeEditors) {
+  for (const state of nativeEditors) {
+    if (!state.visible) continue;
+    const x = Math.max(0, Number(state.x) || 0);
+    const y = Math.max(0, Number(state.y) || 0);
+    const w = Math.max(1, Number(state.w) || 1);
+    const h = Math.max(1, Number(state.h) || 1);
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(x, y, w, h);
+    ctx.clip();
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = "#808080";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, Math.max(0, w - 1), Math.max(0, h - 1));
+    ctx.fillStyle = "#000000";
+    ctx.font = `${Math.max(9, Number(state.fontSize) || 10)}px sans-serif`;
+    const lines = wrapLuaJsEditorText(ctx, state.text, Math.max(20, w - 8));
+    const lineHeight = Math.max(12, (Number(state.fontSize) || 10) + 3);
+    for (let index = 0; index < lines.length; index += 1) {
+      const baseline = y + 4 + (index + 1) * lineHeight;
+      if (baseline > y + h) break;
+      ctx.fillText(lines[index], x + 4, baseline);
+    }
+    ctx.restore();
+  }
+}
+
+function wrapLuaJsEditorText(ctx, text, width) {
+  const output = [];
+  for (const line of String(text || "").split("\n")) {
+    if (!line) {
+      output.push("");
+      continue;
+    }
+    let current = "";
+    for (const word of line.split(/(\s+)/)) {
+      const next = current + word;
+      if (current && ctx.measureText(next).width > width) {
+        output.push(current.trimEnd());
+        current = word.trimStart();
+      } else {
+        current = next;
+      }
+    }
+    output.push(current);
+  }
+  return output;
 }
 
 function attachLuaJsGc(gcTable, ctx, canvas) {
