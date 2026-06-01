@@ -399,6 +399,10 @@ button:disabled {
   box-shadow: 0 12px 28px rgb(15 23 42 / 16%);
 }
 
+html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
+  color: #172033;
+}
+
 .green-menu-trigger:hover {
   background: linear-gradient(135deg, var(--lime), var(--lime2));
   box-shadow: 0 0 30px rgb(183 243 77 / 35%), 0 0 80px rgb(183 243 77 / 12%);

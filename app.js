@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-menu-layout-polish-local";
+const SOURCE_VERSION = "2026-06-01-edit-hover-contrast-local";
 
 const I18N = {
   es: {
