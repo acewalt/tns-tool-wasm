@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-luajs-preview-gsub-local";
+const SOURCE_VERSION = "2026-06-01-luajs-preview-symbols-local";
 
 const I18N = {
   es: {
@@ -1956,7 +1956,7 @@ function showLuaEditor(item) {
     highlight.scrollLeft = editor.scrollLeft;
   });
   backdrop.querySelector("#lua-syntax").addEventListener("click", analyze);
-  backdrop.querySelector("#lua-preview").addEventListener("click", () => showLuaPreview(editor.value).catch((error) => {
+  backdrop.querySelector("#lua-preview").addEventListener("click", () => showLuaPreview(editor.value, item).catch((error) => {
     log.textContent += `\n[ERROR] Preview Lua: ${error.message}`;
   }));
   updateLines();
@@ -2041,7 +2041,7 @@ function tiDocumentNameError(name) {
   return "";
 }
 
-async function showLuaPreview(code) {
+async function showLuaPreview(code, item = null) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
@@ -2066,9 +2066,10 @@ async function showLuaPreview(code) {
   const canvas = backdrop.querySelector("#lua-preview-canvas");
   const ctx = canvas.getContext("2d");
   const previewLog = backdrop.querySelector("#lua-preview-log");
+  const symbols = item ? await loadLuaPreviewSymbols(item).catch(() => ({})) : {};
   let runtime;
   try {
-    runtime = await createLuaJsPreviewRuntime(code, ctx, canvas, previewLog);
+    runtime = await createLuaJsPreviewRuntime(code, ctx, canvas, previewLog, symbols);
     runtime.boot();
   } catch (error) {
     previewLog.textContent = `LuaJS no pudo iniciar (${error.message}). Usando preview limitado.\n${error.stack || ""}`;
@@ -2131,6 +2132,103 @@ function previewKeyboardEventToLua(event) {
   return null;
 }
 
+async function loadLuaPreviewSymbols(item) {
+  if (!item?.file || !window.pyodide) return {};
+  pyodide.globals.set("wasm_lua_symbol_file", item.file);
+  const payload = await pyodide.runPythonAsync(`
+import json
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+def scalar(value):
+    text = (value or "").strip()
+    if len(text) >= 2 and text[0] == '"' and text[-1] == '"':
+        return text[1:-1]
+    if re.fullmatch(r"-?\\d+", text):
+        return int(text)
+    if re.fullmatch(r"-?\\d+(?:\\.\\d+)?", text):
+        return float(text)
+    return None
+
+def parse_list(text):
+    text = (text or "").strip()
+    if not (text.startswith("{") and text.endswith("}")):
+        return None
+    body = text[1:-1].strip()
+    if not body:
+        return []
+    parts = []
+    current = ""
+    quote = False
+    depth = 0
+    for ch in body:
+        if ch == '"':
+            quote = not quote
+        if not quote and ch == "{":
+            depth += 1
+        elif not quote and ch == "}":
+            depth -= 1
+        if ch == "," and not quote and depth == 0:
+            parts.append(current)
+            current = ""
+        else:
+            current += ch
+    parts.append(current)
+    values = []
+    for part in parts:
+        part = part.strip()
+        nested = parse_list(part)
+        values.append(nested if nested is not None else scalar(part))
+    return values
+
+def convert(value):
+    parsed = parse_list(value)
+    if parsed is not None:
+        return parsed
+    return scalar(value)
+
+path = Path(wasm_lua_symbol_file)
+tree = ET.parse(path)
+root = tree.getroot()
+variables = {}
+functions = []
+for element in root.iter():
+    if local_name(element.tag) != "e":
+        continue
+    name = None
+    value = None
+    params = ""
+    for child in element:
+        lname = local_name(child.tag)
+        if lname == "n":
+            name = child.text or ""
+        elif lname == "v":
+            value = child.text or ""
+        elif lname == "p":
+            params = child.text or ""
+    if not name:
+        continue
+    if params or (value or "").lstrip().startswith(("Func", "Prgm")):
+        functions.append(name)
+    else:
+        converted = convert(value)
+        if converted is not None:
+            variables[name] = converted
+json.dumps({"variables": variables, "functions": functions})
+`);
+  const raw = JSON.parse(payload);
+  const convertValue = (value) => {
+    if (Array.isArray(value)) return window.lua_newtable(value.map(convertValue));
+    return value;
+  };
+  return {
+    variables: Object.fromEntries(Object.entries(raw.variables || {}).map(([key, value]) => [key, convertValue(value)])),
+    functions: raw.functions || [],
+  };
+}
+
 const LUAJS_RUNTIME_FILES = [
   "vendor/luajs/lua.js",
   "vendor/luajs/nspire/env.js",
@@ -2154,7 +2252,7 @@ async function loadLuaJsRuntimeSources() {
   return luaJsRuntimeSources;
 }
 
-async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl) {
+async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {}) {
   const sources = await loadLuaJsRuntimeSources();
   for (const source of sources) {
     (0, eval)(source);
@@ -2184,7 +2282,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl) {
   });
   global.lua_tableset(global.G.str.platform, "window", previewWindow);
 
-  const store = {};
+  const store = { ...symbols.variables };
   const varTable = ensureLuaJsTable("var");
   const stringTable = ensureLuaJsTable("string");
   const mathTable = ensureLuaJsTable("math");
@@ -2194,6 +2292,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl) {
   global.G.str.on = onTable;
   global.lua_tableset(varTable, "store", (key, value) => {
     store[String(key)] = value;
+    global.G.str[String(key)] = value;
     return [];
   });
   global.lua_tableset(varTable, "recall", (key) => [Object.prototype.hasOwnProperty.call(store, String(key)) ? store[String(key)] : null]);
@@ -2204,6 +2303,14 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl) {
   global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global));
 
   const userCode = global.lua_parser.parse(safeCode).split("\n").slice(19).join("\n");
+  for (const [name, value] of Object.entries(store)) {
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) global.G.str[name] = value;
+  }
+  for (const name of symbols.functions || []) {
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) && !global.G.str[name]) {
+      global.G.str[name] = () => [null];
+    }
+  }
   (0, eval)(userCode);
 
   let timerId = null;
@@ -2291,6 +2398,8 @@ function hardenLuaJsPreviewRuntime() {
   const originalLen = window.lua_len;
   const originalConcat = window.lua_concat;
   const originalCall = window.lua_call;
+  const originalLt = window.lua_lt;
+  const originalLte = window.lua_lte;
   const emptyIterator = () => [null, null];
   window.lua_tableget = (table, key) => {
     if (table == null || table === false) return null;
@@ -2329,6 +2438,23 @@ function hardenLuaJsPreviewRuntime() {
       return originalCall(func, args);
     } catch (error) {
       if (/metatable|Could not call/.test(String(error?.message || ""))) return [];
+      throw error;
+    }
+  };
+  const safeComparable = (value) => (value == null || value === false ? 0 : value);
+  window.lua_lt = (left, right) => {
+    try {
+      return originalLt(safeComparable(left), safeComparable(right));
+    } catch (error) {
+      if (/Unable to compare/.test(String(error?.message || ""))) return false;
+      throw error;
+    }
+  };
+  window.lua_lte = (left, right) => {
+    try {
+      return originalLte(safeComparable(left), safeComparable(right));
+    } catch (error) {
+      if (/Unable to compare/.test(String(error?.message || ""))) return false;
       throw error;
     }
   };
