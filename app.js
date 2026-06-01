@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-mobile-theme-input-local";
+const SOURCE_VERSION = "2026-06-01-ui-polish-dark-mobile-local";
 
 const I18N = {
   es: {
@@ -1361,15 +1361,24 @@ function showTextModal(title, content) {
       </div>
     </div>`;
   document.body.append(backdrop);
-  backdrop.querySelector("#text-close").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#text-close").addEventListener("click", () => closeModal(backdrop));
 }
 
 function closeDocumentInspectorModals() {
   for (const modalBackdrop of document.querySelectorAll(".modal-backdrop")) {
     if (modalBackdrop.querySelector(".inspector-modal")) {
-      modalBackdrop.remove();
+      closeModal(modalBackdrop);
     }
   }
+}
+
+function closeModal(backdrop, afterClose = null) {
+  if (!backdrop || !backdrop.isConnected) return;
+  backdrop.classList.add("closing");
+  window.setTimeout(() => {
+    if (typeof afterClose === "function") afterClose();
+    backdrop.remove();
+  }, 180);
 }
 
 function analyzeLuaBasic(code) {
@@ -1862,9 +1871,9 @@ function showLuaEditor(item) {
       <div class="lua-toolbar">
         <h2>${escapeHtml(t("editLua"))}: ${escapeHtml(item.name)}</h2>
         <span id="lua-line-label">Linea: 1 Col: 1 Total: 1</span>
-        <button type="button" id="lua-syntax">${escapeHtml(t("runLuaSyntax"))}</button>
-        <button type="button" id="lua-preview">${escapeHtml(t("previewLua"))}</button>
-        <button type="button" id="lua-save">${escapeHtml(t("saveLuaXml"))}</button>
+        <button type="button" id="lua-syntax" class="yellow-tool-button">${escapeHtml(t("runLuaSyntax"))}</button>
+        <button type="button" id="lua-preview" class="green-tool-button">${escapeHtml(t("previewLua"))}</button>
+        <button type="button" id="lua-save" class="green-tool-button">${escapeHtml(t("saveLuaXml"))}</button>
         <button type="button" id="lua-cancel">${escapeHtml(t("cancel"))}</button>
       </div>
       <div class="lua-doctor-grid">
@@ -1982,15 +1991,16 @@ function showLuaEditor(item) {
   updateHighlight();
   updateLabel();
   analyze();
-  backdrop.querySelector("#lua-cancel").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#lua-cancel").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#lua-save").addEventListener("click", async () => {
     try {
       const content = backdrop.querySelector("#lua-editor").value;
       await saveLuaScriptToStage(item, content);
       item.content = content;
       closeDocumentInspectorModals();
-      backdrop.remove();
-      await openDocumentInspector();
+      closeModal(backdrop, () => {
+        openDocumentInspector().catch((error) => xmlLog(`ERROR: ${error.message}`));
+      });
     } catch (error) {
       xmlLog(`ERROR: ${error.message}`);
     }
@@ -2147,8 +2157,7 @@ async function showLuaPreview(code, item = null) {
   });
   backdrop.querySelector("#lua-preview-close").addEventListener("click", () => {
     document.removeEventListener("keydown", keyHandler);
-    runtime.close();
-    backdrop.remove();
+    closeModal(backdrop, () => runtime.close());
   });
 }
 
@@ -3810,12 +3819,12 @@ async function openDocumentInspector() {
     const detail = item.detail ? Object.entries(item.detail).map(([key, value]) => `${key}: ${value}`).join(", ") : "";
     const contentAction = item.content
       ? item.type === "Lua Script"
-        ? `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`
+        ? `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action green-mini-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`
         : `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(item.content_label === "Scratchpad" ? t("viewDetails") : t("viewValue"))}</button>`
       : "";
     const xmlAction = item.raw_xml ? `<button type="button" class="mini-action xml-action" data-index="${index}">${escapeHtml(t("viewXml"))}</button>` : "";
     const action = `${contentAction}${xmlAction}`;
-    return `<tr><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.name)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td><td>${action}</td></tr>`;
+    return `<tr><td>${escapeHtml(item.name)}</td><td>${action}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td></tr>`;
   }).join("");
   backdrop.innerHTML = `
     <div class="modal inspector-modal">
@@ -3832,17 +3841,17 @@ async function openDocumentInspector() {
       <h3>${escapeHtml(t("documentElements"))}</h3>
       <div class="inspector-table-wrap">
         <table class="problem-table inspector-table">
-          <thead><tr><th>Tipo</th><th>Nombre</th><th>Archivo</th><th>Path</th><th>Detalle</th><th>Acciones</th></tr></thead>
+          <thead><tr><th>Nombre</th><th>Acciones</th><th>Tipo</th><th>Archivo</th><th>Path</th><th>Detalle</th></tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
       <div class="modal-actions">
-        <button type="button" id="add-lua-widget">${escapeHtml(t("addLuaWidget"))}</button>
+        <button type="button" id="add-lua-widget" class="green-tool-button">${escapeHtml(t("addLuaWidget"))}</button>
         <button type="button" id="inspector-close">${escapeHtml(t("close"))}</button>
       </div>
     </div>`;
   document.body.append(backdrop);
-  backdrop.querySelector("#inspector-close").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#inspector-close").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#add-lua-widget").addEventListener("click", async () => {
     try {
       const item = await addLuaScriptAppToStage();
@@ -3925,7 +3934,7 @@ function openXmlDocumentSettings() {
   document.body.append(backdrop);
   backdrop.querySelector("#doc-type").value = xmlDoctor.current.document_type || detectXmlDocumentType(document.querySelector("#xml-code").value);
   backdrop.querySelector("#doc-access").value = xmlDoctor.current.library_access || "None";
-  backdrop.querySelector("#doc-cancel").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#doc-cancel").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#doc-apply").addEventListener("click", () => {
     const name = backdrop.querySelector("#doc-name").value.trim();
     const documentType = backdrop.querySelector("#doc-type").value;
@@ -3950,7 +3959,7 @@ function openXmlDocumentSettings() {
     updateXmlLineNumbers();
     renderXmlAnalysis({ errors: 0, warnings: 0, infos: 0, diagnostics: [] });
     xmlLog(`${t("documentSettings")}: ${name}, ${documentType}, ${libraryAccess}`);
-    backdrop.remove();
+    closeModal(backdrop);
   });
 }
 
@@ -4197,7 +4206,7 @@ async function resolveXmlProblems() {
     </div>`;
   document.body.append(backdrop);
 
-  backdrop.querySelector("#resolver-cancel").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#resolver-cancel").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#resolver-apply").addEventListener("click", async () => {
     let text = document.querySelector("#xml-code").value;
     const declared = [];
@@ -4221,7 +4230,7 @@ async function resolveXmlProblems() {
     document.querySelector("#xml-code").value = text;
     xmlDoctor.embedded = false;
     xmlDoctor.lastDiff = "";
-    backdrop.remove();
+    closeModal(backdrop);
     updateXmlLineNumbers();
     await runXmlSyntax();
   });
@@ -4645,9 +4654,9 @@ function showAbout() {
       </div>
     </div>`;
   document.body.append(backdrop);
-  backdrop.querySelector("#about-close").addEventListener("click", () => backdrop.remove());
+  backdrop.querySelector("#about-close").addEventListener("click", () => closeModal(backdrop));
   backdrop.addEventListener("click", (event) => {
-    if (event.target === backdrop) backdrop.remove();
+    if (event.target === backdrop) closeModal(backdrop);
   });
 }
 
