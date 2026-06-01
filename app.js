@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-lua-screen-timer-local";
+const SOURCE_VERSION = "2026-06-01-lua-caret-key-local";
 
 const I18N = {
   es: {
@@ -2140,6 +2140,7 @@ function previewKeyboardEventToLua(event) {
     Tab: event.shiftKey ? "on.backtabKey" : "on.tabKey",
   };
   if (map[event.key]) return { event: map[event.key] };
+  if (event.key === "Dead") return { char: "^" };
   if (event.key.length === 1) return { char: event.key };
   return null;
 }
