@@ -1956,9 +1956,14 @@ function showLuaEditor(item) {
     highlight.scrollLeft = editor.scrollLeft;
   });
   backdrop.querySelector("#lua-syntax").addEventListener("click", analyze);
-  backdrop.querySelector("#lua-preview").addEventListener("click", () => showLuaPreview(editor.value, item).catch((error) => {
-    log.textContent += `\n[ERROR] Preview Lua: ${error.message}`;
-  }));
+  backdrop.querySelector("#lua-preview").addEventListener("click", () => {
+    const caret = editor.selectionStart;
+    editor.setSelectionRange(caret, caret);
+    editor.blur();
+    showLuaPreview(editor.value, item).catch((error) => {
+      log.textContent += `\n[ERROR] Preview Lua: ${error.message}`;
+    });
+  });
   updateLines();
   updateHighlight();
   updateLabel();

@@ -721,7 +721,7 @@ button:disabled {
 }
 
 .lua-editor::selection {
-  background: rgb(147 197 253 / 55%);
+  background: transparent;
 }
 
 .lua-side {

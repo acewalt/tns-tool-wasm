@@ -639,10 +639,11 @@ def analyze_ti_code(
         if not has_else:
             report.diagnostics.append(ti_error(290, int(try_line), "EndTry is missing the matching Else statement"))
 
-    for used in sorted(report.used - report.variables - report.assigned - BUILTIN_NAMES):
-        suggestions = _suggest(used, report.variables | report.assigned)
-        detail = "Sugerencias: " + ", ".join(suggestions) if suggestions else ""
-        report.diagnostics.append(ti_error(960, report.used_lines.get(used, 0), f"Variable no declarada: {used}", detail))
+    if document_kind != "Func":
+        for used in sorted(report.used - report.variables - report.assigned - BUILTIN_NAMES):
+            suggestions = _suggest(used, report.variables | report.assigned)
+            detail = "Sugerencias: " + ", ".join(suggestions) if suggestions else ""
+            report.diagnostics.append(ti_error(960, report.used_lines.get(used, 0), f"Variable no declarada: {used}", detail))
 
     for name in sorted(report.variables - report.used):
         report.diagnostics.append(internal_warning(report.variable_lines.get(name, 0), f"Variable declarada pero no utilizada: {name}"))
