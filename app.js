@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-luajs-preview-d2editor-local";
+const SOURCE_VERSION = "2026-06-01-luajs-preview-click-local";
 
 const I18N = {
   es: {
@@ -2087,6 +2087,12 @@ async function showLuaPreview(code, item = null) {
       runtime.callEvent(button.dataset.event);
     });
   }
+  canvas.addEventListener("click", (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.round((event.clientX - rect.left) * (canvas.width / rect.width));
+    const y = Math.round((event.clientY - rect.top) * (canvas.height / rect.height));
+    if (runtime.mouseClick) runtime.mouseClick(x, y);
+  });
   const keyHandler = (event) => {
     if (!backdrop.isConnected) return;
     if (event.ctrlKey || event.altKey || event.metaKey) return;
@@ -2406,10 +2412,20 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       log(`ERROR tecla LuaJS ${char}: ${error.message}\n${compactStack(error)}`);
     }
   }
+  function mouseClick(x, y) {
+    try {
+      global.callEvent("mouseDown", x, y);
+      global.callEvent("mouseUp", x, y);
+      repaint(true);
+      log(`Click enviado a LuaJS: ${x},${y}`);
+    } catch (error) {
+      log(`ERROR click LuaJS ${x},${y}: ${error.message}\n${compactStack(error)}`);
+    }
+  }
   function close() {
     if (timerId) window.clearInterval(timerId);
   }
-  return { boot, callEvent, charIn, close };
+  return { boot, callEvent, charIn, mouseClick, close };
 }
 
 function hardenLuaJsPreviewRuntime() {
@@ -2531,9 +2547,6 @@ function reorderLuaJsPairsProps(table, props) {
   const muIndex = props.indexOf("μ");
   const sigmaIndex = props.indexOf("σ");
   if (muIndex < 0 || sigmaIndex < 0) return props;
-  const muValue = window.lua_rawget(table, "μ");
-  const sigmaValue = window.lua_rawget(table, "σ");
-  if (muValue !== true || sigmaValue !== true) return props;
   const insertAt = Math.min(muIndex, sigmaIndex);
   props.splice(Math.max(muIndex, sigmaIndex), 1);
   props.splice(Math.min(muIndex, sigmaIndex), 1);
