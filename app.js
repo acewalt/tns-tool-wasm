@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-luajs-preview-basicfunc-local";
+const SOURCE_VERSION = "2026-06-01-luajs-preview-unicode-local";
 
 const I18N = {
   es: {
@@ -1929,7 +1929,7 @@ function showLuaEditor(item) {
         const pos = editor.value.split("\n").slice(0, Math.max(0, line - 1)).join("\n").length + (line > 1 ? 1 : 0);
         editor.focus();
         editor.setSelectionRange(pos, pos);
-        editor.scrollTop = Math.max(0, (line - 1) * 18 - 80);
+        editor.scrollTop = Math.max(0, (line - 1) * 19 - 80);
         lines.scrollTop = editor.scrollTop;
         highlight.scrollTop = editor.scrollTop;
         updateLabel();
@@ -2705,7 +2705,16 @@ function evaluateTiMathExpression(expression, scope = {}, basicFunctions = {}) {
     .replace(/√\s*\(/g, "sqrt(")
     .replace(//g, "e")
     .replace(/\^/g, "**");
-  expr = expr.replace(/\b(pi|π)\b/gi, "PI");
+
+  const unicodeScopeKeys = Object.keys(scope)
+    .filter((name) => name && !/^[A-Za-z_][A-Za-z0-9_]*$/.test(name))
+    .sort((a, b) => b.length - a.length);
+  for (const name of unicodeScopeKeys) {
+    if (name === "π") continue;
+    expr = expr.replace(new RegExp(escapeRegExp(name), "gu"), () => String(Number(scope[name]) || 0));
+  }
+
+  expr = expr.replace(/π/g, "PI").replace(/\bpi\b/gi, "PI");
   expr = expr.replace(/\b(normCdf|binomCdf|binomcdf|invNorm|nCr|ncr|exp|ln|sqrt|sin|cos|tan|abs)\s*\(/gi, (match, name) => `${name.toLowerCase()}(`);
   expr = expr.replace(/\b[A-Za-z_][A-Za-z0-9_]*\b/g, (name) => {
     const lower = name.toLowerCase();
@@ -2718,7 +2727,8 @@ function evaluateTiMathExpression(expression, scope = {}, basicFunctions = {}) {
     const customNames = Object.keys(basicFunctions).filter((name) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(name));
     const customFns = customNames.map((name) => (...args) => evaluateTiBasicFunction(basicFunctions[name], args, scope, basicFunctions));
     const fn = Function("normcdf", "binomcdf", "invnorm", "ncr", "exp", "ln", "sqrt", "sin", "cos", "tan", "abs", "PI", "when", ...customNames, `"use strict"; return (${expr});`);
-    return Number(fn(normalCdf, binomCdf, invNorm, nCr, Math.exp, Math.log, Math.sqrt, Math.sin, Math.cos, Math.tan, Math.abs, Math.PI, (cond, a, b) => (cond ? a : b), ...customFns));
+    const value = Number(fn(normalCdf, binomCdf, invNorm, nCr, Math.exp, Math.log, Math.sqrt, Math.sin, Math.cos, Math.tan, Math.abs, Math.PI, (cond, a, b) => (cond ? a : b), ...customFns));
+    return Number.isNaN(value) ? 0 : value;
   } catch (_error) {
     return 0;
   }
