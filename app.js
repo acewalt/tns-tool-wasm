@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-02-lua-template-builder-local";
+const SOURCE_VERSION = "2026-06-02-lua-template-builder-pages-local";
 
 const I18N = {
   es: {
@@ -58,6 +58,13 @@ const I18N = {
     luaActionHome: "Volver al inicio",
     luaActionNone: "No navegar",
     luaButtonPosition: "Posicion de botones",
+    luaUseThemeColor: "Usar color principal del proyecto",
+    luaShowPrimaryButton: "Mostrar boton principal",
+    luaShowDetailsButton: "Mostrar boton Detalles",
+    luaShowBackButton: "Mostrar boton Volver",
+    luaMenuRoutes: "Editar opciones y destinos",
+    luaMenuOption: "Opcion",
+    luaRouteDefault: "Siguiente pagina",
     luaBottom: "Inferior",
     luaTop: "Superior",
     luaSyntaxOk: "Sintaxis Lua basica OK.",
@@ -194,6 +201,13 @@ const I18N = {
     luaActionHome: "Return home",
     luaActionNone: "Do not navigate",
     luaButtonPosition: "Button position",
+    luaUseThemeColor: "Use project main color",
+    luaShowPrimaryButton: "Show primary button",
+    luaShowDetailsButton: "Show Details button",
+    luaShowBackButton: "Show Back button",
+    luaMenuRoutes: "Edit options and destinations",
+    luaMenuOption: "Option",
+    luaRouteDefault: "Next page",
     luaBottom: "Bottom",
     luaTop: "Top",
     luaSyntaxOk: "Basic Lua syntax OK.",
@@ -330,6 +344,13 @@ const I18N = {
     luaActionHome: "Retourner a l'accueil",
     luaActionNone: "Ne pas naviguer",
     luaButtonPosition: "Position des boutons",
+    luaUseThemeColor: "Utiliser la couleur principale du projet",
+    luaShowPrimaryButton: "Afficher le bouton principal",
+    luaShowDetailsButton: "Afficher le bouton Details",
+    luaShowBackButton: "Afficher le bouton Retour",
+    luaMenuRoutes: "Modifier options et destinations",
+    luaMenuOption: "Option",
+    luaRouteDefault: "Page suivante",
     luaBottom: "Inferieur",
     luaTop: "Superieur",
     luaSyntaxOk: "Syntaxe Lua basique OK.",
@@ -2209,7 +2230,7 @@ function highlightLuaLine(line) {
     }
     const number = /^\d+(?:\.\d+)?/.exec(line.slice(index));
     if (number) {
-      output += spanToken("tok-plain", number[0]);
+      output += spanToken("tok-number", number[0]);
       index += number[0].length;
       continue;
     }
@@ -2303,12 +2324,42 @@ function luaTemplateActionSnippet(action, selfRef = "self") {
   platform.window:invalidate()`;
 }
 
+function extractLuaPageOptions(code) {
+  const pages = [];
+  const pageRegex = /addPage\s*\(\s*\{[\s\S]*?name\s*=\s*(["'])(.*?)\1/g;
+  let match;
+  while ((match = pageRegex.exec(code || ""))) {
+    pages.push({ index: pages.length + 1, name: match[2] || `Page ${pages.length + 1}` });
+  }
+  return pages;
+}
+
+function luaTemplateRouteSnippet(targetExpression = "target") {
+  return `if ${targetExpression} and ${targetExpression} > 0 and ${targetExpression} <= #pages then
+    currentPage = ${targetExpression}
+  elseif currentPage < #pages then
+    currentPage = currentPage + 1
+  end
+  platform.window:invalidate()`;
+}
+
 const LUA_TEMPLATE_PRESETS = [
   {
     id: "form",
     name: "Formulario con inputs",
-    description: "Pantalla tipo calculadora con etiquetas, campos de respuesta y botones inferiores.",
-    defaults: { inputCount: 3, title: "Formulario", buttonText: "Calcular", primaryColor: "#2d93ad", action: "next", variableBase: "var" },
+    description: "Pantalla tipo calculadora con inputs, botones inferiores y panel opcional de detalles.",
+    defaults: {
+      inputCount: 3,
+      title: "Formulario",
+      buttonText: "Calcular",
+      primaryColor: "#a3e635",
+      useThemeColor: true,
+      action: "next",
+      variableBase: "var",
+      showPrimaryButton: true,
+      showDetailsButton: true,
+      showBackButton: true,
+    },
     build(options) {
       const count = Math.max(1, Math.min(8, Number(options.inputCount) || 3));
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
@@ -2316,17 +2367,34 @@ const LUA_TEMPLATE_PRESETS = [
       const action = luaTemplateActionSnippet(options.action);
       const buttonY = options.buttonPosition === "top" ? 26 : 188;
       const barY = options.buttonPosition === "top" ? 58 : 180;
+      const showBack = options.showBackButton !== false;
+      const showPrimary = options.showPrimaryButton !== false;
+      const showDetails = options.showDetailsButton !== false;
       const rows = labels.map((label, index) => {
         const y = 42 + index * 28;
         return `  gc:drawString("${label}", 14, ${y + 4}, "top")
   gc:drawString(":", 70, ${y + 4}, "top")
   drawInput(gc, fields[${index + 1}], 82, ${y}, 158, 22)`;
       }).join("\n");
+      const buttons = [
+        showBack ? `  self:drawButton(gc, "◀ Retour", 8, ${buttonY}, 70)` : "",
+        showPrimary ? `  gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
+  gc:drawString("${luaString(options.buttonText)}", 112, ${buttonY + 6}, "top")` : "",
+        showDetails ? `  self:drawButton(gc, "Detalles", 240, ${buttonY}, 70)` : "",
+      ].filter(Boolean).join("\n");
       return `addPage({
   name = "${luaString(options.title)}",
   fields = {${labels.map((label) => `{label="${label}", value="", placeholder="${label}"}`).join(", ")}},
   focus = 1,
   detailsOpen = false,
+  drawButton = function(self, gc, text, x, y, w)
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(x, y, w, 24)
+  gc:setColorRGB(128, 128, 128)
+  gc:drawRect(x, y, w, 24)
+  gc:setColorRGB(0, 0, 0)
+  gc:drawString(text, x + 6, y + 5, "top")
+  end,
   drawInput = function(self, gc, field, x, y, w, h)
   gc:setColorRGB(255, 255, 255)
   gc:fillRect(x, y, w, h)
@@ -2348,15 +2416,7 @@ const LUA_TEMPLATE_PRESETS = [
 ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   gc:setColorRGB(128, 128, 128)
   gc:fillRect(8, ${barY}, 304, 2)
-  gc:setColorRGB(255, 255, 255)
-  gc:fillRect(8, ${buttonY}, 70, 24)
-  gc:fillRect(240, ${buttonY}, 70, 24)
-  gc:setColorRGB(0, 0, 0)
-  gc:drawRect(8, ${buttonY}, 70, 24)
-  gc:drawRect(240, ${buttonY}, 70, 24)
-  gc:drawString("◀ Retour", 14, ${buttonY + 5}, "top")
-  gc:drawString("${luaString(options.buttonText)}", 112, ${buttonY + 6}, "top")
-  gc:drawString("Detalles", 248, ${buttonY + 5}, "top")
+${buttons}
   if self.detailsOpen then
     gc:setColorRGB(255, 255, 255)
     gc:fillRect(42, 62, 230, 96)
@@ -2382,6 +2442,10 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end,
   enterKey = function(self)
   ${action}
+  end,
+  escapeKey = function(self)
+  if self.detailsOpen then self.detailsOpen = false else currentPage = 1 end
+  platform.window:invalidate()
   end
 })`;
     },
@@ -2390,16 +2454,20 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     id: "menu",
     name: "Menu de seleccion",
     description: "Lista vertical con cursor, ideal para categorias o acciones.",
-    defaults: { inputCount: 4, title: "Menu", buttonText: "Enter", primaryColor: "#35a0be", action: "next", variableBase: "selected_item" },
+    defaults: { inputCount: 4, title: "Menu", buttonText: "Enter", primaryColor: "#a3e635", useThemeColor: true, action: "next", variableBase: "selected_item", menuLabels: [], menuTargets: [] },
     build(options) {
       const count = Math.max(2, Math.min(10, Number(options.inputCount) || 4));
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
-      const items = Array.from({ length: count }, (_, index) => `"${index + 1}) Opcion ${index + 1} >"`).join(", ");
-      const action = luaTemplateActionSnippet(options.action);
+      const labels = Array.from({ length: count }, (_, index) => options.menuLabels?.[index] || `${index + 1}) Opcion ${index + 1} >`);
+      const targets = Array.from({ length: count }, (_, index) => Number(options.menuTargets?.[index]) || 0);
+      const items = labels.map((label) => `"${luaString(label)}"`).join(", ");
+      const targetList = targets.join(", ");
+      const fallbackAction = luaTemplateActionSnippet(options.action);
       return `addPage({
   name = "${luaString(options.title)}",
   selected = 1,
   items = {${items}},
+  targets = {${targetList}},
   paint = function(self, gc)
   gc:setColorRGB(255, 255, 255)
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
@@ -2424,7 +2492,12 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end,
   enterKey = function(self)
   var.store("${luaString(options.variableBase || "selected_item")}", self.selected)
-  ${action}
+  local target = self.targets[self.selected]
+  if target and target > 0 then
+    ${luaTemplateRouteSnippet("target")}
+  else
+    ${fallbackAction}
+  end
   end
 })`;
     },
@@ -2433,7 +2506,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     id: "popup",
     name: "Popup de texto",
     description: "Cuadro centrado con mensaje y boton OK.",
-    defaults: { inputCount: 1, title: "Aviso", buttonText: "OK", primaryColor: "#2563eb", action: "next", variableBase: "popup_ok" },
+    defaults: { inputCount: 1, title: "Aviso", buttonText: "OK", primaryColor: "#a3e635", useThemeColor: true, action: "next", variableBase: "popup_ok" },
     build(options) {
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor, [37, 99, 235]);
       const action = luaTemplateActionSnippet(options.action);
@@ -2461,98 +2534,6 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   self.visible = false
   var.store("${luaString(options.variableBase || "popup_ok")}", 1)
   ${action}
-  end
-})`;
-    },
-  },
-  {
-    id: "details",
-    name: "Pantalla con detalles",
-    description: "Vista con campos y boton Detalles usando D2Editor cuando esta disponible.",
-    defaults: { inputCount: 3, title: "Resolver", buttonText: "Detalles", primaryColor: "#2d93ad", action: "details", variableBase: "res" },
-    build(options) {
-      const count = Math.max(1, Math.min(6, Number(options.inputCount) || 3));
-      const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
-      const fields = Array.from({ length: count }, (_, index) => `{label="${String.fromCharCode(97 + index)}", value=""}`).join(", ");
-      const buttonY = options.buttonPosition === "top" ? 8 : 186;
-      const barY = options.buttonPosition === "top" ? 36 : 176;
-      return `addPage({
-  name = "${luaString(options.title)}",
-  fields = {${fields}},
-  focus = 1,
-  detailsOpen = false,
-  detailsEditor = nil,
-  drawButton = function(self, gc, text, x, y, w)
-  gc:setColorRGB(248, 252, 248)
-  gc:fillRect(x, y, w, 24)
-  gc:setColorRGB(128, 128, 128)
-  gc:drawRect(x, y, w, 24)
-  gc:setColorRGB(0, 0, 0)
-  gc:drawString(text, x + 8, y + 5, "top")
-  end,
-  openDetails = function(self)
-  self.detailsOpen = true
-  if D2Editor and D2Editor.newRichText then
-    self.detailsEditor = D2Editor.newRichText()
-    self.detailsEditor:setReadOnly(true)
-    self.detailsEditor:move(42, 62)
-    self.detailsEditor:resize(230, 96)
-    self.detailsEditor:setText("${luaString(options.title)}\\nAqui puedes explicar el procedimiento o mostrar formulas.", 1)
-    self.detailsEditor:setFocus(true)
-  end
-  platform.window:invalidate()
-  end,
-  paint = function(self, gc)
-  gc:setColorRGB(224, 224, 224)
-  gc:fillRect(0, 0, platform.window:width(), platform.window:height())
-  gc:setFont("sansserif", "r", 10)
-  for i, field in ipairs(self.fields) do
-    local y = 30 + (i - 1) * 28
-    gc:setColorRGB(0, 0, 0)
-    gc:drawString(field.label, 12, y + 4, "top")
-    gc:drawString(":", 72, y + 4, "top")
-    gc:setColorRGB(255, 255, 255)
-    gc:fillRect(86, y, 160, 22)
-    gc:setColorRGB(i == self.focus and ${primaryR} or 128, i == self.focus and ${primaryG} or 128, i == self.focus and ${primaryB} or 128)
-    gc:drawRect(86, y, 160, 22)
-    gc:setColorRGB(0, 0, 0)
-    gc:drawString(field.value, 92, y + 3, "top")
-  end
-  gc:setColorRGB(128, 128, 128)
-  gc:fillRect(8, ${barY}, 304, 2)
-  self:drawButton(gc, "◀ Retour", 8, ${buttonY}, 74)
-  self:drawButton(gc, "${luaString(options.buttonText)}", 238, ${buttonY}, 72)
-  if self.detailsOpen and not self.detailsEditor then
-    gc:setColorRGB(255, 255, 255)
-    gc:fillRect(42, 62, 230, 96)
-    gc:setColorRGB(128, 128, 128)
-    gc:drawRect(42, 62, 230, 96)
-    gc:setColorRGB(0, 0, 0)
-    gc:drawString("${luaString(options.title)}", 50, 70, "top")
-    gc:drawString("Aqui va el procedimiento.", 50, 92, "top")
-  end
-  end,
-  arrowKey = function(self, direction)
-  if direction == "down" then self.focus = math.min(#self.fields, self.focus + 1) end
-  if direction == "up" then self.focus = math.max(1, self.focus - 1) end
-  platform.window:invalidate()
-  end,
-  charIn = function(self, ch)
-  self.fields[self.focus].value = self.fields[self.focus].value .. ch
-  platform.window:invalidate()
-  end,
-  backspaceKey = function(self)
-  self.fields[self.focus].value = self.fields[self.focus].value:sub(1, -2)
-  platform.window:invalidate()
-  end,
-  enterKey = function(self)
-  self:openDetails()
-  end,
-  escapeKey = function(self)
-  if self.detailsEditor and self.detailsEditor.setVisible then self.detailsEditor:setVisible(false) end
-  self.detailsOpen = false
-  self.detailsEditor = nil
-  platform.window:invalidate()
   end
 })`;
     },
@@ -2651,15 +2632,28 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
     ctx.fillStyle = "#808080";
     ctx.fillRect(sx(8), sy(barY), sx(304), Math.max(1, sy(2)));
     ctx.fillStyle = "#fff";
-    ctx.fillRect(sx(8), sy(buttonY), sx(70), sy(24));
-    ctx.fillRect(sx(240), sy(buttonY), sx(70), sy(24));
     ctx.strokeStyle = "#000";
-    ctx.strokeRect(sx(8), sy(buttonY), sx(70), sy(24));
-    ctx.strokeRect(sx(240), sy(buttonY), sx(70), sy(24));
     ctx.fillStyle = "#000";
-    ctx.fillText("Retour", sx(16), sy(buttonY + 17));
-    ctx.fillText(options.buttonText || template.defaults.buttonText, sx(112), sy(buttonY + 17));
-    ctx.fillText("Detalles", sx(248), sy(buttonY + 17));
+    if (options.showBackButton !== false) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(sx(8), sy(buttonY), sx(70), sy(24));
+      ctx.strokeStyle = "#000";
+      ctx.strokeRect(sx(8), sy(buttonY), sx(70), sy(24));
+      ctx.fillStyle = "#000";
+      ctx.fillText("Retour", sx(16), sy(buttonY + 17));
+    }
+    if (options.showPrimaryButton !== false) {
+      ctx.fillStyle = `rgb(${primaryR}, ${primaryG}, ${primaryB})`;
+      ctx.fillText(options.buttonText || template.defaults.buttonText, sx(112), sy(buttonY + 17));
+    }
+    if (options.showDetailsButton !== false) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(sx(240), sy(buttonY), sx(70), sy(24));
+      ctx.strokeStyle = "#000";
+      ctx.strokeRect(sx(240), sy(buttonY), sx(70), sy(24));
+      ctx.fillStyle = "#000";
+      ctx.fillText("Detalles", sx(248), sy(buttonY + 17));
+    }
     return;
   }
 
@@ -2678,7 +2672,7 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
         ctx.fillRect(sx(18), sy(y - 2), sx(150), sy(20));
       }
       ctx.fillStyle = "#000";
-      ctx.fillText(`${index + 1}) Opcion ${index + 1} >`, sx(28), sy(y + 12));
+      ctx.fillText(options.menuLabels?.[index] || `${index + 1}) Opcion ${index + 1} >`, sx(28), sy(y + 12));
     }
     return;
   }
@@ -2719,7 +2713,8 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
 function showLuaTemplates(editor) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
-  const templateTabs = LUA_TEMPLATE_PRESETS.map((template) => `
+  const visibleTemplates = LUA_TEMPLATE_PRESETS.filter((template) => template.id !== "details");
+  const templateTabs = visibleTemplates.map((template) => `
     <button type="button" class="lua-template-type" data-template="${escapeHtml(template.id)}">
       <span class="template-type-icon">${template.id === "form" ? "▦" : template.id === "menu" ? "☷" : template.id === "popup" ? "▣" : "▤"}</span>
       <span>
@@ -2738,25 +2733,37 @@ function showLuaTemplates(editor) {
         </section>
         <section class="template-column template-options-column">
           <h3>${escapeHtml(t("luaTemplateOptions"))}</h3>
-          <label>${escapeHtml(t("luaInputCount"))}<input id="tpl-input-count" type="number" min="1" max="8" value="3"></label>
-          <label>${escapeHtml(t("luaTemplateTitle"))}<input id="tpl-title" value="Formulario"></label>
-          <label>${escapeHtml(t("luaButtonText"))}<input id="tpl-button" value="Calcular"></label>
-          <label>${escapeHtml(t("luaVariableBase"))}<input id="tpl-varbase" value="var"></label>
-          <label>${escapeHtml(t("luaButtonAction"))}
-            <select id="tpl-action">
-              <option value="next">${escapeHtml(t("luaActionNext"))}</option>
-              <option value="details">${escapeHtml(t("luaActionDetails"))}</option>
-              <option value="home">${escapeHtml(t("luaActionHome"))}</option>
-              <option value="none">${escapeHtml(t("luaActionNone"))}</option>
-            </select>
-          </label>
-          <label>${escapeHtml(t("luaButtonPosition"))}
-            <select id="tpl-position">
-              <option value="bottom">${escapeHtml(t("luaBottom"))}</option>
-              <option value="top">${escapeHtml(t("luaTop"))}</option>
-            </select>
-          </label>
-          <label>${escapeHtml(t("luaPrimaryColor"))}<input id="tpl-color" type="color" value="#2d93ad"></label>
+          <div class="template-option-grid">
+            <label>${escapeHtml(t("luaInputCount"))}<input id="tpl-input-count" type="number" min="1" max="10" value="3"></label>
+            <label>${escapeHtml(t("luaTemplateTitle"))}<input id="tpl-title" value="Formulario"></label>
+            <label>${escapeHtml(t("luaButtonText"))}<input id="tpl-button" value="Calcular"></label>
+            <label>${escapeHtml(t("luaVariableBase"))}<input id="tpl-varbase" value="var"></label>
+            <label>${escapeHtml(t("luaButtonAction"))}
+              <select id="tpl-action">
+                <option value="next">${escapeHtml(t("luaActionNext"))}</option>
+                <option value="details">${escapeHtml(t("luaActionDetails"))}</option>
+                <option value="home">${escapeHtml(t("luaActionHome"))}</option>
+                <option value="none">${escapeHtml(t("luaActionNone"))}</option>
+              </select>
+            </label>
+            <label>${escapeHtml(t("luaButtonPosition"))}
+              <select id="tpl-position">
+                <option value="bottom">${escapeHtml(t("luaBottom"))}</option>
+                <option value="top">${escapeHtml(t("luaTop"))}</option>
+              </select>
+            </label>
+            <label>${escapeHtml(t("luaPrimaryColor"))}<input id="tpl-color" type="color" value="#a3e635"></label>
+          </div>
+          <div class="template-checks">
+            <label class="template-check"><input id="tpl-use-theme" type="checkbox"> ${escapeHtml(t("luaUseThemeColor"))}</label>
+            <label class="template-check form-only"><input id="tpl-show-primary" type="checkbox"> ${escapeHtml(t("luaShowPrimaryButton"))}</label>
+            <label class="template-check form-only"><input id="tpl-show-details" type="checkbox"> ${escapeHtml(t("luaShowDetailsButton"))}</label>
+            <label class="template-check form-only"><input id="tpl-show-back" type="checkbox"> ${escapeHtml(t("luaShowBackButton"))}</label>
+          </div>
+          <div id="tpl-menu-routes-wrap" class="menu-route-editor hidden">
+            <h4>${escapeHtml(t("luaMenuRoutes"))}</h4>
+            <div id="tpl-menu-routes"></div>
+          </div>
         </section>
         <section class="template-column template-preview-column">
           <h3>${escapeHtml(t("luaTemplatePreview"))}</h3>
@@ -2776,46 +2783,87 @@ function showLuaTemplates(editor) {
       </div>
     </div>`;
   document.body.append(backdrop);
-  let selected = LUA_TEMPLATE_PRESETS[0];
+  let selected = visibleTemplates[0];
+  const existingPages = extractLuaPageOptions(editor.value);
+  const themeColor = "#a3e635";
+  const routeWrap = backdrop.querySelector("#tpl-menu-routes-wrap");
+  const routeList = backdrop.querySelector("#tpl-menu-routes");
   const applyDefaults = () => {
     backdrop.querySelector("#tpl-input-count").value = selected.defaults.inputCount;
     backdrop.querySelector("#tpl-title").value = selected.defaults.title;
     backdrop.querySelector("#tpl-button").value = selected.defaults.buttonText;
     backdrop.querySelector("#tpl-color").value = selected.defaults.primaryColor;
+    backdrop.querySelector("#tpl-use-theme").checked = selected.defaults.useThemeColor !== false;
     backdrop.querySelector("#tpl-action").value = selected.defaults.action || "next";
     backdrop.querySelector("#tpl-varbase").value = selected.defaults.variableBase || "var";
     backdrop.querySelector("#tpl-position").value = selected.defaults.buttonPosition || "bottom";
+    backdrop.querySelector("#tpl-show-primary").checked = selected.defaults.showPrimaryButton !== false;
+    backdrop.querySelector("#tpl-show-details").checked = selected.defaults.showDetailsButton !== false;
+    backdrop.querySelector("#tpl-show-back").checked = selected.defaults.showBackButton !== false;
+    renderRouteEditor();
   };
   const markSelected = () => {
     for (const button of backdrop.querySelectorAll(".lua-template-type")) {
       button.classList.toggle("selected", button.dataset.template === selected.id);
+    }
+    backdrop.querySelectorAll(".form-only").forEach((element) => element.classList.toggle("hidden", selected.id !== "form"));
+    routeWrap.classList.toggle("hidden", selected.id !== "menu");
+  };
+  const renderRouteEditor = () => {
+    if (!routeList) return;
+    const count = Math.max(2, Math.min(10, Number(backdrop.querySelector("#tpl-input-count")?.value) || selected.defaults.inputCount || 4));
+    routeList.innerHTML = Array.from({ length: count }, (_, index) => {
+      const routeOptions = [`<option value="0">${escapeHtml(t("luaRouteDefault"))}</option>`]
+        .concat(existingPages.map((page) => `<option value="${page.index}">${escapeHtml(`${page.index}. ${page.name}`)}</option>`))
+        .join("");
+      return `<div class="menu-route-row">
+        <label>${escapeHtml(t("luaMenuOption"))} ${index + 1}<input data-menu-label="${index}" value="${escapeHtml(`${index + 1}) Opcion ${index + 1} >`)}"></label>
+        <label>${escapeHtml(t("luaButtonAction"))}<select data-menu-target="${index}">${routeOptions}</select></label>
+      </div>`;
+    }).join("");
+    for (const input of routeList.querySelectorAll("input, select")) {
+      input.addEventListener("input", renderBuilder);
+      input.addEventListener("change", renderBuilder);
     }
   };
   const currentOptions = () => ({
     inputCount: backdrop.querySelector("#tpl-input-count").value,
     title: backdrop.querySelector("#tpl-title").value || selected.defaults.title,
     buttonText: backdrop.querySelector("#tpl-button").value || selected.defaults.buttonText,
-    primaryColor: backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor,
+    primaryColor: backdrop.querySelector("#tpl-use-theme").checked ? themeColor : (backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor),
+    useThemeColor: backdrop.querySelector("#tpl-use-theme").checked,
     action: backdrop.querySelector("#tpl-action").value || selected.defaults.action || "next",
     variableBase: backdrop.querySelector("#tpl-varbase").value || selected.defaults.variableBase || "var",
     buttonPosition: backdrop.querySelector("#tpl-position").value || selected.defaults.buttonPosition || "bottom",
+    showPrimaryButton: backdrop.querySelector("#tpl-show-primary").checked,
+    showDetailsButton: backdrop.querySelector("#tpl-show-details").checked,
+    showBackButton: backdrop.querySelector("#tpl-show-back").checked,
+    menuLabels: Array.from(routeList.querySelectorAll("[data-menu-label]")).map((input) => input.value),
+    menuTargets: Array.from(routeList.querySelectorAll("[data-menu-target]")).map((input) => input.value),
   });
   const renderBuilder = () => {
     const options = currentOptions();
+    backdrop.querySelector("#tpl-color").disabled = options.useThemeColor;
     drawLuaTemplatePreview(backdrop.querySelector("#tpl-main-preview"), selected, options);
     backdrop.querySelector("#lua-template-code").textContent = selected.build(options);
   };
   for (const button of backdrop.querySelectorAll(".lua-template-type")) {
     button.addEventListener("click", () => {
-      selected = LUA_TEMPLATE_PRESETS.find((template) => template.id === button.dataset.template) || selected;
+      selected = visibleTemplates.find((template) => template.id === button.dataset.template) || selected;
       applyDefaults();
       markSelected();
       renderBuilder();
     });
   }
   for (const input of backdrop.querySelectorAll(".template-options-column input, .template-options-column select")) {
-    input.addEventListener("input", renderBuilder);
-    input.addEventListener("change", renderBuilder);
+    input.addEventListener("input", () => {
+      if (input.id === "tpl-input-count" && selected.id === "menu") renderRouteEditor();
+      renderBuilder();
+    });
+    input.addEventListener("change", () => {
+      if (input.id === "tpl-input-count" && selected.id === "menu") renderRouteEditor();
+      renderBuilder();
+    });
   }
   backdrop.querySelector("#lua-template-close").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#lua-template-copy-code").addEventListener("click", async () => {
