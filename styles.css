@@ -1647,6 +1647,43 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   margin: 0 auto 0 0;
 }
 
+.lua-edit-menu {
+  position: relative;
+  display: inline-flex;
+}
+
+.lua-edit-menu-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  left: 0;
+  min-width: 190px;
+  padding: 10px;
+  border: 1px solid color-mix(in srgb, #a3e635 35%, var(--line));
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--panel) 88%, #0f172a 12%);
+  box-shadow: 0 18px 38px rgb(0 0 0 / 28%), 0 0 28px rgb(163 230 53 / 16%);
+  z-index: 80;
+}
+
+.lua-edit-menu-panel[hidden] {
+  display: none;
+}
+
+.lua-edit-menu-panel button {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-weight: 800;
+}
+
+.lua-edit-menu-panel button:hover {
+  background: color-mix(in srgb, #a3e635 18%, transparent);
+}
+
 #lua-line-label {
   color: var(--muted);
   font-size: 13px;
@@ -1699,7 +1736,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   pointer-events: none;
   overflow: hidden;
   user-select: none;
-  z-index: 1;
+  z-index: 3;
 }
 
 [data-theme="dark"] .lua-code-shell,
