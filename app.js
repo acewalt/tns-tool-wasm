@@ -2752,7 +2752,8 @@ ${buttons}
   gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
   gc:fillRect(132, 108, 54, 24)
   gc:setColorRGB(255, 255, 255)
-  gc:drawString("${luaString(options.buttonText)}", 150, 113, "top")
+  local buttonLabel = "${luaString(options.buttonText)}"
+  gc:drawString(buttonLabel, 132 + (54 - gc:getStringWidth(buttonLabel)) / 2, 113, "top")
   end,
   enterKey = function(self)
   self.visible = false
@@ -3609,6 +3610,12 @@ function encodeXmlTextEntities(text) {
     .replaceAll(">", "&gt;");
 }
 
+function normalizeLuaPreviewSource(code = "") {
+  return String(code).replace(/gc:drawString\((["'])((?:\\.|(?!\1).)*?)\1,\s*150\s*,\s*113\s*,\s*(["'])top\3\s*\)/g, (_match, quote, label) => {
+    return `gc:drawString(${quote}${label}${quote}, 132 + (54 - gc:getStringWidth(${quote}${label}${quote})) / 2, 113, "top")`;
+  });
+}
+
 async function createNewXmlProject() {
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
@@ -3898,7 +3905,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   }
   hardenLuaJsPreviewRuntime();
 
-  const safeCode = decodeXmlTextEntities(code);
+  const safeCode = normalizeLuaPreviewSource(decodeXmlTextEntities(code));
   const global = window;
   global.canvas = canvas;
   global.context = ctx;
