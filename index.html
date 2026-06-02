@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20260601-xml-actions-dark-fixes-local" />
+    <link rel="stylesheet" href="./styles.css?v=20260601-dashboard-menu-fixes-local" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script defer src="./app.js?v=20260601-xml-actions-dark-fixes-local"></script>
+    <script defer src="./app.js?v=20260601-dashboard-menu-fixes-local"></script>
   </head>
   <body>
     <header class="shell-header">
@@ -36,6 +36,23 @@
         <button id="xml-toggle-btn" data-i18n="openXmlDoctor">Abrir Syntax Doctor XML</button>
       </section>
 
+      <section class="panel home-panel">
+        <div class="home-hero">
+          <img src="./icon/tns_icon.png" alt="" />
+          <h2>Bienvenido a TNS Tool WASM</h2>
+          <p>Selecciona una herramienta del panel izquierdo o arrastra un archivo para comenzar.</p>
+          <div class="drop-zone">
+            <strong>Arrastra y suelta archivos aqui</strong>
+            <span>Formatos soportados: .tns, .xml, .py</span>
+          </div>
+          <div class="home-shortcuts">
+            <button type="button" id="home-open-xml">Syntax Doctor XML</button>
+            <button type="button" id="home-open-normal">TNS Normal</button>
+            <button type="button" id="home-open-python">Python Program</button>
+          </div>
+        </div>
+      </section>
+
       <section id="xml-doctor-panel" class="panel doctor-panel collapsed">
         <div class="doctor-toolbar">
           <h2>Syntax Doctor XML</h2>
@@ -45,27 +62,27 @@
               <button id="xml-new-btn" class="menu-action" data-i18n="newXmlProject">Nuevo</button>
               <label class="menu-action file-menu-action"><span data-i18n="openTns">Abrir TNS</span> <input id="xml-tns-file" type="file" accept=".tns" hidden /></label>
               <div class="tool-menu nested-menu">
+                <button type="button" class="menu-action nested-trigger" data-i18n="xmlActionsMenu">Acciones XML</button>
+                <div class="menu-panel nested-panel">
+                  <label class="menu-action file-menu-action"><span data-i18n="openXml">Abrir XML</span> <input id="xml-file" type="file" accept=".xml" hidden /></label>
+                  <label class="menu-action file-menu-action"><span data-i18n="openXmlFolder">Abrir carpeta XML</span> <input id="xml-folder" type="file" webkitdirectory multiple hidden /></label>
+                  <button id="xml-embed-btn" class="menu-action" disabled data-i18n="embedXml">Incrustar en XML</button>
+                </div>
+              </div>
+              <div class="tool-menu nested-menu">
                 <button type="button" class="menu-action nested-trigger" data-i18n="saveMenu">Guardar</button>
                 <div class="menu-panel nested-panel">
-                  <button id="xml-save-btn" class="menu-action success-button" disabled data-i18n="saveXmlZip">Guardar XML ZIP</button>
-                  <button id="xml-create-tns-btn" class="menu-action success-button" disabled data-i18n="createTnsFromDoctor">Crear TNS</button>
+                  <button id="xml-save-btn" class="menu-action" disabled data-i18n="saveXmlZip">Guardar XML ZIP</button>
+                  <button id="xml-create-tns-btn" class="menu-action" disabled data-i18n="createTnsFromDoctor">Crear TNS</button>
                 </div>
               </div>
             </div>
           </div>
           <div class="tool-menu">
-            <button type="button" class="menu-trigger green-menu-trigger"><span data-i18n="xmlActionsMenu">Acciones XML</span></button>
-            <div class="menu-panel">
-              <label class="menu-action file-menu-action"><span data-i18n="openXml">Abrir XML</span> <input id="xml-file" type="file" accept=".xml" hidden /></label>
-              <label class="menu-action file-menu-action"><span data-i18n="openXmlFolder">Abrir carpeta XML</span> <input id="xml-folder" type="file" webkitdirectory multiple hidden /></label>
-              <button id="xml-embed-btn" class="menu-action" disabled data-i18n="embedXml">Incrustar en XML</button>
-            </div>
-          </div>
-          <div class="tool-menu">
             <button type="button" class="menu-trigger green-menu-trigger"><span data-i18n="editMenu">Edit</span></button>
             <div class="menu-panel">
-              <button id="xml-inspector-btn" class="menu-action beige-tool-button" disabled data-i18n="documentInspector">Inspector de documento</button>
-              <button id="xml-document-btn" class="menu-action beige-tool-button" disabled data-i18n="documentSettings">Ajuste de documento</button>
+              <button id="xml-inspector-btn" class="menu-action" disabled data-i18n="documentInspector">Inspector de documento</button>
+              <button id="xml-document-btn" class="menu-action" disabled data-i18n="documentSettings">Ajuste de documento</button>
               <button id="xml-add-func-btn" class="menu-action" disabled data-i18n="addFunc">Agregar Func</button>
               <button id="xml-autofix-btn" class="menu-action" disabled>Auto Fix</button>
               <button id="xml-format-btn" class="menu-action" disabled data-i18n="format">Format</button>

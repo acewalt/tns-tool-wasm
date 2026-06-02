@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-xml-actions-dark-fixes-local";
+const SOURCE_VERSION = "2026-06-01-dashboard-menu-fixes-local";
 
 const I18N = {
   es: {
@@ -592,6 +592,7 @@ function syncToggleLabels() {
   const normalModule = document.querySelector("#normal-module");
   const pythonModule = document.querySelector("#python-module");
   const pyPanel = document.querySelector("#py-doctor-panel");
+  document.body.classList.toggle("app-active", !xmlPanel.classList.contains("collapsed") || !normalModule.classList.contains("collapsed") || !pythonModule.classList.contains("collapsed"));
   document.querySelector("#xml-toggle-btn").textContent = xmlPanel.classList.contains("collapsed") ? t("openXmlDoctor") : t("hideXmlDoctor");
   document.querySelector("#normal-toggle-btn").textContent = normalModule.classList.contains("collapsed") ? t("openNormal") : t("hideNormal");
   document.querySelector("#python-toggle-btn").textContent = pythonModule.classList.contains("collapsed") ? t("openPython") : t("hidePython");
@@ -4760,6 +4761,18 @@ function wireEvents() {
   for (const button of document.querySelectorAll("#language-buttons button")) {
     button.addEventListener("click", () => applyLanguage(button.dataset.lang));
   }
+  document.querySelector("#home-open-xml").addEventListener("click", () => {
+    const panel = document.querySelector("#xml-doctor-panel");
+    if (panel.classList.contains("collapsed")) toggleCollapsible(panel, syncToggleLabels);
+  });
+  document.querySelector("#home-open-normal").addEventListener("click", () => {
+    const module = document.querySelector("#normal-module");
+    if (module.classList.contains("collapsed")) toggleCollapsible(module, syncToggleLabels);
+  });
+  document.querySelector("#home-open-python").addEventListener("click", () => {
+    const module = document.querySelector("#python-module");
+    if (module.classList.contains("collapsed")) toggleCollapsible(module, syncToggleLabels);
+  });
   document.querySelector("#normal-toggle-btn").addEventListener("click", () => {
     const module = document.querySelector("#normal-module");
     toggleCollapsible(module, syncToggleLabels);
