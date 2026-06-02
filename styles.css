@@ -1447,11 +1447,11 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .lua-template-type {
   display: flex;
   gap: 12px;
-  align-items: flex-start;
+  align-items: center;
   width: 100%;
   border: 1px solid transparent;
   border-radius: 10px;
-  padding: 12px;
+  padding: 14px 12px;
   background: color-mix(in srgb, var(--panel) 86%, #1d4ed8 14%);
   color: var(--text);
   text-align: left;
@@ -1464,8 +1464,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   min-width: 0;
 }
 
-.lua-template-type strong,
-.lua-template-type small {
+.lua-template-type strong {
   overflow-wrap: anywhere;
 }
 
@@ -1481,13 +1480,6 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   text-align: center;
   color: #d9f99d;
   font-weight: 900;
-}
-
-.lua-template-type small {
-  display: block;
-  margin-top: 4px;
-  color: var(--muted);
-  line-height: 1.35;
 }
 
 .template-options-column {
@@ -1619,6 +1611,31 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   font: 12px/1.45 Consolas, monospace;
 }
 
+.lua-page-editor-modal {
+  width: min(880px, calc(100vw - 36px));
+}
+
+.lua-page-editor-grid {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.7fr) minmax(360px, 1.3fr);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-top: 14px;
+}
+
+.page-editor-list,
+.page-editor-panel {
+  padding: 16px;
+  min-width: 0;
+}
+
+.page-editor-panel {
+  border-left: 1px solid var(--line);
+  display: grid;
+  gap: 14px;
+}
+
 .lua-toolbar {
   display: flex;
   align-items: center;
@@ -1682,6 +1699,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   pointer-events: none;
   overflow: hidden;
   user-select: none;
+  z-index: 1;
 }
 
 [data-theme="dark"] .lua-code-shell,
@@ -1695,16 +1713,24 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   resize: none;
   background: transparent;
   color: transparent;
+  -webkit-text-fill-color: transparent;
   caret-color: #0f766e;
   overflow: auto;
+  z-index: 2;
 }
 
 .lua-editor::selection {
   background: rgb(147 197 253 / 55%);
-  color: #ffffff;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
 }
 
-[data-theme="dark"] .lua-editor::selection,
+[data-theme="dark"] .lua-editor::selection {
+  background: rgb(96 165 250 / 45%);
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+}
+
 [data-theme="dark"] #xml-code::selection,
 [data-theme="dark"] #py-code::selection {
   background: rgb(96 165 250 / 45%);
@@ -2346,6 +2372,15 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
   .menu-route-row {
     grid-template-columns: 1fr;
+  }
+
+  .lua-page-editor-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .page-editor-panel {
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
 
   .lua-guide-list {
