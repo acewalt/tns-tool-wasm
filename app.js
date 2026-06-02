@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-sidebar-i18n-mobile-local";
+const SOURCE_VERSION = "2026-06-01-about-lang-local";
 
 const I18N = {
   es: {
@@ -323,7 +323,14 @@ const I18N = {
   },
 };
 
-let language = localStorage.getItem("tns-tool-language") || "es";
+function detectInitialLanguage() {
+  const savedLanguage = localStorage.getItem("tns-tool-language");
+  if (savedLanguage && I18N[savedLanguage]) return savedLanguage;
+  const browserLanguage = (navigator.language || navigator.userLanguage || "en").slice(0, 2).toLowerCase();
+  return I18N[browserLanguage] ? browserLanguage : "en";
+}
+
+let language = detectInitialLanguage();
 let theme = localStorage.getItem("tns-tool-theme") || "dark";
 
 const PROBLEM_TRANSLATIONS = {

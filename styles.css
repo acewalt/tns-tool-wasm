@@ -1536,6 +1536,19 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   border: 1px solid #fed7aa;
   border-radius: 10px;
   background: #fff7ed;
+  color: #7c2d12;
+}
+
+[data-theme="dark"] .about-disclaimer {
+  background: #24130a;
+  border-color: #fdba74;
+  color: #fed7aa;
+}
+
+.about-disclaimer::selection,
+.about-disclaimer *::selection {
+  background: #2563eb;
+  color: #ffffff;
 }
 
 .resolver-item {
