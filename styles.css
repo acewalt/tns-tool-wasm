@@ -45,7 +45,7 @@ body {
   height: 420px;
   pointer-events: none;
   border-radius: 50%;
-  background: radial-gradient(circle, rgb(120 90 255 / 14%) 0%, rgb(80 160 255 / 7%) 35%, transparent 70%);
+  background: radial-gradient(circle, rgb(120 90 255 / 7%) 0%, rgb(80 160 255 / 3.5%) 35%, transparent 70%);
   filter: blur(35px);
   transform: translate(-50%, -50%);
   z-index: 2;
@@ -55,7 +55,7 @@ body {
 }
 
 [data-theme="light"] .mouse-glow {
-  background: radial-gradient(circle, rgb(37 99 235 / 8%) 0%, rgb(132 204 22 / 5%) 35%, transparent 70%);
+  background: radial-gradient(circle, rgb(37 99 235 / 4%) 0%, rgb(132 204 22 / 2.5%) 35%, transparent 70%);
 }
 
 .shell-header {
