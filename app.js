@@ -1533,17 +1533,17 @@ addPage({
     gc:setColorRGB(245, 245, 245)
     gc:fillRect(0, 0, w, h)
     gc:setColorRGB(0, 0, 0)
-    gc:setFont("sansserif", "b", 20)
+    gc:setFont("sansserif", "b", 22)
     local title = "Hello Lua"
-    gc:drawString(title, (w - gc:getStringWidth(title)) / 2, 68, "top")
+    gc:drawString(title, (w - gc:getStringWidth(title)) / 2, 70, "top")
     gc:setFont("sansserif", "r", 10)
     local subtitle = "Enter para continuar"
-    gc:drawString(subtitle, (w - gc:getStringWidth(subtitle)) / 2, 96, "top")
+    gc:drawString(subtitle, (w - gc:getStringWidth(subtitle)) / 2, 98, "top")
     gc:setColorRGB(45, 147, 173)
-    gc:fillRect((w - 120) / 2, 158, 120, 28)
+    gc:fillRect((w - 120) / 2, 160, 120, 28)
     gc:setColorRGB(255, 255, 255)
     local label = "Siguiente"
-    gc:drawString(label, (w - gc:getStringWidth(label)) / 2, 164, "top")
+    gc:drawString(label, (w - gc:getStringWidth(label)) / 2, 166, "top")
   end,
   enterKey = function(self)
     goNext()
@@ -2868,6 +2868,61 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
   ctx.fillText(options.buttonText || template.defaults.buttonText, sx(246), sy(detailButtonY + 16));
 }
 
+function drawLuaPagePreview(canvas, page, draft = {}) {
+  const ctx = canvas.getContext("2d");
+  const scale = canvas.width / 318;
+  const syScale = canvas.height / 212;
+  const sx = (value) => value * scale;
+  const sy = (value) => value * syScale;
+  const bg = luaRgbFromHex(draft.backgroundColor || page.backgroundColor || "#f5f5f5", [245, 245, 245]);
+  const text = luaRgbFromHex(draft.textColor || page.textColor || "#000000", [0, 0, 0]);
+  const button = luaRgbFromHex(draft.buttonColor || page.buttonColor || "#2d93ad", [45, 147, 173]);
+  const textColor = `rgb(${text[0]}, ${text[1]}, ${text[2]})`;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = `rgb(${bg[0]}, ${bg[1]}, ${bg[2]})`;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  if (page.index === 1 && page.titleText) {
+    const title = draft.titleText ?? page.titleText;
+    const subtitle = draft.subtitleText ?? page.subtitleText;
+    const buttonText = draft.buttonText ?? page.buttonText;
+    ctx.fillStyle = textColor;
+    ctx.font = `bold ${Math.max(16, sy(22))}px sans-serif`;
+    ctx.fillText(title, (canvas.width - ctx.measureText(title).width) / 2, sy(90));
+    ctx.font = `${Math.max(8, sy(10))}px sans-serif`;
+    ctx.fillText(subtitle, (canvas.width - ctx.measureText(subtitle).width) / 2, sy(108));
+    ctx.fillStyle = `rgb(${button[0]}, ${button[1]}, ${button[2]})`;
+    ctx.fillRect(sx(99), sy(160), sx(120), sy(28));
+    ctx.fillStyle = "#fff";
+    ctx.fillText(buttonText, (canvas.width - ctx.measureText(buttonText).width) / 2, sy(178));
+    return;
+  }
+
+  if (page.items.length) {
+    ctx.fillStyle = textColor;
+    ctx.font = `bold ${Math.max(9, sy(12))}px sans-serif`;
+    ctx.fillText(draft.name || page.name, sx(92), sy(22));
+    ctx.font = `${Math.max(8, sy(10))}px sans-serif`;
+    const items = draft.items?.length ? draft.items : page.items;
+    items.forEach((item, index) => {
+      const y = 44 + index * 24;
+      if (index === 0) {
+        ctx.fillStyle = "rgba(0,0,0,.14)";
+        ctx.fillRect(sx(18), sy(y - 2), sx(150), sy(20));
+      }
+      ctx.fillStyle = textColor;
+      ctx.fillText(item, sx(28), sy(y + 12));
+    });
+    return;
+  }
+
+  ctx.fillStyle = textColor;
+  ctx.font = `bold ${Math.max(12, sy(14))}px sans-serif`;
+  ctx.fillText(draft.name || page.name, sx(12), sy(24));
+  ctx.font = `${Math.max(8, sy(10))}px sans-serif`;
+  ctx.fillText("Preview visual disponible para paginas generadas por plantillas.", sx(12), sy(52));
+}
+
 function showLuaTemplates(editor) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -3055,18 +3110,26 @@ function showLuaPageEditor(editor) {
     backdrop.querySelector("#lua-page-close").addEventListener("click", () => closeModal(backdrop));
     return;
   }
-  const pageOptions = pages.map((page) => `<option value="${page.index - 1}">${page.index}. ${escapeHtml(page.name)}</option>`).join("");
+  const pageOptions = pages.map((page) => `
+    <button type="button" class="file-menu-action" data-page-option="${page.index - 1}">
+      ${escapeHtml(`${page.index}. ${page.name}`)}
+    </button>`).join("");
   backdrop.innerHTML = `
     <div class="modal lua-library-modal lua-page-editor-modal">
       <h2>${escapeHtml(t("luaPageEditor"))}</h2>
       <p class="muted-copy">${escapeHtml(t("luaPageEditorIntro"))}</p>
       <div class="lua-page-editor-grid">
-        <aside class="page-editor-list">
-          <label>${escapeHtml(t("luaPageName"))}
-            <select id="lua-page-select">${pageOptions}</select>
-          </label>
+        <aside class="template-column page-editor-list">
+          <h3>${escapeHtml(t("luaPageName"))}</h3>
+          <div id="lua-page-picker" class="tool-menu page-picker">
+            <button type="button" id="lua-page-picker-trigger" class="menu-trigger green-menu-trigger">
+              ${escapeHtml(`1. ${pages[0].name}`)}
+            </button>
+            <div class="menu-panel page-picker-panel">${pageOptions}</div>
+          </div>
         </aside>
-        <section class="page-editor-panel">
+        <section class="template-column page-editor-panel">
+          <h3>${escapeHtml(t("luaTemplateOptions"))}</h3>
           <label>${escapeHtml(t("luaPageName"))}<input id="lua-page-name"></label>
           <div id="lua-start-page-editor" class="template-option-grid hidden">
             <label>${escapeHtml(t("luaTemplateTitle"))}<input id="lua-page-title"></label>
@@ -3081,6 +3144,12 @@ function showLuaPageEditor(editor) {
             <div id="lua-page-menu-items"></div>
           </div>
         </section>
+        <section class="template-column page-editor-preview">
+          <h3>${escapeHtml(t("luaTemplatePreview"))}</h3>
+          <div class="template-preview-stage">
+            <canvas id="lua-page-preview" class="template-preview-canvas" width="318" height="212" aria-hidden="true"></canvas>
+          </div>
+        </section>
       </div>
       <div class="modal-actions">
         <button type="button" id="lua-page-close">${escapeHtml(t("cancel"))}</button>
@@ -3088,13 +3157,39 @@ function showLuaPageEditor(editor) {
       </div>
     </div>`;
   document.body.append(backdrop);
-  const select = backdrop.querySelector("#lua-page-select");
+  let selectedPageIndex = 0;
+  const picker = backdrop.querySelector("#lua-page-picker");
+  const pickerTrigger = backdrop.querySelector("#lua-page-picker-trigger");
   const nameInput = backdrop.querySelector("#lua-page-name");
   const startWrap = backdrop.querySelector("#lua-start-page-editor");
   const menuWrap = backdrop.querySelector("#lua-page-menu-editor");
   const menuItems = backdrop.querySelector("#lua-page-menu-items");
+  const previewCanvas = backdrop.querySelector("#lua-page-preview");
+  const draftForPage = (page) => {
+    const draft = { name: nameInput.value };
+    if (page.index === 1 && page.titleText) {
+      draft.titleText = backdrop.querySelector("#lua-page-title").value;
+      draft.subtitleText = backdrop.querySelector("#lua-page-subtitle").value;
+      draft.buttonText = backdrop.querySelector("#lua-page-button").value;
+      draft.backgroundColor = backdrop.querySelector("#lua-page-bg").value;
+      draft.textColor = backdrop.querySelector("#lua-page-text").value;
+      draft.buttonColor = backdrop.querySelector("#lua-page-button-color").value;
+    }
+    if (page.items.length) {
+      draft.items = Array.from(menuItems.querySelectorAll("[data-page-item]")).map((input) => input.value);
+    }
+    return draft;
+  };
+  const renderPreview = () => {
+    const page = pages[selectedPageIndex] || pages[0];
+    drawLuaPagePreview(previewCanvas, page, draftForPage(page));
+  };
   const render = () => {
-    const page = pages[Number(select.value)] || pages[0];
+    const page = pages[selectedPageIndex] || pages[0];
+    pickerTrigger.textContent = `${page.index}. ${page.name}`;
+    for (const button of backdrop.querySelectorAll("[data-page-option]")) {
+      button.classList.toggle("active", Number(button.dataset.pageOption) === selectedPageIndex);
+    }
     nameInput.value = page.name;
     startWrap.classList.toggle("hidden", page.index !== 1 || !page.titleText);
     if (page.index === 1 && page.titleText) {
@@ -3115,11 +3210,33 @@ function showLuaPageEditor(editor) {
         <label>${escapeHtml(t("luaButtonAction"))}<select data-page-target="${index}">${routeOptions}</select></label>
       </div>`;
     }).join("");
+    for (const input of backdrop.querySelectorAll("#lua-page-name, #lua-start-page-editor input, #lua-page-menu-items input, #lua-page-menu-items select")) {
+      input.addEventListener("input", renderPreview);
+      input.addEventListener("change", renderPreview);
+    }
+    renderPreview();
   };
-  select.addEventListener("change", render);
+  pickerTrigger.addEventListener("click", (event) => {
+    event.stopPropagation();
+    picker.classList.toggle("open");
+  });
+  for (const button of backdrop.querySelectorAll("[data-page-option]")) {
+    button.addEventListener("click", () => {
+      selectedPageIndex = Number(button.dataset.pageOption) || 0;
+      picker.classList.remove("open");
+      render();
+    });
+  }
+  document.addEventListener("click", function closePagePicker(event) {
+    if (!backdrop.isConnected) {
+      document.removeEventListener("click", closePagePicker);
+      return;
+    }
+    if (!picker.contains(event.target)) picker.classList.remove("open");
+  });
   backdrop.querySelector("#lua-page-close").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#lua-page-apply").addEventListener("click", () => {
-    const pageIndex = Number(select.value);
+    const pageIndex = selectedPageIndex;
     const page = pages[pageIndex] || pages[0];
     const items = Array.from(menuItems.querySelectorAll("[data-page-item]")).map((input) => input.value);
     const targets = Array.from(menuItems.querySelectorAll("[data-page-target]")).map((input) => input.value);

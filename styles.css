@@ -1612,28 +1612,56 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .lua-page-editor-modal {
-  width: min(880px, calc(100vw - 36px));
+  width: min(1180px, calc(100vw - 36px));
 }
 
 .lua-page-editor-grid {
   display: grid;
-  grid-template-columns: minmax(220px, 0.7fr) minmax(360px, 1.3fr);
+  grid-template-columns: minmax(210px, 0.72fr) minmax(300px, 1fr) minmax(420px, 1.55fr);
   border: 1px solid var(--line);
   border-radius: 16px;
   overflow: hidden;
   margin-top: 14px;
+  min-height: 430px;
 }
 
 .page-editor-list,
-.page-editor-panel {
-  padding: 16px;
+.page-editor-panel,
+.page-editor-preview {
   min-width: 0;
 }
 
 .page-editor-panel {
-  border-left: 1px solid var(--line);
   display: grid;
   gap: 14px;
+  align-content: start;
+  max-height: min(64vh, 600px);
+  overflow: auto;
+}
+
+.page-picker {
+  width: 100%;
+}
+
+.page-picker .menu-trigger {
+  width: 100%;
+  justify-content: center;
+}
+
+.page-picker-panel {
+  width: min(300px, calc(100vw - 72px));
+  max-height: 320px;
+  overflow: auto;
+}
+
+.page-picker-panel .file-menu-action.active {
+  background: color-mix(in srgb, #a3e635 28%, transparent);
+  color: #172033;
+}
+
+[data-theme="dark"] .page-picker-panel .file-menu-action.active {
+  background: linear-gradient(135deg, var(--lime), var(--lime2));
+  color: #172033;
 }
 
 .lua-toolbar {
