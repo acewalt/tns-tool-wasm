@@ -2407,6 +2407,21 @@ function rgbToHexFromMatch(match, fallback) {
   return `#${nums.map((value) => value.toString(16).padStart(2, "0")).join("")}`;
 }
 
+function getLuaPaintSlice(block) {
+  const start = block.indexOf("paint = function");
+  if (start < 0) return block;
+  const nextHandlers = ["\n  arrowKey =", "\n  charIn =", "\n  enterKey =", "\n  escapeKey ="]
+    .map((needle) => block.indexOf(needle, start + 1))
+    .filter((index) => index > start);
+  const end = nextHandlers.length ? Math.min(...nextHandlers) : block.length;
+  return block.slice(start, end);
+}
+
+function findDrawStringAt(block, x, y) {
+  const regex = new RegExp(`gc:drawString\\((["'])(.*?)\\1,\\s*${x}\\s*,\\s*${y}\\s*,`, "s");
+  return regex.exec(block)?.[2] || "";
+}
+
 function findLuaPageBlocks(code = "") {
   const pages = [];
   const regex = /addPage\s*\(/g;
@@ -2425,21 +2440,46 @@ function findLuaPageBlocks(code = "") {
     const titleMatch = /local\s+title\s*=\s*(["'])(.*?)\1/.exec(block);
     const subtitleMatch = /local\s+subtitle\s*=\s*(["'])(.*?)\1/.exec(block);
     const buttonMatch = /local\s+label\s*=\s*(["'])(.*?)\1/.exec(block);
-    const rgbMatches = [...block.matchAll(/gc:setColorRGB\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g)];
+    const paintSlice = getLuaPaintSlice(block);
+    const paintRgbMatches = [...paintSlice.matchAll(/gc:setColorRGB\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/g)];
+    const isStart = Boolean(titleMatch);
+    const isMenu = Boolean(itemsMatch);
+    const isPopup = /visible\s*=\s*true/.test(block) && /fillRect\(104,\s*76,\s*112,\s*58\)/.test(block);
+    const isForm = /fields\s*=\s*\{/.test(block) && /drawInput\s*=/.test(block);
+    const type = isStart ? "start" : isMenu ? "menu" : isPopup ? "popup" : isForm ? "form" : "generic";
+    const formButtonYMatch = /self:drawButton\(gc,\s*["'].*?Retour.*?["'],\s*8,\s*(\d+)/.exec(block);
+    const formButtonY = Number(formButtonYMatch?.[1] || 188);
+    const formButtonText = findDrawStringAt(block, 112, formButtonY + 6);
+    const popupTitle = findDrawStringAt(block, 112, 84);
+    const popupButtonText = findDrawStringAt(block, 150, 113);
+    const titleText = titleMatch?.[2] || (isPopup ? popupTitle : "");
+    const buttonText = buttonMatch?.[2] || formButtonText || popupButtonText || "";
+    const primaryColor = isStart
+      ? rgbToHexFromMatch(paintRgbMatches[2], "#2d93ad")
+      : isMenu
+        ? rgbToHexFromMatch(paintRgbMatches[1], "#a3e635")
+        : isPopup
+          ? rgbToHexFromMatch(paintRgbMatches[5], "#a3e635")
+          : isForm
+            ? rgbToHexFromMatch([...block.matchAll(/gc:setColorRGB\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)\s*\n\s*gc:drawString\(["'].*?["'],\s*112,/g)][0], "#a3e635")
+            : "#a3e635";
     pages.push({
       index: pages.length + 1,
       start: match.index,
       end,
       block,
+      type,
       name: nameMatch?.[2] || `Page ${pages.length + 1}`,
       items: itemsMatch ? parseLuaStringList(itemsMatch[1]) : [],
       targets: targetsMatch ? parseLuaNumberList(targetsMatch[1]) : [],
-      titleText: titleMatch?.[2] || "",
+      titleText,
       subtitleText: subtitleMatch?.[2] || "",
-      buttonText: buttonMatch?.[2] || "",
-      backgroundColor: rgbToHexFromMatch(rgbMatches[0], "#f5f5f5"),
-      textColor: rgbToHexFromMatch(rgbMatches[1], "#000000"),
-      buttonColor: rgbToHexFromMatch(rgbMatches[2], "#2d93ad"),
+      buttonText,
+      inputCount: (block.match(/label="/g) || []).length || 3,
+      buttonPosition: formButtonY < 100 ? "top" : "bottom",
+      backgroundColor: rgbToHexFromMatch(paintRgbMatches[0], type === "menu" ? "#ffffff" : type === "form" ? "#e0e0e0" : "#f5f5f5"),
+      textColor: rgbToHexFromMatch(paintRgbMatches[type === "menu" ? 2 : type === "popup" ? 4 : 1], "#000000"),
+      buttonColor: primaryColor,
     });
     regex.lastIndex = end;
   }
@@ -2448,21 +2488,51 @@ function findLuaPageBlocks(code = "") {
 
 function updateLuaPageBlock(block, patch) {
   let next = block;
+  const replaceDrawStringAt = (source, x, y, value) => {
+    const pattern = new RegExp(`gc:drawString\\((["'])(.*?)\\1,\\s*${x}\\s*,\\s*${y}\\s*,`);
+    return source.replace(pattern, `gc:drawString("${luaString(value)}", ${x}, ${y},`);
+  };
   if (patch.name) {
     next = next.replace(/name\s*=\s*(["'])(.*?)\1/, `name = "${luaString(patch.name)}"`);
   }
   if (patch.titleText !== undefined) next = next.replace(/local\s+title\s*=\s*(["'])(.*?)\1/, `local title = "${luaString(patch.titleText)}"`);
   if (patch.subtitleText !== undefined) next = next.replace(/local\s+subtitle\s*=\s*(["'])(.*?)\1/, `local subtitle = "${luaString(patch.subtitleText)}"`);
   if (patch.buttonText !== undefined) next = next.replace(/local\s+label\s*=\s*(["'])(.*?)\1/, `local label = "${luaString(patch.buttonText)}"`);
+  if (patch.titleText !== undefined && !/local\s+title\s*=/.test(next)) {
+    if (patch.type === "menu") next = replaceDrawStringAt(next, 92, 8, patch.titleText);
+    else if (patch.type === "popup") next = replaceDrawStringAt(next, 112, 84, patch.titleText);
+    else if (patch.type === "form") next = replaceDrawStringAt(next, 8, 8, patch.titleText);
+  }
+  if (patch.buttonText !== undefined && !/local\s+label\s*=/.test(next)) {
+    if (patch.type === "popup") next = replaceDrawStringAt(next, 150, 113, patch.buttonText);
+    else if (patch.type === "form") {
+      next = next.replace(/gc:drawString\((["'])(.*?)\1,\s*112,\s*(\d+)\s*,/, `gc:drawString("${luaString(patch.buttonText)}", 112, $3,`);
+    }
+  }
   if (patch.backgroundColor || patch.textColor || patch.buttonColor) {
-    const colors = [patch.backgroundColor, patch.textColor, patch.buttonColor].filter(Boolean);
-    let colorIndex = 0;
-    next = next.replace(/gc:setColorRGB\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)/g, (match) => {
-      if (colorIndex >= colors.length) return match;
-      const rgb = luaRgbText(colors[colorIndex], colorIndex === 0 ? [245, 245, 245] : colorIndex === 1 ? [0, 0, 0] : [45, 147, 173]);
-      colorIndex += 1;
-      return `gc:setColorRGB(${rgb})`;
+    const replacements = {
+      start: [patch.backgroundColor, patch.textColor, patch.buttonColor],
+      menu: [patch.backgroundColor, patch.buttonColor, patch.textColor],
+      popup: [patch.backgroundColor, null, null, null, patch.textColor, patch.buttonColor],
+      form: [patch.backgroundColor, patch.textColor],
+      generic: [patch.backgroundColor, patch.textColor],
+    }[patch.type || "generic"] || [];
+    next = next.replace(/(paint\s*=\s*function[\s\S]*?)(?=\n\s*(arrowKey|charIn|enterKey|escapeKey)\s*=|\n\}\))/m, (paintBlock) => {
+      let localIndex = 0;
+      return paintBlock.replace(/gc:setColorRGB\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)/g, (match) => {
+        const color = replacements[localIndex];
+        localIndex += 1;
+        if (!color) return match;
+        const rgb = luaRgbText(color, localIndex === 1 ? [245, 245, 245] : [0, 0, 0]);
+        return `gc:setColorRGB(${rgb})`;
+      });
     });
+    if ((patch.type === "form" || patch.type === "popup") && patch.buttonColor) {
+      const rgb = luaRgbText(patch.buttonColor, [163, 230, 53]);
+      next = next.replace(/gc:setColorRGB\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)\s*\n\s*gc:drawString\((["']).*?\1,\s*(112|150)\s*,/m, (match, quote, x) => {
+        return match.replace(/gc:setColorRGB\(\s*\d+\s*,\s*\d+\s*,\s*\d+\s*\)/, `gc:setColorRGB(${rgb})`);
+      });
+    }
   }
   if (patch.items?.length) {
     const itemText = patch.items.map((item) => `"${luaString(item)}"`).join(", ");
@@ -2869,6 +2939,42 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
 }
 
 function drawLuaPagePreview(canvas, page, draft = {}) {
+  if (page.type === "form") {
+    drawLuaTemplatePreview(canvas, LUA_TEMPLATE_PRESETS.find((template) => template.id === "form"), {
+      title: draft.titleText || draft.name || page.name,
+      inputCount: page.inputCount || 3,
+      buttonText: draft.buttonText || page.buttonText || "Calcular",
+      primaryColor: draft.buttonColor || page.buttonColor || "#a3e635",
+      backgroundColor: draft.backgroundColor || page.backgroundColor || "#e0e0e0",
+      textColor: draft.textColor || page.textColor || "#000000",
+      buttonPosition: page.buttonPosition || "bottom",
+      showPrimaryButton: true,
+      showDetailsButton: true,
+      showBackButton: true,
+    });
+    return;
+  }
+  if (page.type === "popup") {
+    drawLuaTemplatePreview(canvas, LUA_TEMPLATE_PRESETS.find((template) => template.id === "popup"), {
+      title: draft.titleText || draft.name || page.name,
+      buttonText: draft.buttonText || page.buttonText || "OK",
+      primaryColor: draft.buttonColor || page.buttonColor || "#a3e635",
+      backgroundColor: draft.backgroundColor || page.backgroundColor || "#eeeeee",
+      textColor: draft.textColor || page.textColor || "#000000",
+    });
+    return;
+  }
+  if (page.type === "menu") {
+    drawLuaTemplatePreview(canvas, LUA_TEMPLATE_PRESETS.find((template) => template.id === "menu"), {
+      title: draft.titleText || draft.name || page.name,
+      inputCount: Math.max(2, page.items.length || 4),
+      primaryColor: draft.buttonColor || page.buttonColor || "#a3e635",
+      backgroundColor: draft.backgroundColor || page.backgroundColor || "#ffffff",
+      textColor: draft.textColor || page.textColor || "#000000",
+      menuLabels: draft.items?.length ? draft.items : page.items,
+    });
+    return;
+  }
   const ctx = canvas.getContext("2d");
   const scale = canvas.width / 318;
   const syScale = canvas.height / 212;
@@ -3131,9 +3237,9 @@ function showLuaPageEditor(editor) {
         <section class="template-column page-editor-panel">
           <h3>${escapeHtml(t("luaTemplateOptions"))}</h3>
           <label>${escapeHtml(t("luaPageName"))}<input id="lua-page-name"></label>
-          <div id="lua-start-page-editor" class="template-option-grid hidden">
+          <div id="lua-page-visual-editor" class="template-option-grid hidden">
             <label>${escapeHtml(t("luaTemplateTitle"))}<input id="lua-page-title"></label>
-            <label>${escapeHtml(t("luaPageSubtitle"))}<input id="lua-page-subtitle"></label>
+            <label id="lua-page-subtitle-label">${escapeHtml(t("luaPageSubtitle"))}<input id="lua-page-subtitle"></label>
             <label>${escapeHtml(t("luaPageButtonText"))}<input id="lua-page-button"></label>
             <label>${escapeHtml(t("luaBackgroundColor"))}<input id="lua-page-bg" type="color"></label>
             <label>${escapeHtml(t("luaTextColor"))}<input id="lua-page-text" type="color"></label>
@@ -3161,13 +3267,14 @@ function showLuaPageEditor(editor) {
   const picker = backdrop.querySelector("#lua-page-picker");
   const pickerTrigger = backdrop.querySelector("#lua-page-picker-trigger");
   const nameInput = backdrop.querySelector("#lua-page-name");
-  const startWrap = backdrop.querySelector("#lua-start-page-editor");
+  const visualWrap = backdrop.querySelector("#lua-page-visual-editor");
+  const subtitleLabel = backdrop.querySelector("#lua-page-subtitle-label");
   const menuWrap = backdrop.querySelector("#lua-page-menu-editor");
   const menuItems = backdrop.querySelector("#lua-page-menu-items");
   const previewCanvas = backdrop.querySelector("#lua-page-preview");
   const draftForPage = (page) => {
     const draft = { name: nameInput.value };
-    if (page.index === 1 && page.titleText) {
+    if (visualWrap && !visualWrap.classList.contains("hidden")) {
       draft.titleText = backdrop.querySelector("#lua-page-title").value;
       draft.subtitleText = backdrop.querySelector("#lua-page-subtitle").value;
       draft.buttonText = backdrop.querySelector("#lua-page-button").value;
@@ -3191,14 +3298,17 @@ function showLuaPageEditor(editor) {
       button.classList.toggle("active", Number(button.dataset.pageOption) === selectedPageIndex);
     }
     nameInput.value = page.name;
-    startWrap.classList.toggle("hidden", page.index !== 1 || !page.titleText);
-    if (page.index === 1 && page.titleText) {
-      backdrop.querySelector("#lua-page-title").value = page.titleText;
+    const hasVisualOptions = ["start", "menu", "popup", "form"].includes(page.type);
+    visualWrap.classList.toggle("hidden", !hasVisualOptions);
+    if (hasVisualOptions) {
+      backdrop.querySelector("#lua-page-title").value = page.titleText || page.name;
       backdrop.querySelector("#lua-page-subtitle").value = page.subtitleText;
-      backdrop.querySelector("#lua-page-button").value = page.buttonText;
+      backdrop.querySelector("#lua-page-button").value = page.buttonText || (page.type === "popup" ? "OK" : "");
       backdrop.querySelector("#lua-page-bg").value = page.backgroundColor;
       backdrop.querySelector("#lua-page-text").value = page.textColor;
       backdrop.querySelector("#lua-page-button-color").value = page.buttonColor;
+      subtitleLabel.classList.toggle("hidden", page.type !== "start");
+      backdrop.querySelector("#lua-page-button").parentElement.classList.toggle("hidden", page.type === "menu");
     }
     menuWrap.classList.toggle("hidden", page.items.length === 0);
     menuItems.innerHTML = page.items.map((item, index) => {
@@ -3210,7 +3320,7 @@ function showLuaPageEditor(editor) {
         <label>${escapeHtml(t("luaButtonAction"))}<select data-page-target="${index}">${routeOptions}</select></label>
       </div>`;
     }).join("");
-    for (const input of backdrop.querySelectorAll("#lua-page-name, #lua-start-page-editor input, #lua-page-menu-items input, #lua-page-menu-items select")) {
+    for (const input of backdrop.querySelectorAll("#lua-page-name, #lua-page-visual-editor input, #lua-page-menu-items input, #lua-page-menu-items select")) {
       input.addEventListener("input", renderPreview);
       input.addEventListener("change", renderPreview);
     }
@@ -3241,7 +3351,8 @@ function showLuaPageEditor(editor) {
     const items = Array.from(menuItems.querySelectorAll("[data-page-item]")).map((input) => input.value);
     const targets = Array.from(menuItems.querySelectorAll("[data-page-target]")).map((input) => input.value);
     const patch = { name: nameInput.value, items, targets };
-    if (page.index === 1 && page.titleText) {
+    if (["start", "menu", "popup", "form"].includes(page.type)) {
+      patch.type = page.type;
       patch.titleText = backdrop.querySelector("#lua-page-title").value;
       patch.subtitleText = backdrop.querySelector("#lua-page-subtitle").value;
       patch.buttonText = backdrop.querySelector("#lua-page-button").value;
