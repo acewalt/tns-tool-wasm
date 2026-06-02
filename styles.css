@@ -1655,13 +1655,14 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .page-picker-panel .file-menu-action.active {
-  background: color-mix(in srgb, #a3e635 28%, transparent);
-  color: #172033;
+  background: transparent;
+  color: #e5e7eb;
+  font-weight: 900;
 }
 
 [data-theme="dark"] .page-picker-panel .file-menu-action.active {
-  background: linear-gradient(135deg, var(--lime), var(--lime2));
-  color: #172033;
+  background: transparent;
+  color: #e5e7eb;
 }
 
 .lua-toolbar {

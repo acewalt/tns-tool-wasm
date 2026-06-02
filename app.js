@@ -2478,7 +2478,7 @@ function findLuaPageBlocks(code = "") {
       inputCount: (block.match(/label="/g) || []).length || 3,
       buttonPosition: formButtonY < 100 ? "top" : "bottom",
       backgroundColor: rgbToHexFromMatch(paintRgbMatches[0], type === "menu" ? "#ffffff" : type === "form" ? "#e0e0e0" : "#f5f5f5"),
-      textColor: rgbToHexFromMatch(paintRgbMatches[type === "menu" ? 2 : type === "popup" ? 4 : 1], "#000000"),
+      textColor: rgbToHexFromMatch(paintRgbMatches[type === "menu" ? 3 : type === "popup" ? 4 : 1], "#000000"),
       buttonColor: primaryColor,
     });
     regex.lastIndex = end;
@@ -2512,7 +2512,7 @@ function updateLuaPageBlock(block, patch) {
   if (patch.backgroundColor || patch.textColor || patch.buttonColor) {
     const replacements = {
       start: [patch.backgroundColor, patch.textColor, patch.buttonColor],
-      menu: [patch.backgroundColor, patch.buttonColor, patch.textColor],
+      menu: [patch.backgroundColor, patch.buttonColor, null, patch.textColor],
       popup: [patch.backgroundColor, null, null, null, patch.textColor, patch.buttonColor],
       form: [patch.backgroundColor, patch.textColor],
       generic: [patch.backgroundColor, patch.textColor],
@@ -2820,6 +2820,47 @@ function showLuaGuide() {
   backdrop.querySelector("#lua-guide-close").addEventListener("click", () => closeModal(backdrop));
   render();
   search.focus();
+}
+
+function buildLuaTemplatePreviewCode(template, options) {
+  const snippet = template.build(options);
+  return buildDefaultLuaScriptApp().replace(LUA_PAGE_INSERT_MARKER, `${snippet}\ncurrentPage = #pages\n${LUA_PAGE_INSERT_MARKER}`);
+}
+
+function buildLuaPagePreviewCode(baseCode, page, draft = {}) {
+  const newBlock = updateLuaPageBlock(page.block, {
+    name: draft.name,
+    items: draft.items,
+    targets: draft.targets,
+    type: page.type,
+    titleText: draft.titleText,
+    subtitleText: draft.subtitleText,
+    buttonText: draft.buttonText,
+    backgroundColor: draft.backgroundColor,
+    textColor: draft.textColor,
+    buttonColor: draft.buttonColor,
+  });
+  return `${baseCode.slice(0, page.start)}${newBlock}${baseCode.slice(page.end)}\ncurrentPage = ${page.index}\n`;
+}
+
+async function renderLuaSnapshotToCanvas(code, canvas, item = null) {
+  const ctx = canvas.getContext("2d");
+  const logSink = { textContent: "", scrollTop: 0, scrollHeight: 0 };
+  const symbols = item ? await loadLuaPreviewSymbols(item).catch(() => ({})) : {};
+  let runtime = null;
+  try {
+    runtime = await createLuaJsPreviewRuntime(code, ctx, canvas, logSink, symbols);
+    runtime.boot();
+    runtime.close();
+    return true;
+  } catch (_error) {
+    try {
+      runtime?.close?.();
+    } catch (__error) {
+      // Ignore preview cleanup failures; the caller will keep the fallback canvas.
+    }
+    return false;
+  }
 }
 
 function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
@@ -3163,10 +3204,16 @@ function showLuaTemplates(editor) {
     menuLabels: Array.from(routeList.querySelectorAll("[data-menu-label]")).map((input) => input.value),
     menuTargets: Array.from(routeList.querySelectorAll("[data-menu-target]")).map((input) => input.value),
   });
+  let templatePreviewSeq = 0;
   const renderBuilder = () => {
     const options = currentOptions();
     backdrop.querySelector("#tpl-color").disabled = options.useThemeColor;
-    drawLuaTemplatePreview(backdrop.querySelector("#tpl-main-preview"), selected, options);
+    const canvas = backdrop.querySelector("#tpl-main-preview");
+    const seq = ++templatePreviewSeq;
+    drawLuaTemplatePreview(canvas, selected, options);
+    renderLuaSnapshotToCanvas(buildLuaTemplatePreviewCode(selected, options), canvas).then((ok) => {
+      if (!ok || seq !== templatePreviewSeq) drawLuaTemplatePreview(canvas, selected, options);
+    });
     backdrop.querySelector("#lua-template-code").textContent = selected.build(options);
   };
   for (const button of backdrop.querySelectorAll(".lua-template-type")) {
@@ -3234,7 +3281,7 @@ function showLuaPageEditor(editor) {
             <div class="menu-panel page-picker-panel">${pageOptions}</div>
           </div>
         </aside>
-        <section class="template-column page-editor-panel">
+        <section class="template-column template-options-column page-editor-panel">
           <h3>${escapeHtml(t("luaTemplateOptions"))}</h3>
           <label>${escapeHtml(t("luaPageName"))}<input id="lua-page-name"></label>
           <div id="lua-page-visual-editor" class="template-option-grid hidden">
@@ -3287,9 +3334,15 @@ function showLuaPageEditor(editor) {
     }
     return draft;
   };
+  let pagePreviewSeq = 0;
   const renderPreview = () => {
     const page = pages[selectedPageIndex] || pages[0];
-    drawLuaPagePreview(previewCanvas, page, draftForPage(page));
+    const draft = draftForPage(page);
+    const seq = ++pagePreviewSeq;
+    drawLuaPagePreview(previewCanvas, page, draft);
+    renderLuaSnapshotToCanvas(buildLuaPagePreviewCode(editor.value, page, draft), previewCanvas).then((ok) => {
+      if (!ok || seq !== pagePreviewSeq) drawLuaPagePreview(previewCanvas, page, draft);
+    });
   };
   const render = () => {
     const page = pages[selectedPageIndex] || pages[0];
