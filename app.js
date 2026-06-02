@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-02-lua-template-pages-local";
+const SOURCE_VERSION = "2026-06-02-lua-template-builder-local";
 
 const I18N = {
   es: {
@@ -46,6 +46,20 @@ const I18N = {
     luaTemplateTitle: "Titulo",
     luaButtonText: "Texto del boton",
     luaPrimaryColor: "Color principal",
+    luaTemplateType: "Tipo de plantilla",
+    luaTemplateOptions: "Opciones",
+    luaTemplatePreview: "Vista previa",
+    luaGeneratedCode: "Codigo Lua generado",
+    luaCopyCode: "Copiar codigo",
+    luaVariableBase: "Nombre base de variables",
+    luaButtonAction: "Accion del boton",
+    luaActionNext: "Ir a la siguiente pagina",
+    luaActionDetails: "Abrir detalles",
+    luaActionHome: "Volver al inicio",
+    luaActionNone: "No navegar",
+    luaButtonPosition: "Posicion de botones",
+    luaBottom: "Inferior",
+    luaTop: "Superior",
     luaSyntaxOk: "Sintaxis Lua basica OK.",
     luaSaved: "Lua guardado en staging. Use Guardar XML ZIP para descargarlo.",
     noEditablePrograms: "No se encontraron programas editables en el XML.",
@@ -168,6 +182,20 @@ const I18N = {
     luaTemplateTitle: "Title",
     luaButtonText: "Button text",
     luaPrimaryColor: "Primary color",
+    luaTemplateType: "Template type",
+    luaTemplateOptions: "Options",
+    luaTemplatePreview: "Preview",
+    luaGeneratedCode: "Generated Lua code",
+    luaCopyCode: "Copy code",
+    luaVariableBase: "Variable base name",
+    luaButtonAction: "Button action",
+    luaActionNext: "Go to next page",
+    luaActionDetails: "Open details",
+    luaActionHome: "Return home",
+    luaActionNone: "Do not navigate",
+    luaButtonPosition: "Button position",
+    luaBottom: "Bottom",
+    luaTop: "Top",
     luaSyntaxOk: "Basic Lua syntax OK.",
     luaSaved: "Lua saved to staging. Use Save XML ZIP to download it.",
     noEditablePrograms: "No editable programs were found in the XML.",
@@ -290,6 +318,20 @@ const I18N = {
     luaTemplateTitle: "Titre",
     luaButtonText: "Texte du bouton",
     luaPrimaryColor: "Couleur principale",
+    luaTemplateType: "Type de modele",
+    luaTemplateOptions: "Options",
+    luaTemplatePreview: "Apercu",
+    luaGeneratedCode: "Code Lua genere",
+    luaCopyCode: "Copier le code",
+    luaVariableBase: "Nom de base des variables",
+    luaButtonAction: "Action du bouton",
+    luaActionNext: "Aller a la page suivante",
+    luaActionDetails: "Ouvrir les details",
+    luaActionHome: "Retourner a l'accueil",
+    luaActionNone: "Ne pas naviguer",
+    luaButtonPosition: "Position des boutons",
+    luaBottom: "Inferieur",
+    luaTop: "Superieur",
     luaSyntaxOk: "Syntaxe Lua basique OK.",
     luaSaved: "Lua enregistre dans staging. Utilisez Enregistrer ZIP XML pour le telecharger.",
     noEditablePrograms: "Aucun programme editable trouve dans le XML.",
@@ -2184,7 +2226,14 @@ function highlightLuaLine(line) {
     const ident = /^[A-Za-z_][A-Za-z0-9_]*/.exec(line.slice(index));
     if (ident) {
       const word = ident[0];
-      output += keywords.has(word) ? spanToken("tok-keyword", word) : spanToken("tok-plain", word);
+      const nextChar = line[index + word.length] || "";
+      const prevChar = line[index - 1] || "";
+      const apiNames = new Set(["gc", "platform", "window", "timer", "var", "math", "string", "D2Editor"]);
+      if (keywords.has(word)) output += spanToken("tok-keyword", word);
+      else if (apiNames.has(word)) output += spanToken("tok-api", word);
+      else if (prevChar === "." || prevChar === ":") output += spanToken("tok-member", word);
+      else if (nextChar === "(") output += spanToken("tok-function", word);
+      else output += spanToken("tok-variable", word);
       index += word.length;
       continue;
     }
@@ -2238,16 +2287,35 @@ function luaRgbFromHex(hex, fallback = [45, 147, 173]) {
 
 const LUA_PAGE_INSERT_MARKER = "-- [[TNS_TOOL_PAGES_END]]";
 
+function luaTemplateActionSnippet(action, selfRef = "self") {
+  if (action === "home") {
+    return `currentPage = 1
+  platform.window:invalidate()`;
+  }
+  if (action === "details") {
+    return `${selfRef}.detailsOpen = true
+  platform.window:invalidate()`;
+  }
+  if (action === "none") {
+    return `platform.window:invalidate()`;
+  }
+  return `if currentPage < #pages then currentPage = currentPage + 1 end
+  platform.window:invalidate()`;
+}
+
 const LUA_TEMPLATE_PRESETS = [
   {
     id: "form",
     name: "Formulario con inputs",
     description: "Pantalla tipo calculadora con etiquetas, campos de respuesta y botones inferiores.",
-    defaults: { inputCount: 3, title: "Formulario", buttonText: "Calcular", primaryColor: "#2d93ad" },
+    defaults: { inputCount: 3, title: "Formulario", buttonText: "Calcular", primaryColor: "#2d93ad", action: "next", variableBase: "var" },
     build(options) {
       const count = Math.max(1, Math.min(8, Number(options.inputCount) || 3));
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
       const labels = Array.from({ length: count }, (_, index) => String.fromCharCode(97 + index));
+      const action = luaTemplateActionSnippet(options.action);
+      const buttonY = options.buttonPosition === "top" ? 26 : 188;
+      const barY = options.buttonPosition === "top" ? 58 : 180;
       const rows = labels.map((label, index) => {
         const y = 42 + index * 28;
         return `  gc:drawString("${label}", 14, ${y + 4}, "top")
@@ -2258,6 +2326,7 @@ const LUA_TEMPLATE_PRESETS = [
   name = "${luaString(options.title)}",
   fields = {${labels.map((label) => `{label="${label}", value="", placeholder="${label}"}`).join(", ")}},
   focus = 1,
+  detailsOpen = false,
   drawInput = function(self, gc, field, x, y, w, h)
   gc:setColorRGB(255, 255, 255)
   gc:fillRect(x, y, w, h)
@@ -2278,16 +2347,25 @@ const LUA_TEMPLATE_PRESETS = [
   end
 ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   gc:setColorRGB(128, 128, 128)
-  gc:fillRect(8, 180, 304, 2)
+  gc:fillRect(8, ${barY}, 304, 2)
   gc:setColorRGB(255, 255, 255)
-  gc:fillRect(8, 188, 70, 24)
-  gc:fillRect(240, 188, 70, 24)
+  gc:fillRect(8, ${buttonY}, 70, 24)
+  gc:fillRect(240, ${buttonY}, 70, 24)
   gc:setColorRGB(0, 0, 0)
-  gc:drawRect(8, 188, 70, 24)
-  gc:drawRect(240, 188, 70, 24)
-  gc:drawString("◀ Retour", 14, 193, "top")
-  gc:drawString("${luaString(options.buttonText)}", 112, 194, "top")
-  gc:drawString("Detalles", 248, 193, "top")
+  gc:drawRect(8, ${buttonY}, 70, 24)
+  gc:drawRect(240, ${buttonY}, 70, 24)
+  gc:drawString("◀ Retour", 14, ${buttonY + 5}, "top")
+  gc:drawString("${luaString(options.buttonText)}", 112, ${buttonY + 6}, "top")
+  gc:drawString("Detalles", 248, ${buttonY + 5}, "top")
+  if self.detailsOpen then
+    gc:setColorRGB(255, 255, 255)
+    gc:fillRect(42, 62, 230, 96)
+    gc:setColorRGB(128, 128, 128)
+    gc:drawRect(42, 62, 230, 96)
+    gc:setColorRGB(0, 0, 0)
+    gc:drawString("${luaString(options.title)}", 50, 70, "top")
+    gc:drawString("Variables: ${luaString(options.variableBase || "var")}1..${luaString(options.variableBase || "var")}${count}", 50, 92, "top")
+  end
   end,
   arrowKey = function(self, direction)
   if direction == "down" then self.focus = math.min(#self.fields, self.focus + 1) end
@@ -2302,9 +2380,8 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   self.fields[self.focus].value = self.fields[self.focus].value:sub(1, -2)
   platform.window:invalidate()
   end,
-  enterKey = function()
-    if currentPage < #pages then currentPage = currentPage + 1 end
-    platform.window:invalidate()
+  enterKey = function(self)
+  ${action}
   end
 })`;
     },
@@ -2313,11 +2390,12 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     id: "menu",
     name: "Menu de seleccion",
     description: "Lista vertical con cursor, ideal para categorias o acciones.",
-    defaults: { inputCount: 4, title: "Menu", buttonText: "Enter", primaryColor: "#35a0be" },
+    defaults: { inputCount: 4, title: "Menu", buttonText: "Enter", primaryColor: "#35a0be", action: "next", variableBase: "selected_item" },
     build(options) {
       const count = Math.max(2, Math.min(10, Number(options.inputCount) || 4));
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
       const items = Array.from({ length: count }, (_, index) => `"${index + 1}) Opcion ${index + 1} >"`).join(", ");
+      const action = luaTemplateActionSnippet(options.action);
       return `addPage({
   name = "${luaString(options.title)}",
   selected = 1,
@@ -2345,9 +2423,8 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   platform.window:invalidate()
   end,
   enterKey = function(self)
-  var.store("selected_item", self.selected)
-  if currentPage < #pages then currentPage = currentPage + 1 end
-  platform.window:invalidate()
+  var.store("${luaString(options.variableBase || "selected_item")}", self.selected)
+  ${action}
   end
 })`;
     },
@@ -2356,9 +2433,10 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     id: "popup",
     name: "Popup de texto",
     description: "Cuadro centrado con mensaje y boton OK.",
-    defaults: { inputCount: 1, title: "Aviso", buttonText: "OK", primaryColor: "#2563eb" },
+    defaults: { inputCount: 1, title: "Aviso", buttonText: "OK", primaryColor: "#2563eb", action: "next", variableBase: "popup_ok" },
     build(options) {
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor, [37, 99, 235]);
+      const action = luaTemplateActionSnippet(options.action);
       return `addPage({
   name = "${luaString(options.title)}",
   visible = true,
@@ -2381,8 +2459,8 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end,
   enterKey = function(self)
   self.visible = false
-  if currentPage < #pages then currentPage = currentPage + 1 end
-  platform.window:invalidate()
+  var.store("${luaString(options.variableBase || "popup_ok")}", 1)
+  ${action}
   end
 })`;
     },
@@ -2391,11 +2469,13 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     id: "details",
     name: "Pantalla con detalles",
     description: "Vista con campos y boton Detalles usando D2Editor cuando esta disponible.",
-    defaults: { inputCount: 3, title: "Resolver", buttonText: "Detalles", primaryColor: "#2d93ad" },
+    defaults: { inputCount: 3, title: "Resolver", buttonText: "Detalles", primaryColor: "#2d93ad", action: "details", variableBase: "res" },
     build(options) {
       const count = Math.max(1, Math.min(6, Number(options.inputCount) || 3));
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
       const fields = Array.from({ length: count }, (_, index) => `{label="${String.fromCharCode(97 + index)}", value=""}`).join(", ");
+      const buttonY = options.buttonPosition === "top" ? 8 : 186;
+      const barY = options.buttonPosition === "top" ? 36 : 176;
       return `addPage({
   name = "${luaString(options.title)}",
   fields = {${fields}},
@@ -2439,9 +2519,9 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     gc:drawString(field.value, 92, y + 3, "top")
   end
   gc:setColorRGB(128, 128, 128)
-  gc:fillRect(8, 176, 304, 2)
-  self:drawButton(gc, "◀ Retour", 8, 186, 74)
-  self:drawButton(gc, "${luaString(options.buttonText)}", 238, 186, 72)
+  gc:fillRect(8, ${barY}, 304, 2)
+  self:drawButton(gc, "◀ Retour", 8, ${buttonY}, 74)
+  self:drawButton(gc, "${luaString(options.buttonText)}", 238, ${buttonY}, 72)
   if self.detailsOpen and not self.detailsEditor then
     gc:setColorRGB(255, 255, 255)
     gc:fillRect(42, 62, 230, 96)
@@ -2560,6 +2640,8 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
   };
 
   if (template.id === "form") {
+    const buttonY = options.buttonPosition === "top" ? 26 : 188;
+    const barY = options.buttonPosition === "top" ? 58 : 180;
     ctx.fillStyle = "#000";
     ctx.font = `bold ${Math.max(8, sy(10))}px sans-serif`;
     ctx.fillText(options.title || template.defaults.title, sx(8), sy(20));
@@ -2567,17 +2649,17 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
     const count = Math.max(1, Math.min(4, Number(options.inputCount) || template.defaults.inputCount));
     for (let index = 0; index < count; index += 1) drawInput(String.fromCharCode(97 + index), 42 + index * 28, index === 0);
     ctx.fillStyle = "#808080";
-    ctx.fillRect(sx(8), sy(180), sx(304), Math.max(1, sy(2)));
+    ctx.fillRect(sx(8), sy(barY), sx(304), Math.max(1, sy(2)));
     ctx.fillStyle = "#fff";
-    ctx.fillRect(sx(8), sy(188), sx(70), sy(24));
-    ctx.fillRect(sx(240), sy(188), sx(70), sy(24));
+    ctx.fillRect(sx(8), sy(buttonY), sx(70), sy(24));
+    ctx.fillRect(sx(240), sy(buttonY), sx(70), sy(24));
     ctx.strokeStyle = "#000";
-    ctx.strokeRect(sx(8), sy(188), sx(70), sy(24));
-    ctx.strokeRect(sx(240), sy(188), sx(70), sy(24));
+    ctx.strokeRect(sx(8), sy(buttonY), sx(70), sy(24));
+    ctx.strokeRect(sx(240), sy(buttonY), sx(70), sy(24));
     ctx.fillStyle = "#000";
-    ctx.fillText("Retour", sx(16), sy(205));
-    ctx.fillText(options.buttonText || template.defaults.buttonText, sx(112), sy(205));
-    ctx.fillText("Detalles", sx(248), sy(205));
+    ctx.fillText("Retour", sx(16), sy(buttonY + 17));
+    ctx.fillText(options.buttonText || template.defaults.buttonText, sx(112), sy(buttonY + 17));
+    ctx.fillText("Detalles", sx(248), sy(buttonY + 17));
     return;
   }
 
@@ -2618,39 +2700,75 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
     return;
   }
 
+  const detailButtonY = options.buttonPosition === "top" ? 8 : 186;
+  const detailBarY = options.buttonPosition === "top" ? 36 : 176;
   ctx.fillStyle = "#000";
   const count = Math.max(1, Math.min(4, Number(options.inputCount) || template.defaults.inputCount));
   for (let index = 0; index < count; index += 1) drawInput(String.fromCharCode(97 + index), 30 + index * 28, index === 0);
   ctx.fillStyle = "#808080";
-  ctx.fillRect(sx(8), sy(176), sx(304), Math.max(1, sy(2)));
+  ctx.fillRect(sx(8), sy(detailBarY), sx(304), Math.max(1, sy(2)));
   ctx.fillStyle = "#fff";
-  ctx.fillRect(sx(238), sy(186), sx(72), sy(24));
+  ctx.fillRect(sx(238), sy(detailButtonY), sx(72), sy(24));
   ctx.strokeStyle = "#808080";
-  ctx.strokeRect(sx(238), sy(186), sx(72), sy(24));
+  ctx.strokeRect(sx(238), sy(detailButtonY), sx(72), sy(24));
   ctx.fillStyle = "#000";
   ctx.font = `bold ${Math.max(8, sy(10))}px sans-serif`;
-  ctx.fillText(options.buttonText || template.defaults.buttonText, sx(246), sy(202));
+  ctx.fillText(options.buttonText || template.defaults.buttonText, sx(246), sy(detailButtonY + 16));
 }
 
 function showLuaTemplates(editor) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
-  const cards = LUA_TEMPLATE_PRESETS.map((template) => `
-    <article class="lua-template-card" data-template="${escapeHtml(template.id)}">
-      <h3>${escapeHtml(template.name)}</h3>
-      <p>${escapeHtml(template.description)}</p>
-      <canvas class="template-preview-canvas" width="318" height="212" aria-hidden="true"></canvas>
-    </article>`).join("");
+  const templateTabs = LUA_TEMPLATE_PRESETS.map((template) => `
+    <button type="button" class="lua-template-type" data-template="${escapeHtml(template.id)}">
+      <span class="template-type-icon">${template.id === "form" ? "▦" : template.id === "menu" ? "☷" : template.id === "popup" ? "▣" : "▤"}</span>
+      <span>
+        <strong>${escapeHtml(template.name)}</strong>
+        <small>${escapeHtml(template.description)}</small>
+      </span>
+    </button>`).join("");
   backdrop.innerHTML = `
-    <div class="modal lua-library-modal">
+    <div class="modal lua-library-modal lua-template-builder-modal">
       <h2>${escapeHtml(t("luaTemplates"))}</h2>
       <p class="muted-copy">${escapeHtml(t("luaTemplatesIntro"))}</p>
-      <div class="lua-template-grid">${cards}</div>
-      <div class="lua-template-options">
-        <label>${escapeHtml(t("luaInputCount"))}<input id="tpl-input-count" type="number" min="1" max="8" value="3"></label>
-        <label>${escapeHtml(t("luaTemplateTitle"))}<input id="tpl-title" value="Formulario"></label>
-        <label>${escapeHtml(t("luaButtonText"))}<input id="tpl-button" value="Calcular"></label>
-        <label>${escapeHtml(t("luaPrimaryColor"))}<input id="tpl-color" type="color" value="#2d93ad"></label>
+      <div class="lua-template-builder">
+        <section class="template-column template-type-column">
+          <h3>${escapeHtml(t("luaTemplateType"))}</h3>
+          <div class="template-type-list">${templateTabs}</div>
+        </section>
+        <section class="template-column template-options-column">
+          <h3>${escapeHtml(t("luaTemplateOptions"))}</h3>
+          <label>${escapeHtml(t("luaInputCount"))}<input id="tpl-input-count" type="number" min="1" max="8" value="3"></label>
+          <label>${escapeHtml(t("luaTemplateTitle"))}<input id="tpl-title" value="Formulario"></label>
+          <label>${escapeHtml(t("luaButtonText"))}<input id="tpl-button" value="Calcular"></label>
+          <label>${escapeHtml(t("luaVariableBase"))}<input id="tpl-varbase" value="var"></label>
+          <label>${escapeHtml(t("luaButtonAction"))}
+            <select id="tpl-action">
+              <option value="next">${escapeHtml(t("luaActionNext"))}</option>
+              <option value="details">${escapeHtml(t("luaActionDetails"))}</option>
+              <option value="home">${escapeHtml(t("luaActionHome"))}</option>
+              <option value="none">${escapeHtml(t("luaActionNone"))}</option>
+            </select>
+          </label>
+          <label>${escapeHtml(t("luaButtonPosition"))}
+            <select id="tpl-position">
+              <option value="bottom">${escapeHtml(t("luaBottom"))}</option>
+              <option value="top">${escapeHtml(t("luaTop"))}</option>
+            </select>
+          </label>
+          <label>${escapeHtml(t("luaPrimaryColor"))}<input id="tpl-color" type="color" value="#2d93ad"></label>
+        </section>
+        <section class="template-column template-preview-column">
+          <h3>${escapeHtml(t("luaTemplatePreview"))}</h3>
+          <div class="template-preview-stage">
+            <canvas id="tpl-main-preview" class="template-preview-canvas" width="318" height="212" aria-hidden="true"></canvas>
+          </div>
+          <div class="generated-code-header">
+            <h3>${escapeHtml(t("luaGeneratedCode"))}</h3>
+            <button type="button" id="lua-template-copy-code">${escapeHtml(t("luaCopyCode"))}</button>
+          </div>
+          <pre id="lua-template-code" class="lua-template-code"></pre>
+        </section>
       </div>
       <div class="modal-actions">
         <button type="button" id="lua-template-close">${escapeHtml(t("cancel"))}</button>
@@ -2664,10 +2782,13 @@ function showLuaTemplates(editor) {
     backdrop.querySelector("#tpl-title").value = selected.defaults.title;
     backdrop.querySelector("#tpl-button").value = selected.defaults.buttonText;
     backdrop.querySelector("#tpl-color").value = selected.defaults.primaryColor;
+    backdrop.querySelector("#tpl-action").value = selected.defaults.action || "next";
+    backdrop.querySelector("#tpl-varbase").value = selected.defaults.variableBase || "var";
+    backdrop.querySelector("#tpl-position").value = selected.defaults.buttonPosition || "bottom";
   };
   const markSelected = () => {
-    for (const card of backdrop.querySelectorAll(".lua-template-card")) {
-      card.classList.toggle("selected", card.dataset.template === selected.id);
+    for (const button of backdrop.querySelectorAll(".lua-template-type")) {
+      button.classList.toggle("selected", button.dataset.template === selected.id);
     }
   };
   const currentOptions = () => ({
@@ -2675,40 +2796,39 @@ function showLuaTemplates(editor) {
     title: backdrop.querySelector("#tpl-title").value || selected.defaults.title,
     buttonText: backdrop.querySelector("#tpl-button").value || selected.defaults.buttonText,
     primaryColor: backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor,
+    action: backdrop.querySelector("#tpl-action").value || selected.defaults.action || "next",
+    variableBase: backdrop.querySelector("#tpl-varbase").value || selected.defaults.variableBase || "var",
+    buttonPosition: backdrop.querySelector("#tpl-position").value || selected.defaults.buttonPosition || "bottom",
   });
-  const renderPreviewCards = () => {
-    for (const card of backdrop.querySelectorAll(".lua-template-card")) {
-      const template = LUA_TEMPLATE_PRESETS.find((item) => item.id === card.dataset.template);
-      if (!template) continue;
-      const canvas = card.querySelector("canvas");
-      drawLuaTemplatePreview(canvas, template, template.id === selected.id ? currentOptions() : template.defaults);
-    }
+  const renderBuilder = () => {
+    const options = currentOptions();
+    drawLuaTemplatePreview(backdrop.querySelector("#tpl-main-preview"), selected, options);
+    backdrop.querySelector("#lua-template-code").textContent = selected.build(options);
   };
-  for (const card of backdrop.querySelectorAll(".lua-template-card")) {
-    card.addEventListener("click", () => {
-      selected = LUA_TEMPLATE_PRESETS.find((template) => template.id === card.dataset.template) || selected;
+  for (const button of backdrop.querySelectorAll(".lua-template-type")) {
+    button.addEventListener("click", () => {
+      selected = LUA_TEMPLATE_PRESETS.find((template) => template.id === button.dataset.template) || selected;
       applyDefaults();
       markSelected();
-      renderPreviewCards();
+      renderBuilder();
     });
   }
-  for (const input of backdrop.querySelectorAll(".lua-template-options input")) {
-    input.addEventListener("input", renderPreviewCards);
+  for (const input of backdrop.querySelectorAll(".template-options-column input, .template-options-column select")) {
+    input.addEventListener("input", renderBuilder);
+    input.addEventListener("change", renderBuilder);
   }
   backdrop.querySelector("#lua-template-close").addEventListener("click", () => closeModal(backdrop));
+  backdrop.querySelector("#lua-template-copy-code").addEventListener("click", async () => {
+    const code = backdrop.querySelector("#lua-template-code").textContent || "";
+    await navigator.clipboard?.writeText(code).catch(() => {});
+  });
   backdrop.querySelector("#lua-template-insert").addEventListener("click", () => {
-    const options = {
-      inputCount: backdrop.querySelector("#tpl-input-count").value,
-      title: backdrop.querySelector("#tpl-title").value || selected.defaults.title,
-      buttonText: backdrop.querySelector("#tpl-button").value || selected.defaults.buttonText,
-      primaryColor: backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor,
-    };
-    insertLuaTemplate(editor, selected.build(options));
+    insertLuaTemplate(editor, selected.build(currentOptions()));
     closeModal(backdrop);
   });
   applyDefaults();
   markSelected();
-  renderPreviewCards();
+  renderBuilder();
 }
 
 function showLuaEditor(item) {
