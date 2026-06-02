@@ -1,11 +1,18 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-lua-selection-local";
+const SOURCE_VERSION = "2026-06-01-home-i18n-local";
 
 const I18N = {
   es: {
     about: "Acerca de",
     subtitle: "Port web experimental usando Pyodide/WebAssembly.",
+    homeWelcome: "Bienvenido a TNS Tool WASM",
+    homeSubtitle: "Selecciona una herramienta del panel izquierdo o arrastra un archivo para comenzar.",
+    homeDropTitle: "Arrastra y suelta archivos aqui",
+    homeDropFormats: "Formatos soportados: .tns, .xml, .py",
+    homeShortcutXml: "Syntax Doctor XML",
+    homeShortcutNormal: "TNS Normal",
+    homeShortcutPython: "Python Program",
     xmlDoctorDesc: "Editor visual para revisar, corregir e incrustar codigo dentro de XML.",
     openXmlDoctor: "Abrir Syntax Doctor XML",
     hideXmlDoctor: "Ocultar Syntax Doctor XML",
@@ -112,6 +119,13 @@ const I18N = {
   en: {
     about: "About",
     subtitle: "Experimental web port using Pyodide/WebAssembly.",
+    homeWelcome: "Welcome to TNS Tool WASM",
+    homeSubtitle: "Select a tool from the left panel or drag a file to begin.",
+    homeDropTitle: "Drag and drop files here",
+    homeDropFormats: "Supported formats: .tns, .xml, .py",
+    homeShortcutXml: "Syntax Doctor XML",
+    homeShortcutNormal: "TNS Normal",
+    homeShortcutPython: "Python Program",
     xmlDoctorDesc: "Visual editor to inspect, fix, and embed code inside XML.",
     openXmlDoctor: "Open Syntax Doctor XML",
     hideXmlDoctor: "Hide Syntax Doctor XML",
@@ -218,6 +232,13 @@ const I18N = {
   fr: {
     about: "\u00c0 propos",
     subtitle: "Port web experimental avec Pyodide/WebAssembly.",
+    homeWelcome: "Bienvenue dans TNS Tool WASM",
+    homeSubtitle: "Selectionnez un outil dans le panneau de gauche ou glissez un fichier pour commencer.",
+    homeDropTitle: "Glissez-deposez les fichiers ici",
+    homeDropFormats: "Formats pris en charge : .tns, .xml, .py",
+    homeShortcutXml: "Syntax Doctor XML",
+    homeShortcutNormal: "TNS normal",
+    homeShortcutPython: "Python Program",
     xmlDoctorDesc: "Editeur visuel pour inspecter, corriger et incruster du code dans le XML.",
     openXmlDoctor: "Ouvrir Syntax Doctor XML",
     hideXmlDoctor: "Masquer Syntax Doctor XML",

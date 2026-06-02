@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20260601-lua-selection-local" />
+    <link rel="stylesheet" href="./styles.css?v=20260601-home-i18n-local" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script defer src="./app.js?v=20260601-lua-selection-local"></script>
+    <script defer src="./app.js?v=20260601-home-i18n-local"></script>
   </head>
   <body>
     <div id="mouse-glow" class="mouse-glow" aria-hidden="true"></div>
@@ -68,16 +68,16 @@
       <section class="panel home-panel">
         <div class="home-hero">
           <img src="./icon/TNS_new.png" alt="" />
-          <h2>Bienvenido a TNS Tool WASM</h2>
-          <p>Selecciona una herramienta del panel izquierdo o arrastra un archivo para comenzar.</p>
+          <h2 data-i18n="homeWelcome">Bienvenido a TNS Tool WASM</h2>
+          <p data-i18n="homeSubtitle">Selecciona una herramienta del panel izquierdo o arrastra un archivo para comenzar.</p>
           <div class="drop-zone">
-            <strong>Arrastra y suelta archivos aqui</strong>
-            <span>Formatos soportados: .tns, .xml, .py</span>
+            <strong data-i18n="homeDropTitle">Arrastra y suelta archivos aqui</strong>
+            <span data-i18n="homeDropFormats">Formatos soportados: .tns, .xml, .py</span>
           </div>
           <div class="home-shortcuts">
-            <button type="button" id="home-open-xml">Syntax Doctor XML</button>
-            <button type="button" id="home-open-normal">TNS Normal</button>
-            <button type="button" id="home-open-python">Python Program</button>
+            <button type="button" id="home-open-xml" data-i18n="homeShortcutXml">Syntax Doctor XML</button>
+            <button type="button" id="home-open-normal" data-i18n="homeShortcutNormal">TNS Normal</button>
+            <button type="button" id="home-open-python" data-i18n="homeShortcutPython">Python Program</button>
           </div>
         </div>
       </section>
