@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-02-lua-guide-templates-local";
+const SOURCE_VERSION = "2026-06-02-lua-template-preview-local";
 
 const I18N = {
   es: {
@@ -40,7 +40,7 @@ const I18N = {
     luaGuide: "Guia Lua",
     luaTemplates: "Plantillas Lua",
     luaGuideSearch: "Buscar funciones, eventos o variables...",
-    luaTemplatesIntro: "Elige una plantilla y ajusta sus opciones antes de insertarla en el cursor.",
+    luaTemplatesIntro: "Elige una plantilla y ajusta sus opciones. Sin seleccion, reemplaza el script actual; con seleccion, reemplaza ese bloque.",
     luaInsertTemplate: "Insertar plantilla",
     luaInputCount: "Cantidad de inputs",
     luaTemplateTitle: "Titulo",
@@ -162,7 +162,7 @@ const I18N = {
     luaGuide: "Lua guide",
     luaTemplates: "Lua templates",
     luaGuideSearch: "Search functions, events, or variables...",
-    luaTemplatesIntro: "Choose a template and adjust its options before inserting it at the cursor.",
+    luaTemplatesIntro: "Choose a template and adjust its options. With no selection, it replaces the current script; with a selection, it replaces that block.",
     luaInsertTemplate: "Insert template",
     luaInputCount: "Input count",
     luaTemplateTitle: "Title",
@@ -284,7 +284,7 @@ const I18N = {
     luaGuide: "Guide Lua",
     luaTemplates: "Modeles Lua",
     luaGuideSearch: "Rechercher fonctions, evenements ou variables...",
-    luaTemplatesIntro: "Choisissez un modele et ajustez ses options avant de l'inserer au curseur.",
+    luaTemplatesIntro: "Choisissez un modele et ajustez ses options. Sans selection, il remplace le script actuel; avec selection, il remplace ce bloc.",
     luaInsertTemplate: "Inserer le modele",
     luaInputCount: "Nombre de champs",
     luaTemplateTitle: "Titre",
@@ -2398,9 +2398,16 @@ end`;
   },
 ];
 
-function insertLuaAtCursor(editor, text) {
+function insertLuaTemplate(editor, text) {
   const start = editor.selectionStart;
   const end = editor.selectionEnd;
+  if (start === end) {
+    editor.value = text;
+    editor.focus();
+    editor.setSelectionRange(0, 0);
+    editor.dispatchEvent(new Event("input", { bubbles: true }));
+    return;
+  }
   const before = editor.value.slice(0, start);
   const after = editor.value.slice(end);
   const prefix = before && !before.endsWith("\n") ? "\n" : "";
@@ -2442,6 +2449,101 @@ function showLuaGuide() {
   search.focus();
 }
 
+function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
+  const ctx = canvas.getContext("2d");
+  const scale = canvas.width / 318;
+  const sx = (value) => value * scale;
+  const sy = (value) => value * (canvas.height / 212);
+  const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#e0e0e0";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.lineWidth = Math.max(1, scale);
+  ctx.font = `${Math.max(8, sy(10))}px sans-serif`;
+
+  const drawInput = (label, y, active = false) => {
+    ctx.fillStyle = "#000";
+    ctx.fillText(label, sx(14), sy(y + 14));
+    ctx.fillText(":", sx(70), sy(y + 14));
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(sx(82), sy(y), sx(158), sy(22));
+    ctx.strokeStyle = active ? `rgb(${primaryR}, ${primaryG}, ${primaryB})` : "#808080";
+    ctx.strokeRect(sx(82), sy(y), sx(158), sy(22));
+  };
+
+  if (template.id === "form") {
+    ctx.fillStyle = "#000";
+    ctx.font = `bold ${Math.max(8, sy(10))}px sans-serif`;
+    ctx.fillText(options.title || template.defaults.title, sx(8), sy(20));
+    ctx.font = `${Math.max(8, sy(10))}px sans-serif`;
+    const count = Math.max(1, Math.min(4, Number(options.inputCount) || template.defaults.inputCount));
+    for (let index = 0; index < count; index += 1) drawInput(String.fromCharCode(97 + index), 42 + index * 28, index === 0);
+    ctx.fillStyle = "#808080";
+    ctx.fillRect(sx(8), sy(180), sx(304), Math.max(1, sy(2)));
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(sx(8), sy(188), sx(70), sy(24));
+    ctx.fillRect(sx(240), sy(188), sx(70), sy(24));
+    ctx.strokeStyle = "#000";
+    ctx.strokeRect(sx(8), sy(188), sx(70), sy(24));
+    ctx.strokeRect(sx(240), sy(188), sx(70), sy(24));
+    ctx.fillStyle = "#000";
+    ctx.fillText("Retour", sx(16), sy(205));
+    ctx.fillText(options.buttonText || template.defaults.buttonText, sx(112), sy(205));
+    ctx.fillText("Detalles", sx(248), sy(205));
+    return;
+  }
+
+  if (template.id === "menu") {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = `rgb(${primaryR}, ${primaryG}, ${primaryB})`;
+    ctx.font = `bold ${Math.max(9, sy(12))}px sans-serif`;
+    ctx.fillText(options.title || template.defaults.title, sx(92), sy(22));
+    ctx.font = `${Math.max(8, sy(10))}px sans-serif`;
+    const count = Math.max(2, Math.min(6, Number(options.inputCount) || template.defaults.inputCount));
+    for (let index = 0; index < count; index += 1) {
+      const y = 44 + index * 24;
+      if (index === 0) {
+        ctx.fillStyle = "#dcdcdc";
+        ctx.fillRect(sx(18), sy(y - 2), sx(150), sy(20));
+      }
+      ctx.fillStyle = "#000";
+      ctx.fillText(`${index + 1}) Opcion ${index + 1} >`, sx(28), sy(y + 12));
+    }
+    return;
+  }
+
+  if (template.id === "popup") {
+    ctx.fillStyle = "#eeeeee";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "rgba(0,0,0,.12)";
+    ctx.fillRect(sx(110), sy(82), sx(112), sy(58));
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(sx(104), sy(76), sx(112), sy(58));
+    ctx.fillStyle = "#000";
+    ctx.fillText(options.title || template.defaults.title, sx(112), sy(96));
+    ctx.fillStyle = `rgb(${primaryR}, ${primaryG}, ${primaryB})`;
+    ctx.fillRect(sx(132), sy(108), sx(54), sy(24));
+    ctx.fillStyle = "#fff";
+    ctx.font = `bold ${Math.max(8, sy(10))}px sans-serif`;
+    ctx.fillText(options.buttonText || template.defaults.buttonText, sx(150), sy(124));
+    return;
+  }
+
+  ctx.fillStyle = "#000";
+  const count = Math.max(1, Math.min(4, Number(options.inputCount) || template.defaults.inputCount));
+  for (let index = 0; index < count; index += 1) drawInput(String.fromCharCode(97 + index), 30 + index * 28, index === 0);
+  ctx.fillStyle = "#808080";
+  ctx.fillRect(sx(8), sy(176), sx(304), Math.max(1, sy(2)));
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(sx(238), sy(186), sx(72), sy(24));
+  ctx.strokeStyle = "#808080";
+  ctx.strokeRect(sx(238), sy(186), sx(72), sy(24));
+  ctx.fillStyle = "#000";
+  ctx.font = `bold ${Math.max(8, sy(10))}px sans-serif`;
+  ctx.fillText(options.buttonText || template.defaults.buttonText, sx(246), sy(202));
+}
+
 function showLuaTemplates(editor) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -2449,7 +2551,7 @@ function showLuaTemplates(editor) {
     <article class="lua-template-card" data-template="${escapeHtml(template.id)}">
       <h3>${escapeHtml(template.name)}</h3>
       <p>${escapeHtml(template.description)}</p>
-      <div class="template-preview ${escapeHtml(template.id)}"></div>
+      <canvas class="template-preview-canvas" width="318" height="212" aria-hidden="true"></canvas>
     </article>`).join("");
   backdrop.innerHTML = `
     <div class="modal lua-library-modal">
@@ -2480,12 +2582,30 @@ function showLuaTemplates(editor) {
       card.classList.toggle("selected", card.dataset.template === selected.id);
     }
   };
+  const currentOptions = () => ({
+    inputCount: backdrop.querySelector("#tpl-input-count").value,
+    title: backdrop.querySelector("#tpl-title").value || selected.defaults.title,
+    buttonText: backdrop.querySelector("#tpl-button").value || selected.defaults.buttonText,
+    primaryColor: backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor,
+  });
+  const renderPreviewCards = () => {
+    for (const card of backdrop.querySelectorAll(".lua-template-card")) {
+      const template = LUA_TEMPLATE_PRESETS.find((item) => item.id === card.dataset.template);
+      if (!template) continue;
+      const canvas = card.querySelector("canvas");
+      drawLuaTemplatePreview(canvas, template, template.id === selected.id ? currentOptions() : template.defaults);
+    }
+  };
   for (const card of backdrop.querySelectorAll(".lua-template-card")) {
     card.addEventListener("click", () => {
       selected = LUA_TEMPLATE_PRESETS.find((template) => template.id === card.dataset.template) || selected;
       applyDefaults();
       markSelected();
+      renderPreviewCards();
     });
+  }
+  for (const input of backdrop.querySelectorAll(".lua-template-options input")) {
+    input.addEventListener("input", renderPreviewCards);
   }
   backdrop.querySelector("#lua-template-close").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#lua-template-insert").addEventListener("click", () => {
@@ -2495,11 +2615,12 @@ function showLuaTemplates(editor) {
       buttonText: backdrop.querySelector("#tpl-button").value || selected.defaults.buttonText,
       primaryColor: backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor,
     };
-    insertLuaAtCursor(editor, selected.build(options));
+    insertLuaTemplate(editor, selected.build(options));
     closeModal(backdrop);
   });
   applyDefaults();
   markSelected();
+  renderPreviewCards();
 }
 
 function showLuaEditor(item) {
