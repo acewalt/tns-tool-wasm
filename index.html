@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20260601-dashboard-toggle-glow-local" />
+    <link rel="stylesheet" href="./styles.css?v=20260601-sidebar-i18n-mobile-local" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script defer src="./app.js?v=20260601-dashboard-toggle-glow-local"></script>
+    <script defer src="./app.js?v=20260601-sidebar-i18n-mobile-local"></script>
   </head>
   <body>
     <div id="mouse-glow" class="mouse-glow" aria-hidden="true"></div>
@@ -29,17 +29,41 @@
     </header>
 
     <main class="layout">
-      <div class="sidebar-title">HERRAMIENTAS</div>
-      <section class="panel doctor-launcher xml-launcher" data-open-target="xml">
-        <div class="launcher-content">
-          <img class="launcher-icon" src="./icon/Syntax_doctor_XML.png" alt="" />
-          <div>
-            <h2>Syntax Doctor XML</h2>
-            <p data-i18n="xmlDoctorDesc">Editor visual para revisar, corregir e incrustar codigo dentro de XML.</p>
+      <aside class="tools-sidebar">
+        <div class="sidebar-title">HERRAMIENTAS</div>
+        <section class="panel doctor-launcher xml-launcher" data-open-target="xml">
+          <div class="launcher-content">
+            <img class="launcher-icon" src="./icon/Syntax_doctor_XML.png" alt="" />
+            <div>
+              <h2>Syntax Doctor XML</h2>
+              <p data-i18n="xmlDoctorDesc">Editor visual para revisar, corregir e incrustar codigo dentro de XML.</p>
+            </div>
           </div>
-        </div>
-        <button id="xml-toggle-btn" data-i18n="openXmlDoctor">Abrir Syntax Doctor XML</button>
-      </section>
+          <button id="xml-toggle-btn" data-i18n="openXmlDoctor">Abrir Syntax Doctor XML</button>
+        </section>
+
+        <section class="panel module-launcher normal-launcher" data-open-target="normal">
+          <div class="launcher-content">
+            <img class="launcher-icon" src="./icon/TNS_normal.png" alt="" />
+            <div>
+              <h2>TNS normal</h2>
+              <p data-i18n="normalDesc">Decodificar `.tns` a XML y reconstruir `.tns` desde XML.</p>
+            </div>
+          </div>
+          <button id="normal-toggle-btn" data-i18n="openNormal">Abrir TNS normal</button>
+        </section>
+
+        <section class="panel module-launcher python-launcher" data-open-target="python">
+          <div class="launcher-content">
+            <img class="launcher-icon" src="./icon/python.png" alt="" />
+            <div>
+              <h2>Python Program</h2>
+              <p data-i18n="pythonDesc">Crear Python Program `.tns`, extraer `q.py` y revisar sintaxis Python.</p>
+            </div>
+          </div>
+          <button id="python-toggle-btn" data-i18n="openPython">Abrir Python Program</button>
+        </section>
+      </aside>
 
       <section class="panel home-panel">
         <div class="home-hero">
@@ -128,17 +152,6 @@
         </div>
       </section>
 
-      <section class="panel module-launcher normal-launcher" data-open-target="normal">
-        <div class="launcher-content">
-          <img class="launcher-icon" src="./icon/TNS_normal.png" alt="" />
-          <div>
-            <h2>TNS normal</h2>
-            <p data-i18n="normalDesc">Decodificar `.tns` a XML y reconstruir `.tns` desde XML.</p>
-          </div>
-        </div>
-        <button id="normal-toggle-btn" data-i18n="openNormal">Abrir TNS normal</button>
-      </section>
-
       <section id="normal-module" class="module-grid collapsed">
         <section class="panel">
           <h2 data-i18n="decodeTitle">1) Decodificar .tns a XML</h2>
@@ -151,17 +164,6 @@
           <label><span data-i18n="xmlFolder">Carpeta .tns.xml</span> <input id="build-xml-folder" type="file" webkitdirectory multiple /></label>
           <button id="build-xml-btn" disabled data-i18n="createTns">Crear TNS</button>
         </section>
-      </section>
-
-      <section class="panel module-launcher python-launcher" data-open-target="python">
-        <div class="launcher-content">
-          <img class="launcher-icon" src="./icon/python.png" alt="" />
-          <div>
-            <h2>Python Program</h2>
-            <p data-i18n="pythonDesc">Crear Python Program `.tns`, extraer `q.py` y revisar sintaxis Python.</p>
-          </div>
-        </div>
-        <button id="python-toggle-btn" data-i18n="openPython">Abrir Python Program</button>
       </section>
 
       <section id="python-module" class="module-grid collapsed">

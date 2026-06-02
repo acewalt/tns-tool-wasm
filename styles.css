@@ -48,9 +48,10 @@ body {
   background: radial-gradient(circle, rgb(120 90 255 / 14%) 0%, rgb(80 160 255 / 7%) 35%, transparent 70%);
   filter: blur(35px);
   transform: translate(-50%, -50%);
-  z-index: 0;
+  z-index: 2;
   opacity: 0;
   transition: opacity 0.2s ease;
+  mix-blend-mode: screen;
 }
 
 [data-theme="light"] .mouse-glow {
@@ -65,7 +66,7 @@ body {
   background: var(--panel);
   border-bottom: 1px solid var(--line);
   position: relative;
-  z-index: 1;
+  z-index: 3;
 }
 
 .shell-header img {
@@ -178,6 +179,16 @@ body {
   align-items: start;
   position: relative;
   z-index: 1;
+}
+
+.tools-sidebar {
+  grid-column: 1;
+  grid-row: 1 / span 5;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+  z-index: 3;
 }
 
 .panel {
@@ -315,8 +326,6 @@ button:disabled {
 }
 
 .sidebar-title {
-  grid-column: 1;
-  grid-row: 1;
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
@@ -327,7 +336,6 @@ button:disabled {
 
 .doctor-launcher,
 .module-launcher {
-  grid-column: 1;
   align-items: flex-start;
   flex-direction: column;
   gap: 12px;
@@ -341,7 +349,7 @@ button:disabled {
 
 .home-panel {
   grid-column: 2 / 4;
-  grid-row: 1 / span 4;
+  grid-row: 1;
   min-height: 520px;
   display: grid;
   place-items: center;
@@ -429,12 +437,11 @@ button:disabled {
 #normal-module,
 #python-module {
   grid-column: 2 / 4;
-  grid-row: 2 / span 3;
+  grid-row: 1;
+  min-width: 0;
 }
 
 .doctor-launcher {
-  grid-column: 1;
-  grid-row: 2;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
@@ -479,7 +486,6 @@ button:disabled {
 }
 
 .module-launcher {
-  grid-column: 1;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
@@ -489,19 +495,17 @@ button:disabled {
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.normal-launcher {
-  grid-row: 3;
-}
-
-.python-launcher {
-  grid-row: 4;
-}
-
 .module-grid {
   grid-column: 2 / 4;
   display: grid;
   grid-template-columns: repeat(2, minmax(320px, 1fr));
   gap: 14px;
+}
+
+#python-module #py-doctor-panel {
+  grid-column: 1 / -1;
+  grid-row: auto;
+  min-width: 0;
 }
 
 .module-grid:not(.collapsed),
@@ -970,12 +974,14 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 .summary-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
   margin-bottom: 14px;
 }
 
 .summary {
+  min-width: 0;
+  overflow: hidden;
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 12px;
@@ -1193,6 +1199,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
   gap: 12px;
+  min-width: 0;
 }
 
 .lua-code-shell {
@@ -1255,6 +1262,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .lua-side {
+  min-width: 0;
   min-height: 560px;
   display: flex;
   flex-direction: column;
@@ -1666,17 +1674,14 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     gap: 10px;
   }
 
+  .tools-sidebar {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
   .panel {
     padding: 14px;
     border-radius: 10px;
-  }
-
-  .doctor-launcher,
-  .module-launcher {
-    grid-column: 1;
-    grid-row: auto;
-    align-items: flex-start;
-    flex-direction: column;
   }
 
   .doctor-launcher button,
@@ -1684,22 +1689,9 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     display: none;
   }
 
-  .sidebar-title,
   .log-panel {
     grid-column: 1;
     grid-row: auto;
-  }
-
-  .xml-launcher {
-    grid-row: 2;
-  }
-
-  .normal-launcher {
-    grid-row: 3;
-  }
-
-  .python-launcher {
-    grid-row: 4;
   }
 
   .home-panel,
@@ -1707,7 +1699,8 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   #normal-module,
   #python-module {
     grid-column: 1;
-    grid-row: 5;
+    grid-row: 2;
+    min-width: 0;
   }
 
   .home-panel {
@@ -1765,6 +1758,17 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     box-shadow: inset 0 0 0 1px rgb(183 243 77 / 12%);
   }
 
+  .nested-menu:not(.open) > .nested-panel {
+    display: none;
+  }
+
+  .nested-menu.open > .nested-panel {
+    display: block;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
   .doctor-toolbar select,
   #xml-line-label,
   #py-line-label,
@@ -1787,7 +1791,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   }
 
   .summary-row {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
   .modal-backdrop {
@@ -1873,5 +1877,16 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     position: static;
     width: 100%;
     margin-top: 6px;
+  }
+
+  .nested-menu:not(.open) > .nested-panel {
+    display: none;
+  }
+
+  .nested-menu.open > .nested-panel {
+    display: block;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
   }
 }

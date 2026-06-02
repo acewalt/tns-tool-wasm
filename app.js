@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-dashboard-toggle-glow-local";
+const SOURCE_VERSION = "2026-06-01-sidebar-i18n-mobile-local";
 
 const I18N = {
   es: {
@@ -16,7 +16,7 @@ const I18N = {
     saveXmlZip: "Guardar XML ZIP",
     createTnsFromDoctor: "Crear TNS",
     fileMenu: "Archivo",
-    editMenu: "Edit",
+    editMenu: "Editar",
     xmlActionsMenu: "Acciones XML",
     saveMenu: "Guardar",
     newXmlProject: "Nuevo documento",
@@ -226,7 +226,7 @@ const I18N = {
     openXmlFolder: "Ouvrir dossier XML",
     embedXml: "Incruster en XML",
     saveXmlZip: "Enregistrer ZIP XML",
-    createTnsFromDoctor: "Creer TNS",
+    createTnsFromDoctor: "Créer TNS",
     fileMenu: "Fichier",
     editMenu: "Edition",
     xmlActionsMenu: "Actions XML",
@@ -267,12 +267,12 @@ const I18N = {
     close: "Fermer",
     copyLog: "Copier log",
     logCopied: "Log copie dans le presse-papiers.",
-    documentSettings: "Parametres du document",
+    documentSettings: "Paramètres du document",
     documentName: "Nom",
     documentType: "Type",
     libraryAccess: "Acces bibliotheque",
     arguments: "Arguments",
-    runSyntax: "Analyser syntaxe",
+    runSyntax: "Analyser la syntaxe",
     format: "Format",
     resolve: "Resoudre",
     showChanges: "Voir changements",
@@ -286,7 +286,7 @@ const I18N = {
     col: "Col",
     total: "Total",
     description: "Description",
-    normalDesc: "Decoder `.tns` en XML et reconstruire `.tns` depuis XML.",
+    normalDesc: "Décoder `.tns` en XML et reconstruire `.tns` depuis XML.",
     openNormal: "Ouvrir TNS normal",
     hideNormal: "Masquer TNS normal",
     decodeTitle: "1) Decoder .tns vers XML",
@@ -295,7 +295,7 @@ const I18N = {
     buildTitle: "2) Creer .tns depuis XML",
     xmlFolder: "Dossier .tns.xml",
     createTns: "Creer TNS",
-    pythonDesc: "Creer Python Program `.tns`, extraire `q.py` et verifier la syntaxe Python.",
+    pythonDesc: "Créer Python Program `.tns`, extraire `q.py` et vérifier la syntaxe Python.",
     openPython: "Ouvrir Python Program",
     hidePython: "Masquer Python Program",
     pythonBuildTitle: "3) Creer Python Program .tns",
