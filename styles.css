@@ -776,6 +776,25 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   box-shadow: 0 8px 20px rgb(202 138 4 / 18%);
 }
 
+.lua-toolbar .green-tool-button,
+.lua-toolbar #lua-guide {
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--lime), var(--lime2));
+  color: #2d3d17;
+  font-weight: 900;
+  box-shadow: 0 0 20px rgb(183 243 77 / 25%);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.lua-toolbar .green-tool-button:hover,
+.lua-toolbar #lua-guide:hover {
+  transform: translateY(-2px) scale(1.04);
+  background: linear-gradient(135deg, var(--lime), var(--lime2));
+  color: #ffffff;
+  box-shadow: 0 0 30px rgb(183 243 77 / 35%), 0 0 80px rgb(183 243 77 / 12%);
+}
+
 .doctor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.75fr);

@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-02-lua-template-preview-local";
+const SOURCE_VERSION = "2026-06-02-lua-template-pages-local";
 
 const I18N = {
   es: {
@@ -1410,17 +1410,103 @@ else:
   xmlLog(t("luaSaved"));
 }
 
+function buildDefaultLuaScriptApp() {
+  return `platform.apilevel = '2.0'
+
+local pages = {}
+local currentPage = 1
+
+function addPage(page)
+  table.insert(pages, page)
+end
+
+local function goHome()
+  currentPage = 1
+  platform.window:invalidate()
+end
+
+local function goNext()
+  if currentPage < #pages then
+    currentPage = currentPage + 1
+    platform.window:invalidate()
+  end
+end
+
+addPage({
+  name = "Inicio",
+  paint = function(self, gc)
+    local w = platform.window:width()
+    local h = platform.window:height()
+    gc:setColorRGB(245, 245, 245)
+    gc:fillRect(0, 0, w, h)
+    gc:setColorRGB(0, 0, 0)
+    gc:setFont("sansserif", "b", 18)
+    local title = "Hello Lua"
+    gc:drawString(title, (w - gc:getStringWidth(title)) / 2, 62, "top")
+    gc:setFont("sansserif", "r", 10)
+    local subtitle = "Enter para continuar"
+    gc:drawString(subtitle, (w - gc:getStringWidth(subtitle)) / 2, 96, "top")
+    gc:setColorRGB(45, 147, 173)
+    gc:fillRect((w - 120) / 2, h - 48, 120, 28)
+    gc:setColorRGB(255, 255, 255)
+    local label = "Siguiente"
+    gc:drawString(label, (w - gc:getStringWidth(label)) / 2, h - 42, "top")
+  end,
+  enterKey = function(self)
+    goNext()
+  end
+})
+
+-- Inserta plantillas debajo de esta linea.
+-- [[TNS_TOOL_PAGES_END]]
+
+function on.paint(gc)
+  if pages[currentPage] and pages[currentPage].paint then
+    pages[currentPage]:paint(gc)
+  end
+end
+
+function on.enterKey()
+  if pages[currentPage] and pages[currentPage].enterKey then
+    pages[currentPage]:enterKey()
+  else
+    goNext()
+  end
+end
+
+function on.escapeKey()
+  if currentPage > 1 then
+    goHome()
+  elseif pages[currentPage] and pages[currentPage].escapeKey then
+    pages[currentPage]:escapeKey()
+  end
+end
+
+function on.arrowKey(direction)
+  if pages[currentPage] and pages[currentPage].arrowKey then
+    pages[currentPage]:arrowKey(direction)
+  end
+end
+
+function on.charIn(ch)
+  if pages[currentPage] and pages[currentPage].charIn then
+    pages[currentPage]:charIn(ch)
+  end
+end
+
+function on.backspaceKey()
+  if pages[currentPage] and pages[currentPage].backspaceKey then
+    pages[currentPage]:backspaceKey()
+  end
+end
+`;
+}
+
 async function addLuaScriptAppToStage() {
   await ensureXmlStageCopy();
   const currentFile = xmlDoctor.current?.file || "";
   pyodide.globals.set("wasm_lua_current_file", currentFile);
-  pyodide.globals.set("wasm_lua_default", `platform.apilevel = '2.0'
-
-function on.paint(gc)
-    gc:setColorRGB(0, 0, 0)
-    gc:drawString("Hello Lua", 20, 20, "top")
-end
-`);
+  pyodide.globals.set("wasm_lua_default", buildDefaultLuaScriptApp());
   const payload = await pyodide.runPythonAsync(`
 import json
 import uuid
@@ -2150,6 +2236,8 @@ function luaRgbFromHex(hex, fallback = [45, 147, 173]) {
   return [0, 2, 4].map((index) => parseInt(raw.slice(index, index + 2), 16));
 }
 
+const LUA_PAGE_INSERT_MARKER = "-- [[TNS_TOOL_PAGES_END]]";
+
 const LUA_TEMPLATE_PRESETS = [
   {
     id: "form",
@@ -2166,31 +2254,29 @@ const LUA_TEMPLATE_PRESETS = [
   gc:drawString(":", 70, ${y + 4}, "top")
   drawInput(gc, fields[${index + 1}], 82, ${y}, 158, 22)`;
       }).join("\n");
-      return `platform.apilevel = '2.0'
-
-local fields = {${labels.map((label) => `{label="${label}", value="", placeholder="${label}"}`).join(", ")}}
-local focus = 1
-
-local function drawInput(gc, field, x, y, w, h)
+      return `addPage({
+  name = "${luaString(options.title)}",
+  fields = {${labels.map((label) => `{label="${label}", value="", placeholder="${label}"}`).join(", ")}},
+  focus = 1,
+  drawInput = function(self, gc, field, x, y, w, h)
   gc:setColorRGB(255, 255, 255)
   gc:fillRect(x, y, w, h)
   gc:setColorRGB(field.focused and ${primaryR} or 128, field.focused and ${primaryG} or 128, field.focused and ${primaryB} or 128)
   gc:drawRect(x, y, w, h)
   gc:setColorRGB(field.value == "" and 150 or 0, field.value == "" and 150 or 0, field.value == "" and 150 or 0)
   gc:drawString(field.value ~= "" and field.value or field.placeholder, x + 4, y + 3, "top")
-end
-
-function on.paint(gc)
+  end,
+  paint = function(self, gc)
   gc:setColorRGB(224, 224, 224)
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
   gc:setFont("sansserif", "b", 10)
   gc:setColorRGB(0, 0, 0)
   gc:drawString("${luaString(options.title)}", 8, 8, "top")
   gc:setFont("sansserif", "r", 10)
-  for i, field in ipairs(fields) do
-    field.focused = i == focus
+  for i, field in ipairs(self.fields) do
+    field.focused = i == self.focus
   end
-${rows}
+${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   gc:setColorRGB(128, 128, 128)
   gc:fillRect(8, 180, 304, 2)
   gc:setColorRGB(255, 255, 255)
@@ -2202,23 +2288,25 @@ ${rows}
   gc:drawString("◀ Retour", 14, 193, "top")
   gc:drawString("${luaString(options.buttonText)}", 112, 194, "top")
   gc:drawString("Detalles", 248, 193, "top")
-end
-
-function on.arrowKey(direction)
-  if direction == "down" then focus = math.min(#fields, focus + 1) end
-  if direction == "up" then focus = math.max(1, focus - 1) end
+  end,
+  arrowKey = function(self, direction)
+  if direction == "down" then self.focus = math.min(#self.fields, self.focus + 1) end
+  if direction == "up" then self.focus = math.max(1, self.focus - 1) end
   platform.window:invalidate()
-end
-
-function on.charIn(ch)
-  fields[focus].value = fields[focus].value .. ch
+  end,
+  charIn = function(self, ch)
+  self.fields[self.focus].value = self.fields[self.focus].value .. ch
   platform.window:invalidate()
-end
-
-function on.backspaceKey()
-  fields[focus].value = fields[focus].value:sub(1, -2)
+  end,
+  backspaceKey = function(self)
+  self.fields[self.focus].value = self.fields[self.focus].value:sub(1, -2)
   platform.window:invalidate()
-end`;
+  end,
+  enterKey = function()
+    if currentPage < #pages then currentPage = currentPage + 1 end
+    platform.window:invalidate()
+  end
+})`;
     },
   },
   {
@@ -2230,38 +2318,38 @@ end`;
       const count = Math.max(2, Math.min(10, Number(options.inputCount) || 4));
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
       const items = Array.from({ length: count }, (_, index) => `"${index + 1}) Opcion ${index + 1} >"`).join(", ");
-      return `platform.apilevel = '2.0'
-
-local selected = 1
-local items = {${items}}
-
-function on.paint(gc)
+      return `addPage({
+  name = "${luaString(options.title)}",
+  selected = 1,
+  items = {${items}},
+  paint = function(self, gc)
   gc:setColorRGB(255, 255, 255)
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
   gc:setFont("sansserif", "b", 12)
   gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
   gc:drawString("${luaString(options.title)}", 92, 8, "top")
   gc:setFont("sansserif", "r", 10)
-  for i, item in ipairs(items) do
+  for i, item in ipairs(self.items) do
     local y = 44 + (i - 1) * 24
-    if i == selected then
+    if i == self.selected then
       gc:setColorRGB(220, 220, 220)
       gc:fillRect(18, y - 2, 150, 20)
     end
     gc:setColorRGB(0, 0, 0)
     gc:drawString(item, 28, y, "top")
   end
-end
-
-function on.arrowKey(direction)
-  if direction == "down" then selected = selected % #items + 1 end
-  if direction == "up" then selected = selected == 1 and #items or selected - 1 end
+  end,
+  arrowKey = function(self, direction)
+  if direction == "down" then self.selected = self.selected % #self.items + 1 end
+  if direction == "up" then self.selected = self.selected == 1 and #self.items or self.selected - 1 end
   platform.window:invalidate()
-end
-
-function on.enterKey()
-  var.store("selected_item", selected)
-end`;
+  end,
+  enterKey = function(self)
+  var.store("selected_item", self.selected)
+  if currentPage < #pages then currentPage = currentPage + 1 end
+  platform.window:invalidate()
+  end
+})`;
     },
   },
   {
@@ -2271,14 +2359,13 @@ end`;
     defaults: { inputCount: 1, title: "Aviso", buttonText: "OK", primaryColor: "#2563eb" },
     build(options) {
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor, [37, 99, 235]);
-      return `platform.apilevel = '2.0'
-
-local visible = true
-
-function on.paint(gc)
+      return `addPage({
+  name = "${luaString(options.title)}",
+  visible = true,
+  paint = function(self, gc)
   gc:setColorRGB(238, 238, 238)
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
-  if not visible then return end
+  if not self.visible then return end
   gc:setColorRGB(255, 255, 255)
   gc:fillRect(104, 76, 112, 58)
   gc:setColorRGB(200, 200, 200)
@@ -2291,12 +2378,13 @@ function on.paint(gc)
   gc:fillRect(132, 108, 54, 24)
   gc:setColorRGB(255, 255, 255)
   gc:drawString("${luaString(options.buttonText)}", 150, 113, "top")
-end
-
-function on.enterKey()
-  visible = false
+  end,
+  enterKey = function(self)
+  self.visible = false
+  if currentPage < #pages then currentPage = currentPage + 1 end
   platform.window:invalidate()
-end`;
+  end
+})`;
     },
   },
   {
@@ -2308,56 +2396,53 @@ end`;
       const count = Math.max(1, Math.min(6, Number(options.inputCount) || 3));
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
       const fields = Array.from({ length: count }, (_, index) => `{label="${String.fromCharCode(97 + index)}", value=""}`).join(", ");
-      return `platform.apilevel = '2.0'
-
-local fields = {${fields}}
-local focus = 1
-local detailsOpen = false
-local detailsEditor = nil
-
-local function drawButton(gc, text, x, y, w)
+      return `addPage({
+  name = "${luaString(options.title)}",
+  fields = {${fields}},
+  focus = 1,
+  detailsOpen = false,
+  detailsEditor = nil,
+  drawButton = function(self, gc, text, x, y, w)
   gc:setColorRGB(248, 252, 248)
   gc:fillRect(x, y, w, 24)
   gc:setColorRGB(128, 128, 128)
   gc:drawRect(x, y, w, 24)
   gc:setColorRGB(0, 0, 0)
   gc:drawString(text, x + 8, y + 5, "top")
-end
-
-local function openDetails()
-  detailsOpen = true
+  end,
+  openDetails = function(self)
+  self.detailsOpen = true
   if D2Editor and D2Editor.newRichText then
-    detailsEditor = D2Editor.newRichText()
-    detailsEditor:setReadOnly(true)
-    detailsEditor:move(42, 62)
-    detailsEditor:resize(230, 96)
-    detailsEditor:setText("${luaString(options.title)}\\nAqui puedes explicar el procedimiento o mostrar formulas.", 1)
-    detailsEditor:setFocus(true)
+    self.detailsEditor = D2Editor.newRichText()
+    self.detailsEditor:setReadOnly(true)
+    self.detailsEditor:move(42, 62)
+    self.detailsEditor:resize(230, 96)
+    self.detailsEditor:setText("${luaString(options.title)}\\nAqui puedes explicar el procedimiento o mostrar formulas.", 1)
+    self.detailsEditor:setFocus(true)
   end
   platform.window:invalidate()
-end
-
-function on.paint(gc)
+  end,
+  paint = function(self, gc)
   gc:setColorRGB(224, 224, 224)
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
   gc:setFont("sansserif", "r", 10)
-  for i, field in ipairs(fields) do
+  for i, field in ipairs(self.fields) do
     local y = 30 + (i - 1) * 28
     gc:setColorRGB(0, 0, 0)
     gc:drawString(field.label, 12, y + 4, "top")
     gc:drawString(":", 72, y + 4, "top")
     gc:setColorRGB(255, 255, 255)
     gc:fillRect(86, y, 160, 22)
-    gc:setColorRGB(i == focus and ${primaryR} or 128, i == focus and ${primaryG} or 128, i == focus and ${primaryB} or 128)
+    gc:setColorRGB(i == self.focus and ${primaryR} or 128, i == self.focus and ${primaryG} or 128, i == self.focus and ${primaryB} or 128)
     gc:drawRect(86, y, 160, 22)
     gc:setColorRGB(0, 0, 0)
     gc:drawString(field.value, 92, y + 3, "top")
   end
   gc:setColorRGB(128, 128, 128)
   gc:fillRect(8, 176, 304, 2)
-  drawButton(gc, "◀ Retour", 8, 186, 74)
-  drawButton(gc, "${luaString(options.buttonText)}", 238, 186, 72)
-  if detailsOpen and not detailsEditor then
+  self:drawButton(gc, "◀ Retour", 8, 186, 74)
+  self:drawButton(gc, "${luaString(options.buttonText)}", 238, 186, 72)
+  if self.detailsOpen and not self.detailsEditor then
     gc:setColorRGB(255, 255, 255)
     gc:fillRect(42, 62, 230, 96)
     gc:setColorRGB(128, 128, 128)
@@ -2366,34 +2451,30 @@ function on.paint(gc)
     gc:drawString("${luaString(options.title)}", 50, 70, "top")
     gc:drawString("Aqui va el procedimiento.", 50, 92, "top")
   end
-end
-
-function on.arrowKey(direction)
-  if direction == "down" then focus = math.min(#fields, focus + 1) end
-  if direction == "up" then focus = math.max(1, focus - 1) end
+  end,
+  arrowKey = function(self, direction)
+  if direction == "down" then self.focus = math.min(#self.fields, self.focus + 1) end
+  if direction == "up" then self.focus = math.max(1, self.focus - 1) end
   platform.window:invalidate()
-end
-
-function on.charIn(ch)
-  fields[focus].value = fields[focus].value .. ch
+  end,
+  charIn = function(self, ch)
+  self.fields[self.focus].value = self.fields[self.focus].value .. ch
   platform.window:invalidate()
-end
-
-function on.backspaceKey()
-  fields[focus].value = fields[focus].value:sub(1, -2)
+  end,
+  backspaceKey = function(self)
+  self.fields[self.focus].value = self.fields[self.focus].value:sub(1, -2)
   platform.window:invalidate()
-end
-
-function on.enterKey()
-  openDetails()
-end
-
-function on.escapeKey()
-  if detailsEditor and detailsEditor.setVisible then detailsEditor:setVisible(false) end
-  detailsOpen = false
-  detailsEditor = nil
+  end,
+  enterKey = function(self)
+  self:openDetails()
+  end,
+  escapeKey = function(self)
+  if self.detailsEditor and self.detailsEditor.setVisible then self.detailsEditor:setVisible(false) end
+  self.detailsOpen = false
+  self.detailsEditor = nil
   platform.window:invalidate()
-end`;
+  end
+})`;
     },
   },
 ];
@@ -2402,9 +2483,16 @@ function insertLuaTemplate(editor, text) {
   const start = editor.selectionStart;
   const end = editor.selectionEnd;
   if (start === end) {
-    editor.value = text;
+    const markerIndex = editor.value.indexOf(LUA_PAGE_INSERT_MARKER);
+    if (markerIndex >= 0) {
+      editor.value = `${editor.value.slice(0, markerIndex)}${text}\n\n${editor.value.slice(markerIndex)}`;
+    } else {
+      const scaffold = buildDefaultLuaScriptApp();
+      const scaffoldMarkerIndex = scaffold.indexOf(LUA_PAGE_INSERT_MARKER);
+      editor.value = `${scaffold.slice(0, scaffoldMarkerIndex)}${text}\n\n${scaffold.slice(scaffoldMarkerIndex)}`;
+    }
     editor.focus();
-    editor.setSelectionRange(0, 0);
+    editor.setSelectionRange(editor.value.length, editor.value.length);
     editor.dispatchEvent(new Event("input", { bubbles: true }));
     return;
   }
