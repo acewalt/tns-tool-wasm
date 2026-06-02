@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-dashboard-menu-fixes-local";
+const SOURCE_VERSION = "2026-06-01-dashboard-icons-drop-local";
 
 const I18N = {
   es: {
@@ -324,7 +324,7 @@ const I18N = {
 };
 
 let language = localStorage.getItem("tns-tool-language") || "es";
-let theme = localStorage.getItem("tns-tool-theme") || "light";
+let theme = localStorage.getItem("tns-tool-theme") || "dark";
 
 const PROBLEM_TRANSLATIONS = {
   en: {
@@ -587,6 +587,44 @@ function toggleCollapsible(element, afterChange = null) {
   }, 270);
 }
 
+function appPanels() {
+  return [
+    document.querySelector("#xml-doctor-panel"),
+    document.querySelector("#normal-module"),
+    document.querySelector("#python-module"),
+  ].filter(Boolean);
+}
+
+function panelForTool(tool) {
+  if (tool === "xml") return document.querySelector("#xml-doctor-panel");
+  if (tool === "normal") return document.querySelector("#normal-module");
+  if (tool === "python") return document.querySelector("#python-module");
+  return null;
+}
+
+function openExclusivePanel(target) {
+  if (!target) return;
+  for (const panel of appPanels()) {
+    if (panel !== target && !panel.classList.contains("collapsed")) {
+      toggleCollapsible(panel, syncToggleLabels);
+    }
+  }
+  if (target.classList.contains("collapsed")) {
+    toggleCollapsible(target, syncToggleLabels);
+  } else {
+    syncToggleLabels();
+  }
+}
+
+function toggleExclusivePanel(target) {
+  if (!target) return;
+  if (!target.classList.contains("collapsed")) {
+    toggleCollapsible(target, syncToggleLabels);
+    return;
+  }
+  openExclusivePanel(target);
+}
+
 function syncToggleLabels() {
   const xmlPanel = document.querySelector("#xml-doctor-panel");
   const normalModule = document.querySelector("#normal-module");
@@ -605,6 +643,62 @@ function setReady(value) {
     if (button.id === "theme-btn" || button.id === "about-btn") continue;
     button.disabled = !value;
   }
+}
+
+function singleFileList(file) {
+  const transfer = new DataTransfer();
+  transfer.items.add(file);
+  return transfer.files;
+}
+
+async function handleDroppedFiles(files) {
+  const dropped = [...files].filter(Boolean);
+  if (!dropped.length) return;
+  const first = dropped[0];
+  const name = (first.name || "").toLowerCase();
+  if (name.endsWith(".py")) {
+    const input = document.querySelector("#py-file");
+    input.files = singleFileList(first);
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+    openExclusivePanel(panelForTool("python"));
+    log(`Archivo Python listo: ${first.name}`);
+    return;
+  }
+  if (name.endsWith(".tns")) {
+    openExclusivePanel(panelForTool("xml"));
+    await openTnsInXmlDoctor(first);
+    return;
+  }
+  const xmlFiles = dropped.filter((file) => (file.name || "").toLowerCase().endsWith(".xml"));
+  if (xmlFiles.length) {
+    openExclusivePanel(panelForTool("xml"));
+    await loadXmlDoctorFiles(xmlFiles, xmlFiles.length > 1 ? "folder" : "file");
+    return;
+  }
+  log(`Tipo de archivo no soportado para arrastrar: ${first.name}`);
+}
+
+function wireDropZone() {
+  const zone = document.querySelector(".drop-zone");
+  if (!zone) return;
+  for (const eventName of ["dragenter", "dragover"]) {
+    zone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      zone.classList.add("dragging");
+    });
+  }
+  for (const eventName of ["dragleave", "drop"]) {
+    zone.addEventListener(eventName, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      if (eventName === "dragleave" && event.relatedTarget && zone.contains(event.relatedTarget)) return;
+      zone.classList.remove("dragging");
+    });
+  }
+  zone.addEventListener("drop", (event) => {
+    handleDroppedFiles(event.dataTransfer.files).catch((err) => log(`ERROR drop: ${err.stack || err.message}`));
+  });
 }
 
 function closeToolMenus(except = null) {
@@ -4761,25 +4855,27 @@ function wireEvents() {
   for (const button of document.querySelectorAll("#language-buttons button")) {
     button.addEventListener("click", () => applyLanguage(button.dataset.lang));
   }
-  document.querySelector("#home-open-xml").addEventListener("click", () => {
-    const panel = document.querySelector("#xml-doctor-panel");
-    if (panel.classList.contains("collapsed")) toggleCollapsible(panel, syncToggleLabels);
-  });
-  document.querySelector("#home-open-normal").addEventListener("click", () => {
-    const module = document.querySelector("#normal-module");
-    if (module.classList.contains("collapsed")) toggleCollapsible(module, syncToggleLabels);
-  });
-  document.querySelector("#home-open-python").addEventListener("click", () => {
-    const module = document.querySelector("#python-module");
-    if (module.classList.contains("collapsed")) toggleCollapsible(module, syncToggleLabels);
-  });
+  document.querySelector("#home-open-xml").addEventListener("click", () => openExclusivePanel(panelForTool("xml")));
+  document.querySelector("#home-open-normal").addEventListener("click", () => openExclusivePanel(panelForTool("normal")));
+  document.querySelector("#home-open-python").addEventListener("click", () => openExclusivePanel(panelForTool("python")));
+  for (const launcher of document.querySelectorAll("[data-open-target]")) {
+    launcher.tabIndex = 0;
+    launcher.setAttribute("role", "button");
+    launcher.addEventListener("click", (event) => {
+      if (event.target.closest("button, input, label, select, textarea, a")) return;
+      openExclusivePanel(panelForTool(launcher.dataset.openTarget));
+    });
+    launcher.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      openExclusivePanel(panelForTool(launcher.dataset.openTarget));
+    });
+  }
   document.querySelector("#normal-toggle-btn").addEventListener("click", () => {
-    const module = document.querySelector("#normal-module");
-    toggleCollapsible(module, syncToggleLabels);
+    toggleExclusivePanel(panelForTool("normal"));
   });
   document.querySelector("#python-toggle-btn").addEventListener("click", () => {
-    const module = document.querySelector("#python-module");
-    toggleCollapsible(module, syncToggleLabels);
+    toggleExclusivePanel(panelForTool("python"));
   });
   document.querySelector("#decode-btn").addEventListener("click", () => decodeNormalTns().catch((err) => log(`ERROR: ${err.message}`)));
   document.querySelector("#build-xml-btn").addEventListener("click", () => buildNormalTns().catch((err) => log(`ERROR: ${err.message}`)));
@@ -4805,8 +4901,7 @@ function wireEvents() {
   document.querySelector("#py-code").addEventListener("click", updatePyLineLabel);
   document.querySelector("#py-code").addEventListener("keyup", updatePyLineLabel);
   document.querySelector("#xml-toggle-btn").addEventListener("click", () => {
-    const panel = document.querySelector("#xml-doctor-panel");
-    toggleCollapsible(panel, syncToggleLabels);
+    toggleExclusivePanel(panelForTool("xml"));
   });
   document.querySelector("#xml-tns-file").addEventListener("change", (event) => openTnsInXmlDoctor(event.target.files[0]).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
@@ -4836,6 +4931,7 @@ function wireEvents() {
   document.querySelector("#xml-save-btn").addEventListener("click", () => saveXmlZip().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-create-tns-btn").addEventListener("click", () => createTnsFromXmlDoctor().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   wireToolMenus();
+  wireDropZone();
 }
 
 applyLanguage(language);

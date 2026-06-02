@@ -290,6 +290,16 @@ button:disabled {
   grid-column: 1 / -1;
 }
 
+.sidebar-title {
+  grid-column: 1;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 2px 4px 0;
+}
+
 .doctor-launcher,
 .module-launcher {
   grid-column: 1;
@@ -301,12 +311,12 @@ button:disabled {
 
 .doctor-launcher button,
 .module-launcher button {
-  width: 100%;
+  display: none;
 }
 
 .home-panel {
   grid-column: 2 / 4;
-  grid-row: 1 / span 3;
+  grid-row: 1 / span 4;
   min-height: 520px;
   display: grid;
   place-items: center;
@@ -358,11 +368,18 @@ button:disabled {
   background: rgb(15 23 42 / 3%);
   display: grid;
   gap: 6px;
+  transition: border-color 0.2s ease, background 0.2s ease, transform 0.2s ease;
 }
 
 [data-theme="dark"] .drop-zone {
   border-color: #334155;
   background: rgb(15 23 42 / 40%);
+}
+
+.drop-zone.dragging {
+  border-color: var(--lime);
+  background: rgb(183 243 77 / 10%);
+  transform: translateY(-2px);
 }
 
 .drop-zone strong {
@@ -389,10 +406,38 @@ button:disabled {
   justify-content: flex-start;
   flex-direction: column;
   gap: 18px;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.doctor-launcher:hover,
+.module-launcher:hover {
+  border-color: rgb(183 243 77 / 45%);
+  box-shadow: 0 18px 40px rgb(15 23 42 / 10%), 0 0 28px rgb(183 243 77 / 10%);
+  transform: translateY(-2px);
+}
+
+.doctor-launcher h2,
+.doctor-launcher p {
+  margin: 0;
+}
+
+.doctor-launcher h2,
+.module-launcher h2 {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.doctor-launcher h2 img,
+.module-launcher h2 img {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  border-radius: 10px;
 }
 
 .doctor-launcher p {
-  margin: -6px 0 0;
   color: var(--muted);
 }
 
@@ -403,17 +448,8 @@ button:disabled {
   justify-content: flex-start;
   flex-direction: column;
   gap: 18px;
-}
-
-.module-launcher h2 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.module-launcher h2 img {
-  width: 24px;
-  height: 24px;
+  cursor: pointer;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .module-launcher p {
@@ -555,11 +591,11 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   border-radius: 18px;
   box-shadow: 0 18px 40px rgb(0 0 0 / 35%), 0 0 25px rgb(183 243 77 / 12%);
   opacity: 0;
-  transform: translateY(-10px) scale(0.94);
-  transform-origin: top left;
+  transform: translateY(-18px) scale(0.88);
+  transform-origin: top center;
   pointer-events: none;
   z-index: 15;
-  transition: opacity 0.25s ease, transform 0.28s cubic-bezier(0.2, 1.3, 0.4, 1);
+  transition: opacity 0.25s ease, transform 0.32s cubic-bezier(0.2, 1.3, 0.4, 1);
 }
 
 .tool-menu.open > .menu-panel {
@@ -575,7 +611,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .nested-panel {
   top: 0;
   left: calc(100% + 10px);
-  transform-origin: top left;
+  transform-origin: top center;
 }
 
 .menu-action,
@@ -625,6 +661,12 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 [data-theme="dark"] .menu-panel .file-menu-action:hover {
   background: rgb(183 243 77 / 16%);
   color: #ffffff;
+}
+
+[data-theme="dark"] .menu-panel .menu-action:not(:disabled):hover,
+[data-theme="dark"] .menu-panel .file-menu-action:hover {
+  background: linear-gradient(135deg, var(--lime), var(--lime2));
+  color: #172033;
 }
 
 [data-theme="dark"] .menu-panel .menu-action:disabled,
@@ -1395,9 +1437,24 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   font: inherit;
 }
 
+[data-theme="dark"] .document-form input,
+[data-theme="dark"] .document-form select {
+  background: #0f172a;
+  color: #e5eefb;
+  border-color: #334155;
+}
+
+[data-theme="dark"] .document-form input::placeholder {
+  color: #94a3b8;
+}
+
 .about-modal h3 {
   margin: 18px 0 8px;
   color: #0f172a;
+}
+
+[data-theme="dark"] .about-modal h3 {
+  color: #e5eefb;
 }
 
 .about-modal p,
@@ -1576,13 +1633,29 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
   .doctor-launcher,
   .module-launcher {
+    grid-column: 1;
+    grid-row: auto;
     align-items: flex-start;
     flex-direction: column;
   }
 
   .doctor-launcher button,
   .module-launcher button {
-    width: 100%;
+    display: none;
+  }
+
+  .sidebar-title,
+  .home-panel,
+  #xml-doctor-panel,
+  #normal-module,
+  #python-module,
+  .log-panel {
+    grid-column: 1;
+    grid-row: auto;
+  }
+
+  .home-panel {
+    min-height: 420px;
   }
 
   .doctor-grid {

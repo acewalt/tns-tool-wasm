@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20260601-dashboard-menu-fixes-local" />
+    <link rel="stylesheet" href="./styles.css?v=20260601-dashboard-icons-drop-local" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script defer src="./app.js?v=20260601-dashboard-menu-fixes-local"></script>
+    <script defer src="./app.js?v=20260601-dashboard-icons-drop-local"></script>
   </head>
   <body>
     <header class="shell-header">
@@ -28,9 +28,10 @@
     </header>
 
     <main class="layout">
-      <section class="panel doctor-launcher">
+      <div class="sidebar-title">HERRAMIENTAS</div>
+      <section class="panel doctor-launcher" data-open-target="xml">
         <div>
-          <h2>Syntax Doctor XML</h2>
+          <h2><img src="./icon/Syntax_doctor_XML.png" alt="" /> Syntax Doctor XML</h2>
           <p data-i18n="xmlDoctorDesc">Editor visual para revisar, corregir e incrustar codigo dentro de XML.</p>
         </div>
         <button id="xml-toggle-btn" data-i18n="openXmlDoctor">Abrir Syntax Doctor XML</button>
@@ -38,7 +39,7 @@
 
       <section class="panel home-panel">
         <div class="home-hero">
-          <img src="./icon/tns_icon.png" alt="" />
+          <img src="./icon/TNS_new.png" alt="" />
           <h2>Bienvenido a TNS Tool WASM</h2>
           <p>Selecciona una herramienta del panel izquierdo o arrastra un archivo para comenzar.</p>
           <div class="drop-zone">
@@ -123,7 +124,7 @@
         </div>
       </section>
 
-      <section class="panel module-launcher">
+      <section class="panel module-launcher" data-open-target="normal">
         <div>
           <h2><img src="./icon/TNS_normal.png" alt="" /> TNS normal</h2>
           <p data-i18n="normalDesc">Decodificar `.tns` a XML y reconstruir `.tns` desde XML.</p>
@@ -145,7 +146,7 @@
         </section>
       </section>
 
-      <section class="panel module-launcher">
+      <section class="panel module-launcher" data-open-target="python">
         <div>
           <h2><img src="./icon/python.png" alt="" /> Python Program</h2>
           <p data-i18n="pythonDesc">Crear Python Program `.tns`, extraer `q.py` y revisar sintaxis Python.</p>
