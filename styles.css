@@ -35,6 +35,26 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: "Segoe UI", sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+.mouse-glow {
+  position: fixed;
+  width: 420px;
+  height: 420px;
+  pointer-events: none;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgb(120 90 255 / 14%) 0%, rgb(80 160 255 / 7%) 35%, transparent 70%);
+  filter: blur(35px);
+  transform: translate(-50%, -50%);
+  z-index: 0;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+[data-theme="light"] .mouse-glow {
+  background: radial-gradient(circle, rgb(37 99 235 / 8%) 0%, rgb(132 204 22 / 5%) 35%, transparent 70%);
 }
 
 .shell-header {
@@ -44,6 +64,8 @@ body {
   padding: 18px 22px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
+  position: relative;
+  z-index: 1;
 }
 
 .shell-header img {
@@ -154,6 +176,8 @@ body {
   gap: 14px;
   padding: 16px;
   align-items: start;
+  position: relative;
+  z-index: 1;
 }
 
 .panel {
@@ -292,6 +316,7 @@ button:disabled {
 
 .sidebar-title {
   grid-column: 1;
+  grid-row: 1;
   color: var(--muted);
   font-size: 12px;
   font-weight: 900;
@@ -323,6 +348,10 @@ button:disabled {
   background:
     radial-gradient(circle at 50% 30%, rgb(96 165 250 / 10%), transparent 34%),
     linear-gradient(135deg, rgb(255 255 255 / 95%), rgb(248 250 252 / 96%));
+  opacity: 1;
+  transform: scale(1);
+  transform-origin: center;
+  transition: opacity 0.26s ease, transform 0.32s cubic-bezier(0.2, 1.3, 0.4, 1), visibility 0.26s ease;
 }
 
 [data-theme="dark"] .home-panel {
@@ -333,7 +362,10 @@ button:disabled {
 }
 
 .app-active .home-panel {
-  display: none;
+  opacity: 0;
+  transform: scale(0.96);
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .home-hero {
@@ -342,8 +374,8 @@ button:disabled {
 }
 
 .home-hero img {
-  width: 92px;
-  height: 92px;
+  width: 142px;
+  height: 142px;
   object-fit: contain;
   filter: drop-shadow(0 14px 24px rgb(15 23 42 / 18%));
 }
@@ -397,15 +429,17 @@ button:disabled {
 #normal-module,
 #python-module {
   grid-column: 2 / 4;
+  grid-row: 2 / span 3;
 }
 
 .doctor-launcher {
   grid-column: 1;
+  grid-row: 2;
   display: flex;
   align-items: flex-start;
   justify-content: flex-start;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
@@ -417,27 +451,30 @@ button:disabled {
   transform: translateY(-2px);
 }
 
-.doctor-launcher h2,
-.doctor-launcher p {
-  margin: 0;
-}
-
-.doctor-launcher h2,
-.module-launcher h2 {
+.launcher-content {
   display: flex;
-  align-items: center;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
 }
 
-.doctor-launcher h2 img,
-.module-launcher h2 img {
+.launcher-icon {
+  flex: 0 0 auto;
   width: 34px;
   height: 34px;
   object-fit: contain;
   border-radius: 10px;
+  margin-top: 2px;
 }
 
-.doctor-launcher p {
+.doctor-launcher h2,
+.module-launcher h2 {
+  margin: 0 0 6px;
+}
+
+.doctor-launcher p,
+.module-launcher p {
+  margin: 0;
   color: var(--muted);
 }
 
@@ -447,14 +484,17 @@ button:disabled {
   align-items: flex-start;
   justify-content: flex-start;
   flex-direction: column;
-  gap: 18px;
+  gap: 0;
   cursor: pointer;
   transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.module-launcher p {
-  margin: -6px 0 0;
-  color: var(--muted);
+.normal-launcher {
+  grid-row: 3;
+}
+
+.python-launcher {
+  grid-row: 4;
 }
 
 .module-grid {
@@ -1645,13 +1685,29 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   }
 
   .sidebar-title,
-  .home-panel,
-  #xml-doctor-panel,
-  #normal-module,
-  #python-module,
   .log-panel {
     grid-column: 1;
     grid-row: auto;
+  }
+
+  .xml-launcher {
+    grid-row: 2;
+  }
+
+  .normal-launcher {
+    grid-row: 3;
+  }
+
+  .python-launcher {
+    grid-row: 4;
+  }
+
+  .home-panel,
+  #xml-doctor-panel,
+  #normal-module,
+  #python-module {
+    grid-column: 1;
+    grid-row: 5;
   }
 
   .home-panel {
@@ -1804,10 +1860,18 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   }
 
   .menu-panel {
-    position: relative;
-    top: 8px;
+    position: absolute;
+    top: calc(100% + 10px);
     left: 0;
     width: 100%;
-    margin-bottom: 8px;
+    max-height: min(70vh, 420px);
+    overflow: auto;
+    margin-bottom: 0;
+  }
+
+  .nested-panel {
+    position: static;
+    width: 100%;
+    margin-top: 6px;
   }
 }

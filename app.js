@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-dashboard-icons-drop-local";
+const SOURCE_VERSION = "2026-06-01-dashboard-toggle-glow-local";
 
 const I18N = {
   es: {
@@ -698,6 +698,20 @@ function wireDropZone() {
   }
   zone.addEventListener("drop", (event) => {
     handleDroppedFiles(event.dataTransfer.files).catch((err) => log(`ERROR drop: ${err.stack || err.message}`));
+  });
+}
+
+function wireMouseGlow() {
+  const glow = document.querySelector("#mouse-glow");
+  if (!glow) return;
+  const update = (event) => {
+    glow.style.left = `${event.clientX}px`;
+    glow.style.top = `${event.clientY}px`;
+    glow.style.opacity = "1";
+  };
+  window.addEventListener("pointermove", update);
+  window.addEventListener("pointerleave", () => {
+    glow.style.opacity = "0";
   });
 }
 
@@ -4863,12 +4877,12 @@ function wireEvents() {
     launcher.setAttribute("role", "button");
     launcher.addEventListener("click", (event) => {
       if (event.target.closest("button, input, label, select, textarea, a")) return;
-      openExclusivePanel(panelForTool(launcher.dataset.openTarget));
+      toggleExclusivePanel(panelForTool(launcher.dataset.openTarget));
     });
     launcher.addEventListener("keydown", (event) => {
       if (event.key !== "Enter" && event.key !== " ") return;
       event.preventDefault();
-      openExclusivePanel(panelForTool(launcher.dataset.openTarget));
+      toggleExclusivePanel(panelForTool(launcher.dataset.openTarget));
     });
   }
   document.querySelector("#normal-toggle-btn").addEventListener("click", () => {
@@ -4932,6 +4946,7 @@ function wireEvents() {
   document.querySelector("#xml-create-tns-btn").addEventListener("click", () => createTnsFromXmlDoctor().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   wireToolMenus();
   wireDropZone();
+  wireMouseGlow();
 }
 
 applyLanguage(language);
