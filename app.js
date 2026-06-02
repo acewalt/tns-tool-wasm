@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-home-i18n-local";
+const SOURCE_VERSION = "2026-06-02-lua-guide-templates-local";
 
 const I18N = {
   es: {
@@ -37,6 +37,15 @@ const I18N = {
     runLuaSyntax: "Ejecutar sintaxis Lua",
     saveLuaXml: "Guardar Lua en XML",
     previewLua: "Preview Lua",
+    luaGuide: "Guia Lua",
+    luaTemplates: "Plantillas Lua",
+    luaGuideSearch: "Buscar funciones, eventos o variables...",
+    luaTemplatesIntro: "Elige una plantilla y ajusta sus opciones antes de insertarla en el cursor.",
+    luaInsertTemplate: "Insertar plantilla",
+    luaInputCount: "Cantidad de inputs",
+    luaTemplateTitle: "Titulo",
+    luaButtonText: "Texto del boton",
+    luaPrimaryColor: "Color principal",
     luaSyntaxOk: "Sintaxis Lua basica OK.",
     luaSaved: "Lua guardado en staging. Use Guardar XML ZIP para descargarlo.",
     noEditablePrograms: "No se encontraron programas editables en el XML.",
@@ -150,6 +159,15 @@ const I18N = {
     runLuaSyntax: "Run Lua syntax",
     saveLuaXml: "Save Lua to XML",
     previewLua: "Preview Lua",
+    luaGuide: "Lua guide",
+    luaTemplates: "Lua templates",
+    luaGuideSearch: "Search functions, events, or variables...",
+    luaTemplatesIntro: "Choose a template and adjust its options before inserting it at the cursor.",
+    luaInsertTemplate: "Insert template",
+    luaInputCount: "Input count",
+    luaTemplateTitle: "Title",
+    luaButtonText: "Button text",
+    luaPrimaryColor: "Primary color",
     luaSyntaxOk: "Basic Lua syntax OK.",
     luaSaved: "Lua saved to staging. Use Save XML ZIP to download it.",
     noEditablePrograms: "No editable programs were found in the XML.",
@@ -263,6 +281,15 @@ const I18N = {
     runLuaSyntax: "Analyser syntaxe Lua",
     saveLuaXml: "Enregistrer Lua dans XML",
     previewLua: "Apercu Lua",
+    luaGuide: "Guide Lua",
+    luaTemplates: "Modeles Lua",
+    luaGuideSearch: "Rechercher fonctions, evenements ou variables...",
+    luaTemplatesIntro: "Choisissez un modele et ajustez ses options avant de l'inserer au curseur.",
+    luaInsertTemplate: "Inserer le modele",
+    luaInputCount: "Nombre de champs",
+    luaTemplateTitle: "Titre",
+    luaButtonText: "Texte du bouton",
+    luaPrimaryColor: "Couleur principale",
     luaSyntaxOk: "Syntaxe Lua basique OK.",
     luaSaved: "Lua enregistre dans staging. Utilisez Enregistrer ZIP XML pour le telecharger.",
     noEditablePrograms: "Aucun programme editable trouve dans le XML.",
@@ -2081,6 +2108,400 @@ function highlightLuaLine(line) {
   return output || " ";
 }
 
+const LUA_GUIDE_ITEMS = [
+  ["platform.apilevel", "Define el nivel de API Lua que el documento espera usar."],
+  ["platform.window:width()", "Devuelve el ancho actual de la pantalla de la calculadora."],
+  ["platform.window:height()", "Devuelve el alto actual de la pantalla de la calculadora."],
+  ["platform.window:invalidate()", "Solicita repintar la pantalla y vuelve a llamar on.paint."],
+  ["on.paint(gc)", "Evento principal de dibujo. Todo lo visual se renderiza aqui."],
+  ["on.create()", "Se ejecuta al crear/iniciar el script Lua."],
+  ["on.timer()", "Evento repetido cuando timer.start esta activo."],
+  ["on.enterKey()", "Evento al presionar Enter."],
+  ["on.escapeKey()", "Evento al presionar Esc."],
+  ["on.arrowKey(direction)", "Evento de flechas. direction suele ser up, down, left o right."],
+  ["on.charIn(ch)", "Recibe caracteres escritos por teclado."],
+  ["gc:setColorRGB(r,g,b)", "Cambia el color para las siguientes operaciones graficas."],
+  ["gc:setFont(family, style, size)", "Configura fuente, estilo y tamano antes de dibujar texto."],
+  ["gc:drawString(text,x,y,pos)", "Dibuja texto en una coordenada. pos puede ser top, middle o baseline."],
+  ["gc:getStringWidth(text)", "Calcula el ancho en pixeles de un texto con la fuente actual."],
+  ["gc:drawRect(x,y,w,h)", "Dibuja el borde de un rectangulo."],
+  ["gc:fillRect(x,y,w,h)", "Rellena un rectangulo."],
+  ["gc:drawLine(x1,y1,x2,y2)", "Dibuja una linea entre dos puntos."],
+  ["gc:drawArc(x,y,w,h,start,angle)", "Dibuja un arco o borde circular."],
+  ["gc:fillArc(x,y,w,h,start,angle)", "Rellena un arco o circulo parcial."],
+  ["timer.start(seconds)", "Activa eventos on.timer con intervalo aproximado."],
+  ["timer.stop()", "Detiene el timer."],
+  ["D2Editor.newRichText()", "Crea un editor nativo de texto enriquecido/matematico."],
+  ["var.store(name,value)", "Guarda una variable CAS accesible desde el documento."],
+  ["var.recall(name)", "Lee una variable CAS guardada en el documento."],
+];
+
+function luaString(value) {
+  return String(value ?? "")
+    .replaceAll("\\", "\\\\")
+    .replaceAll('"', '\\"')
+    .replace(/\r?\n/g, "\\n");
+}
+
+function luaRgbFromHex(hex, fallback = [45, 147, 173]) {
+  const match = /^#?([0-9a-f]{6})$/i.exec(String(hex || ""));
+  if (!match) return fallback;
+  const raw = match[1];
+  return [0, 2, 4].map((index) => parseInt(raw.slice(index, index + 2), 16));
+}
+
+const LUA_TEMPLATE_PRESETS = [
+  {
+    id: "form",
+    name: "Formulario con inputs",
+    description: "Pantalla tipo calculadora con etiquetas, campos de respuesta y botones inferiores.",
+    defaults: { inputCount: 3, title: "Formulario", buttonText: "Calcular", primaryColor: "#2d93ad" },
+    build(options) {
+      const count = Math.max(1, Math.min(8, Number(options.inputCount) || 3));
+      const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
+      const labels = Array.from({ length: count }, (_, index) => String.fromCharCode(97 + index));
+      const rows = labels.map((label, index) => {
+        const y = 42 + index * 28;
+        return `  gc:drawString("${label}", 14, ${y + 4}, "top")
+  gc:drawString(":", 70, ${y + 4}, "top")
+  drawInput(gc, fields[${index + 1}], 82, ${y}, 158, 22)`;
+      }).join("\n");
+      return `platform.apilevel = '2.0'
+
+local fields = {${labels.map((label) => `{label="${label}", value="", placeholder="${label}"}`).join(", ")}}
+local focus = 1
+
+local function drawInput(gc, field, x, y, w, h)
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(x, y, w, h)
+  gc:setColorRGB(field.focused and ${primaryR} or 128, field.focused and ${primaryG} or 128, field.focused and ${primaryB} or 128)
+  gc:drawRect(x, y, w, h)
+  gc:setColorRGB(field.value == "" and 150 or 0, field.value == "" and 150 or 0, field.value == "" and 150 or 0)
+  gc:drawString(field.value ~= "" and field.value or field.placeholder, x + 4, y + 3, "top")
+end
+
+function on.paint(gc)
+  gc:setColorRGB(224, 224, 224)
+  gc:fillRect(0, 0, platform.window:width(), platform.window:height())
+  gc:setFont("sansserif", "b", 10)
+  gc:setColorRGB(0, 0, 0)
+  gc:drawString("${luaString(options.title)}", 8, 8, "top")
+  gc:setFont("sansserif", "r", 10)
+  for i, field in ipairs(fields) do
+    field.focused = i == focus
+  end
+${rows}
+  gc:setColorRGB(128, 128, 128)
+  gc:fillRect(8, 180, 304, 2)
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(8, 188, 70, 24)
+  gc:fillRect(240, 188, 70, 24)
+  gc:setColorRGB(0, 0, 0)
+  gc:drawRect(8, 188, 70, 24)
+  gc:drawRect(240, 188, 70, 24)
+  gc:drawString("◀ Retour", 14, 193, "top")
+  gc:drawString("${luaString(options.buttonText)}", 112, 194, "top")
+  gc:drawString("Detalles", 248, 193, "top")
+end
+
+function on.arrowKey(direction)
+  if direction == "down" then focus = math.min(#fields, focus + 1) end
+  if direction == "up" then focus = math.max(1, focus - 1) end
+  platform.window:invalidate()
+end
+
+function on.charIn(ch)
+  fields[focus].value = fields[focus].value .. ch
+  platform.window:invalidate()
+end
+
+function on.backspaceKey()
+  fields[focus].value = fields[focus].value:sub(1, -2)
+  platform.window:invalidate()
+end`;
+    },
+  },
+  {
+    id: "menu",
+    name: "Menu de seleccion",
+    description: "Lista vertical con cursor, ideal para categorias o acciones.",
+    defaults: { inputCount: 4, title: "Menu", buttonText: "Enter", primaryColor: "#35a0be" },
+    build(options) {
+      const count = Math.max(2, Math.min(10, Number(options.inputCount) || 4));
+      const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
+      const items = Array.from({ length: count }, (_, index) => `"${index + 1}) Opcion ${index + 1} >"`).join(", ");
+      return `platform.apilevel = '2.0'
+
+local selected = 1
+local items = {${items}}
+
+function on.paint(gc)
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(0, 0, platform.window:width(), platform.window:height())
+  gc:setFont("sansserif", "b", 12)
+  gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
+  gc:drawString("${luaString(options.title)}", 92, 8, "top")
+  gc:setFont("sansserif", "r", 10)
+  for i, item in ipairs(items) do
+    local y = 44 + (i - 1) * 24
+    if i == selected then
+      gc:setColorRGB(220, 220, 220)
+      gc:fillRect(18, y - 2, 150, 20)
+    end
+    gc:setColorRGB(0, 0, 0)
+    gc:drawString(item, 28, y, "top")
+  end
+end
+
+function on.arrowKey(direction)
+  if direction == "down" then selected = selected % #items + 1 end
+  if direction == "up" then selected = selected == 1 and #items or selected - 1 end
+  platform.window:invalidate()
+end
+
+function on.enterKey()
+  var.store("selected_item", selected)
+end`;
+    },
+  },
+  {
+    id: "popup",
+    name: "Popup de texto",
+    description: "Cuadro centrado con mensaje y boton OK.",
+    defaults: { inputCount: 1, title: "Aviso", buttonText: "OK", primaryColor: "#2563eb" },
+    build(options) {
+      const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor, [37, 99, 235]);
+      return `platform.apilevel = '2.0'
+
+local visible = true
+
+function on.paint(gc)
+  gc:setColorRGB(238, 238, 238)
+  gc:fillRect(0, 0, platform.window:width(), platform.window:height())
+  if not visible then return end
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(104, 76, 112, 58)
+  gc:setColorRGB(200, 200, 200)
+  gc:fillRect(110, 82, 112, 58)
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(104, 76, 112, 58)
+  gc:setColorRGB(0, 0, 0)
+  gc:drawString("${luaString(options.title)}", 112, 84, "top")
+  gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
+  gc:fillRect(132, 108, 54, 24)
+  gc:setColorRGB(255, 255, 255)
+  gc:drawString("${luaString(options.buttonText)}", 150, 113, "top")
+end
+
+function on.enterKey()
+  visible = false
+  platform.window:invalidate()
+end`;
+    },
+  },
+  {
+    id: "details",
+    name: "Pantalla con detalles",
+    description: "Vista con campos y boton Detalles usando D2Editor cuando esta disponible.",
+    defaults: { inputCount: 3, title: "Resolver", buttonText: "Detalles", primaryColor: "#2d93ad" },
+    build(options) {
+      const count = Math.max(1, Math.min(6, Number(options.inputCount) || 3));
+      const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
+      const fields = Array.from({ length: count }, (_, index) => `{label="${String.fromCharCode(97 + index)}", value=""}`).join(", ");
+      return `platform.apilevel = '2.0'
+
+local fields = {${fields}}
+local focus = 1
+local detailsOpen = false
+local detailsEditor = nil
+
+local function drawButton(gc, text, x, y, w)
+  gc:setColorRGB(248, 252, 248)
+  gc:fillRect(x, y, w, 24)
+  gc:setColorRGB(128, 128, 128)
+  gc:drawRect(x, y, w, 24)
+  gc:setColorRGB(0, 0, 0)
+  gc:drawString(text, x + 8, y + 5, "top")
+end
+
+local function openDetails()
+  detailsOpen = true
+  if D2Editor and D2Editor.newRichText then
+    detailsEditor = D2Editor.newRichText()
+    detailsEditor:setReadOnly(true)
+    detailsEditor:move(42, 62)
+    detailsEditor:resize(230, 96)
+    detailsEditor:setText("${luaString(options.title)}\\nAqui puedes explicar el procedimiento o mostrar formulas.", 1)
+    detailsEditor:setFocus(true)
+  end
+  platform.window:invalidate()
+end
+
+function on.paint(gc)
+  gc:setColorRGB(224, 224, 224)
+  gc:fillRect(0, 0, platform.window:width(), platform.window:height())
+  gc:setFont("sansserif", "r", 10)
+  for i, field in ipairs(fields) do
+    local y = 30 + (i - 1) * 28
+    gc:setColorRGB(0, 0, 0)
+    gc:drawString(field.label, 12, y + 4, "top")
+    gc:drawString(":", 72, y + 4, "top")
+    gc:setColorRGB(255, 255, 255)
+    gc:fillRect(86, y, 160, 22)
+    gc:setColorRGB(i == focus and ${primaryR} or 128, i == focus and ${primaryG} or 128, i == focus and ${primaryB} or 128)
+    gc:drawRect(86, y, 160, 22)
+    gc:setColorRGB(0, 0, 0)
+    gc:drawString(field.value, 92, y + 3, "top")
+  end
+  gc:setColorRGB(128, 128, 128)
+  gc:fillRect(8, 176, 304, 2)
+  drawButton(gc, "◀ Retour", 8, 186, 74)
+  drawButton(gc, "${luaString(options.buttonText)}", 238, 186, 72)
+  if detailsOpen and not detailsEditor then
+    gc:setColorRGB(255, 255, 255)
+    gc:fillRect(42, 62, 230, 96)
+    gc:setColorRGB(128, 128, 128)
+    gc:drawRect(42, 62, 230, 96)
+    gc:setColorRGB(0, 0, 0)
+    gc:drawString("${luaString(options.title)}", 50, 70, "top")
+    gc:drawString("Aqui va el procedimiento.", 50, 92, "top")
+  end
+end
+
+function on.arrowKey(direction)
+  if direction == "down" then focus = math.min(#fields, focus + 1) end
+  if direction == "up" then focus = math.max(1, focus - 1) end
+  platform.window:invalidate()
+end
+
+function on.charIn(ch)
+  fields[focus].value = fields[focus].value .. ch
+  platform.window:invalidate()
+end
+
+function on.backspaceKey()
+  fields[focus].value = fields[focus].value:sub(1, -2)
+  platform.window:invalidate()
+end
+
+function on.enterKey()
+  openDetails()
+end
+
+function on.escapeKey()
+  if detailsEditor and detailsEditor.setVisible then detailsEditor:setVisible(false) end
+  detailsOpen = false
+  detailsEditor = nil
+  platform.window:invalidate()
+end`;
+    },
+  },
+];
+
+function insertLuaAtCursor(editor, text) {
+  const start = editor.selectionStart;
+  const end = editor.selectionEnd;
+  const before = editor.value.slice(0, start);
+  const after = editor.value.slice(end);
+  const prefix = before && !before.endsWith("\n") ? "\n" : "";
+  const suffix = after && !text.endsWith("\n") ? "\n" : "";
+  editor.value = `${before}${prefix}${text}${suffix}${after}`;
+  const cursor = before.length + prefix.length + text.length;
+  editor.focus();
+  editor.setSelectionRange(cursor, cursor);
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
+function showLuaGuide() {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal lua-library-modal">
+      <h2>${escapeHtml(t("luaGuide"))}</h2>
+      <input id="lua-guide-search" class="library-search" placeholder="${escapeHtml(t("luaGuideSearch"))}">
+      <div id="lua-guide-list" class="lua-guide-list"></div>
+      <div class="modal-actions">
+        <button type="button" id="lua-guide-close">${escapeHtml(t("close"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  const list = backdrop.querySelector("#lua-guide-list");
+  const search = backdrop.querySelector("#lua-guide-search");
+  const render = () => {
+    const query = search.value.trim().toLowerCase();
+    const items = LUA_GUIDE_ITEMS.filter(([name, description]) => `${name} ${description}`.toLowerCase().includes(query));
+    list.innerHTML = items.map(([name, description]) => `
+      <article class="lua-guide-item">
+        <code>${escapeHtml(name)}</code>
+        <p>${escapeHtml(description)}</p>
+      </article>`).join("");
+  };
+  search.addEventListener("input", render);
+  backdrop.querySelector("#lua-guide-close").addEventListener("click", () => closeModal(backdrop));
+  render();
+  search.focus();
+}
+
+function showLuaTemplates(editor) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  const cards = LUA_TEMPLATE_PRESETS.map((template) => `
+    <article class="lua-template-card" data-template="${escapeHtml(template.id)}">
+      <h3>${escapeHtml(template.name)}</h3>
+      <p>${escapeHtml(template.description)}</p>
+      <div class="template-preview ${escapeHtml(template.id)}"></div>
+    </article>`).join("");
+  backdrop.innerHTML = `
+    <div class="modal lua-library-modal">
+      <h2>${escapeHtml(t("luaTemplates"))}</h2>
+      <p class="muted-copy">${escapeHtml(t("luaTemplatesIntro"))}</p>
+      <div class="lua-template-grid">${cards}</div>
+      <div class="lua-template-options">
+        <label>${escapeHtml(t("luaInputCount"))}<input id="tpl-input-count" type="number" min="1" max="8" value="3"></label>
+        <label>${escapeHtml(t("luaTemplateTitle"))}<input id="tpl-title" value="Formulario"></label>
+        <label>${escapeHtml(t("luaButtonText"))}<input id="tpl-button" value="Calcular"></label>
+        <label>${escapeHtml(t("luaPrimaryColor"))}<input id="tpl-color" type="color" value="#2d93ad"></label>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="lua-template-close">${escapeHtml(t("cancel"))}</button>
+        <button type="button" id="lua-template-insert" class="green-tool-button">${escapeHtml(t("luaInsertTemplate"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  let selected = LUA_TEMPLATE_PRESETS[0];
+  const applyDefaults = () => {
+    backdrop.querySelector("#tpl-input-count").value = selected.defaults.inputCount;
+    backdrop.querySelector("#tpl-title").value = selected.defaults.title;
+    backdrop.querySelector("#tpl-button").value = selected.defaults.buttonText;
+    backdrop.querySelector("#tpl-color").value = selected.defaults.primaryColor;
+  };
+  const markSelected = () => {
+    for (const card of backdrop.querySelectorAll(".lua-template-card")) {
+      card.classList.toggle("selected", card.dataset.template === selected.id);
+    }
+  };
+  for (const card of backdrop.querySelectorAll(".lua-template-card")) {
+    card.addEventListener("click", () => {
+      selected = LUA_TEMPLATE_PRESETS.find((template) => template.id === card.dataset.template) || selected;
+      applyDefaults();
+      markSelected();
+    });
+  }
+  backdrop.querySelector("#lua-template-close").addEventListener("click", () => closeModal(backdrop));
+  backdrop.querySelector("#lua-template-insert").addEventListener("click", () => {
+    const options = {
+      inputCount: backdrop.querySelector("#tpl-input-count").value,
+      title: backdrop.querySelector("#tpl-title").value || selected.defaults.title,
+      buttonText: backdrop.querySelector("#tpl-button").value || selected.defaults.buttonText,
+      primaryColor: backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor,
+    };
+    insertLuaAtCursor(editor, selected.build(options));
+    closeModal(backdrop);
+  });
+  applyDefaults();
+  markSelected();
+}
+
 function showLuaEditor(item) {
   const initialLuaContent = decodeXmlTextEntities(item.content || "");
   const backdrop = document.createElement("div");
@@ -2092,6 +2513,8 @@ function showLuaEditor(item) {
         <span id="lua-line-label">Linea: 1 Col: 1 Total: 1</span>
         <button type="button" id="lua-syntax" class="yellow-tool-button">${escapeHtml(t("runLuaSyntax"))}</button>
         <button type="button" id="lua-preview" class="green-tool-button">${escapeHtml(t("previewLua"))}</button>
+        <button type="button" id="lua-guide" class="secondary-button">${escapeHtml(t("luaGuide"))}</button>
+        <button type="button" id="lua-templates" class="green-tool-button">${escapeHtml(t("luaTemplates"))}</button>
         <button type="button" id="lua-save" class="green-tool-button">${escapeHtml(t("saveLuaXml"))}</button>
         <button type="button" id="lua-cancel">${escapeHtml(t("cancel"))}</button>
       </div>
@@ -2197,6 +2620,8 @@ function showLuaEditor(item) {
     highlight.scrollLeft = editor.scrollLeft;
   });
   backdrop.querySelector("#lua-syntax").addEventListener("click", analyze);
+  backdrop.querySelector("#lua-guide").addEventListener("click", showLuaGuide);
+  backdrop.querySelector("#lua-templates").addEventListener("click", () => showLuaTemplates(editor));
   backdrop.querySelector("#lua-preview").addEventListener("click", () => {
     const caret = editor.selectionStart;
     editor.setSelectionRange(caret, caret);
