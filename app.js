@@ -2728,7 +2728,7 @@ ${buttons}
     id: "popup",
     name: "Popup",
     description: "Cuadro centrado con mensaje y boton OK.",
-    defaults: { inputCount: 1, title: "Aviso", buttonText: "OK", primaryColor: "#a3e635", backgroundColor: "#eeeeee", textColor: "#000000", useThemeColor: true, action: "next", variableBase: "popup_ok" },
+    defaults: { inputCount: 1, title: "Aviso", buttonText: "OK", primaryColor: "#2563eb", backgroundColor: "#eeeeee", textColor: "#000000", useThemeColor: false, action: "next", variableBase: "popup_ok" },
     build(options) {
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor, [37, 99, 235]);
       const bg = luaRgbText(options.backgroundColor, [238, 238, 238]);
@@ -4918,7 +4918,7 @@ function attachLuaJsGc(gcTable, ctx, canvas) {
     drawLuaJsArc(ctx, x, y, w, h, startAngle, angle, true);
     return [];
   });
-  window.lua_tableset(gcTable, "getStringWidth", (_self, text) => [String(text ?? "").length * 7]);
+  window.lua_tableset(gcTable, "getStringWidth", (_self, text) => [ctx.measureText(String(text ?? "")).width]);
   window.lua_tableset(gcTable, "getStringHeight", () => [fontSize]);
   window.lua_tableset(gcTable, "clipRect", () => []);
   window.lua_tableset(gcTable, "drawImage", () => []);
