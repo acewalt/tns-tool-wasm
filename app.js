@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-about-lang-local";
+const SOURCE_VERSION = "2026-06-01-lua-selection-local";
 
 const I18N = {
   es: {

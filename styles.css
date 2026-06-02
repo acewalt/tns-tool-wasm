@@ -1251,14 +1251,14 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 .lua-editor::selection {
   background: rgb(147 197 253 / 55%);
-  color: transparent;
+  color: #ffffff;
 }
 
 [data-theme="dark"] .lua-editor::selection,
 [data-theme="dark"] #xml-code::selection,
 [data-theme="dark"] #py-code::selection {
-  background: rgb(96 165 250 / 24%);
-  color: transparent;
+  background: rgb(96 165 250 / 45%);
+  color: #ffffff;
 }
 
 .lua-side {
