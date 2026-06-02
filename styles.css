@@ -1515,6 +1515,20 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   gap: 12px;
 }
 
+.template-binding-row {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  align-items: end;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.template-binding-row span {
+  color: var(--text-strong);
+  font-weight: 800;
+  padding-bottom: 10px;
+}
+
 .template-checks {
   display: grid;
   gap: 8px;
