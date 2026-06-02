@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-01-edit-hover-contrast-local";
+const SOURCE_VERSION = "2026-06-01-xml-actions-dark-fixes-local";
 
 const I18N = {
   es: {
@@ -17,6 +17,7 @@ const I18N = {
     createTnsFromDoctor: "Crear TNS",
     fileMenu: "Archivo",
     editMenu: "Edit",
+    xmlActionsMenu: "Acciones XML",
     saveMenu: "Guardar",
     newXmlProject: "Nuevo documento",
     documentInspector: "Inspector de documento",
@@ -122,6 +123,7 @@ const I18N = {
     createTnsFromDoctor: "Create TNS",
     fileMenu: "File",
     editMenu: "Edit",
+    xmlActionsMenu: "XML actions",
     saveMenu: "Save",
     newXmlProject: "New document",
     documentInspector: "Document inspector",
@@ -227,6 +229,7 @@ const I18N = {
     createTnsFromDoctor: "Creer TNS",
     fileMenu: "Fichier",
     editMenu: "Edition",
+    xmlActionsMenu: "Actions XML",
     saveMenu: "Enregistrer",
     newXmlProject: "Nouveau document",
     documentInspector: "Inspecteur du document",

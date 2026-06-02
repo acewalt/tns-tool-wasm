@@ -190,6 +190,34 @@ body {
   color: #9fb0c6;
 }
 
+[data-theme="dark"] .problem-table th,
+[data-theme="dark"] .problem-table td,
+[data-theme="dark"] .lua-problem-table th,
+[data-theme="dark"] .lua-problem-table td,
+[data-theme="dark"] .inspector-table th,
+[data-theme="dark"] .inspector-table td {
+  border-bottom-color: #263244;
+}
+
+[data-theme="dark"] .problem-table th,
+[data-theme="dark"] .lua-problem-table th,
+[data-theme="dark"] .inspector-table th {
+  background: #111827;
+  color: #e5eefb;
+}
+
+[data-theme="dark"] .problem-table tr:hover,
+[data-theme="dark"] .lua-problem-table tr:hover,
+[data-theme="dark"] .inspector-table tr:hover {
+  background: #182338;
+  color: #e5eefb;
+}
+
+[data-theme="dark"] .problem-table tr.ERROR:hover,
+[data-theme="dark"] .lua-problem-table tr.ERROR:hover {
+  color: #f87171;
+}
+
 [data-theme="dark"] #xml-highlight,
 [data-theme="dark"] #py-highlight,
 [data-theme="dark"] .lua-highlight,
@@ -408,6 +436,10 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   box-shadow: 0 0 30px rgb(183 243 77 / 35%), 0 0 80px rgb(183 243 77 / 12%);
 }
 
+[data-theme="dark"] .green-menu-trigger:hover {
+  color: #ffffff;
+}
+
 .menu-trigger:active {
   transform: scale(0.97);
 }
@@ -477,12 +509,21 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .menu-action:hover,
 .file-menu-action:hover {
   background: rgb(183 243 77 / 12%);
+  color: #e5e7eb;
   transform: translateX(4px);
 }
 
 .menu-action:disabled {
-  opacity: 0.45;
+  opacity: 0.52;
+  background: transparent;
+  color: #cbd5e1;
   cursor: not-allowed;
+  transform: none;
+}
+
+.menu-action:disabled:hover {
+  background: transparent;
+  color: #cbd5e1;
   transform: none;
 }
 
@@ -661,6 +702,14 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   background: #fef3c7;
 }
 
+[data-theme="dark"] .code-line.error {
+  background: #3b121a;
+}
+
+[data-theme="dark"] .code-line.warning {
+  background: #3a2a10;
+}
+
 #xml-code,
 #py-code {
   color: transparent;
@@ -837,6 +886,12 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   font-weight: 700;
 }
 
+[data-theme="dark"] .problem-table tr.ERROR,
+[data-theme="dark"] .lua-problem-table tr.ERROR {
+  color: #f87171;
+  background: #3b121a;
+}
+
 .problem-table tr.WARNING {
   color: #ca8a04;
   font-weight: 700;
@@ -1008,6 +1063,13 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 .lua-editor::selection {
   background: rgb(147 197 253 / 55%);
+  color: transparent;
+}
+
+[data-theme="dark"] .lua-editor::selection,
+[data-theme="dark"] #xml-code::selection,
+[data-theme="dark"] #py-code::selection {
+  background: rgb(96 165 250 / 24%);
   color: transparent;
 }
 
@@ -1552,5 +1614,28 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   .preview-controls button {
     flex: 1 1 calc(33.333% - 8px);
     padding: 9px 8px;
+  }
+}
+
+@media (max-width: 560px) {
+  .doctor-toolbar {
+    align-items: stretch;
+  }
+
+  .doctor-toolbar .tool-menu,
+  .doctor-toolbar > #xml-syntax-btn {
+    flex: 1 1 100%;
+  }
+
+  .menu-trigger {
+    min-height: 48px;
+  }
+
+  .menu-panel {
+    position: relative;
+    top: 8px;
+    left: 0;
+    width: 100%;
+    margin-bottom: 8px;
   }
 }
