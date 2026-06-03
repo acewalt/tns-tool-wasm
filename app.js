@@ -1589,6 +1589,17 @@ local function visualSubstituteVariables(expr)
   end)
 end
 
+local function visualMissingVariable(expr)
+  local normalized = visualNormalizeExpression(expr)
+  for name in normalized:gmatch("([%a_][%w_]*)") do
+    if name ~= "math" and name ~= "sqrt" and name ~= "sin" and name ~= "cos" and name ~= "tan" and name ~= "pi" then
+      local value = getVar(name)
+      if value == nil or tostring(value) == "" then return name end
+    end
+  end
+  return nil
+end
+
 local function evalVisualExpression(expr)
   if not expr or expr == "" then return nil end
   local substituted = visualSubstituteVariables(expr)
@@ -1652,9 +1663,18 @@ end
 local function runVisualActions(actions)
   if not actions then return false end
   for _, action in ipairs(actions) do
+    local missing = visualMissingVariable((action.condition or "") .. " " .. (action.expression or ""))
+    if missing then
+      _G.__lastVisualActionResult = "Completa " .. missing
+      return false
+    end
     if visualConditionOk(action.condition) then
       if action.type == "calc" and action.target and action.target ~= "" then
         local value = evalVisualExpression(action.expression)
+        if value == nil then
+          _G.__lastVisualActionResult = "No se pudo calcular"
+          return false
+        end
         setVar(action.target, value)
         _G.__lastVisualActionResult = action.target .. "=" .. tostring(value)
         return true
@@ -1669,6 +1689,7 @@ local function runVisualActions(actions)
       end
     end
   end
+  _G.__lastVisualActionResult = "Condicion no cumplida"
   return false
 end
 
@@ -3187,6 +3208,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
       ${detailsAction}
     end
   else
+    self.detailsOpen = false
     for _, field in ipairs(self.fields) do
       setVar(field.bind, field.value)
     end
@@ -3195,7 +3217,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
       platform.window:invalidate()
       return
     elseif self.actions and #self.actions > 0 then
-      self.resultText = "Condicion no cumplida"
+      self.resultText = tostring(_G.__lastVisualActionResult or "Condicion no cumplida")
       platform.window:invalidate()
       return
     end
