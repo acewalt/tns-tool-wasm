@@ -2619,6 +2619,35 @@ function normalizeTiExpression(expr = "") {
     .trim();
 }
 
+function extractTiExpressionNames(expr = "") {
+  const reserved = new Set(["and", "or", "not", "then", "if", "approx", "sqrt", "sin", "cos", "tan", "ln", "exp", "string", "pi"]);
+  const names = new Set();
+  for (const match of String(expr || "").matchAll(/[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*/g)) {
+    const name = match[0];
+    if (!reserved.has(name.toLowerCase()) && isTiIdentifier(name)) names.add(name);
+  }
+  return Array.from(names);
+}
+
+function invertTiCondition(condition = "") {
+  const text = normalizeTiExpression(condition);
+  const simple = /^(.+?)\s*(<=|>=|~=|≠|=|<|>)\s*(.+)$/.exec(text);
+  if (!simple) return "";
+  const left = simple[1].trim();
+  const op = simple[2];
+  const right = simple[3].trim();
+  const inverse = {
+    "=": "~=",
+    "≠": "=",
+    "~=": "=",
+    "<": ">=",
+    ">": "<=",
+    "<=": ">",
+    ">=": "<",
+  }[op];
+  return inverse ? `${left}${inverse}${right}` : "";
+}
+
 function collectLoadedTnsLogic(extraCode = "") {
   const conditions = new Set();
   const calculations = [];
@@ -3565,14 +3594,9 @@ function showLuaTemplates(editor) {
     backdrop.querySelector("#tpl-action-condition").value = "";
     backdrop.querySelector("#tpl-action-expression").value = "";
     actionTarget.innerHTML = variableSelectOptions(variableCatalog);
-    backdrop.querySelector("#tpl-condition-suggestions").innerHTML = logicCatalog.conditions
-      .map((condition) => `<option value="${escapeHtml(condition)}"></option>`)
-      .join("");
-    backdrop.querySelector("#tpl-calculation-suggestions").innerHTML = logicCatalog.calculations
-      .map((calc) => `<option value="${escapeHtml(calc.expression)}" label="${escapeHtml(calc.label)}"></option>`)
-      .join("");
     renderRouteEditor();
     renderBindingEditor();
+    updateActionSuggestions();
   };
   const markSelected = () => {
     for (const button of backdrop.querySelectorAll(".lua-template-type")) {
@@ -3647,6 +3671,7 @@ function showLuaTemplates(editor) {
   let templatePreviewSeq = 0;
   const renderBuilder = () => {
     const options = currentOptions();
+    updateActionSuggestions();
     backdrop.querySelector("#tpl-color").disabled = options.useThemeColor;
     const canvas = backdrop.querySelector("#tpl-main-preview");
     const seq = ++templatePreviewSeq;
@@ -3663,6 +3688,46 @@ function showLuaTemplates(editor) {
       backdrop.querySelector("#tpl-action-target").value = match.target;
     }
   };
+  function currentRelevantVariableNames() {
+    const names = new Set();
+    for (const select of bindingsList.querySelectorAll("[data-field-binding]")) {
+      if (select.value) names.add(select.value);
+    }
+    const expression = backdrop.querySelector("#tpl-action-expression")?.value || "";
+    for (const name of extractTiExpressionNames(expression)) names.add(name);
+    const target = backdrop.querySelector("#tpl-action-target")?.value || "";
+    if (target) names.add(target);
+    return names;
+  }
+  function updateActionSuggestions() {
+    const conditionList = backdrop.querySelector("#tpl-condition-suggestions");
+    const calculationList = backdrop.querySelector("#tpl-calculation-suggestions");
+    if (!conditionList || !calculationList) return;
+    const relevant = currentRelevantVariableNames();
+    const matchesRelevant = (text) => {
+      if (!relevant.size) return true;
+      return extractTiExpressionNames(text).some((name) => relevant.has(name));
+    };
+    const relevantCalculations = logicCatalog.calculations.filter((calc) => matchesRelevant(calc.expression) || relevant.has(calc.target));
+    const calculations = relevantCalculations.length ? relevantCalculations : logicCatalog.calculations;
+    calculationList.innerHTML = calculations
+      .map((calc) => `<option value="${escapeHtml(calc.expression)}" label="${escapeHtml(calc.label)}"></option>`)
+      .join("");
+    const seen = new Set();
+    const conditionOptions = [];
+    for (const condition of logicCatalog.conditions) {
+      if (!matchesRelevant(condition)) continue;
+      const inverse = invertTiCondition(condition);
+      for (const value of [inverse, condition].filter(Boolean)) {
+        if (seen.has(value)) continue;
+        seen.add(value);
+        conditionOptions.push(`<option value="${escapeHtml(value)}" label="${escapeHtml(inverse === value ? `OK si no ocurre: ${condition}` : condition)}"></option>`);
+      }
+    }
+    const fallbackConditions = conditionOptions.length ? conditionOptions : logicCatalog.conditions
+      .map((condition) => `<option value="${escapeHtml(condition)}"></option>`);
+    conditionList.innerHTML = fallbackConditions.join("");
+  }
   for (const button of backdrop.querySelectorAll(".lua-template-type")) {
     button.addEventListener("click", () => {
       selected = visibleTemplates.find((template) => template.id === button.dataset.template) || selected;
