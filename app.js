@@ -1667,12 +1667,33 @@ local function visualConditionOk(condition)
   return false
 end
 
+local function visualReplaceVars(text)
+  local out = tostring(text or "")
+  local pos = 1
+  while pos <= #out do
+    local startPos, endPos, name = out:find("%[%[([%a_][%w_]*)%]%]", pos)
+    if not startPos then break end
+    local value = getVar(name)
+    if value == nil then value = "" end
+    value = tostring(value)
+    out = out:sub(1, startPos - 1) .. value .. out:sub(endPos + 1)
+    pos = startPos + #value
+  end
+  return out
+end
+
+local function visualActionDetails(action)
+  if not action or not action.details or action.details == "" then return "" end
+  return visualReplaceVars(action.details)
+end
+
 local function runVisualActions(actions)
   if not actions then return false end
   for _, action in ipairs(actions) do
     local missing = visualMissingVariable((action.condition or "") .. " " .. (action.expression or ""))
     if missing then
       _G.__lastVisualActionResult = "Completa " .. missing
+      _G.__lastVisualActionDetails = ""
       return false
     end
     local conditionOk = action.strictCondition == false or visualConditionOk(action.condition)
@@ -1680,17 +1701,20 @@ local function runVisualActions(actions)
       local value = evalVisualExpression(action.expression)
       if value == nil then
         _G.__lastVisualActionResult = "No se pudo calcular"
+        _G.__lastVisualActionDetails = ""
         return false
       end
       if conditionOk or action.strictCondition ~= true then
         setVar(action.target, value)
         _G.__lastVisualActionResult = action.target .. "=" .. tostring(value)
+        _G.__lastVisualActionDetails = visualActionDetails(action)
         return true
       end
     elseif conditionOk then
       if action.type == "set" and action.target and action.target ~= "" then
         setVar(action.target, action.value)
         _G.__lastVisualActionResult = action.target .. "=" .. tostring(action.value)
+        _G.__lastVisualActionDetails = visualActionDetails(action)
         return true
       elseif action.type == "goto" and action.targetPage then
         currentPage = action.targetPage
@@ -1700,6 +1724,7 @@ local function runVisualActions(actions)
     end
   end
   _G.__lastVisualActionResult = "Condicion no cumplida"
+  _G.__lastVisualActionDetails = ""
   return false
 end
 
@@ -2560,6 +2585,10 @@ function luaVisualActionsTable(actions = []) {
     if (action.value !== undefined) parts.push(`value="${luaString(action.value)}"`);
     if (action.targetPage) parts.push(`targetPage=${Number(action.targetPage) || 1}`);
     if (action.strictCondition === false) parts.push(`strictCondition=false`);
+    if (action.details) {
+      const details = Array.isArray(action.details) ? action.details.join("\n") : String(action.details);
+      parts.push(`details="${luaString(details)}"`);
+    }
     return `{${parts.join(", ")}}`;
   }).join(", ")}}`;
 }
@@ -2626,6 +2655,13 @@ function parseLuaStringList(raw = "") {
   let match;
   while ((match = regex.exec(raw))) out.push(match[1].replace(/\\"/g, '"').replace(/\\\\/g, "\\"));
   return out;
+}
+
+function unescapeLuaString(value = "") {
+  return String(value || "")
+    .replace(/\\n/g, "\n")
+    .replace(/\\"/g, '"')
+    .replace(/\\\\/g, "\\");
 }
 
 function parseLuaNumberList(raw = "") {
@@ -2852,11 +2888,13 @@ function parseLuaVisualActions(block = "") {
   const actions = [];
   for (const match of actionsBlock.matchAll(/\{([\s\S]*?)\}/g)) {
     const raw = match[1];
+    const details = /details\s*=\s*"((?:\\.|[^"\\])*)"/.exec(raw)?.[1] || "";
     actions.push({
       type: /type\s*=\s*(["'])(.*?)\1/.exec(raw)?.[2] || "",
       condition: /condition\s*=\s*(["'])(.*?)\1/.exec(raw)?.[2] || "",
       expression: /expression\s*=\s*(["'])(.*?)\1/.exec(raw)?.[2] || "",
       target: /target\s*=\s*(["'])(.*?)\1/.exec(raw)?.[2] || "",
+      details: unescapeLuaString(details),
     });
   }
   return actions;
@@ -3123,6 +3161,7 @@ const LUA_TEMPLATE_PRESETS = [
   fields = {${labels.map((label, index) => `{label="${luaString(label)}", value="", placeholder="${luaString(label)}", bind="${luaString(bindings[index] || "")}"}`).join(", ")}},
   actions = ${actionsTable},
   resultText = "",
+  detailsText = "",
   focus = 1,
   buttonFocus = 1,
   focusArea = "fields",
@@ -3152,6 +3191,24 @@ const LUA_TEMPLATE_PRESETS = [
   gc:setColorRGB(field.value == "" and 150 or 0, field.value == "" and 150 or 0, field.value == "" and 150 or 0)
   gc:drawString(field.value ~= "" and field.value or field.placeholder, x + 4, y + 3, "top")
   end,
+  drawMultiline = function(self, gc, text, x, y, lineHeight, maxLines)
+  local content = tostring(text or "")
+  local pos = 1
+  local line = 0
+  while pos <= #content and line < maxLines do
+    local nextBreak = content:find("\\n", pos, true)
+    local piece
+    if nextBreak then
+      piece = content:sub(pos, nextBreak - 1)
+      pos = nextBreak + 1
+    else
+      piece = content:sub(pos)
+      pos = #content + 1
+    end
+    gc:drawString(piece, x, y + line * lineHeight, "top")
+    line = line + 1
+  end
+  end,
   paint = function(self, gc)
   gc:setColorRGB(${bg})
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
@@ -3179,8 +3236,9 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     gc:drawRect(42, 62, 230, 96)
     gc:setColorRGB(${text})
     gc:drawString("${luaString(options.title)}", 50, 70, "top")
-    gc:drawString(self.resultText ~= "" and self.resultText or "Sin resultado aun", 50, 92, "top")
-    gc:drawString("Esc/Detalles para cerrar", 50, 118, "top")
+    local detail = self.detailsText ~= "" and self.detailsText or (self.resultText ~= "" and self.resultText or "Sin resultado aun")
+    self:drawMultiline(gc, detail, 50, 92, 14, 4)
+    gc:drawString("Esc/Detalles para cerrar", 50, 144, "top")
   end
   end,
   arrowKey = function(self, direction)
@@ -3225,10 +3283,12 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     end
     if runVisualActions(self.actions) then
       self.resultText = tostring(_G.__lastVisualActionResult or "")
+      self.detailsText = tostring(_G.__lastVisualActionDetails or "")
       platform.window:invalidate()
       return
     elseif self.actions and #self.actions > 0 then
       self.resultText = tostring(_G.__lastVisualActionResult or "Condicion no cumplida")
+      self.detailsText = tostring(_G.__lastVisualActionDetails or "")
       platform.window:invalidate()
       return
     end
@@ -3496,6 +3556,16 @@ function tiBasicStringLiterals(line = "") {
   return Array.from(String(line || "").matchAll(/"([^"]*)"/g)).map((match) => match[1]);
 }
 
+function tiBasicDispToProcedureText(line = "") {
+  const raw = String(line || "").replace(/^Disp\s+/i, "").trim();
+  if (!raw) return "";
+  let out = raw.replace(/\bstring\s*\(\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*\)/gi, "[[$1]]");
+  out = out.replace(/"([^"]*)"/g, "$1");
+  out = out.replace(/\s*&\s*/g, "");
+  out = out.replaceAll("→", "->").replaceAll("−", "-").trim();
+  return out;
+}
+
 function tiBasicToLuaExpression(expr = "") {
   return normalizeTiExpression(expr)
     .replaceAll("->", "")
@@ -3553,7 +3623,27 @@ function collectTnsFormCandidates(code = "") {
   const forms = [];
   const recentRequests = [];
   const recentConditions = [];
-  for (const line of lines) {
+  const recentDisps = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    if (/^clrio$/i.test(line)) {
+      recentRequests.length = 0;
+      recentDisps.length = 0;
+      continue;
+    }
+    if (/^Else$/i.test(line)) {
+      recentDisps.length = 0;
+      continue;
+    }
+    if (/^Disp\s+/i.test(line)) {
+      const procedure = tiBasicDispToProcedureText(line);
+      const isMenuLine = /^\s*\d+\s*:/.test(procedure) || /^MENU\b/i.test(procedure);
+      if (procedure && !isMenuLine) {
+        recentDisps.push(procedure);
+        if (recentDisps.length > 8) recentDisps.shift();
+      }
+      continue;
+    }
     const request = /^Request\s+"([^"]*)"\s*,\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)/i.exec(line);
     if (request) {
       const prompt = request[1].replace(/:$/, "");
@@ -3561,6 +3651,8 @@ function collectTnsFormCandidates(code = "") {
       if (!/^(opcion|seleccion|sub|dir|modo|sel)$/i.test(variable)) {
         recentRequests.push({ label: prompt || variable, variable });
         if (recentRequests.length > 6) recentRequests.shift();
+      } else {
+        recentDisps.length = 0;
       }
       continue;
     }
@@ -3585,12 +3677,23 @@ function collectTnsFormCandidates(code = "") {
       if (names.some((name) => /^(opcion|seleccion|sub|dir|modo|sel)$/i.test(name))) return false;
       return names.some((name) => usedNames.includes(name));
     });
+    const details = recentDisps.slice(-4);
+    for (let cursor = index + 1; cursor < lines.length && details.length < 6; cursor += 1) {
+      const nextLine = lines[cursor];
+      if (/^(If|EndIf|Request|clrio)\b/i.test(nextLine)) break;
+      if (/^Disp\s+/i.test(nextLine)) {
+        const procedure = tiBasicDispToProcedureText(nextLine);
+        if (procedure) details.push(procedure);
+      }
+    }
+    if (!details.length) details.push(`${target}=${expression}`, `${target}=[[(target)]]`.replace("(target)", target));
     forms.push({
       title: target,
       fields,
       expression,
       target,
       condition: relatedCondition ? invertTiCondition(relatedCondition) || relatedCondition : "",
+      details,
     });
     if (forms.length >= 12) break;
   }
@@ -3622,7 +3725,7 @@ function buildLuaFromTnsPrograms(programs = []) {
         inputCount: form.fields.length,
         fieldLabels: form.fields.map((field) => field.label),
         fieldBindings: form.fields.map((field) => field.variable),
-        buttonActions: [{ type: "calc", condition: form.condition, expression: form.expression, target: form.target, strictCondition: false }],
+        buttonActions: [{ type: "calc", condition: form.condition, expression: form.expression, target: form.target, strictCondition: false, details: form.details }],
         primaryButtonAction: "none",
       })}\n-- [[TNS_TOOL_CONVERTED_FORM_END]]`);
     }
@@ -4207,6 +4310,7 @@ function showLuaTemplates(editor) {
       expression: backdrop.querySelector("#tpl-action-expression").value,
       target: backdrop.querySelector("#tpl-action-target").value,
       strictCondition: false,
+      details: "",
     }] : [],
     menuLabels: Array.from(routeList.querySelectorAll("[data-menu-label]")).map((input) => input.value),
     menuTargets: Array.from(routeList.querySelectorAll("[data-menu-target]")).map((input) => input.value),
@@ -4475,12 +4579,14 @@ function showLuaPageEditor(editor) {
       }
       const expression = backdrop.querySelector("#lua-page-action-expression").value;
       const target = backdrop.querySelector("#lua-page-action-target").value;
+      const previousAction = page.visualActions?.[0] || {};
       draft.visualActions = expression || target ? [{
         type: "calc",
         condition: backdrop.querySelector("#lua-page-action-condition").value,
         expression,
         target,
         strictCondition: false,
+        details: previousAction.details || "",
       }] : [];
     }
     return draft;
