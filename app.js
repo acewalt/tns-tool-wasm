@@ -1675,7 +1675,8 @@ local function runVisualActions(actions)
       _G.__lastVisualActionResult = "Completa " .. missing
       return false
     end
-    if visualConditionOk(action.condition) then
+    local conditionOk = action.strictCondition == false or visualConditionOk(action.condition)
+    if conditionOk then
       if action.type == "calc" and action.target and action.target ~= "" then
         local value = evalVisualExpression(action.expression)
         if value == nil then
@@ -2556,6 +2557,7 @@ function luaVisualActionsTable(actions = []) {
     if (action.target) parts.push(`target="${luaString(action.target)}"`);
     if (action.value !== undefined) parts.push(`value="${luaString(action.value)}"`);
     if (action.targetPage) parts.push(`targetPage=${Number(action.targetPage) || 1}`);
+    if (action.strictCondition === false) parts.push(`strictCondition=false`);
     return `{${parts.join(", ")}}`;
   }).join(", ")}}`;
 }
@@ -3578,6 +3580,7 @@ function collectTnsFormCandidates(code = "") {
     if (!fields.length) continue;
     const relatedCondition = [...recentConditions].reverse().find((candidate) => {
       const names = extractTiExpressionNames(candidate);
+      if (names.some((name) => /^(opcion|seleccion|sub|dir|modo|sel)$/i.test(name))) return false;
       return names.some((name) => usedNames.includes(name));
     });
     forms.push({
@@ -3617,7 +3620,7 @@ function buildLuaFromTnsPrograms(programs = []) {
         inputCount: form.fields.length,
         fieldLabels: form.fields.map((field) => field.label),
         fieldBindings: form.fields.map((field) => field.variable),
-        buttonActions: [{ type: "calc", condition: form.condition, expression: form.expression, target: form.target }],
+        buttonActions: [{ type: "calc", condition: form.condition, expression: form.expression, target: form.target, strictCondition: false }],
         primaryButtonAction: "none",
       })}\n-- [[TNS_TOOL_CONVERTED_FORM_END]]`);
     }
