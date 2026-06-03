@@ -529,6 +529,17 @@ button:disabled {
   display: none;
 }
 
+.doctor-panel.drop-target-active {
+  border-color: var(--lime);
+  box-shadow: 0 0 0 1px rgb(183 243 77 / 55%), 0 0 28px rgb(183 243 77 / 18%);
+}
+
+.doctor-panel.drop-target-active .code-shell,
+.doctor-panel.drop-target-active .editor-wrap {
+  border-color: var(--lime);
+  background: rgb(183 243 77 / 8%);
+}
+
 .doctor-toolbar {
   display: flex;
   align-items: center;

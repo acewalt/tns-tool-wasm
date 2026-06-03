@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-03-lua-procedure-details";
+const SOURCE_VERSION = "2026-06-03-routed-tns-converter";
 
 const I18N = {
   es: {
@@ -60,6 +60,7 @@ const I18N = {
     luaActionNext: "Ir a la siguiente pagina",
     luaActionDetails: "Abrir detalles",
     luaActionHome: "Volver al inicio",
+    luaActionBack: "Retroceder",
     luaActionNone: "No navegar",
     luaButtonPosition: "Posicion de botones",
     luaUseThemeColor: "Usar color principal del proyecto",
@@ -222,6 +223,7 @@ const I18N = {
     luaActionNext: "Go to next page",
     luaActionDetails: "Open details",
     luaActionHome: "Return home",
+    luaActionBack: "Go back",
     luaActionNone: "Do not navigate",
     luaButtonPosition: "Button position",
     luaUseThemeColor: "Use project main color",
@@ -384,6 +386,7 @@ const I18N = {
     luaActionNext: "Aller a la page suivante",
     luaActionDetails: "Ouvrir les details",
     luaActionHome: "Retourner a l'accueil",
+    luaActionBack: "Reculer",
     luaActionNone: "Ne pas naviguer",
     luaButtonPosition: "Position des boutons",
     luaUseThemeColor: "Utiliser la couleur principale du projet",
@@ -856,25 +859,38 @@ async function handleDroppedFiles(files) {
 
 function wireDropZone() {
   const zone = document.querySelector(".drop-zone");
-  if (!zone) return;
-  for (const eventName of ["dragenter", "dragover"]) {
-    zone.addEventListener(eventName, (event) => {
+  const wireTarget = (target, className) => {
+    if (!target) return;
+    for (const eventName of ["dragenter", "dragover"]) {
+      target.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        target.classList.add(className);
+      });
+    }
+    for (const eventName of ["dragleave", "drop"]) {
+      target.addEventListener(eventName, (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        if (eventName === "dragleave" && event.relatedTarget && target.contains(event.relatedTarget)) return;
+        target.classList.remove(className);
+      });
+    }
+    target.addEventListener("drop", (event) => {
+      handleDroppedFiles(event.dataTransfer.files).catch((err) => log(`ERROR drop: ${err.stack || err.message}`));
+    });
+  };
+  wireTarget(zone, "dragging");
+  wireTarget(document.querySelector("#xml-doctor-panel"), "drop-target-active");
+}
+
+function wireGlobalFileDropGuard() {
+  for (const eventName of ["dragenter", "dragover", "dragleave", "drop"]) {
+    window.addEventListener(eventName, (event) => {
+      if (!event.dataTransfer?.types?.includes("Files")) return;
       event.preventDefault();
-      event.stopPropagation();
-      zone.classList.add("dragging");
     });
   }
-  for (const eventName of ["dragleave", "drop"]) {
-    zone.addEventListener(eventName, (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-      if (eventName === "dragleave" && event.relatedTarget && zone.contains(event.relatedTarget)) return;
-      zone.classList.remove("dragging");
-    });
-  }
-  zone.addEventListener("drop", (event) => {
-    handleDroppedFiles(event.dataTransfer.files).catch((err) => log(`ERROR drop: ${err.stack || err.message}`));
-  });
 }
 
 function wireMouseGlow() {
@@ -1537,21 +1553,43 @@ function buildDefaultLuaScriptApp() {
 
 local pages = {}
 local currentPage = 1
+local pageHistory = {}
 
 function addPage(page)
   table.insert(pages, page)
 end
 
+local function goToPage(target)
+  target = tonumber(target)
+  if target and target >= 1 and target <= #pages then
+    if target ~= currentPage then
+      table.insert(pageHistory, currentPage)
+    end
+    currentPage = target
+    platform.window:invalidate()
+  end
+end
+
 local function goHome()
+  pageHistory = {}
   currentPage = 1
   platform.window:invalidate()
 end
 
 local function goNext()
   if currentPage < #pages then
-    currentPage = currentPage + 1
-    platform.window:invalidate()
+    goToPage(currentPage + 1)
   end
+end
+
+local function goBack()
+  local previous = table.remove(pageHistory)
+  if previous then
+    currentPage = previous
+  elseif currentPage > 1 then
+    currentPage = 1
+  end
+  platform.window:invalidate()
 end
 
 local function setVar(name, value)
@@ -1717,8 +1755,7 @@ local function runVisualActions(actions)
         _G.__lastVisualActionDetails = visualActionDetails(action)
         return true
       elseif action.type == "goto" and action.targetPage then
-        currentPage = action.targetPage
-        platform.window:invalidate()
+        goToPage(action.targetPage)
         return true
       end
     end
@@ -1778,10 +1815,10 @@ function on.enterKey()
 end
 
 function on.escapeKey()
-  if currentPage > 1 then
-    goHome()
-  elseif pages[currentPage] and pages[currentPage].escapeKey then
+  if pages[currentPage] and pages[currentPage].escapeKey then
     pages[currentPage]:escapeKey()
+  elseif currentPage > 1 then
+    goBack()
   end
 end
 
@@ -1805,6 +1842,14 @@ end
 
 function on.mouseDown(x, y)
   if pages[currentPage] and pages[currentPage].mouseDown then
+    pages[currentPage]:mouseDown(x, y)
+  end
+end
+
+function on.mouseUp(x, y)
+  if pages[currentPage] and pages[currentPage].mouseUp then
+    pages[currentPage]:mouseUp(x, y)
+  elseif pages[currentPage] and pages[currentPage].mouseDown then
     pages[currentPage]:mouseDown(x, y)
   end
 end
@@ -2560,8 +2605,10 @@ const LUA_PAGE_INSERT_MARKER = "-- [[TNS_TOOL_PAGES_END]]";
 
 function luaTemplateActionSnippet(action, selfRef = "self") {
   if (action === "home") {
-    return `currentPage = 1
-  platform.window:invalidate()`;
+    return `goHome()`;
+  }
+  if (action === "back") {
+    return `goBack()`;
   }
   if (action === "details") {
     return `${selfRef}.detailsOpen = true
@@ -2570,8 +2617,7 @@ function luaTemplateActionSnippet(action, selfRef = "self") {
   if (action === "none") {
     return `platform.window:invalidate()`;
   }
-  return `if currentPage < #pages then currentPage = currentPage + 1 end
-  platform.window:invalidate()`;
+  return `goNext()`;
 }
 
 function luaVisualActionsTable(actions = []) {
@@ -2894,6 +2940,7 @@ function parseLuaVisualActions(block = "") {
       condition: /condition\s*=\s*(["'])(.*?)\1/.exec(raw)?.[2] || "",
       expression: /expression\s*=\s*(["'])(.*?)\1/.exec(raw)?.[2] || "",
       target: /target\s*=\s*(["'])(.*?)\1/.exec(raw)?.[2] || "",
+      strictCondition: /strictCondition\s*=\s*false/.test(raw) ? false : /strictCondition\s*=\s*true/.test(raw) ? true : undefined,
       details: unescapeLuaString(details),
     });
   }
@@ -3101,9 +3148,9 @@ function updateLuaPageBlock(block, patch) {
 
 function luaTemplateRouteSnippet(targetExpression = "target") {
   return `if ${targetExpression} and ${targetExpression} > 0 and ${targetExpression} <= #pages then
-    currentPage = ${targetExpression}
+    goToPage(${targetExpression})
   elseif currentPage < #pages then
-    currentPage = currentPage + 1
+    goNext()
   end
   platform.window:invalidate()`;
 }
@@ -3324,7 +3371,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end
   end,
   escapeKey = function(self)
-  if self.detailsOpen then self.detailsOpen = false else currentPage = 1 end
+  if self.detailsOpen then self.detailsOpen = false else goBack() end
   platform.window:invalidate()
   end
 })`;
@@ -3334,7 +3381,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     id: "menu",
     name: "Menu",
     description: "Lista vertical con cursor, ideal para categorias o acciones.",
-    defaults: { inputCount: 4, title: "Menu", buttonText: "Enter", primaryColor: "#a3e635", backgroundColor: "#ffffff", textColor: "#000000", useThemeColor: true, action: "next", variableBase: "selected_item", menuLabels: [], menuTargets: [] },
+    defaults: { inputCount: 4, title: "Menu", buttonText: "Enter", backButtonText: "◀ Retour", backButtonAction: "back", showBackButton: false, primaryColor: "#a3e635", backgroundColor: "#ffffff", textColor: "#000000", useThemeColor: true, action: "next", variableBase: "selected_item", menuLabels: [], menuTargets: [] },
     build(options) {
       const count = Math.max(2, Math.min(10, Number(options.inputCount) || 4));
       const [primaryR, primaryG, primaryB] = luaRgbFromHex(options.primaryColor);
@@ -3345,6 +3392,8 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
       const items = labels.map((label) => `"${luaString(label)}"`).join(", ");
       const targetList = targets.join(", ");
       const fallbackAction = luaTemplateActionSnippet(options.action);
+      const backAction = luaTemplateActionSnippet(options.backButtonAction || "back");
+      const showBack = options.showBackButton === true;
       return `addPage({
   name = "${luaString(options.title)}",
   selected = 1,
@@ -3366,6 +3415,13 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     gc:setColorRGB(${text})
     gc:drawString(item, 28, y, "top")
   end
+  ${showBack ? `gc:setColorRGB(255, 255, 255)
+  gc:fillRect(8, 184, 72, 24)
+  gc:setColorRGB(128, 128, 128)
+  gc:drawRect(8, 184, 72, 24)
+  gc:setColorRGB(${text})
+  local backLabel = "${luaString(options.backButtonText || "◀ Retour")}"
+  gc:drawString(backLabel, 8 + (72 - gc:getStringWidth(backLabel)) / 2, 189, "top")` : ""}
   end,
   arrowKey = function(self, direction)
   if direction == "down" then self.selected = self.selected % #self.items + 1 end
@@ -3380,6 +3436,15 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   else
     ${fallbackAction}
   end
+  end,
+  mouseDown = function(self, x, y)
+  ${showBack ? `if x >= 8 and x <= 80 and y >= 184 and y <= 208 then
+    ${backAction}
+    return
+  end` : ""}
+  end,
+  escapeKey = function(self)
+  ${backAction}
   end
 })`;
     },
@@ -3393,6 +3458,9 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
       title: "Menu",
       subtitle: "Selecciona una opcion",
       buttonText: "Enter",
+      backButtonText: "◀ Retour",
+      backButtonAction: "back",
+      showBackButton: false,
       primaryColor: "#3196be",
       backgroundColor: "#ffffff",
       textColor: "#000000",
@@ -3413,6 +3481,8 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
       const items = labels.map((label) => `"${luaString(label)}"`).join(", ");
       const targetList = targets.join(", ");
       const fallbackAction = luaTemplateActionSnippet(options.action);
+      const backAction = luaTemplateActionSnippet(options.backButtonAction || "back");
+      const showBack = options.showBackButton === true;
       return `addPage({
   name = "${luaString(options.title)}",
   selected = 1,
@@ -3456,6 +3526,13 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     gc:setColorRGB(190, 190, 190)
     gc:fillRect(293, thumbY, 6, thumbH)
   end
+  ${showBack ? `gc:setColorRGB(255, 255, 255)
+  gc:fillRect(8, 184, 72, 24)
+  gc:setColorRGB(128, 128, 128)
+  gc:drawRect(8, 184, 72, 24)
+  gc:setColorRGB(${text})
+  local backLabel = "${luaString(options.backButtonText || "◀ Retour")}"
+  gc:drawString(backLabel, 8 + (72 - gc:getStringWidth(backLabel)) / 2, 189, "top")` : ""}
   end,
   arrowKey = function(self, direction)
   if direction == "down" then self.selected = self.selected % #self.items + 1 end
@@ -3470,6 +3547,15 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   else
     ${fallbackAction}
   end
+  end,
+  mouseDown = function(self, x, y)
+  ${showBack ? `if x >= 8 and x <= 80 and y >= 184 and y <= 208 then
+    ${backAction}
+    return
+  end` : ""}
+  end,
+  escapeKey = function(self)
+  ${backAction}
   end
 })`;
     },
@@ -3561,7 +3647,7 @@ function tiBasicDispToProcedureText(line = "") {
   if (!raw) return "";
   let out = raw.replace(/\bstring\s*\(\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*\)/gi, "[[$1]]");
   out = out.replace(/"([^"]*)"/g, "$1");
-  out = out.replace(/\s*&\s*/g, "");
+  out = out.replace(/&/g, "");
   out = out.replaceAll("→", "->").replaceAll("−", "-").trim();
   return out;
 }
@@ -3700,35 +3786,261 @@ function collectTnsFormCandidates(code = "") {
   return forms;
 }
 
+const TNS_NAV_VARIABLES = new Set(["opcion", "seleccion", "sub", "dir", "modo", "sel"]);
+
+function isTnsNavigationVariable(variable = "") {
+  return TNS_NAV_VARIABLES.has(String(variable || "").toLowerCase());
+}
+
+function parseTnsIfCondition(condition = "") {
+  const text = normalizeTiExpression(condition);
+  const match = /^([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*(<=|>=|~=|≠|=|<|>)\s*(-?\d+(?:\.\d+)?)$/.exec(text);
+  if (!match) return { raw: text };
+  return { raw: text, variable: match[1], operator: match[2], value: match[3] };
+}
+
+function tnsExactPath(stack = []) {
+  const path = [];
+  for (const frame of stack) {
+    if (!frame || !isTnsNavigationVariable(frame.variable) || frame.operator !== "=") continue;
+    let value = frame.value;
+    if (frame.elseBranch) {
+      const numeric = Number(value);
+      if (!Number.isFinite(numeric)) continue;
+      value = String(numeric + 1);
+    }
+    path.push({ variable: frame.variable, value: String(value) });
+  }
+  return path;
+}
+
+function tnsPathKey(path = []) {
+  return path.map((entry) => `${entry.variable}=${entry.value}`).join("|");
+}
+
+function tnsPathWith(path = [], variable = "", value = "") {
+  return [...path, { variable, value: String(value) }];
+}
+
+function tnsPathStartsWith(path = [], prefix = []) {
+  if (prefix.length > path.length) return false;
+  return prefix.every((entry, index) => path[index]?.variable === entry.variable && String(path[index]?.value) === String(entry.value));
+}
+
+function parseTnsMenuLiteral(literal = "") {
+  const options = [];
+  const text = String(literal || "").trim();
+  const regex = /(\d+)\s*:\s*([^0-9]+?)(?=\s+\d+\s*:|$)/g;
+  let match;
+  while ((match = regex.exec(text))) {
+    const value = Number(match[1]);
+    const label = match[2].trim();
+    if (value && label) options.push({ value, label: `${value}) ${label} >` });
+  }
+  return options;
+}
+
+function tnsMenuDataBefore(lines = [], requestIndex = 0) {
+  const literals = [];
+  let cursor = requestIndex - 1;
+  while (cursor >= 0 && literals.length < 12) {
+    const line = lines[cursor];
+    if (/^Request\b/i.test(line)) break;
+    if (/^(If|EndIf)\b/i.test(line) && literals.length) break;
+    if (/^clrio$/i.test(line) && literals.length) break;
+    if (/^Disp\s+/i.test(line)) {
+      const lineLiterals = tiBasicStringLiterals(line);
+      for (let index = lineLiterals.length - 1; index >= 0; index -= 1) {
+        const literal = lineLiterals[index].trim();
+        if (literal) literals.unshift(literal);
+      }
+    }
+    cursor -= 1;
+  }
+  let title = "Menu";
+  const options = [];
+  for (const literal of literals) {
+    const parsedOptions = parseTnsMenuLiteral(literal);
+    if (parsedOptions.length) {
+      options.push(...parsedOptions);
+    } else if (!options.length && literal) {
+      title = literal;
+    }
+  }
+  const seen = new Set();
+  const uniqueOptions = options
+    .filter((option) => {
+      if (seen.has(option.value)) return false;
+      seen.add(option.value);
+      return true;
+    })
+    .sort((a, b) => a.value - b.value);
+  return { title, options: uniqueOptions };
+}
+
+function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
+  const lines = decodeXmlTextEntities(code).replaceAll("→", "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const pages = [];
+  const stack = [];
+  const recentRequests = [];
+  const recentConditions = [];
+  const recentDisps = [];
+  let pageId = 0;
+  for (let index = 0; index < lines.length; index += 1) {
+    const line = lines[index];
+    const ifMatch = /^If\s+(.+?)\s+Then$/i.exec(line);
+    if (ifMatch) {
+      const parsed = parseTnsIfCondition(ifMatch[1]);
+      stack.push({ ...parsed, elseBranch: false });
+      recentConditions.push(normalizeTiExpression(ifMatch[1]));
+      if (recentConditions.length > 8) recentConditions.shift();
+      continue;
+    }
+    if (/^Else$/i.test(line)) {
+      if (stack.length) stack[stack.length - 1].elseBranch = true;
+      recentDisps.length = 0;
+      continue;
+    }
+    if (/^EndIf$/i.test(line)) {
+      stack.pop();
+      recentDisps.length = 0;
+      continue;
+    }
+    if (/^clrio$/i.test(line)) {
+      recentRequests.length = 0;
+      recentDisps.length = 0;
+      continue;
+    }
+    const request = /^Request\s+"([^"]*)"\s*,\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)/i.exec(line);
+    if (request) {
+      const prompt = request[1].replace(/:$/, "");
+      const variable = request[2];
+      const isMenuRequest = prompt.toLowerCase().includes("op") || isTnsNavigationVariable(variable);
+      if (isMenuRequest) {
+        const menu = tnsMenuDataBefore(lines, index);
+        if (menu.options.length >= 2) {
+          const parentPath = tnsExactPath(stack);
+          pages.push({
+            id: `page_${++pageId}`,
+            type: "menu",
+            title: menu.title || "Menu",
+            variable,
+            parentPath,
+            path: parentPath,
+            options: menu.options,
+          });
+        }
+        recentDisps.length = 0;
+      } else {
+        recentRequests.push({ label: prompt || variable, variable, path: tnsExactPath(stack) });
+        if (recentRequests.length > 10) recentRequests.shift();
+      }
+      continue;
+    }
+    if (/^Disp\s+/i.test(line)) {
+      const procedure = tiBasicDispToProcedureText(line);
+      const isMenuLine = /^\s*\d+\s*:/.test(procedure) || /^MENU\b/i.test(procedure);
+      if (procedure && !isMenuLine) {
+        recentDisps.push(procedure);
+        if (recentDisps.length > 8) recentDisps.shift();
+      }
+      continue;
+    }
+    const store = /^(.+?)->\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)$/i.exec(line);
+    if (!store) continue;
+    const expression = tiBasicToLuaExpression(store[1]);
+    const target = store[2];
+    if (!expression || !target) continue;
+    const usedNames = extractTiExpressionNames(expression);
+    const fields = recentRequests
+      .filter((field) => usedNames.includes(field.variable))
+      .slice(-5);
+    if (!fields.length) continue;
+    const currentPath = tnsExactPath(stack);
+    const relatedCondition = [...recentConditions].reverse().find((candidate) => {
+      const names = extractTiExpressionNames(candidate);
+      if (names.some((name) => isTnsNavigationVariable(name))) return false;
+      return names.some((name) => usedNames.includes(name));
+    });
+    const details = recentDisps.slice(-4);
+    for (let cursor = index + 1; cursor < lines.length && details.length < 6; cursor += 1) {
+      const nextLine = lines[cursor];
+      if (/^(If|EndIf|Request|clrio)\b/i.test(nextLine)) break;
+      if (/^Disp\s+/i.test(nextLine)) {
+        const procedure = tiBasicDispToProcedureText(nextLine);
+        if (procedure) details.push(procedure);
+      }
+    }
+    if (!details.length) details.push(`${target}=${expression}`, `${target}=[[${target}]]`);
+    pages.push({
+      id: `page_${++pageId}`,
+      type: "form",
+      title: target,
+      path: currentPath,
+      fields,
+      expression,
+      target,
+      condition: relatedCondition ? invertTiCondition(relatedCondition) || relatedCondition : "",
+      details,
+    });
+  }
+  const pageNumberById = new Map(pages.map((page, index) => [page.id, firstPageNumber + index]));
+  for (const [pageIndex, page] of pages.entries()) {
+    if (page.type !== "menu") continue;
+    page.targets = page.options.map((option) => {
+      const optionPath = tnsPathWith(page.parentPath, page.variable, option.value);
+      const direct = pages.find((candidate, candidateIndex) => {
+        if (candidateIndex <= pageIndex) return false;
+        if (candidate.type === "menu") return tnsPathKey(candidate.parentPath) === tnsPathKey(optionPath);
+        return tnsPathKey(candidate.path) === tnsPathKey(optionPath);
+      });
+      const nested = direct || pages.find((candidate, candidateIndex) => {
+        if (candidateIndex <= pageIndex) return false;
+        return tnsPathStartsWith(candidate.path || candidate.parentPath || [], optionPath);
+      });
+      return nested ? pageNumberById.get(nested.id) || 0 : 0;
+    });
+  }
+  return pages;
+}
+
 function buildLuaFromTnsPrograms(programs = []) {
   const chunks = [];
+  let emittedPages = 0;
   for (const program of programs) {
     const code = decodeXmlTextEntities(program.code || program.content || "");
     const programName = program.program_name || program.name || "Programa";
-    const menus = collectTnsMenuCandidates(code).slice(0, 4);
-    const forms = collectTnsFormCandidates(code).slice(0, 8);
-    for (const [index, menu] of menus.entries()) {
-      chunks.push(`-- [[TNS_TOOL_CONVERTED_MENU_START: ${luaString(programName)}]]\n${LUA_TEMPLATE_PRESETS.find((template) => template.id === "probas-menu").build({
-        ...LUA_TEMPLATE_PRESETS.find((template) => template.id === "probas-menu").defaults,
-        title: menu.title || `Menu ${index + 1}`,
-        subtitle: `Convertido de ${programName}`,
-        inputCount: menu.labels.length,
-        menuLabels: menu.labels,
-        variableBase: menu.variable || "selected_item",
-      })}\n-- [[TNS_TOOL_CONVERTED_MENU_END]]`);
+    const routedPages = collectTnsRoutedPages(code, emittedPages + 2).slice(0, 42);
+    for (const [index, page] of routedPages.entries()) {
+      if (page.type === "menu") {
+        chunks.push(`-- [[TNS_TOOL_CONVERTED_MENU_START: ${luaString(programName)}]]\n${LUA_TEMPLATE_PRESETS.find((template) => template.id === "probas-menu").build({
+          ...LUA_TEMPLATE_PRESETS.find((template) => template.id === "probas-menu").defaults,
+          title: page.title || `Menu ${index + 1}`,
+          subtitle: `Convertido de ${programName}`,
+          inputCount: page.options.length,
+          menuLabels: page.options.map((option) => option.label),
+          menuTargets: page.targets || [],
+          variableBase: page.variable || "selected_item",
+          showBackButton: page.parentPath.length > 0,
+          backButtonText: "◀ Retour",
+          backButtonAction: "back",
+        })}\n-- [[TNS_TOOL_CONVERTED_MENU_END]]`);
+      } else if (page.type === "form") {
+        chunks.push(`-- [[TNS_TOOL_CONVERTED_FORM_START: ${luaString(programName)}]]\n${LUA_TEMPLATE_PRESETS.find((template) => template.id === "form").build({
+          ...LUA_TEMPLATE_PRESETS.find((template) => template.id === "form").defaults,
+          title: page.title || `Calculo ${index + 1}`,
+          buttonText: "Calcular",
+          backButtonText: "◀ Retour",
+          backButtonAction: "back",
+          inputCount: page.fields.length,
+          fieldLabels: page.fields.map((field) => field.label),
+          fieldBindings: page.fields.map((field) => field.variable),
+          buttonActions: [{ type: "calc", condition: page.condition, expression: page.expression, target: page.target, strictCondition: false, details: page.details }],
+          primaryButtonAction: "none",
+        })}\n-- [[TNS_TOOL_CONVERTED_FORM_END]]`);
+      }
     }
-    for (const [index, form] of forms.entries()) {
-      chunks.push(`-- [[TNS_TOOL_CONVERTED_FORM_START: ${luaString(programName)}]]\n${LUA_TEMPLATE_PRESETS.find((template) => template.id === "form").build({
-        ...LUA_TEMPLATE_PRESETS.find((template) => template.id === "form").defaults,
-        title: form.title || `Calculo ${index + 1}`,
-        buttonText: "Calcular",
-        inputCount: form.fields.length,
-        fieldLabels: form.fields.map((field) => field.label),
-        fieldBindings: form.fields.map((field) => field.variable),
-        buttonActions: [{ type: "calc", condition: form.condition, expression: form.expression, target: form.target, strictCondition: false, details: form.details }],
-        primaryButtonAction: "none",
-      })}\n-- [[TNS_TOOL_CONVERTED_FORM_END]]`);
-    }
+    emittedPages += routedPages.length;
   }
   const body = chunks.length
     ? chunks.join("\n\n")
@@ -3911,6 +4223,14 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
       ctx.fillStyle = textColor;
       ctx.fillText(options.menuLabels?.[index] || `${index + 1}) Opcion ${index + 1} >`, sx(28), sy(y + 12));
     }
+    if (options.showBackButton === true) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(sx(8), sy(184), sx(72), sy(24));
+      ctx.strokeStyle = "#000";
+      ctx.strokeRect(sx(8), sy(184), sx(72), sy(24));
+      ctx.fillStyle = textColor;
+      ctx.fillText(options.backButtonText || "Retour", sx(16), sy(201));
+    }
     return;
   }
 
@@ -3940,6 +4260,14 @@ function drawLuaTemplatePreview(canvas, template, options = template.defaults) {
     }
     ctx.strokeStyle = "#808080";
     ctx.strokeRect(sx(292), sy(36), sx(8), sy(112));
+    if (options.showBackButton === true) {
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(sx(8), sy(184), sx(72), sy(24));
+      ctx.strokeStyle = "#000";
+      ctx.strokeRect(sx(8), sy(184), sx(72), sy(24));
+      ctx.fillStyle = textColor;
+      ctx.fillText(options.backButtonText || "Retour", sx(16), sy(201));
+    }
     return;
   }
 
@@ -4126,6 +4454,7 @@ function showLuaTemplates(editor) {
                 <option value="next">${escapeHtml(t("luaActionNext"))}</option>
                 <option value="details">${escapeHtml(t("luaActionDetails"))}</option>
                 <option value="home">${escapeHtml(t("luaActionHome"))}</option>
+                <option value="back">${escapeHtml(t("luaActionBack"))}</option>
                 <option value="none">${escapeHtml(t("luaActionNone"))}</option>
               </select>
             </label>
@@ -4141,21 +4470,23 @@ function showLuaTemplates(editor) {
             <label class="popup-only hidden">${escapeHtml(t("luaPopupWidth"))}<input id="tpl-popup-width" type="number" min="72" max="240" value="112"></label>
             <label class="popup-only hidden">${escapeHtml(t("luaPopupHeight"))}<input id="tpl-popup-height" type="number" min="42" max="150" value="58"></label>
           </div>
-          <div class="template-option-grid form-only">
+          <div class="template-option-grid nav-button-options">
             <label>Texto Retour<input id="tpl-back-button" value="◀ Retour"></label>
             <label>Accion Retour
               <select id="tpl-back-action">
                 <option value="home">${escapeHtml(t("luaActionHome"))}</option>
+                <option value="back">${escapeHtml(t("luaActionBack"))}</option>
                 <option value="next">${escapeHtml(t("luaActionNext"))}</option>
                 <option value="none">${escapeHtml(t("luaActionNone"))}</option>
               </select>
             </label>
-            <label>Texto Detalles<input id="tpl-details-button" value="Detalles"></label>
-            <label>Accion Detalles
+            <label class="form-only">Texto Detalles<input id="tpl-details-button" value="Detalles"></label>
+            <label class="form-only">Accion Detalles
               <select id="tpl-details-action">
                 <option value="details">${escapeHtml(t("luaActionDetails"))}</option>
                 <option value="next">${escapeHtml(t("luaActionNext"))}</option>
                 <option value="home">${escapeHtml(t("luaActionHome"))}</option>
+                <option value="back">${escapeHtml(t("luaActionBack"))}</option>
                 <option value="none">${escapeHtml(t("luaActionNone"))}</option>
               </select>
             </label>
@@ -4164,7 +4495,7 @@ function showLuaTemplates(editor) {
             <label class="template-check"><input id="tpl-use-theme" type="checkbox"> ${escapeHtml(t("luaUseThemeColor"))}</label>
             <label class="template-check form-only"><input id="tpl-show-primary" type="checkbox"> ${escapeHtml(t("luaShowPrimaryButton"))}</label>
             <label class="template-check form-only"><input id="tpl-show-details" type="checkbox"> ${escapeHtml(t("luaShowDetailsButton"))}</label>
-            <label class="template-check form-only"><input id="tpl-show-back" type="checkbox"> ${escapeHtml(t("luaShowBackButton"))}</label>
+            <label class="template-check nav-button-check"><input id="tpl-show-back" type="checkbox"> ${escapeHtml(t("luaShowBackButton"))}</label>
           </div>
           <div id="tpl-menu-routes-wrap" class="menu-route-editor hidden">
             <h4>${escapeHtml(t("luaMenuRoutes"))}</h4>
@@ -4194,10 +4525,6 @@ function showLuaTemplates(editor) {
           </div>
           <pre id="lua-template-code" class="lua-template-code"></pre>
         </section>
-      </div>
-      <div class="modal-actions">
-        <button type="button" id="lua-template-close">${escapeHtml(t("cancel"))}</button>
-        <button type="button" id="lua-template-insert" class="green-tool-button">${escapeHtml(t("luaInsertTemplate"))}</button>
       </div>
     </div>`;
   document.body.append(backdrop);
@@ -4244,6 +4571,8 @@ function showLuaTemplates(editor) {
     }
     backdrop.querySelectorAll(".form-only").forEach((element) => element.classList.toggle("hidden", selected.id !== "form"));
     backdrop.querySelectorAll(".popup-only").forEach((element) => element.classList.toggle("hidden", selected.id !== "popup"));
+    backdrop.querySelectorAll(".nav-button-options").forEach((element) => element.classList.toggle("hidden", !["form", "menu", "probas-menu"].includes(selected.id)));
+    backdrop.querySelectorAll(".nav-button-check").forEach((element) => element.classList.toggle("hidden", !["form", "menu", "probas-menu"].includes(selected.id)));
     backdrop.querySelector("#tpl-subtitle-label").classList.toggle("hidden", !selected.defaults.subtitle);
     routeWrap.classList.toggle("hidden", !["menu", "probas-menu"].includes(selected.id));
   };
@@ -4288,7 +4617,7 @@ function showLuaTemplates(editor) {
     backButtonText: backdrop.querySelector("#tpl-back-button").value || "◀ Retour",
     detailsButtonText: backdrop.querySelector("#tpl-details-button").value || "Detalles",
     primaryButtonAction: backdrop.querySelector("#tpl-action").value || selected.defaults.action || "next",
-    backButtonAction: backdrop.querySelector("#tpl-back-action").value || "home",
+    backButtonAction: backdrop.querySelector("#tpl-back-action").value || selected.defaults.backButtonAction || "home",
     detailsButtonAction: backdrop.querySelector("#tpl-details-action").value || "details",
     primaryColor: backdrop.querySelector("#tpl-use-theme").checked ? themeColor : (backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor),
     backgroundColor: backdrop.querySelector("#tpl-bg-color").value || selected.defaults.backgroundColor || "#e0e0e0",
@@ -4397,7 +4726,6 @@ function showLuaTemplates(editor) {
       renderBuilder();
     });
   }
-  backdrop.querySelector("#lua-template-close").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#lua-template-close-top").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#lua-template-copy-code").addEventListener("click", async () => {
     const code = backdrop.querySelector("#lua-template-code").textContent || "";
@@ -4407,7 +4735,6 @@ function showLuaTemplates(editor) {
     insertLuaTemplate(editor, selected.build(currentOptions()));
     closeModal(backdrop);
   };
-  backdrop.querySelector("#lua-template-insert").addEventListener("click", insertCurrentTemplate);
   backdrop.querySelector("#lua-template-insert-top").addEventListener("click", insertCurrentTemplate);
   applyDefaults();
   markSelected();
@@ -4479,6 +4806,7 @@ function showLuaPageEditor(editor) {
             <label>${escapeHtml(t("luaActionCondition"))}<input id="lua-page-action-condition" list="page-condition-suggestions" placeholder="t~=0"></label>
             <label>${escapeHtml(t("luaActionExpression"))}<input id="lua-page-action-expression" list="page-calculation-suggestions" placeholder="d/t"></label>
             <label>${escapeHtml(t("luaActionTargetVariable"))}<select id="lua-page-action-target"></select></label>
+            <label>Detalle / procedimiento<textarea id="lua-page-action-details" rows="5" placeholder="v=d/t&#10;v=[[d]] m/[[t]] s&#10;v=[[velocidad]] m/s"></textarea></label>
           </div>
         </section>
         <section class="template-column page-editor-preview">
@@ -4487,10 +4815,6 @@ function showLuaPageEditor(editor) {
             <canvas id="lua-page-preview" class="template-preview-canvas" width="318" height="212" aria-hidden="true"></canvas>
           </div>
         </section>
-      </div>
-      <div class="modal-actions">
-        <button type="button" id="lua-page-close">${escapeHtml(t("cancel"))}</button>
-        <button type="button" id="lua-page-apply" class="green-tool-button">${escapeHtml(t("luaApplyPageEdits"))}</button>
       </div>
     </div>`;
   document.body.append(backdrop);
@@ -4586,7 +4910,7 @@ function showLuaPageEditor(editor) {
         expression,
         target,
         strictCondition: false,
-        details: previousAction.details || "",
+        details: backdrop.querySelector("#lua-page-action-details").value || previousAction.details || "",
       }] : [];
     }
     return draft;
@@ -4645,9 +4969,10 @@ function showLuaPageEditor(editor) {
       backdrop.querySelector("#lua-page-action-condition").value = action.condition || "";
       backdrop.querySelector("#lua-page-action-expression").value = action.expression || "";
       backdrop.querySelector("#lua-page-action-target").innerHTML = variableSelectOptions(variableCatalog, action.target || "");
+      backdrop.querySelector("#lua-page-action-details").value = action.details || "";
       updatePageActionSuggestions();
     }
-    for (const input of backdrop.querySelectorAll("#lua-page-name, #lua-page-visual-editor input, #lua-page-menu-items input, #lua-page-menu-items select, #lua-page-form-editor input, #lua-page-form-editor select")) {
+    for (const input of backdrop.querySelectorAll("#lua-page-name, #lua-page-visual-editor input, #lua-page-menu-items input, #lua-page-menu-items select, #lua-page-form-editor input, #lua-page-form-editor select, #lua-page-form-editor textarea")) {
       input.addEventListener("input", () => {
         if (input.id === "lua-page-action-expression") syncPageCalculationTarget();
         updatePageActionSuggestions();
@@ -4679,7 +5004,6 @@ function showLuaPageEditor(editor) {
     }
     if (!picker.contains(event.target)) picker.classList.remove("open");
   });
-  backdrop.querySelector("#lua-page-close").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#lua-page-close-top").addEventListener("click", () => closeModal(backdrop));
   const applyPageEdits = () => {
     const pageIndex = selectedPageIndex;
@@ -4709,7 +5033,6 @@ function showLuaPageEditor(editor) {
     editor.dispatchEvent(new Event("input", { bubbles: true }));
     closeModal(backdrop);
   };
-  backdrop.querySelector("#lua-page-apply").addEventListener("click", applyPageEdits);
   backdrop.querySelector("#lua-page-apply-top").addEventListener("click", applyPageEdits);
   render();
 }
@@ -7660,6 +7983,7 @@ function wireEvents() {
   document.querySelector("#xml-create-tns-btn").addEventListener("click", () => createTnsFromXmlDoctor().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   wireToolMenus();
   wireDropZone();
+  wireGlobalFileDropGuard();
   wireMouseGlow();
 }
 
