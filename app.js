@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-02-variable-action-preview";
+const SOURCE_VERSION = "2026-06-03-lua-procedure-details";
 
 const I18N = {
   es: {
