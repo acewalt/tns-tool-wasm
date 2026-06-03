@@ -2517,13 +2517,26 @@ function isTiIdentifier(name = "") {
   return /^[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*$/.test(String(name || "").trim());
 }
 
+function variableScopeRank(scope = "") {
+  if (scope === "parameter") return 3;
+  if (scope === "local") return 2;
+  if (scope === "global") return 1;
+  return 0;
+}
+
 function addVariableCandidate(map, variable) {
   const name = String(variable.name || "").trim();
   if (!isTiIdentifier(name)) return;
-  const key = `${variable.owner || ""}:${variable.scope || ""}:${name}`;
+  const key = `${variable.owner || ""}:${name}`;
   const existing = map.get(key);
   if (existing) {
     if (existing.dataType === "unknown" && variable.dataType) existing.dataType = variable.dataType;
+    if (variableScopeRank(variable.scope) > variableScopeRank(existing.scope)) {
+      existing.scope = variable.scope;
+      existing.source = variable.source || existing.source;
+    }
+    if (!existing.sources) existing.sources = [existing.source].filter(Boolean);
+    if (variable.source && !existing.sources.includes(variable.source)) existing.sources.push(variable.source);
     return;
   }
   map.set(key, {
@@ -2533,6 +2546,7 @@ function addVariableCandidate(map, variable) {
     owner: variable.owner || "",
     ownerType: variable.ownerType || "",
     source: variable.source || "code",
+    sources: [variable.source || "code"],
   });
 }
 
