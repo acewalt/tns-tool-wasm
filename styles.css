@@ -1205,8 +1205,10 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 .lua-template-builder-modal {
   width: min(1240px, calc(100vw - 36px));
-  max-height: min(92vh, 900px);
-  overflow: auto;
+  max-height: calc(100vh - 36px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .library-search {
@@ -1421,11 +1423,16 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   min-height: 520px;
   width: 100%;
   box-sizing: border-box;
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100vh - 210px);
 }
 
 .template-column {
   padding: 16px;
   min-width: 0;
+  min-height: 0;
+  overflow: auto;
   box-sizing: border-box;
 }
 
@@ -1488,7 +1495,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   gap: 12px;
   align-content: start;
   overflow: auto;
-  max-height: min(68vh, 620px);
+  max-height: none;
   min-width: 0;
 }
 
@@ -1627,6 +1634,10 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 .lua-page-editor-modal {
   width: min(1180px, calc(100vw - 36px));
+  max-height: calc(100vh - 36px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 .lua-page-editor-grid {
@@ -1637,6 +1648,9 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   overflow: hidden;
   margin-top: 14px;
   min-height: 430px;
+  flex: 1;
+  min-height: 0;
+  max-height: calc(100vh - 220px);
 }
 
 .page-editor-list,
@@ -1649,8 +1663,18 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   display: grid;
   gap: 14px;
   align-content: start;
-  max-height: min(64vh, 600px);
+  max-height: none;
   overflow: auto;
+}
+
+.page-editor-list,
+.page-editor-preview {
+  overflow: auto;
+}
+
+.lua-template-builder-modal > .modal-actions,
+.lua-page-editor-modal > .modal-actions {
+  display: none;
 }
 
 .page-picker {

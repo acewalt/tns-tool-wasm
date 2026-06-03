@@ -1596,6 +1596,19 @@ local function evalVisualExpression(expr)
     local ok, value = pcall(math.eval, substituted)
     if ok then return value end
   end
+  local flat = substituted:gsub("%s+", ""):gsub("[%(%)]", "")
+  local left, op, right = flat:match("^([%-]?%d+%.?%d*)([%+%-%*/%^])([%-]?%d+%.?%d*)$")
+  if left and right then
+    local a = tonumber(left)
+    local b = tonumber(right)
+    if a and b then
+      if op == "+" then return a + b end
+      if op == "-" then return a - b end
+      if op == "*" then return a * b end
+      if op == "/" and b ~= 0 then return a / b end
+      if op == "^" then return a ^ b end
+    end
+  end
   local loader = loadstring or load
   if loader and substituted:match("^[%d%+%-%*/%^%(%)%.%,%s]+$") then
     local fn = loader("return " .. substituted)
@@ -2837,6 +2850,7 @@ function findLuaPageBlocks(code = "") {
   const regex = /addPage\s*\(/g;
   let match;
   while ((match = regex.exec(code))) {
+    if (/function\s*$/.test(code.slice(Math.max(0, match.index - 16), match.index))) continue;
     const openBrace = code.indexOf("{", match.index);
     if (openBrace < 0) continue;
     const closeBrace = findMatchingBrace(code, openBrace);
@@ -3054,6 +3068,7 @@ const LUA_TEMPLATE_PRESETS = [
       const detailsAction = luaTemplateActionSnippet(options.detailsButtonAction || "details");
       const buttonY = options.buttonPosition === "top" ? 26 : 188;
       const barY = options.buttonPosition === "top" ? 58 : 180;
+      const resultY = options.buttonPosition === "top" ? 62 : barY - 20;
       const rowStart = options.buttonPosition === "top" ? 76 : 42;
       const showBack = options.showBackButton !== false;
       const showPrimary = options.showPrimaryButton !== false;
@@ -3123,7 +3138,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end
   if self.resultText ~= "" then
     gc:setColorRGB(${text})
-    gc:drawString(self.resultText, 82, ${barY - 20}, "top")
+    gc:drawString(self.resultText, 82, ${resultY}, "top")
   end
   if self.detailsOpen then
     gc:setColorRGB(255, 255, 255)
@@ -3417,16 +3432,16 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
 ];
 
 function insertLuaTemplate(editor, text) {
+  const wrappedText = `-- [[TNS_TOOL_TEMPLATE_START]]\n${text}\n-- [[TNS_TOOL_TEMPLATE_END]]`;
   const start = editor.selectionStart;
   const end = editor.selectionEnd;
   if (start === end) {
     const markerIndex = editor.value.indexOf(LUA_PAGE_INSERT_MARKER);
     if (markerIndex >= 0) {
-      editor.value = `${editor.value.slice(0, markerIndex)}${text}\n\n${editor.value.slice(markerIndex)}`;
+      editor.value = `${editor.value.slice(0, markerIndex)}${wrappedText}\n\n${editor.value.slice(markerIndex)}`;
     } else {
-      const scaffold = buildDefaultLuaScriptApp();
-      const scaffoldMarkerIndex = scaffold.indexOf(LUA_PAGE_INSERT_MARKER);
-      editor.value = `${scaffold.slice(0, scaffoldMarkerIndex)}${text}\n\n${scaffold.slice(scaffoldMarkerIndex)}`;
+      const separator = editor.value.trim() ? "\n\n" : "";
+      editor.value = `${editor.value}${separator}${wrappedText}`;
     }
     editor.focus();
     editor.setSelectionRange(editor.value.length, editor.value.length);
@@ -3436,9 +3451,9 @@ function insertLuaTemplate(editor, text) {
   const before = editor.value.slice(0, start);
   const after = editor.value.slice(end);
   const prefix = before && !before.endsWith("\n") ? "\n" : "";
-  const suffix = after && !text.endsWith("\n") ? "\n" : "";
-  editor.value = `${before}${prefix}${text}${suffix}${after}`;
-  const cursor = before.length + prefix.length + text.length;
+  const suffix = after && !wrappedText.endsWith("\n") ? "\n" : "";
+  editor.value = `${before}${prefix}${wrappedText}${suffix}${after}`;
+  const cursor = before.length + prefix.length + wrappedText.length;
   editor.focus();
   editor.setSelectionRange(cursor, cursor);
   editor.dispatchEvent(new Event("input", { bubbles: true }));
