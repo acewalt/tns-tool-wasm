@@ -1571,19 +1571,66 @@ local function getVar(name)
   return nil
 end
 
+local function visualNormalizeExpression(expr)
+  if not expr then return "" end
+  return tostring(expr):gsub("−", "-")
+end
+
+local function visualSubstituteVariables(expr)
+  local normalized = visualNormalizeExpression(expr)
+  return normalized:gsub("([%a_][%w_]*)", function(name)
+    if name == "math" or name == "sqrt" or name == "sin" or name == "cos" or name == "tan" or name == "pi" then
+      return name
+    end
+    local value = getVar(name)
+    local numeric = tonumber(value)
+    if numeric ~= nil then return tostring(numeric) end
+    return name
+  end)
+end
+
 local function evalVisualExpression(expr)
   if not expr or expr == "" then return nil end
+  local substituted = visualSubstituteVariables(expr)
   if math and math.eval then
-    local ok, value = pcall(math.eval, expr)
+    local ok, value = pcall(math.eval, substituted)
     if ok then return value end
   end
-  return tonumber(expr)
+  local loader = loadstring or load
+  if loader and substituted:match("^[%d%+%-%*/%^%(%)%.%,%s]+$") then
+    local fn = loader("return " .. substituted)
+    if fn then
+      local ok, value = pcall(fn)
+      if ok then return value end
+    end
+  end
+  return tonumber(substituted)
 end
 
 local function visualConditionOk(condition)
   if not condition or condition == "" then return true end
+  local normalized = visualNormalizeExpression(condition)
+  local operators = {"~=", "<=", ">=", "=", "<", ">"}
+  for _, op in ipairs(operators) do
+    local patternOp = op:gsub("([%^%$%(%)%%%.%[%]%*%+%-%?])", "%%%1")
+    local left, right = normalized:match("^%s*(.-)%s*" .. patternOp .. "%s*(.-)%s*$")
+    if left and right and left ~= "" and right ~= "" then
+      local lval = evalVisualExpression(left)
+      local rval = evalVisualExpression(right)
+      local ln = tonumber(lval)
+      local rn = tonumber(rval)
+      if ln ~= nil and rn ~= nil then
+        if op == "~=" then return ln ~= rn end
+        if op == "=" then return ln == rn end
+        if op == "<" then return ln < rn end
+        if op == ">" then return ln > rn end
+        if op == "<=" then return ln <= rn end
+        if op == ">=" then return ln >= rn end
+      end
+    end
+  end
   if math and math.eval then
-    local ok, value = pcall(math.eval, condition)
+    local ok, value = pcall(math.eval, visualSubstituteVariables(normalized))
     return ok and value ~= false and value ~= 0
   end
   return false
@@ -1620,12 +1667,12 @@ addPage({
     gc:setColorRGB(245, 245, 245)
     gc:fillRect(0, 0, w, h)
     gc:setColorRGB(0, 0, 0)
-    gc:setFont("sansserif", "b", 22)
+    gc:setFont("sansserif", "b", 20)
     local title = "Hello Lua"
-    gc:drawString(title, (w - gc:getStringWidth(title)) / 2, 70, "top")
+    gc:drawString(title, (w - gc:getStringWidth(title)) / 2, 72, "top")
     gc:setFont("sansserif", "r", 10)
     local subtitle = "Enter para continuar"
-    gc:drawString(subtitle, (w - gc:getStringWidth(subtitle)) / 2, 98, "top")
+    gc:drawString(subtitle, (w - gc:getStringWidth(subtitle)) / 2, 100, "top")
     gc:setColorRGB(45, 147, 173)
     gc:fillRect((w - 120) / 2, 160, 120, 28)
     gc:setColorRGB(255, 255, 255)
@@ -1634,6 +1681,13 @@ addPage({
   end,
   enterKey = function(self)
     goNext()
+  end,
+  mouseDown = function(self, x, y)
+    local w = platform.window:width()
+    local buttonX = (w - 120) / 2
+    if x >= buttonX and x <= buttonX + 120 and y >= 160 and y <= 188 then
+      goNext()
+    end
   end
 })
 
@@ -3224,12 +3278,12 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   },
   {
     id: "probas-menu",
-    name: "ProbasMaster",
-    description: "Menu estilo ProbasMaster con titulo, subtitulo, lista y barra de scroll visual.",
+    name: "Menu avanzado",
+    description: "Menu con titulo, subtitulo, lista, seleccion y barra de scroll visual.",
     defaults: {
       inputCount: 4,
-      title: "ProbasMaster",
-      subtitle: "par Y.Hagege, using FormulaPro v1.41b,",
+      title: "Menu",
+      subtitle: "Selecciona una opcion",
       buttonText: "Enter",
       primaryColor: "#3196be",
       backgroundColor: "#ffffff",
@@ -3237,7 +3291,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
       useThemeColor: false,
       action: "next",
       variableBase: "selected_item",
-      menuLabels: ["Loi Normale", "Loi Exponentielle", "Loi Uniforme", "Loi Binomiale"],
+      menuLabels: ["Opcion 1", "Opcion 2", "Opcion 3", "Opcion 4"],
       menuTargets: [],
     },
     build(options) {
@@ -3744,6 +3798,10 @@ function showLuaTemplates(editor) {
     </button>`).join("");
   backdrop.innerHTML = `
     <div class="modal lua-library-modal lua-template-builder-modal">
+      <div class="modal-top-actions">
+        <button type="button" id="lua-template-close-top">${escapeHtml(t("cancel"))}</button>
+        <button type="button" id="lua-template-insert-top" class="green-tool-button">${escapeHtml(t("luaInsertTemplate"))}</button>
+      </div>
       <h2>${escapeHtml(t("luaTemplates"))}</h2>
       <p class="muted-copy">${escapeHtml(t("luaTemplatesIntro"))}</p>
       <div class="lua-template-builder">
@@ -4034,14 +4092,17 @@ function showLuaTemplates(editor) {
     });
   }
   backdrop.querySelector("#lua-template-close").addEventListener("click", () => closeModal(backdrop));
+  backdrop.querySelector("#lua-template-close-top").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#lua-template-copy-code").addEventListener("click", async () => {
     const code = backdrop.querySelector("#lua-template-code").textContent || "";
     await navigator.clipboard?.writeText(code).catch(() => {});
   });
-  backdrop.querySelector("#lua-template-insert").addEventListener("click", () => {
+  const insertCurrentTemplate = () => {
     insertLuaTemplate(editor, selected.build(currentOptions()));
     closeModal(backdrop);
-  });
+  };
+  backdrop.querySelector("#lua-template-insert").addEventListener("click", insertCurrentTemplate);
+  backdrop.querySelector("#lua-template-insert-top").addEventListener("click", insertCurrentTemplate);
   applyDefaults();
   markSelected();
   renderBuilder();
@@ -4068,6 +4129,10 @@ function showLuaPageEditor(editor) {
     </button>`).join("");
   backdrop.innerHTML = `
     <div class="modal lua-library-modal lua-page-editor-modal">
+      <div class="modal-top-actions">
+        <button type="button" id="lua-page-close-top">${escapeHtml(t("cancel"))}</button>
+        <button type="button" id="lua-page-apply-top" class="green-tool-button">${escapeHtml(t("luaApplyPageEdits"))}</button>
+      </div>
       <h2>${escapeHtml(t("luaPageEditor"))}</h2>
       <p class="muted-copy">${escapeHtml(t("luaPageEditorIntro"))}</p>
       <div class="lua-page-editor-grid">
@@ -4306,7 +4371,8 @@ function showLuaPageEditor(editor) {
     if (!picker.contains(event.target)) picker.classList.remove("open");
   });
   backdrop.querySelector("#lua-page-close").addEventListener("click", () => closeModal(backdrop));
-  backdrop.querySelector("#lua-page-apply").addEventListener("click", () => {
+  backdrop.querySelector("#lua-page-close-top").addEventListener("click", () => closeModal(backdrop));
+  const applyPageEdits = () => {
     const pageIndex = selectedPageIndex;
     const page = pages[pageIndex] || pages[0];
     const items = Array.from(menuItems.querySelectorAll("[data-page-item]")).map((input) => input.value);
@@ -4333,7 +4399,9 @@ function showLuaPageEditor(editor) {
     editor.value = `${editor.value.slice(0, page.start)}${newBlock}${editor.value.slice(page.end)}`;
     editor.dispatchEvent(new Event("input", { bubbles: true }));
     closeModal(backdrop);
-  });
+  };
+  backdrop.querySelector("#lua-page-apply").addEventListener("click", applyPageEdits);
+  backdrop.querySelector("#lua-page-apply-top").addEventListener("click", applyPageEdits);
   render();
 }
 
