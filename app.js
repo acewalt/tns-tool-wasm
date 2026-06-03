@@ -1674,6 +1674,12 @@ function on.backspaceKey()
     pages[currentPage]:backspaceKey()
   end
 end
+
+function on.mouseDown(x, y)
+  if pages[currentPage] and pages[currentPage].mouseDown then
+    pages[currentPage]:mouseDown(x, y)
+  end
+end
 `;
 }
 
@@ -2603,6 +2609,46 @@ function collectLoadedTnsVariables(extraCode = "") {
   return catalog;
 }
 
+function normalizeTiExpression(expr = "") {
+  return decodeXmlTextEntities(String(expr || ""))
+    .replaceAll("→", "->")
+    .replaceAll("−", "-")
+    .replaceAll("√", "sqrt")
+    .replaceAll("π", "pi")
+    .replace(/\bapprox\s*\(([\s\S]*)\)$/i, "$1")
+    .trim();
+}
+
+function collectLoadedTnsLogic(extraCode = "") {
+  const conditions = new Set();
+  const calculations = [];
+  const addFromCode = (code = "") => {
+    const normalized = decodeXmlTextEntities(String(code || "")).replaceAll("→", "->");
+    for (const match of normalized.matchAll(/\bIf\s+(.+?)\s+Then\b/gi)) {
+      const condition = normalizeTiExpression(match[1]);
+      if (condition) conditions.add(condition);
+    }
+    for (const match of normalized.matchAll(/(^|[\n\r:])\s*([^:\n\r]+?)\s*->\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)/g)) {
+      const expression = normalizeTiExpression(match[2]);
+      const target = match[3];
+      if (expression && target) calculations.push({ expression, target, label: `${expression} -> ${target}` });
+    }
+  };
+  for (const item of Array.isArray(xmlDoctor.candidates) ? xmlDoctor.candidates : []) {
+    addFromCode(item.code || item.content || "");
+  }
+  if (extraCode) addFromCode(extraCode);
+  const uniqueCalculations = [];
+  const seen = new Set();
+  for (const calc of calculations) {
+    const key = `${calc.expression}->${calc.target}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    uniqueCalculations.push(calc);
+  }
+  return { conditions: Array.from(conditions), calculations: uniqueCalculations };
+}
+
 function variableSelectOptions(catalog = [], selected = "") {
   const options = [`<option value="">${escapeHtml(t("luaNoVariableBinding"))}</option>`];
   for (const variable of catalog) {
@@ -2796,7 +2842,9 @@ const LUA_TEMPLATE_PRESETS = [
       const bg = luaRgbText(options.backgroundColor, [224, 224, 224]);
       const text = luaRgbText(options.textColor, [0, 0, 0]);
       const labels = Array.from({ length: count }, (_, index) => String.fromCharCode(97 + index));
-      const action = luaTemplateActionSnippet(options.action);
+      const primaryAction = luaTemplateActionSnippet(options.primaryButtonAction || options.action || "next");
+      const backAction = luaTemplateActionSnippet(options.backButtonAction || "home");
+      const detailsAction = luaTemplateActionSnippet(options.detailsButtonAction || "details");
       const buttonY = options.buttonPosition === "top" ? 26 : 188;
       const barY = options.buttonPosition === "top" ? 58 : 180;
       const rowStart = options.buttonPosition === "top" ? 76 : 42;
@@ -2805,29 +2853,35 @@ const LUA_TEMPLATE_PRESETS = [
       const showDetails = options.showDetailsButton !== false;
       const bindings = Array.isArray(options.fieldBindings) ? options.fieldBindings : [];
       const actionsTable = luaVisualActionsTable(options.buttonActions);
+      const buttonDefs = [
+        showBack ? `{id="back", text="${luaString(options.backButtonText || "◀ Retour")}", x=8, y=${buttonY}, w=70}` : "",
+        showPrimary ? `{id="primary", text="${luaString(options.buttonText || "Calcular")}", x=112, y=${buttonY}, w=80, plain=true}` : "",
+        showDetails ? `{id="details", text="${luaString(options.detailsButtonText || "Detalles")}", x=240, y=${buttonY}, w=70}` : "",
+      ].filter(Boolean).join(", ");
       const rows = labels.map((label, index) => {
         const y = rowStart + index * 28;
         return `  gc:drawString("${label}", 14, ${y + 4}, "top")
   gc:drawString(":", 70, ${y + 4}, "top")
   drawInput(gc, fields[${index + 1}], 82, ${y}, 158, 22)`;
       }).join("\n");
-      const buttons = [
-        showBack ? `  self:drawButton(gc, "◀ Retour", 8, ${buttonY}, 70)` : "",
-        showPrimary ? `  gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
-  gc:drawString("${luaString(options.buttonText)}", 112, ${buttonY + 6}, "top")` : "",
-        showDetails ? `  self:drawButton(gc, "Detalles", 240, ${buttonY}, 70)` : "",
-      ].filter(Boolean).join("\n");
       return `addPage({
   name = "${luaString(options.title)}",
   fields = {${labels.map((label, index) => `{label="${label}", value="", placeholder="${label}", bind="${luaString(bindings[index] || "")}"}`).join(", ")}},
   actions = ${actionsTable},
   focus = 1,
+  buttonFocus = 1,
+  focusArea = "fields",
+  buttons = {${buttonDefs}},
   detailsOpen = false,
   drawButton = function(self, gc, text, x, y, w)
   gc:setColorRGB(255, 255, 255)
   gc:fillRect(x, y, w, 24)
   gc:setColorRGB(128, 128, 128)
   gc:drawRect(x, y, w, 24)
+  if self.focusArea == "buttons" and self.buttons[self.buttonFocus] and self.buttons[self.buttonFocus].x == x then
+    gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
+    gc:drawRect(x - 2, y - 2, w + 4, 28)
+  end
   gc:setColorRGB(0, 0, 0)
   gc:drawString(text, x + 6, y + 5, "top")
   end,
@@ -2856,7 +2910,18 @@ const LUA_TEMPLATE_PRESETS = [
 ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   gc:setColorRGB(128, 128, 128)
   gc:fillRect(8, ${barY}, 304, 2)
-${buttons}
+  for i, button in ipairs(self.buttons) do
+    if button.plain then
+      if self.focusArea == "buttons" and i == self.buttonFocus then
+        gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
+        gc:drawRect(button.x - 4, button.y - 2, button.w + 8, 28)
+      end
+      gc:setColorRGB(${primaryR}, ${primaryG}, ${primaryB})
+      gc:drawString(button.text, button.x, button.y + 6, "top")
+    else
+      self:drawButton(gc, button.text, button.x, button.y, button.w)
+    end
+  end
   if self.detailsOpen then
     gc:setColorRGB(255, 255, 255)
     gc:fillRect(42, 62, 230, 96)
@@ -2868,26 +2933,70 @@ ${buttons}
   end
   end,
   arrowKey = function(self, direction)
-  if direction == "down" then self.focus = math.min(#self.fields, self.focus + 1) end
-  if direction == "up" then self.focus = math.max(1, self.focus - 1) end
+  if self.focusArea == "fields" then
+    if direction == "down" and self.focus == #self.fields and #self.buttons > 0 then self.focusArea = "buttons"
+    elseif direction == "down" then self.focus = math.min(#self.fields, self.focus + 1)
+    elseif direction == "up" then self.focus = math.max(1, self.focus - 1) end
+  else
+    if direction == "up" then self.focusArea = "fields"
+    elseif direction == "right" then self.buttonFocus = math.min(#self.buttons, self.buttonFocus + 1)
+    elseif direction == "left" then self.buttonFocus = math.max(1, self.buttonFocus - 1) end
+  end
   platform.window:invalidate()
   end,
   charIn = function(self, ch)
+  if self.focusArea ~= "fields" then return end
   self.fields[self.focus].value = self.fields[self.focus].value .. ch
   setVar(self.fields[self.focus].bind, self.fields[self.focus].value)
   platform.window:invalidate()
   end,
   backspaceKey = function(self)
+  if self.focusArea ~= "fields" then return end
   self.fields[self.focus].value = self.fields[self.focus].value:sub(1, -2)
   setVar(self.fields[self.focus].bind, self.fields[self.focus].value)
   platform.window:invalidate()
   end,
-  enterKey = function(self)
-  for _, field in ipairs(self.fields) do
-    setVar(field.bind, field.value)
+  activateButton = function(self, button)
+  if not button then return end
+  if button.id == "back" then
+    ${backAction}
+  elseif button.id == "details" then
+    ${detailsAction}
+  else
+    for _, field in ipairs(self.fields) do
+      setVar(field.bind, field.value)
+    end
+    if runVisualActions(self.actions) then return end
+    ${primaryAction}
   end
-  if runVisualActions(self.actions) then return end
-  ${action}
+  end,
+  enterKey = function(self)
+  if self.focusArea == "buttons" then
+    self:activateButton(self.buttons[self.buttonFocus])
+    return
+  end
+  self.focusArea = "buttons"
+  platform.window:invalidate()
+  end,
+  mouseDown = function(self, x, y)
+  for i, field in ipairs(self.fields) do
+    local fy = ${rowStart} + (i - 1) * 28
+    if x >= 82 and x <= 240 and y >= fy and y <= fy + 22 then
+      self.focus = i
+      self.focusArea = "fields"
+      platform.window:invalidate()
+      return
+    end
+  end
+  for i, button in ipairs(self.buttons) do
+    if x >= button.x and x <= button.x + button.w and y >= button.y and y <= button.y + 24 then
+      self.buttonFocus = i
+      self.focusArea = "buttons"
+      self:activateButton(button)
+      platform.window:invalidate()
+      return
+    end
+  end
   end,
   escapeKey = function(self)
   if self.detailsOpen then self.detailsOpen = false else currentPage = 1 end
@@ -3364,6 +3473,25 @@ function showLuaTemplates(editor) {
             <label class="popup-only hidden">${escapeHtml(t("luaPopupWidth"))}<input id="tpl-popup-width" type="number" min="72" max="240" value="112"></label>
             <label class="popup-only hidden">${escapeHtml(t("luaPopupHeight"))}<input id="tpl-popup-height" type="number" min="42" max="150" value="58"></label>
           </div>
+          <div class="template-option-grid form-only">
+            <label>Texto Retour<input id="tpl-back-button" value="◀ Retour"></label>
+            <label>Accion Retour
+              <select id="tpl-back-action">
+                <option value="home">${escapeHtml(t("luaActionHome"))}</option>
+                <option value="next">${escapeHtml(t("luaActionNext"))}</option>
+                <option value="none">${escapeHtml(t("luaActionNone"))}</option>
+              </select>
+            </label>
+            <label>Texto Detalles<input id="tpl-details-button" value="Detalles"></label>
+            <label>Accion Detalles
+              <select id="tpl-details-action">
+                <option value="details">${escapeHtml(t("luaActionDetails"))}</option>
+                <option value="next">${escapeHtml(t("luaActionNext"))}</option>
+                <option value="home">${escapeHtml(t("luaActionHome"))}</option>
+                <option value="none">${escapeHtml(t("luaActionNone"))}</option>
+              </select>
+            </label>
+          </div>
           <div class="template-checks">
             <label class="template-check"><input id="tpl-use-theme" type="checkbox"> ${escapeHtml(t("luaUseThemeColor"))}</label>
             <label class="template-check form-only"><input id="tpl-show-primary" type="checkbox"> ${escapeHtml(t("luaShowPrimaryButton"))}</label>
@@ -3379,9 +3507,11 @@ function showLuaTemplates(editor) {
             <div id="tpl-bindings"></div>
           </div>
           <div id="tpl-actions-wrap" class="menu-route-editor">
-            <h4>${escapeHtml(t("luaButtonActions") || "Acciones")}</h4>
-            <label>${escapeHtml(t("luaActionCondition"))}<input id="tpl-action-condition" placeholder="a>0"></label>
-            <label>${escapeHtml(t("luaActionExpression"))}<input id="tpl-action-expression" placeholder="a+b"></label>
+            <h4>${escapeHtml(t("luaButtonActions") || "Acciones")} (${escapeHtml(t("luaButtonText"))})</h4>
+            <datalist id="tpl-condition-suggestions"></datalist>
+            <datalist id="tpl-calculation-suggestions"></datalist>
+            <label>${escapeHtml(t("luaActionCondition"))}<input id="tpl-action-condition" list="tpl-condition-suggestions" placeholder="t~=0"></label>
+            <label>${escapeHtml(t("luaActionExpression"))}<input id="tpl-action-expression" list="tpl-calculation-suggestions" placeholder="d/t"></label>
             <label>${escapeHtml(t("luaActionTargetVariable"))}<select id="tpl-action-target"></select></label>
           </div>
         </section>
@@ -3406,6 +3536,7 @@ function showLuaTemplates(editor) {
   let selected = visibleTemplates[0];
   const existingPages = extractLuaPageOptions(editor.value);
   const variableCatalog = collectLoadedTnsVariables(editor.value);
+  const logicCatalog = collectLoadedTnsLogic(editor.value);
   const themeColor = "#a3e635";
   const routeWrap = backdrop.querySelector("#tpl-menu-routes-wrap");
   const routeList = backdrop.querySelector("#tpl-menu-routes");
@@ -3420,6 +3551,10 @@ function showLuaTemplates(editor) {
     backdrop.querySelector("#tpl-text-color").value = selected.defaults.textColor || "#000000";
     backdrop.querySelector("#tpl-use-theme").checked = selected.defaults.useThemeColor !== false;
     backdrop.querySelector("#tpl-action").value = selected.defaults.action || "next";
+    backdrop.querySelector("#tpl-back-button").value = selected.defaults.backButtonText || "◀ Retour";
+    backdrop.querySelector("#tpl-back-action").value = selected.defaults.backButtonAction || "home";
+    backdrop.querySelector("#tpl-details-button").value = selected.defaults.detailsButtonText || "Detalles";
+    backdrop.querySelector("#tpl-details-action").value = selected.defaults.detailsButtonAction || "details";
     backdrop.querySelector("#tpl-varbase").value = selected.defaults.variableBase || "var";
     backdrop.querySelector("#tpl-position").value = selected.defaults.buttonPosition || "bottom";
     backdrop.querySelector("#tpl-show-primary").checked = selected.defaults.showPrimaryButton !== false;
@@ -3430,6 +3565,12 @@ function showLuaTemplates(editor) {
     backdrop.querySelector("#tpl-action-condition").value = "";
     backdrop.querySelector("#tpl-action-expression").value = "";
     actionTarget.innerHTML = variableSelectOptions(variableCatalog);
+    backdrop.querySelector("#tpl-condition-suggestions").innerHTML = logicCatalog.conditions
+      .map((condition) => `<option value="${escapeHtml(condition)}"></option>`)
+      .join("");
+    backdrop.querySelector("#tpl-calculation-suggestions").innerHTML = logicCatalog.calculations
+      .map((calc) => `<option value="${escapeHtml(calc.expression)}" label="${escapeHtml(calc.label)}"></option>`)
+      .join("");
     renderRouteEditor();
     renderBindingEditor();
   };
@@ -3476,6 +3617,11 @@ function showLuaTemplates(editor) {
     inputCount: backdrop.querySelector("#tpl-input-count").value,
     title: backdrop.querySelector("#tpl-title").value || selected.defaults.title,
     buttonText: backdrop.querySelector("#tpl-button").value || selected.defaults.buttonText,
+    backButtonText: backdrop.querySelector("#tpl-back-button").value || "◀ Retour",
+    detailsButtonText: backdrop.querySelector("#tpl-details-button").value || "Detalles",
+    primaryButtonAction: backdrop.querySelector("#tpl-action").value || selected.defaults.action || "next",
+    backButtonAction: backdrop.querySelector("#tpl-back-action").value || "home",
+    detailsButtonAction: backdrop.querySelector("#tpl-details-action").value || "details",
     primaryColor: backdrop.querySelector("#tpl-use-theme").checked ? themeColor : (backdrop.querySelector("#tpl-color").value || selected.defaults.primaryColor),
     backgroundColor: backdrop.querySelector("#tpl-bg-color").value || selected.defaults.backgroundColor || "#e0e0e0",
     textColor: backdrop.querySelector("#tpl-text-color").value || selected.defaults.textColor || "#000000",
@@ -3510,6 +3656,13 @@ function showLuaTemplates(editor) {
     });
     backdrop.querySelector("#lua-template-code").textContent = selected.build(options);
   };
+  const syncCalculationTarget = () => {
+    const expression = backdrop.querySelector("#tpl-action-expression").value.trim();
+    const match = logicCatalog.calculations.find((calc) => calc.expression === expression);
+    if (match?.target) {
+      backdrop.querySelector("#tpl-action-target").value = match.target;
+    }
+  };
   for (const button of backdrop.querySelectorAll(".lua-template-type")) {
     button.addEventListener("click", () => {
       selected = visibleTemplates.find((template) => template.id === button.dataset.template) || selected;
@@ -3520,11 +3673,13 @@ function showLuaTemplates(editor) {
   }
   for (const input of backdrop.querySelectorAll(".template-options-column input, .template-options-column select")) {
     input.addEventListener("input", () => {
+      if (input.id === "tpl-action-expression") syncCalculationTarget();
       if (input.id === "tpl-input-count" && selected.id === "menu") renderRouteEditor();
       if (input.id === "tpl-input-count" && selected.id === "form") renderBindingEditor();
       renderBuilder();
     });
     input.addEventListener("change", () => {
+      if (input.id === "tpl-action-expression") syncCalculationTarget();
       if (input.id === "tpl-input-count" && selected.id === "menu") renderRouteEditor();
       if (input.id === "tpl-input-count" && selected.id === "form") renderBindingEditor();
       renderBuilder();
@@ -3915,9 +4070,20 @@ function encodeXmlTextEntities(text) {
 }
 
 function normalizeLuaPreviewSource(code = "") {
-  return String(code).replace(/gc:drawString\((["'])((?:\\.|(?!\1).)*?)\1,\s*150\s*,\s*113\s*,\s*(["'])top\3\s*\)/g, (_match, quote, label) => {
+  let normalized = String(code).replace(/gc:drawString\((["'])((?:\\.|(?!\1).)*?)\1,\s*150\s*,\s*113\s*,\s*(["'])top\3\s*\)/g, (_match, quote, label) => {
     return `gc:drawString(${quote}${label}${quote}, 132 + (54 - gc:getStringWidth(${quote}${label}${quote})) / 2, 113, "top")`;
   });
+  if (/pages\s*=\s*\{\}/.test(normalized) && !/function\s+on\.mouseDown\s*\(/.test(normalized)) {
+    normalized += `
+
+function on.mouseDown(x, y)
+  if pages[currentPage] and pages[currentPage].mouseDown then
+    pages[currentPage]:mouseDown(x, y)
+  end
+end
+`;
+  }
+  return normalized;
 }
 
 async function createNewXmlProject() {
