@@ -1676,17 +1676,19 @@ local function runVisualActions(actions)
       return false
     end
     local conditionOk = action.strictCondition == false or visualConditionOk(action.condition)
-    if conditionOk then
-      if action.type == "calc" and action.target and action.target ~= "" then
-        local value = evalVisualExpression(action.expression)
-        if value == nil then
-          _G.__lastVisualActionResult = "No se pudo calcular"
-          return false
-        end
+    if action.type == "calc" and action.target and action.target ~= "" then
+      local value = evalVisualExpression(action.expression)
+      if value == nil then
+        _G.__lastVisualActionResult = "No se pudo calcular"
+        return false
+      end
+      if conditionOk or action.strictCondition ~= true then
         setVar(action.target, value)
         _G.__lastVisualActionResult = action.target .. "=" .. tostring(value)
         return true
-      elseif action.type == "set" and action.target and action.target ~= "" then
+      end
+    elseif conditionOk then
+      if action.type == "set" and action.target and action.target ~= "" then
         setVar(action.target, action.value)
         _G.__lastVisualActionResult = action.target .. "=" .. tostring(action.value)
         return true
@@ -4204,6 +4206,7 @@ function showLuaTemplates(editor) {
       condition: backdrop.querySelector("#tpl-action-condition").value,
       expression: backdrop.querySelector("#tpl-action-expression").value,
       target: backdrop.querySelector("#tpl-action-target").value,
+      strictCondition: false,
     }] : [],
     menuLabels: Array.from(routeList.querySelectorAll("[data-menu-label]")).map((input) => input.value),
     menuTargets: Array.from(routeList.querySelectorAll("[data-menu-target]")).map((input) => input.value),
@@ -4477,6 +4480,7 @@ function showLuaPageEditor(editor) {
         condition: backdrop.querySelector("#lua-page-action-condition").value,
         expression,
         target,
+        strictCondition: false,
       }] : [];
     }
     return draft;
