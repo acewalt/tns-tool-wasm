@@ -40,6 +40,7 @@ const I18N = {
     luaGuide: "Guia Lua",
     luaTemplates: "Plantillas Lua",
     luaEditPages: "Editar paginas",
+    luaTnsConvert: "TNS to Lua convert code",
     luaGuideSearch: "Buscar funciones, eventos o variables...",
     luaTemplatesIntro: "Elige una plantilla y ajusta sus opciones. Sin seleccion, reemplaza el script actual; con seleccion, reemplaza ese bloque.",
     luaInsertTemplate: "Insertar plantilla",
@@ -201,6 +202,7 @@ const I18N = {
     luaGuide: "Lua guide",
     luaTemplates: "Lua templates",
     luaEditPages: "Edit pages",
+    luaTnsConvert: "TNS to Lua convert code",
     luaGuideSearch: "Search functions, events, or variables...",
     luaTemplatesIntro: "Choose a template and adjust its options. With no selection, it replaces the current script; with a selection, it replaces that block.",
     luaInsertTemplate: "Insert template",
@@ -362,6 +364,7 @@ const I18N = {
     luaGuide: "Guide Lua",
     luaTemplates: "Modeles Lua",
     luaEditPages: "Editer pages",
+    luaTnsConvert: "TNS vers Lua",
     luaGuideSearch: "Rechercher fonctions, evenements ou variables...",
     luaTemplatesIntro: "Choisissez un modele et ajustez ses options. Sans selection, il remplace le script actuel; avec selection, il remplace ce bloc.",
     luaInsertTemplate: "Inserer le modele",
@@ -1591,11 +1594,15 @@ end
 
 local function visualMissingVariable(expr)
   local normalized = visualNormalizeExpression(expr)
-  for name in normalized:gmatch("([%a_][%w_]*)") do
+  local pos = 1
+  while pos <= #normalized do
+    local startPos, endPos, name = normalized:find("([%a_][%w_]*)", pos)
+    if not startPos then break end
     if name ~= "math" and name ~= "sqrt" and name ~= "sin" and name ~= "cos" and name ~= "tan" and name ~= "pi" then
       local value = getVar(name)
       if value == nil or tostring(value) == "" then return name end
     end
+    pos = endPos + 1
   end
   return nil
 end
@@ -3481,6 +3488,158 @@ function insertLuaTemplate(editor, text) {
   editor.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
+function tiBasicStringLiterals(line = "") {
+  return Array.from(String(line || "").matchAll(/"([^"]*)"/g)).map((match) => match[1]);
+}
+
+function tiBasicToLuaExpression(expr = "") {
+  return normalizeTiExpression(expr)
+    .replaceAll("->", "")
+    .replace(/\bnCr\b/gi, "ncr")
+    .replace(/\bapprox\s*\(([\s\S]*)\)$/i, "$1")
+    .trim();
+}
+
+function tnsConvertSourcePrograms(currentLuaItem = null) {
+  const items = Array.isArray(xmlDoctor.candidates) ? xmlDoctor.candidates : [];
+  return items.filter((item) => {
+    if (!item || item === currentLuaItem) return false;
+    const code = decodeXmlTextEntities(item.code || item.content || "");
+    if (!code.trim()) return false;
+    if (/platform\.apilevel|function\s+on\.paint|addPage\s*\(/.test(code)) return false;
+    return /\bPrgm\b|\bRequest\b|\bDisp\b|→|->/.test(code);
+  });
+}
+
+function collectTnsMenuCandidates(code = "") {
+  const lines = decodeXmlTextEntities(code).replaceAll("→", "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const menus = [];
+  for (let index = 0; index < lines.length; index += 1) {
+    const request = /^Request\s+"([^"]*)"\s*,\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)/i.exec(lines[index]);
+    if (!request) continue;
+    const prompt = request[1].toLowerCase();
+    const variable = request[2];
+    const isMenuRequest = prompt.includes("op") || /^(opcion|seleccion|sub|dir|modo|sel)$/i.test(variable);
+    if (!isMenuRequest) continue;
+    const labels = [];
+    let cursor = index - 1;
+    while (cursor >= 0 && labels.length < 8) {
+      const line = lines[cursor];
+      if (/^(If|EndIf|Request)\b/i.test(line)) break;
+      if (/^clrio$/i.test(line) && labels.length) break;
+      if (/^Disp\s+/i.test(line)) {
+        const literals = tiBasicStringLiterals(line);
+        for (let litIndex = literals.length - 1; litIndex >= 0; litIndex -= 1) {
+          const literal = literals[litIndex].trim();
+          if (literal) labels.unshift(literal);
+        }
+      }
+      cursor -= 1;
+    }
+    if (labels.length >= 2) {
+      const title = labels[0].toUpperCase() === labels[0] && labels.length > 2 ? labels.shift() : "Menu";
+      menus.push({ title, variable, labels: labels.slice(0, 10) });
+    }
+  }
+  return menus;
+}
+
+function collectTnsFormCandidates(code = "") {
+  const lines = decodeXmlTextEntities(code).replaceAll("→", "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const forms = [];
+  const recentRequests = [];
+  const recentConditions = [];
+  for (const line of lines) {
+    const request = /^Request\s+"([^"]*)"\s*,\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)/i.exec(line);
+    if (request) {
+      const prompt = request[1].replace(/:$/, "");
+      const variable = request[2];
+      if (!/^(opcion|seleccion|sub|dir|modo|sel)$/i.test(variable)) {
+        recentRequests.push({ label: prompt || variable, variable });
+        if (recentRequests.length > 6) recentRequests.shift();
+      }
+      continue;
+    }
+    const condition = /^If\s+(.+?)\s+Then$/i.exec(line);
+    if (condition) {
+      recentConditions.push(normalizeTiExpression(condition[1]));
+      if (recentConditions.length > 5) recentConditions.shift();
+      continue;
+    }
+    const store = /^(.+?)->\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)$/i.exec(line);
+    if (!store) continue;
+    const expression = tiBasicToLuaExpression(store[1]);
+    const target = store[2];
+    if (!expression || !target) continue;
+    const usedNames = extractTiExpressionNames(expression);
+    const fields = recentRequests
+      .filter((field) => usedNames.includes(field.variable))
+      .slice(-4);
+    if (!fields.length) continue;
+    const relatedCondition = [...recentConditions].reverse().find((candidate) => {
+      const names = extractTiExpressionNames(candidate);
+      return names.some((name) => usedNames.includes(name));
+    });
+    forms.push({
+      title: target,
+      fields,
+      expression,
+      target,
+      condition: relatedCondition ? invertTiCondition(relatedCondition) || relatedCondition : "",
+    });
+    if (forms.length >= 12) break;
+  }
+  return forms;
+}
+
+function buildLuaFromTnsPrograms(programs = []) {
+  const chunks = [];
+  for (const program of programs) {
+    const code = decodeXmlTextEntities(program.code || program.content || "");
+    const programName = program.program_name || program.name || "Programa";
+    const menus = collectTnsMenuCandidates(code).slice(0, 4);
+    const forms = collectTnsFormCandidates(code).slice(0, 8);
+    for (const [index, menu] of menus.entries()) {
+      chunks.push(`-- [[TNS_TOOL_CONVERTED_MENU_START: ${luaString(programName)}]]\n${LUA_TEMPLATE_PRESETS.find((template) => template.id === "probas-menu").build({
+        ...LUA_TEMPLATE_PRESETS.find((template) => template.id === "probas-menu").defaults,
+        title: menu.title || `Menu ${index + 1}`,
+        subtitle: `Convertido de ${programName}`,
+        inputCount: menu.labels.length,
+        menuLabels: menu.labels,
+        variableBase: menu.variable || "selected_item",
+      })}\n-- [[TNS_TOOL_CONVERTED_MENU_END]]`);
+    }
+    for (const [index, form] of forms.entries()) {
+      chunks.push(`-- [[TNS_TOOL_CONVERTED_FORM_START: ${luaString(programName)}]]\n${LUA_TEMPLATE_PRESETS.find((template) => template.id === "form").build({
+        ...LUA_TEMPLATE_PRESETS.find((template) => template.id === "form").defaults,
+        title: form.title || `Calculo ${index + 1}`,
+        buttonText: "Calcular",
+        inputCount: form.fields.length,
+        fieldLabels: form.fields.map((field) => field.label),
+        fieldBindings: form.fields.map((field) => field.variable),
+        buttonActions: [{ type: "calc", condition: form.condition, expression: form.expression, target: form.target }],
+        primaryButtonAction: "none",
+      })}\n-- [[TNS_TOOL_CONVERTED_FORM_END]]`);
+    }
+  }
+  const body = chunks.length
+    ? chunks.join("\n\n")
+    : `-- No se detectaron menus/formularios convertibles automaticamente.\n-- Pega aqui plantillas manuales desde Edit > Plantillas Lua.`;
+  return buildDefaultLuaScriptApp().replace(LUA_PAGE_INSERT_MARKER, `${body}\n\n${LUA_PAGE_INSERT_MARKER}`);
+}
+
+function convertTnsToLuaInEditor(editor, currentLuaItem = null) {
+  const programs = tnsConvertSourcePrograms(currentLuaItem);
+  if (!programs.length) {
+    alert("No encontre programas TI-Basic cargados para convertir.");
+    return;
+  }
+  const generated = buildLuaFromTnsPrograms(programs);
+  if (editor.value.trim() && !confirm("Esto reemplazara el Lua actual con una version convertida desde TNS/TI-Basic. Continuar?")) return;
+  editor.value = generated;
+  editor.dispatchEvent(new Event("input", { bubbles: true }));
+}
+
 function showLuaGuide() {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -4459,6 +4618,7 @@ function showLuaEditor(item) {
           <div id="lua-edit-menu-panel" class="lua-edit-menu-panel" hidden>
             <button type="button" id="lua-templates">${escapeHtml(t("luaTemplates"))}</button>
             <button type="button" id="lua-page-editor">${escapeHtml(t("luaEditPages"))}</button>
+            <button type="button" id="lua-tns-convert">${escapeHtml(t("luaTnsConvert"))}</button>
           </div>
         </div>
         <button type="button" id="lua-save" class="green-tool-button">${escapeHtml(t("saveMenu"))}</button>
@@ -4587,6 +4747,11 @@ function showLuaEditor(item) {
   backdrop.querySelector("#lua-page-editor").addEventListener("click", () => {
     editMenuPanel.hidden = true;
     showLuaPageEditor(editor);
+  });
+  backdrop.querySelector("#lua-tns-convert").addEventListener("click", () => {
+    editMenuPanel.hidden = true;
+    convertTnsToLuaInEditor(editor, item);
+    analyze();
   });
   backdrop.querySelector("#lua-preview").addEventListener("click", () => {
     const caret = editor.selectionStart;
