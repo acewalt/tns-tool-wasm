@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-04-luajs-pattern-runtime";
+const SOURCE_VERSION = "2026-06-04-luajs-find-init-click";
 
 const I18N = {
   es: {
@@ -890,6 +890,7 @@ function wireDropZone() {
 }
 
 let globalFileDropDepth = 0;
+let globalFileDropClearTimer = null;
 
 function isFileDragEvent(event) {
   const types = Array.from(event.dataTransfer?.types || []);
@@ -898,9 +899,18 @@ function isFileDragEvent(event) {
 
 function clearGlobalDropState() {
   globalFileDropDepth = 0;
+  if (globalFileDropClearTimer) {
+    clearTimeout(globalFileDropClearTimer);
+    globalFileDropClearTimer = null;
+  }
   document.body?.classList.remove("drop-target-active");
   document.querySelector("#xml-doctor-panel")?.classList.remove("drop-target-active");
   document.querySelector(".drop-zone")?.classList.remove("dragging");
+}
+
+function scheduleGlobalDropStateClear() {
+  if (globalFileDropClearTimer) clearTimeout(globalFileDropClearTimer);
+  globalFileDropClearTimer = setTimeout(clearGlobalDropState, 1800);
 }
 
 function wireGlobalFileDropGuard() {
@@ -909,12 +919,14 @@ function wireGlobalFileDropGuard() {
     event.preventDefault();
     globalFileDropDepth += 1;
     document.body.classList.add("drop-target-active");
+    scheduleGlobalDropStateClear();
   });
   window.addEventListener("dragover", (event) => {
     if (!isFileDragEvent(event)) return;
     event.preventDefault();
     event.dataTransfer.dropEffect = "copy";
     document.body.classList.add("drop-target-active");
+    scheduleGlobalDropStateClear();
   });
   window.addEventListener("dragleave", (event) => {
     if (!isFileDragEvent(event)) return;
@@ -936,6 +948,7 @@ function wireGlobalFileDropGuard() {
   });
   window.addEventListener("dragend", clearGlobalDropState);
   window.addEventListener("blur", clearGlobalDropState);
+  document.addEventListener("visibilitychange", clearGlobalDropState);
 }
 
 function wireMouseGlow() {
@@ -3536,6 +3549,17 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   platform.window:invalidate()
   end,
   mouseDown = function(self, x, y)
+  if self.detailsOpen then
+    for i, button in ipairs(self.buttons) do
+      if button.id == "details" and x >= button.x and x <= button.x + button.w and y >= button.y and y <= button.y + 24 then
+        self.buttonFocus = i
+        self.focusArea = "buttons"
+        self.detailsOpen = false
+        platform.window:invalidate()
+        return
+      end
+    end
+  end
   for i, field in ipairs(self.fields) do
     local fy = ${rowStart} + (i - 1) * 28
     if x >= 82 and x <= 240 and y >= fy and y <= fy + 22 then
@@ -6269,6 +6293,21 @@ function compactStack(error) {
 
 function describeLuaJsError(error) {
   if (error && typeof error === "object" && "message" in error) return String(error.message || error);
+  if (error && typeof error === "object") {
+    try {
+      const seen = new WeakSet();
+      return JSON.stringify(error, (_key, value) => {
+        if (typeof value === "function") return "[Function]";
+        if (value && typeof value === "object") {
+          if (seen.has(value)) return "[Circular]";
+          seen.add(value);
+        }
+        return value;
+      });
+    } catch (_err) {
+      return Object.prototype.toString.call(error);
+    }
+  }
   return String(error);
 }
 
@@ -6289,18 +6328,20 @@ function luaJsStringFind(source, pattern, init, plain) {
     return index < 0 ? [null] : [index + 1, index + needle.length];
   }
   const regex = luaPatternToRegExp(needle);
-  regex.lastIndex = start;
-  const match = regex.exec(text);
+  const textFromStart = text.slice(start);
+  regex.lastIndex = 0;
+  const match = regex.exec(textFromStart);
   if (!match) return [null];
-  return [match.index + 1, match.index + match[0].length, ...match.slice(1)];
+  const matchStart = start + match.index;
+  return [matchStart + 1, matchStart + match[0].length, ...match.slice(1)];
 }
 
 function luaJsStringMatch(source, pattern, init) {
   const text = String(source ?? "");
   const start = Math.max(0, (Number(init) || 1) - 1);
   const regex = luaPatternToRegExp(String(pattern ?? ""));
-  regex.lastIndex = start;
-  const match = regex.exec(text);
+  regex.lastIndex = 0;
+  const match = regex.exec(text.slice(start));
   if (!match) return [null];
   return match.length > 1 ? match.slice(1) : [match[0]];
 }
