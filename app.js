@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-03-routed-tns-converter";
+const SOURCE_VERSION = "2026-06-03-video-runtime-fixes";
 
 const I18N = {
   es: {
@@ -882,6 +882,7 @@ function wireDropZone() {
   };
   wireTarget(zone, "dragging");
   wireTarget(document.querySelector("#xml-doctor-panel"), "drop-target-active");
+  wireTarget(document.body, "drop-target-active");
 }
 
 function wireGlobalFileDropGuard() {
@@ -1630,6 +1631,121 @@ local function visualSubstituteVariables(expr)
   end)
 end
 
+local function evalArithmeticExpression(expr)
+  local text = tostring(expr or ""):gsub("%s+", ""):gsub(",", ".")
+  local pos = 1
+  local parseExpression, parseTerm, parsePower, parseUnary, parsePrimary
+
+  local function consume(char)
+    if text:sub(pos, pos) == char then
+      pos = pos + 1
+      return true
+    end
+    return false
+  end
+
+  local function readNumber()
+    local startPos, endPos = text:find("^%d+%.?%d*[eE][%+%-]?%d+", pos)
+    if not startPos then startPos, endPos = text:find("^%d*%.?%d+", pos) end
+    if not startPos then return nil end
+    local value = tonumber(text:sub(startPos, endPos))
+    pos = endPos + 1
+    return value
+  end
+
+  parsePrimary = function()
+    if consume("(") then
+      local value = parseExpression()
+      consume(")")
+      return value
+    end
+    local number = readNumber()
+    if number ~= nil then return number end
+    local startPos, endPos, name = text:find("^([%a_][%w_]*)", pos)
+    if name then
+      pos = endPos + 1
+      if name == "pi" then return math.pi end
+      if consume("(") then
+        local arg = parseExpression()
+        consume(")")
+        if arg == nil then return nil end
+        if name == "sqrt" then return math.sqrt(arg) end
+        if name == "sin" then return math.sin(arg) end
+        if name == "cos" then return math.cos(arg) end
+        if name == "tan" then return math.tan(arg) end
+        if name == "ln" or name == "log" then return math.log(arg) end
+        if name == "exp" then return math.exp(arg) end
+        if name == "abs" then return math.abs(arg) end
+        return nil
+      end
+      return tonumber(getVar(name))
+    end
+    return nil
+  end
+
+  parseUnary = function()
+    if consume("+") then return parseUnary() end
+    if consume("-") then
+      local value = parseUnary()
+      return value ~= nil and -value or nil
+    end
+    return parsePrimary()
+  end
+
+  parsePower = function()
+    local left = parseUnary()
+    if left == nil then return nil end
+    if consume("^") then
+      local right = parsePower()
+      if right == nil then return nil end
+      return left ^ right
+    end
+    return left
+  end
+
+  parseTerm = function()
+    local value = parsePower()
+    if value == nil then return nil end
+    while true do
+      if consume("*") then
+        local right = parsePower()
+        if right == nil then return nil end
+        value = value * right
+      elseif consume("/") then
+        local right = parsePower()
+        if right == nil or right == 0 then return nil end
+        value = value / right
+      else
+        break
+      end
+    end
+    return value
+  end
+
+  parseExpression = function()
+    local value = parseTerm()
+    if value == nil then return nil end
+    while true do
+      if consume("+") then
+        local right = parseTerm()
+        if right == nil then return nil end
+        value = value + right
+      elseif consume("-") then
+        local right = parseTerm()
+        if right == nil then return nil end
+        value = value - right
+      else
+        break
+      end
+    end
+    return value
+  end
+
+  local value = parseExpression()
+  if value ~= nil and pos > #text then return value end
+  return nil
+end
+
 local function visualMissingVariable(expr)
   local normalized = visualNormalizeExpression(expr)
   local pos = 1
@@ -1648,6 +1764,8 @@ end
 local function evalVisualExpression(expr)
   if not expr or expr == "" then return nil end
   local substituted = visualSubstituteVariables(expr)
+  local arithmetic = evalArithmeticExpression(substituted)
+  if arithmetic ~= nil then return arithmetic end
   if math and math.eval then
     local ok, value = pcall(math.eval, substituted)
     if ok then return value end
@@ -3827,10 +3945,26 @@ function tnsPathStartsWith(path = [], prefix = []) {
   return prefix.every((entry, index) => path[index]?.variable === entry.variable && String(path[index]?.value) === String(entry.value));
 }
 
+function tnsPathsOverlap(a = [], b = []) {
+  return tnsPathStartsWith(a, b) || tnsPathStartsWith(b, a);
+}
+
+function activeTnsStoreCondition(stack = [], usedNames = []) {
+  const used = new Set(usedNames);
+  const frame = [...stack].reverse().find((candidate) => {
+    if (!candidate?.raw) return false;
+    const names = extractTiExpressionNames(candidate.raw);
+    if (names.some((name) => isTnsNavigationVariable(name))) return false;
+    return names.some((name) => used.has(name));
+  });
+  if (!frame) return "";
+  return frame.elseBranch ? invertTiCondition(frame.raw) || frame.raw : frame.raw;
+}
+
 function parseTnsMenuLiteral(literal = "") {
   const options = [];
   const text = String(literal || "").trim();
-  const regex = /(\d+)\s*:\s*([^0-9]+?)(?=\s+\d+\s*:|$)/g;
+  const regex = /(?:^|\s+)(\d+)\s*[:)]?\s*([\s\S]*?)(?=\s+\d+\s*[:)]?\s*|$)/g;
   let match;
   while ((match = regex.exec(text))) {
     const value = Number(match[1]);
@@ -3883,7 +4017,6 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
   const pages = [];
   const stack = [];
   const recentRequests = [];
-  const recentConditions = [];
   const recentDisps = [];
   let pageId = 0;
   for (let index = 0; index < lines.length; index += 1) {
@@ -3892,8 +4025,6 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
     if (ifMatch) {
       const parsed = parseTnsIfCondition(ifMatch[1]);
       stack.push({ ...parsed, elseBranch: false });
-      recentConditions.push(normalizeTiExpression(ifMatch[1]));
-      if (recentConditions.length > 8) recentConditions.shift();
       continue;
     }
     if (/^Else$/i.test(line)) {
@@ -3952,16 +4083,12 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
     const target = store[2];
     if (!expression || !target) continue;
     const usedNames = extractTiExpressionNames(expression);
+    const currentPath = tnsExactPath(stack);
     const fields = recentRequests
-      .filter((field) => usedNames.includes(field.variable))
+      .filter((field) => usedNames.includes(field.variable) && tnsPathsOverlap(currentPath, field.path || []))
       .slice(-5);
     if (!fields.length) continue;
-    const currentPath = tnsExactPath(stack);
-    const relatedCondition = [...recentConditions].reverse().find((candidate) => {
-      const names = extractTiExpressionNames(candidate);
-      if (names.some((name) => isTnsNavigationVariable(name))) return false;
-      return names.some((name) => usedNames.includes(name));
-    });
+    const relatedCondition = activeTnsStoreCondition(stack, usedNames);
     const details = recentDisps.slice(-4);
     for (let cursor = index + 1; cursor < lines.length && details.length < 6; cursor += 1) {
       const nextLine = lines[cursor];
@@ -3980,7 +4107,7 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
       fields,
       expression,
       target,
-      condition: relatedCondition ? invertTiCondition(relatedCondition) || relatedCondition : "",
+      condition: relatedCondition,
       details,
     });
   }
@@ -3998,7 +4125,11 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
         if (candidateIndex <= pageIndex) return false;
         return tnsPathStartsWith(candidate.path || candidate.parentPath || [], optionPath);
       });
-      return nested ? pageNumberById.get(nested.id) || 0 : 0;
+      const continuation = nested || pages.find((candidate, candidateIndex) => {
+        if (candidateIndex <= pageIndex) return false;
+        return tnsPathKey(candidate.path || candidate.parentPath || []) === tnsPathKey(page.parentPath);
+      });
+      return continuation ? pageNumberById.get(continuation.id) || 0 : 0;
     });
   }
   return pages;
