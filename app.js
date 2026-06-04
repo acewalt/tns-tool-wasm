@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-03-correlated-routes";
+const SOURCE_VERSION = "2026-06-04-visual-actions-runtime";
 
 const I18N = {
   es: {
@@ -1646,8 +1646,13 @@ local function setVar(name, value)
   end
 end
 
+local __visualFieldValues = nil
+
 local function getVar(name)
   if name and name ~= "" then
+    if __visualFieldValues and __visualFieldValues[name] ~= nil then
+      return __visualFieldValues[name]
+    end
     if _G[name] ~= nil then return _G[name] end
     if var and var.recall then
       local ok, value = pcall(var.recall, name)
@@ -1655,6 +1660,18 @@ local function getVar(name)
     end
   end
   return nil
+end
+
+local function prepareVisualFieldValues(fields)
+  local values = {}
+  if not fields then return values end
+  for _, field in ipairs(fields) do
+    if field.bind and field.bind ~= "" then
+      values[field.bind] = field.value
+      setVar(field.bind, field.value)
+    end
+  end
+  return values
 end
 
 local function visualNormalizeExpression(expr)
@@ -1887,14 +1904,20 @@ local function visualActionDetails(action)
   return visualReplaceVars(action.details)
 end
 
-local function runVisualActions(actions)
+local function runVisualActions(actions, fields)
   if not actions then return false end
+  local previousFieldValues = __visualFieldValues
+  __visualFieldValues = prepareVisualFieldValues(fields)
+  local function finish(result)
+    __visualFieldValues = previousFieldValues
+    return result
+  end
   for _, action in ipairs(actions) do
     local missing = visualMissingVariable((action.condition or "") .. " " .. (action.expression or ""))
     if missing then
       _G.__lastVisualActionResult = "Completa " .. missing
       _G.__lastVisualActionDetails = ""
-      return false
+      return finish(false)
     end
     local conditionOk = action.strictCondition == false or visualConditionOk(action.condition)
     if action.type == "calc" and action.target and action.target ~= "" then
@@ -1902,29 +1925,29 @@ local function runVisualActions(actions)
       if value == nil then
         _G.__lastVisualActionResult = "No se pudo calcular"
         _G.__lastVisualActionDetails = ""
-        return false
+        return finish(false)
       end
       if conditionOk or action.strictCondition ~= true then
         setVar(action.target, value)
         _G.__lastVisualActionResult = action.target .. "=" .. tostring(value)
         _G.__lastVisualActionDetails = visualActionDetails(action)
-        return true
+        return finish(true)
       end
     elseif conditionOk then
       if action.type == "set" and action.target and action.target ~= "" then
         setVar(action.target, action.value)
         _G.__lastVisualActionResult = action.target .. "=" .. tostring(action.value)
         _G.__lastVisualActionDetails = visualActionDetails(action)
-        return true
+        return finish(true)
       elseif action.type == "goto" and action.targetPage then
         goToPage(action.targetPage)
-        return true
+        return finish(true)
       end
     end
   end
   _G.__lastVisualActionResult = "Condicion no cumplida"
   _G.__lastVisualActionDetails = ""
-  return false
+  return finish(false)
 end
 
 addPage({
@@ -2938,7 +2961,7 @@ function parseDeclarationNames(raw = "") {
 
 function parseVariablesFromTiCode(code = "", owner = "", ownerType = "Prgm", parameters = "") {
   const map = new Map();
-  const normalized = decodeXmlTextEntities(String(code || "")).replaceAll("→", "->");
+  const normalized = decodeXmlTextEntities(String(code || "")).replace(/\u2192/g, "->");
   for (const name of parseDeclarationNames(parameters)) {
     addVariableCandidate(map, { name, owner, ownerType, scope: "parameter", dataType: "unknown", source: "parameters" });
   }
@@ -2984,7 +3007,7 @@ function collectLoadedTnsVariables(extraCode = "") {
 
 function normalizeTiExpression(expr = "") {
   return decodeXmlTextEntities(String(expr || ""))
-    .replaceAll("→", "->")
+    .replace(/\u2192/g, "->")
     .replaceAll("−", "-")
     .replaceAll("√", "sqrt")
     .replaceAll("π", "pi")
@@ -3025,7 +3048,7 @@ function collectLoadedTnsLogic(extraCode = "") {
   const conditions = new Set();
   const calculations = [];
   const addFromCode = (code = "") => {
-    const normalized = decodeXmlTextEntities(String(code || "")).replaceAll("→", "->");
+    const normalized = decodeXmlTextEntities(String(code || "")).replace(/\u2192/g, "->");
     for (const match of normalized.matchAll(/\bIf\s+(.+?)\s+Then\b/gi)) {
       const condition = normalizeTiExpression(match[1]);
       if (condition) conditions.add(condition);
@@ -3440,14 +3463,14 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end
   if self.detailsOpen then
     gc:setColorRGB(255, 255, 255)
-    gc:fillRect(42, 62, 230, 96)
+    gc:fillRect(42, 50, 230, 120)
     gc:setColorRGB(128, 128, 128)
-    gc:drawRect(42, 62, 230, 96)
+    gc:drawRect(42, 50, 230, 120)
     gc:setColorRGB(${text})
-    gc:drawString("${luaString(options.title)}", 50, 70, "top")
+    gc:drawString("${luaString(options.title)}", 50, 58, "top")
     local detail = self.detailsText ~= "" and self.detailsText or (self.resultText ~= "" and self.resultText or "Sin resultado aun")
-    self:drawMultiline(gc, detail, 50, 92, 14, 4)
-    gc:drawString("Esc/Detalles para cerrar", 50, 144, "top")
+    self:drawMultiline(gc, detail, 50, 80, 14, 6)
+    gc:drawString("Esc/Detalles para cerrar", 50, 154, "top")
   end
   end,
   arrowKey = function(self, direction)
@@ -3490,7 +3513,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     for _, field in ipairs(self.fields) do
       setVar(field.bind, field.value)
     end
-    if runVisualActions(self.actions) then
+    if runVisualActions(self.actions, self.fields) then
       self.resultText = tostring(_G.__lastVisualActionResult or "")
       self.detailsText = tostring(_G.__lastVisualActionDetails or "")
       platform.window:invalidate()
@@ -3600,6 +3623,15 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end
   end,
   mouseDown = function(self, x, y)
+  for i, item in ipairs(self.items) do
+    local itemY = 44 + (i - 1) * 24
+    if x >= 18 and x <= 168 and y >= itemY - 2 and y <= itemY + 18 then
+      self.selected = i
+      self:enterKey()
+      platform.window:invalidate()
+      return
+    end
+  end
   ${showBack ? `if x >= 8 and x <= 80 and y >= 184 and y <= 208 then
     ${backAction}
     return
@@ -3711,6 +3743,19 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end
   end,
   mouseDown = function(self, x, y)
+  local visible = 7
+  local top = math.max(1, math.min(self.selected, math.max(1, #self.items - visible + 1)))
+  if self.selected > visible then top = self.selected - visible + 1 end
+  for row = 1, math.min(visible, #self.items) do
+    local index = top + row - 1
+    local itemY = 30 + (row - 1) * 18
+    if x >= 10 and x <= 296 and y >= itemY and y <= itemY + 18 then
+      self.selected = index
+      self:enterKey()
+      platform.window:invalidate()
+      return
+    end
+  end
   ${showBack ? `if x >= 8 and x <= 80 and y >= 184 and y <= 208 then
     ${backAction}
     return
@@ -3810,7 +3855,7 @@ function tiBasicDispToProcedureText(line = "") {
   let out = raw.replace(/\bstring\s*\(\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*\)/gi, "[[$1]]");
   out = out.replace(/"([^"]*)"/g, "$1");
   out = out.replace(/&/g, "");
-  out = out.replaceAll("→", "->").replaceAll("−", "-").trim();
+  out = out.replace(/\u2192/g, "->").replaceAll("−", "-").trim();
   return out;
 }
 
@@ -3829,12 +3874,12 @@ function tnsConvertSourcePrograms(currentLuaItem = null) {
     const code = decodeXmlTextEntities(item.code || item.content || "");
     if (!code.trim()) return false;
     if (/platform\.apilevel|function\s+on\.paint|addPage\s*\(/.test(code)) return false;
-    return /\bPrgm\b|\bRequest\b|\bDisp\b|→|->/.test(code);
+    return /\bPrgm\b|\bRequest\b|\bDisp\b|\u2192|->/.test(code);
   });
 }
 
 function collectTnsMenuCandidates(code = "") {
-  const lines = decodeXmlTextEntities(code).replaceAll("→", "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const lines = decodeXmlTextEntities(code).replace(/\u2192/g, "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const menus = [];
   for (let index = 0; index < lines.length; index += 1) {
     const request = /^Request\s+"([^"]*)"\s*,\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)/i.exec(lines[index]);
@@ -3867,7 +3912,7 @@ function collectTnsMenuCandidates(code = "") {
 }
 
 function collectTnsFormCandidates(code = "") {
-  const lines = decodeXmlTextEntities(code).replaceAll("→", "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const lines = decodeXmlTextEntities(code).replace(/\u2192/g, "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const forms = [];
   const recentRequests = [];
   const recentConditions = [];
@@ -4158,7 +4203,7 @@ function tnsMenuDataBefore(lines = [], requestIndex = 0) {
 }
 
 function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
-  const lines = decodeXmlTextEntities(code).replaceAll("→", "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+  const lines = decodeXmlTextEntities(code).replace(/\u2192/g, "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const pages = [];
   const stack = [];
   const labelByPath = new Map();
@@ -6450,7 +6495,7 @@ function evaluateTiBasicFunction(definition, args, store, basicFunctions) {
     const statement = raw.trim();
     if (!statement || /^Local\b/i.test(statement) || /^Return\b/i.test(statement)) continue;
     const colonAssign = /^([A-Za-z_][A-Za-z0-9_]*)\s*:=\s*(.+)$/.exec(statement);
-    const arrowAssign = /^(.+?)(?:->|→)\s*([A-Za-z_][A-Za-z0-9_]*)$/.exec(statement);
+    const arrowAssign = /^(.+?)(?:->|\u2192)\s*([A-Za-z_][A-Za-z0-9_]*)$/.exec(statement);
     if (colonAssign || arrowAssign) {
       const dest = colonAssign ? colonAssign[1].trim() : arrowAssign[2].trim();
       const expr = colonAssign ? colonAssign[2].trim() : arrowAssign[1].trim();
