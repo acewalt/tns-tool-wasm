@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-03-drop-route-fixes";
+const SOURCE_VERSION = "2026-06-03-correlated-routes";
 
 const I18N = {
   es: {
@@ -3961,7 +3961,35 @@ function parseTnsIfCondition(condition = "") {
   return { raw: text, variable: match[1], operator: match[2], value: match[3] };
 }
 
-function tnsExactPath(stack = []) {
+function tnsPathKey(path = []) {
+  return path.map((entry) => `${entry.variable}=${entry.value}`).join("|");
+}
+
+function tnsOptionLabelKey(parentPath = [], variable = "", value = "") {
+  return `${tnsPathKey(parentPath)}::${String(variable || "").toLowerCase()}=${String(value)}`;
+}
+
+function cleanTnsOptionLabel(label = "") {
+  return String(label || "")
+    .replace(/^\s*\d+\s*[:)]\s*/, "")
+    .replace(/[>»]+$/g, "")
+    .trim();
+}
+
+function prettifyTnsBranchLabel(label = "") {
+  const clean = cleanTnsOptionLabel(label);
+  const compact = normalizeTnsSimilarityText(clean).replace(/\s+/g, "");
+  if (/^\(?v\)?(?:ve|velocidad)?$/.test(compact)) return "Velocidad (v)";
+  if (/^\(?x\)?(?:po|posicion)?$/.test(compact)) return "Posicion (x)";
+  if (/^\(?h\)?(?:alt|altura)?$/.test(compact)) return "Altura (h)";
+  if (/^\(?a\)?(?:aceleracion)?$/.test(compact)) return "Aceleracion (a)";
+  if (/^\(?t\)?con\(?v\)?$/.test(compact)) return "Tiempo con v";
+  if (/^\(?t\)?sin\(?v\)?$/.test(compact)) return "Tiempo sin v";
+  if (/^sin\(?t\)?\(?v\^2\)?$/.test(compact) || compact === "sintv2") return "Sin tiempo (v^2)";
+  return clean;
+}
+
+function tnsExactPath(stack = [], labelByPath = new Map()) {
   const path = [];
   for (const frame of stack) {
     if (!frame || !isTnsNavigationVariable(frame.variable) || frame.operator !== "=") continue;
@@ -3971,13 +3999,29 @@ function tnsExactPath(stack = []) {
       if (!Number.isFinite(numeric)) continue;
       value = String(numeric + 1);
     }
-    path.push({ variable: frame.variable, value: String(value) });
+    const label = labelByPath.get(tnsOptionLabelKey(path, frame.variable, value)) || "";
+    path.push({ variable: frame.variable, value: String(value), label });
   }
   return path;
 }
 
-function tnsPathKey(path = []) {
-  return path.map((entry) => `${entry.variable}=${entry.value}`).join("|");
+function tnsPathText(path = []) {
+  return path.map((entry) => entry.label || `${entry.variable}=${entry.value}`).filter(Boolean).join(" > ");
+}
+
+function tnsMenuTitle(title = "Menu", parentPath = []) {
+  const explicit = String(title || "").trim();
+  const generic = /^(menu|hallar:?|calcular:?|seleccionar:?|opciones:?)$/i.test(explicit);
+  if (explicit && explicit.toLowerCase() !== "menu" && !generic) return explicit;
+  const owner = [...parentPath].reverse().find((entry) => entry.label)?.label;
+  return owner || explicit || "Menu";
+}
+
+function tnsFormTitle(target = "", path = []) {
+  const owner = [...path].reverse().find((entry) => entry.label)?.label;
+  const text = String(target || "").trim();
+  if (text && text.length > 1) return text;
+  return owner || text || "Calculo";
 }
 
 function tnsPathWith(path = [], variable = "", value = "") {
@@ -4005,6 +4049,63 @@ function activeTnsStoreCondition(stack = [], usedNames = []) {
   return frame.elseBranch ? invertTiCondition(frame.raw) || frame.raw : frame.raw;
 }
 
+function normalizeTnsSimilarityText(text = "") {
+  return String(text || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9_µλσπθω]+/g, " ")
+    .trim();
+}
+
+function tnsSimilarityTokens(text = "") {
+  return normalizeTnsSimilarityText(text)
+    .split(/\s+/)
+    .filter((token) => token.length > 1 && !/^\d+$/.test(token));
+}
+
+function tnsTokenScore(a = "", b = "") {
+  const left = new Set(tnsSimilarityTokens(a));
+  const right = new Set(tnsSimilarityTokens(b));
+  if (!left.size || !right.size) return 0;
+  let overlap = 0;
+  for (const token of left) if (right.has(token)) overlap += 1;
+  return overlap / Math.max(left.size, right.size);
+}
+
+function tnsPageSearchText(page = {}) {
+  return [
+    page.title,
+    page.pathText,
+    page.target,
+    ...(page.fields || []).flatMap((field) => [field.label, field.variable]),
+    ...(page.details || []),
+    ...(page.options || []).map((option) => option.cleanLabel || option.label),
+  ].filter(Boolean).join(" ");
+}
+
+function findSimilarTnsTarget(pages = [], pageIndex = 0, option = {}, optionPath = [], parentPath = []) {
+  const optionText = option.cleanLabel || option.label || "";
+  let best = null;
+  let bestScore = 0;
+  for (let candidateIndex = pageIndex + 1; candidateIndex < pages.length; candidateIndex += 1) {
+    const candidate = pages[candidateIndex];
+    const candidatePath = candidate.path || candidate.parentPath || [];
+    if (candidatePath.length && !tnsPathsOverlap(candidatePath, optionPath) && !tnsPathsOverlap(candidatePath, parentPath)) continue;
+    const searchText = tnsPageSearchText(candidate);
+    let score = tnsTokenScore(optionText, searchText) * 100;
+    if (tnsPathStartsWith(candidatePath, optionPath)) score += 80;
+    if (tnsPathsOverlap(candidatePath, optionPath)) score += 15;
+    if ((candidate.pathText || "").includes(cleanTnsOptionLabel(optionText))) score += 20;
+    score += Math.max(0, 12 - Math.floor((candidateIndex - pageIndex) / 3));
+    if (score > bestScore) {
+      best = candidate;
+      bestScore = score;
+    }
+  }
+  return bestScore >= 28 ? best : null;
+}
+
 function parseTnsMenuLiteral(literal = "") {
   const options = [];
   const text = String(literal || "").trim();
@@ -4012,8 +4113,8 @@ function parseTnsMenuLiteral(literal = "") {
   let match;
   while ((match = regex.exec(text))) {
     const value = Number(match[1]);
-    const label = match[2].trim();
-    if (value && label) options.push({ value, label: `${value}) ${label} >` });
+    const cleanLabel = prettifyTnsBranchLabel(match[2].trim());
+    if (value && cleanLabel) options.push({ value, cleanLabel, label: `${value}) ${cleanLabel} >` });
   }
   return options;
 }
@@ -4060,6 +4161,7 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
   const lines = decodeXmlTextEntities(code).replaceAll("→", "->").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
   const pages = [];
   const stack = [];
+  const labelByPath = new Map();
   const recentRequests = [];
   const recentDisps = [];
   let pageId = 0;
@@ -4094,20 +4196,26 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
       if (isMenuRequest) {
         const menu = tnsMenuDataBefore(lines, index);
         if (menu.options.length >= 2) {
-          const parentPath = tnsExactPath(stack);
+          const parentPath = tnsExactPath(stack, labelByPath);
+          const title = tnsMenuTitle(menu.title || "Menu", parentPath);
+          for (const option of menu.options) {
+            labelByPath.set(tnsOptionLabelKey(parentPath, variable, option.value), option.cleanLabel || cleanTnsOptionLabel(option.label));
+          }
           pages.push({
             id: `page_${++pageId}`,
             type: "menu",
-            title: menu.title || "Menu",
+            title,
             variable,
             parentPath,
             path: parentPath,
+            pathText: tnsPathText(parentPath),
             options: menu.options,
+            lineIndex: index,
           });
         }
         recentDisps.length = 0;
       } else {
-        recentRequests.push({ label: prompt || variable, variable, path: tnsExactPath(stack) });
+        recentRequests.push({ label: prompt || variable, variable, path: tnsExactPath(stack, labelByPath) });
         if (recentRequests.length > 10) recentRequests.shift();
       }
       continue;
@@ -4127,7 +4235,7 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
     const target = store[2];
     if (!expression || !target) continue;
     const usedNames = extractTiExpressionNames(expression);
-    const currentPath = tnsExactPath(stack);
+    const currentPath = tnsExactPath(stack, labelByPath);
     const fields = recentRequests
       .filter((field) => usedNames.includes(field.variable) && tnsPathsOverlap(currentPath, field.path || []))
       .slice(-5);
@@ -4146,13 +4254,15 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
     pages.push({
       id: `page_${++pageId}`,
       type: "form",
-      title: target,
+      title: tnsFormTitle(target, currentPath),
       path: currentPath,
+      pathText: tnsPathText(currentPath),
       fields,
       expression,
       target,
       condition: relatedCondition,
       details,
+      lineIndex: index,
     });
   }
   const pageNumberById = new Map(pages.map((page, index) => [page.id, firstPageNumber + index]));
@@ -4169,7 +4279,8 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
         if (candidateIndex <= pageIndex) return false;
         return tnsPathStartsWith(candidate.path || candidate.parentPath || [], optionPath);
       });
-      const continuation = nested || pages.find((candidate, candidateIndex) => {
+      const similar = nested || findSimilarTnsTarget(pages, pageIndex, option, optionPath, page.parentPath);
+      const continuation = similar || pages.find((candidate, candidateIndex) => {
         if (candidateIndex <= pageIndex) return false;
         return tnsPathKey(candidate.path || candidate.parentPath || []) === tnsPathKey(page.parentPath);
       });
