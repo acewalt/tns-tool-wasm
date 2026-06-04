@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-03-video-runtime-fixes";
+const SOURCE_VERSION = "2026-06-03-drop-route-fixes";
 
 const I18N = {
   es: {
@@ -865,6 +865,7 @@ function wireDropZone() {
       target.addEventListener(eventName, (event) => {
         event.preventDefault();
         event.stopPropagation();
+        if (event.dataTransfer) event.dataTransfer.dropEffect = "copy";
         target.classList.add(className);
       });
     }
@@ -874,24 +875,67 @@ function wireDropZone() {
         event.stopPropagation();
         if (eventName === "dragleave" && event.relatedTarget && target.contains(event.relatedTarget)) return;
         target.classList.remove(className);
+        if (eventName === "drop") clearGlobalDropState();
       });
     }
     target.addEventListener("drop", (event) => {
-      handleDroppedFiles(event.dataTransfer.files).catch((err) => log(`ERROR drop: ${err.stack || err.message}`));
+      clearGlobalDropState();
+      handleDroppedFiles(event.dataTransfer.files)
+        .catch((err) => log(`ERROR drop: ${err.stack || err.message}`))
+        .finally(clearGlobalDropState);
     });
   };
   wireTarget(zone, "dragging");
   wireTarget(document.querySelector("#xml-doctor-panel"), "drop-target-active");
-  wireTarget(document.body, "drop-target-active");
+}
+
+let globalFileDropDepth = 0;
+
+function isFileDragEvent(event) {
+  const types = Array.from(event.dataTransfer?.types || []);
+  return types.includes("Files") || types.includes("application/x-moz-file");
+}
+
+function clearGlobalDropState() {
+  globalFileDropDepth = 0;
+  document.body?.classList.remove("drop-target-active");
+  document.querySelector("#xml-doctor-panel")?.classList.remove("drop-target-active");
+  document.querySelector(".drop-zone")?.classList.remove("dragging");
 }
 
 function wireGlobalFileDropGuard() {
-  for (const eventName of ["dragenter", "dragover", "dragleave", "drop"]) {
-    window.addEventListener(eventName, (event) => {
-      if (!event.dataTransfer?.types?.includes("Files")) return;
-      event.preventDefault();
-    });
-  }
+  window.addEventListener("dragenter", (event) => {
+    if (!isFileDragEvent(event)) return;
+    event.preventDefault();
+    globalFileDropDepth += 1;
+    document.body.classList.add("drop-target-active");
+  });
+  window.addEventListener("dragover", (event) => {
+    if (!isFileDragEvent(event)) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+    document.body.classList.add("drop-target-active");
+  });
+  window.addEventListener("dragleave", (event) => {
+    if (!isFileDragEvent(event)) return;
+    event.preventDefault();
+    globalFileDropDepth = Math.max(0, globalFileDropDepth - 1);
+    const leftViewport = event.clientX <= 0 || event.clientY <= 0 || event.clientX >= window.innerWidth || event.clientY >= window.innerHeight;
+    if (globalFileDropDepth === 0 || leftViewport) clearGlobalDropState();
+  });
+  window.addEventListener("drop", (event) => {
+    if (!isFileDragEvent(event)) return;
+    event.preventDefault();
+    const files = event.dataTransfer?.files;
+    clearGlobalDropState();
+    if (files?.length) {
+      handleDroppedFiles(files)
+        .catch((err) => log(`ERROR drop: ${err.stack || err.message}`))
+        .finally(clearGlobalDropState);
+    }
+  });
+  window.addEventListener("dragend", clearGlobalDropState);
+  window.addEventListener("blur", clearGlobalDropState);
 }
 
 function wireMouseGlow() {
@@ -4141,7 +4185,7 @@ function buildLuaFromTnsPrograms(programs = []) {
   for (const program of programs) {
     const code = decodeXmlTextEntities(program.code || program.content || "");
     const programName = program.program_name || program.name || "Programa";
-    const routedPages = collectTnsRoutedPages(code, emittedPages + 2).slice(0, 42);
+    const routedPages = collectTnsRoutedPages(code, emittedPages + 2);
     for (const [index, page] of routedPages.entries()) {
       if (page.type === "menu") {
         chunks.push(`-- [[TNS_TOOL_CONVERTED_MENU_START: ${luaString(programName)}]]\n${LUA_TEMPLATE_PRESETS.find((template) => template.id === "probas-menu").build({
