@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-04-luajs-find-init-click";
+const SOURCE_VERSION = "2026-06-04-luajs-return-values";
 
 const I18N = {
   es: {
@@ -6203,6 +6203,7 @@ function hardenLuaJsPreviewRuntime() {
     try {
       return originalCall(func, args);
     } catch (error) {
+      if (error && Array.isArray(error.vars)) return error.vars;
       if (/metatable|Could not call/.test(String(error?.message || ""))) return [];
       throw error;
     }
