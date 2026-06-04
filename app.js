@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-04-visual-actions-runtime";
+const SOURCE_VERSION = "2026-06-04-luajs-pattern-runtime";
 
 const I18N = {
   es: {
@@ -5980,7 +5980,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       global.callEvent("paint", gc());
       drawLuaJsNativeEditors(ctx, nativeEditors);
     } catch (error) {
-      log(`ERROR repaint LuaJS: ${error.message}\n${compactStack(error)}`);
+      log(`ERROR repaint LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
       throw error;
     }
     global.lua_tableset(windowTable(), "invalidated", false);
@@ -6004,7 +6004,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
         repaint(false);
       }
     } catch (error) {
-      log(`ERROR timer LuaJS: ${error.message}\n${compactStack(error)}`);
+      log(`ERROR timer LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
       if (timerId) window.clearInterval(timerId);
     }
   }
@@ -6014,7 +6014,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       global.callEvent("create", gc());
       global.callEvent("resize", canvas.width, canvas.height);
     } catch (error) {
-      log(`ERROR boot LuaJS: ${error.message}\n${compactStack(error)}`);
+      log(`ERROR boot LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
       throw error;
     }
     repaint(true);
@@ -6101,7 +6101,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       repaint(true);
       log(`Evento ejecutado en LuaJS: ${name}`);
     } catch (error) {
-      log(`ERROR evento LuaJS ${name}: ${error.message}\n${compactStack(error)}`);
+      log(`ERROR evento LuaJS ${name}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
     }
   }
   function charIn(char) {
@@ -6115,7 +6115,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       repaint(true);
       log(`Tecla enviada a LuaJS: ${char}`);
     } catch (error) {
-      log(`ERROR tecla LuaJS ${char}: ${error.message}\n${compactStack(error)}`);
+      log(`ERROR tecla LuaJS ${char}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
     }
   }
   function mouseClick(x, y) {
@@ -6125,7 +6125,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       repaint(true);
       log(`Click enviado a LuaJS: ${x},${y}`);
     } catch (error) {
-      log(`ERROR click LuaJS ${x},${y}: ${error.message}\n${compactStack(error)}`);
+      log(`ERROR click LuaJS ${x},${y}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
     }
   }
   function close() {
@@ -6267,6 +6267,11 @@ function compactStack(error) {
     .join("\n");
 }
 
+function describeLuaJsError(error) {
+  if (error && typeof error === "object" && "message" in error) return String(error.message || error);
+  return String(error);
+}
+
 function ensureLuaJsTable(name) {
   if (!window.G?.str) throw new Error("LuaJS global table is not initialized");
   if (!window.G.str[name]) {
@@ -6286,13 +6291,18 @@ function luaJsStringFind(source, pattern, init, plain) {
   const regex = luaPatternToRegExp(needle);
   regex.lastIndex = start;
   const match = regex.exec(text);
-  return match ? [match.index + 1, match.index + match[0].length] : [null];
+  if (!match) return [null];
+  return [match.index + 1, match.index + match[0].length, ...match.slice(1)];
 }
 
 function luaJsStringMatch(source, pattern, init) {
-  const result = luaJsStringFind(source, pattern, init);
-  if (result[0] == null) return [null];
-  return [String(source ?? "").slice(result[0] - 1, result[1])];
+  const text = String(source ?? "");
+  const start = Math.max(0, (Number(init) || 1) - 1);
+  const regex = luaPatternToRegExp(String(pattern ?? ""));
+  regex.lastIndex = start;
+  const match = regex.exec(text);
+  if (!match) return [null];
+  return match.length > 1 ? match.slice(1) : [match[0]];
 }
 
 function luaJsStringGsub(source, pattern, replacement, limit) {
@@ -6341,8 +6351,18 @@ function luaPatternToRegExp(pattern) {
       } else {
         output += "\\[";
       }
+    } else if (char === ".") {
+      output += "[\\s\\S]";
     } else if (char === "(" || char === ")") {
       output += char;
+    } else if (char === "^") {
+      output += index === 0 ? "^" : "\\^";
+    } else if (char === "$") {
+      output += index === pattern.length - 1 ? "$" : "\\$";
+    } else if (char === "*" || char === "+" || char === "?") {
+      output += char;
+    } else if (char === "-") {
+      output += "*?";
     } else if ("^$.*+?{}|\\".includes(char)) {
       output += `\\${char}`;
     } else {
