@@ -27,6 +27,7 @@ https://acewalt.github.io/tns-tool-wasm/
 - Edit generated Lua pages visually after inserting templates.
 - Convert common TI-Basic/PRG menu-and-request programs into visual Lua pages.
 - Work in Spanish, English, and French.
+ ![New](docs/images/new.gif)
 
 ## Syntax Doctor XML
 
@@ -65,6 +66,8 @@ It includes:
 ## Lua Templates
 
 The template builder can generate reusable visual Lua pages.
+![Templates](docs/images/templates.gif)
+ inspired by ProbasMaster, Formula Pro, and ABA Logique Nspire 2, were an experiment.
 
 Available template families include:
 
@@ -78,6 +81,7 @@ Templates can be inserted into existing Lua code. Generated blocks include comme
 ## TI-Basic/PRG To Lua Visual Converter
 
 The `TNS to Lua convert code` tool is experimental.
+![Convert](docs/images/convert.gif)
 
 It is not a universal converter for every possible program or every programming language. It is a pattern-based converter focused on common TI-Basic/PRG structures:
 
@@ -134,32 +138,6 @@ http://localhost:8000/
 ```
 
 Do not open `index.html` with `file://`, because browsers block the `fetch()` calls needed to load Python modules and runtime assets.
-
-## Adding Screenshots To This README
-
-Create a folder such as:
-
-```text
-docs/images/
-```
-
-Add an image file, for example:
-
-```text
-docs/images/lua-preview.png
-```
-
-Then reference it in Markdown:
-
-```markdown
-![Lua preview](docs/images/lua-preview.png)
-```
-
-For GitHub-hosted images, you can also use a full URL:
-
-```markdown
-![Demo screenshot](https://example.com/screenshot.png)
-```
 
 ## Technical Notes
 
