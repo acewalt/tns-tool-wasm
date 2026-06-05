@@ -66,6 +66,8 @@ It includes:
 - Richer code highlighting for Lua variables, keywords, strings, numbers, and comments.
 - Page navigation helpers such as next, back, home, details, and direct page routing.
 
+ ![Lua](docs/images/lua.gif)
+
 ## Lua Templates
 
 The template builder can generate reusable visual Lua pages.
