@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-04-luajs-return-values";
+const SOURCE_VERSION = "2026-06-04-tns-routes-info-preview2";
 
 const I18N = {
   es: {
@@ -1653,6 +1653,9 @@ end
 local function setVar(name, value)
   if name and name ~= "" then
     _G[name] = value
+    if value == nil or tostring(value) == "" then
+      return
+    end
     if var and var.store then
       pcall(var.store, name, value)
     end
@@ -3425,10 +3428,6 @@ const LUA_TEMPLATE_PRESETS = [
   gc:drawString(text, x + (w - gc:getStringWidth(text)) / 2, y + 5, "top")
   end,
   drawInput = function(self, gc, field, x, y, w, h)
-  if field.bind and field.bind ~= "" and field.value == "" then
-    local stored = getVar(field.bind)
-    if stored ~= nil then field.value = tostring(stored) end
-  end
   gc:setColorRGB(255, 255, 255)
   gc:fillRect(x, y, w, h)
   gc:setColorRGB(field.focused and ${primaryR} or 128, field.focused and ${primaryG} or 128, field.focused and ${primaryB} or 128)
@@ -4048,6 +4047,17 @@ function cleanTnsOptionLabel(label = "") {
 function prettifyTnsBranchLabel(label = "") {
   const clean = cleanTnsOptionLabel(label);
   const compact = normalizeTnsSimilarityText(clean).replace(/\s+/g, "");
+  if (compact === "inercia") return "Primera ley (Inercia)";
+  if (compact === "fma") return "Segunda ley (F=m·a)";
+  if (compact === "accionreacc" || compact === "accionreaccion") return "Tercera ley (Accion-Reaccion)";
+  if (compact === "pmgpeso" || compact === "pmg") return "Peso (P=m·g)";
+  if (compact === "nfuerza") return "Fuerza";
+  if (compact === "mmasa" || compact === "kgmasa") return "Masa";
+  if (compact === "aacems2" || compact === "aaceleracion") return "Aceleracion (a)";
+  if (compact === "ncalcularpeso") return "Calcular peso";
+  if (compact === "kgcalcularmasa") return "Calcular masa";
+  if (compact === "vdesdeh") return "v desde h";
+  if (compact === "hdesdev") return "h desde v";
   if (/^\(?v\)?(?:ve|velocidad)?$/.test(compact)) return "Velocidad (v)";
   if (/^\(?x\)?(?:po|posicion)?$/.test(compact)) return "Posicion (x)";
   if (/^\(?h\)?(?:alt|altura)?$/.test(compact)) return "Altura (h)";
@@ -4055,6 +4065,21 @@ function prettifyTnsBranchLabel(label = "") {
   if (/^\(?t\)?con\(?v\)?$/.test(compact)) return "Tiempo con v";
   if (/^\(?t\)?sin\(?v\)?$/.test(compact)) return "Tiempo sin v";
   if (/^sin\(?t\)?\(?v\^2\)?$/.test(compact) || compact === "sintv2") return "Sin tiempo (v^2)";
+  return clean;
+}
+
+function prettifyTnsRequestLabel(label = "", variable = "") {
+  const clean = String(label || variable || "").trim();
+  const compact = normalizeTnsSimilarityText(clean).replace(/\s+/g, "");
+  if (/^(kg)?masa$/.test(compact) || compact === "kgmasa") return "Masa (kg)";
+  if (compact === "nfuerza" || compact === "fuerzan") return "Fuerza (N)";
+  if (compact === "npeso" || compact === "peson") return "Peso (N)";
+  if (compact === "aacemss" || compact === "aacem2s" || /^aace/.test(compact)) return "Aceleracion (m/s^2)";
+  if (compact === "v0velocidadinicial" || compact === "v0") return "Velocidad inicial (v0)";
+  if (compact === "haltura" || compact === "altura") return "Altura (h)";
+  if (compact === "mdistancia" || compact === "distanciam") return "Distancia (m)";
+  if (compact === "vvelocidad" || compact === "velocidadms") return "Velocidad (m/s)";
+  if (compact === "angulo") return "Angulo";
   return clean;
 }
 
@@ -4086,9 +4111,14 @@ function tnsMenuTitle(title = "Menu", parentPath = []) {
   return owner || explicit || "Menu";
 }
 
+function isGenericTnsResultName(text = "") {
+  return /^(a|d|dir|emi|f|g|h|m|modo|opcion|peso|sel|seleccion|sub|t|v|vf|vi|v0|x|altura|angulo|constanteg|desplazamiento|distancia|fuerza|fuerza1|fuerza2|fuerzaneta|gravedad|masa|masa1|masa2|trabajo|velocidad|aceleracion|energiapotencial|energiacinetica)$/i.test(String(text || "").trim());
+}
+
 function tnsFormTitle(target = "", path = []) {
   const owner = [...path].reverse().find((entry) => entry.label)?.label;
   const text = String(target || "").trim();
+  if (owner && (!text || text.length <= 2 || isGenericTnsResultName(text))) return owner;
   if (text && text.length > 1) return text;
   return owner || text || "Calculo";
 }
@@ -4233,7 +4263,28 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
   const labelByPath = new Map();
   const recentRequests = [];
   const recentDisps = [];
+  const contentPathKeys = new Set();
   let pageId = 0;
+  const markContentPath = (path = []) => {
+    const key = tnsPathKey(path);
+    if (key) contentPathKeys.add(key);
+  };
+  const pushInfoPageIfNeeded = (path = [], lineIndex = 0) => {
+    const key = tnsPathKey(path);
+    if (!key || contentPathKeys.has(key) || !recentDisps.length) return;
+    const details = recentDisps.slice(-8).filter((line) => line && !/^Error$/i.test(line));
+    if (!details.length) return;
+    pages.push({
+      id: `page_${++pageId}`,
+      type: "info",
+      title: tnsFormTitle("", path),
+      path,
+      pathText: tnsPathText(path),
+      details,
+      lineIndex,
+    });
+    contentPathKeys.add(key);
+  };
   for (let index = 0; index < lines.length; index += 1) {
     const line = lines[index];
     const ifMatch = /^If\s+(.+?)\s+Then$/i.exec(line);
@@ -4248,6 +4299,7 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
       continue;
     }
     if (/^EndIf$/i.test(line)) {
+      pushInfoPageIfNeeded(tnsExactPath(stack, labelByPath), index);
       stack.pop();
       recentDisps.length = 0;
       continue;
@@ -4281,10 +4333,11 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
             options: menu.options,
             lineIndex: index,
           });
+          markContentPath(parentPath);
         }
         recentDisps.length = 0;
       } else {
-        recentRequests.push({ label: prompt || variable, variable, path: tnsExactPath(stack, labelByPath) });
+        recentRequests.push({ label: prettifyTnsRequestLabel(prompt, variable), variable, path: tnsExactPath(stack, labelByPath) });
         if (recentRequests.length > 10) recentRequests.shift();
       }
       continue;
@@ -4333,6 +4386,7 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
       details,
       lineIndex: index,
     });
+    markContentPath(currentPath);
   }
   const pageNumberById = new Map(pages.map((page, index) => [page.id, firstPageNumber + index]));
   for (const [pageIndex, page] of pages.entries()) {
@@ -4357,6 +4411,44 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
     });
   }
   return pages;
+}
+
+function buildTnsInfoPage(page = {}) {
+  const title = luaString(page.title || page.name || "Informacion");
+  const lines = (page.details || []).slice(0, 8).map((line) => `"${luaString(line)}"`).join(", ");
+  return `addPage({
+  name = "${title}",
+  lines = {${lines}},
+  paint = function(self, gc)
+  gc:setColorRGB(245, 245, 245)
+  gc:fillRect(0, 0, platform.window:width(), platform.window:height())
+  gc:setFont("sansserif", "b", 12)
+  gc:setColorRGB(0, 0, 0)
+  gc:drawString("${title}", 8, 8, "top")
+  gc:setFont("sansserif", "r", 10)
+  for i, line in ipairs(self.lines) do
+    gc:drawString(line, 14, 34 + (i - 1) * 18, "top")
+  end
+  gc:setColorRGB(128, 128, 128)
+  gc:fillRect(8, 180, 304, 2)
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(8, 188, 72, 24)
+  gc:setColorRGB(128, 128, 128)
+  gc:drawRect(8, 188, 72, 24)
+  gc:setColorRGB(0, 0, 0)
+  local backLabel = "◀ Retour"
+  gc:drawString(backLabel, 8 + (72 - gc:getStringWidth(backLabel)) / 2, 193, "top")
+  end,
+  enterKey = function(self)
+  goBack()
+  end,
+  mouseDown = function(self, x, y)
+  if x >= 8 and x <= 80 and y >= 188 and y <= 212 then goBack() end
+  end,
+  escapeKey = function(self)
+  goBack()
+  end
+})`;
 }
 
 function buildLuaFromTnsPrograms(programs = []) {
@@ -4393,6 +4485,8 @@ function buildLuaFromTnsPrograms(programs = []) {
           buttonActions: [{ type: "calc", condition: page.condition, expression: page.expression, target: page.target, strictCondition: false, details: page.details }],
           primaryButtonAction: "none",
         })}\n-- [[TNS_TOOL_CONVERTED_FORM_END]]`);
+      } else if (page.type === "info") {
+        chunks.push(`-- [[TNS_TOOL_CONVERTED_INFO_START: ${luaString(programName)}]]\n${buildTnsInfoPage(page)}\n-- [[TNS_TOOL_CONVERTED_INFO_END]]`);
       }
     }
     emittedPages += routedPages.length;
@@ -5275,9 +5369,11 @@ function showLuaPageEditor(editor) {
     const page = pages[selectedPageIndex] || pages[0];
     const draft = draftForPage(page);
     const seq = ++pagePreviewSeq;
-    drawLuaPagePreview(previewCanvas, page, draft);
+    const ctx = previewCanvas.getContext("2d");
+    ctx.clearRect(0, 0, previewCanvas.width, previewCanvas.height);
     renderLuaSnapshotToCanvas(buildLuaPagePreviewCode(editor.value, page, draft), previewCanvas).then((ok) => {
-      if (!ok || seq !== pagePreviewSeq) drawLuaPagePreview(previewCanvas, page, draft);
+      if (seq !== pagePreviewSeq) return;
+      if (!ok) drawLuaPagePreview(previewCanvas, page, draft);
     });
   };
   const render = () => {
