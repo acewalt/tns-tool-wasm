@@ -27,6 +27,8 @@ https://acewalt.github.io/tns-tool-wasm/
 - Edit generated Lua pages visually after inserting templates.
 - Convert common TI-Basic/PRG menu-and-request programs into visual Lua pages.
 - Work in Spanish, English, and French.
+  
+ ![New](docs/images/new.gif)
 
 ## Syntax Doctor XML
 
@@ -45,6 +47,8 @@ It includes:
 - Formatting tools for spacing and empty-line cleanup.
 - Save-back into XML.
 - ZIP download of the edited XML project.
+
+![Syntax](docs/images/sintax_doctor.gif)
 
 ## Lua ScriptApp Tools
 
@@ -66,6 +70,8 @@ It includes:
 
 The template builder can generate reusable visual Lua pages.
 
+ inspired by ProbasMaster, Formula Pro, and ABA Logique Nspire 2, were an experiment.
+
 Available template families include:
 
 - Formulario: calculator-style form with input fields, variable bindings, result output, details popup, and configurable buttons.
@@ -74,6 +80,8 @@ Available template families include:
 - Popup: centered message box with configurable size, colors, text, and action.
 
 Templates can be inserted into existing Lua code. Generated blocks include comments so users can see where each inserted template starts and ends.
+
+![Templates](docs/images/templates.gif)
 
 ## TI-Basic/PRG To Lua Visual Converter
 
@@ -88,6 +96,8 @@ It is not a universal converter for every possible program or every programming 
 - formulas using variables, arithmetic, powers, square roots, and common math functions.
 - result/procedure text generated from nearby `Disp` lines.
 - menu choices that set constants before opening the next form.
+
+  ![Convert](docs/images/convert.gif)
 
 The goal is to convert many structured calculator programs into editable Lua visual pages, not to perfectly understand every possible TI-Basic program.
 
@@ -134,32 +144,6 @@ http://localhost:8000/
 ```
 
 Do not open `index.html` with `file://`, because browsers block the `fetch()` calls needed to load Python modules and runtime assets.
-
-## Adding Screenshots To This README
-
-Create a folder such as:
-
-```text
-docs/images/
-```
-
-Add an image file, for example:
-
-```text
-docs/images/lua-preview.png
-```
-
-Then reference it in Markdown:
-
-```markdown
-![Lua preview](docs/images/lua-preview.png)
-```
-
-For GitHub-hosted images, you can also use a full URL:
-
-```markdown
-![Demo screenshot](https://example.com/screenshot.png)
-```
 
 ## Technical Notes
 
