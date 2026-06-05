@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-04-tns-routes-info-preview2";
+const SOURCE_VERSION = "2026-06-04-tns-menu-actions";
 
 const I18N = {
   es: {
@@ -1698,7 +1698,7 @@ end
 local function visualSubstituteVariables(expr)
   local normalized = visualNormalizeExpression(expr)
   return normalized:gsub("([%a_][%w_]*)", function(name)
-    if name == "math" or name == "sqrt" or name == "sin" or name == "cos" or name == "tan" or name == "pi" then
+    if name == "math" or name == "sqrt" or name == "sin" or name == "cos" or name == "tan" or name == "pi" or name == "e" then
       return name
     end
     local value = getVar(name)
@@ -1829,7 +1829,7 @@ local function visualMissingVariable(expr)
   while pos <= #normalized do
     local startPos, endPos, name = normalized:find("([%a_][%w_]*)", pos)
     if not startPos then break end
-    if name ~= "math" and name ~= "sqrt" and name ~= "sin" and name ~= "cos" and name ~= "tan" and name ~= "pi" then
+    if name ~= "math" and name ~= "sqrt" and name ~= "sin" and name ~= "cos" and name ~= "tan" and name ~= "pi" and name ~= "e" then
       local value = getVar(name)
       if value == nil or tostring(value) == "" then return name end
     end
@@ -1906,7 +1906,12 @@ local function visualReplaceVars(text)
   while pos <= #out do
     local startPos, endPos, name = out:find("%[%[([%a_][%w_]*)%]%]", pos)
     if not startPos then break end
-    local value = getVar(name)
+    local value
+    if name == "__result" then
+      value = _G.__lastVisualActionValue
+    else
+      value = getVar(name)
+    end
     if value == nil then value = "" end
     value = tostring(value)
     out = out:sub(1, startPos - 1) .. value .. out:sub(endPos + 1)
@@ -1928,6 +1933,7 @@ local function runVisualActions(actions, fields)
     __visualFieldValues = previousFieldValues
     return result
   end
+  local didRun = false
   for _, action in ipairs(actions) do
     local missing = visualMissingVariable((action.condition or "") .. " " .. (action.expression or ""))
     if missing then
@@ -1945,22 +1951,26 @@ local function runVisualActions(actions, fields)
       end
       if conditionOk or action.strictCondition ~= true then
         setVar(action.target, value)
-        _G.__lastVisualActionResult = action.target .. "=" .. tostring(value)
-        _G.__lastVisualActionDetails = visualActionDetails(action)
-        return finish(true)
+        _G.__lastVisualActionValue = value
+        if not action.silent then
+          _G.__lastVisualActionResult = action.target .. "=" .. tostring(value)
+          _G.__lastVisualActionDetails = visualActionDetails(action)
+        end
+        didRun = true
       end
     elseif conditionOk then
       if action.type == "set" and action.target and action.target ~= "" then
         setVar(action.target, action.value)
         _G.__lastVisualActionResult = action.target .. "=" .. tostring(action.value)
         _G.__lastVisualActionDetails = visualActionDetails(action)
-        return finish(true)
+        didRun = true
       elseif action.type == "goto" and action.targetPage then
         goToPage(action.targetPage)
         return finish(true)
       end
     end
   end
+  if didRun then return finish(true) end
   _G.__lastVisualActionResult = "Condicion no cumplida"
   _G.__lastVisualActionDetails = ""
   return finish(false)
@@ -2832,12 +2842,19 @@ function luaVisualActionsTable(actions = []) {
     if (action.value !== undefined) parts.push(`value="${luaString(action.value)}"`);
     if (action.targetPage) parts.push(`targetPage=${Number(action.targetPage) || 1}`);
     if (action.strictCondition === false) parts.push(`strictCondition=false`);
+    if (action.silent) parts.push("silent=true");
     if (action.details) {
       const details = Array.isArray(action.details) ? action.details.join("\n") : String(action.details);
       parts.push(`details="${luaString(details)}"`);
     }
     return `{${parts.join(", ")}}`;
   }).join(", ")}}`;
+}
+
+function luaNestedVisualActionsTable(groups = []) {
+  const cleaned = Array.isArray(groups) ? groups : [];
+  if (!cleaned.length) return "{}";
+  return `{${cleaned.map((actions) => luaVisualActionsTable(actions || [])).join(", ")}}`;
 }
 
 function luaFieldsTable(fields = []) {
@@ -3032,7 +3049,7 @@ function normalizeTiExpression(expr = "") {
 }
 
 function extractTiExpressionNames(expr = "") {
-  const reserved = new Set(["and", "or", "not", "then", "if", "approx", "sqrt", "sin", "cos", "tan", "ln", "exp", "string", "pi"]);
+  const reserved = new Set(["and", "or", "not", "then", "if", "approx", "sqrt", "sin", "cos", "tan", "ln", "exp", "string", "pi", "e"]);
   const names = new Set();
   for (const match of String(expr || "").matchAll(/[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*/g)) {
     const name = match[0];
@@ -3599,6 +3616,8 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
       const targets = Array.from({ length: count }, (_, index) => Number(options.menuTargets?.[index]) || 0);
       const items = labels.map((label) => `"${luaString(label)}"`).join(", ");
       const targetList = targets.join(", ");
+      const optionActions = Array.from({ length: count }, (_, index) => options.optionActions?.[index] || []);
+      const optionActionsTable = luaNestedVisualActionsTable(optionActions);
       const fallbackAction = luaTemplateActionSnippet(options.action);
       const backAction = luaTemplateActionSnippet(options.backButtonAction || "back");
       const showBack = options.showBackButton === true;
@@ -3607,6 +3626,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   selected = 1,
   items = {${items}},
   targets = {${targetList}},
+  optionActions = ${optionActionsTable},
   paint = function(self, gc)
   gc:setColorRGB(${bg})
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
@@ -3637,7 +3657,11 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   platform.window:invalidate()
   end,
   enterKey = function(self)
-  var.store("${luaString(options.variableBase || "selected_item")}", self.selected)
+  setVar("${luaString(options.variableBase || "selected_item")}", self.selected)
+  local selectedActions = self.optionActions and self.optionActions[self.selected]
+  if selectedActions and #selectedActions > 0 then
+    runVisualActions(selectedActions, {})
+  end
   local target = self.targets[self.selected]
   if target and target > 0 then
     ${luaTemplateRouteSnippet("target")}
@@ -3697,6 +3721,8 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
       const targets = Array.from({ length: count }, (_, index) => Number(options.menuTargets?.[index]) || 0);
       const items = labels.map((label) => `"${luaString(label)}"`).join(", ");
       const targetList = targets.join(", ");
+      const optionActions = Array.from({ length: count }, (_, index) => options.optionActions?.[index] || []);
+      const optionActionsTable = luaNestedVisualActionsTable(optionActions);
       const fallbackAction = luaTemplateActionSnippet(options.action);
       const backAction = luaTemplateActionSnippet(options.backButtonAction || "back");
       const showBack = options.showBackButton === true;
@@ -3705,6 +3731,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   selected = 1,
   items = {${items}},
   targets = {${targetList}},
+  optionActions = ${optionActionsTable},
   subtitle = "${luaString(options.subtitle || this.defaults.subtitle)}",
   paint = function(self, gc)
   local w = platform.window:width()
@@ -3757,7 +3784,11 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   platform.window:invalidate()
   end,
   enterKey = function(self)
-  var.store("${luaString(options.variableBase || "selected_item")}", self.selected)
+  setVar("${luaString(options.variableBase || "selected_item")}", self.selected)
+  local selectedActions = self.optionActions and self.optionActions[self.selected]
+  if selectedActions and #selectedActions > 0 then
+    runVisualActions(selectedActions, {})
+  end
   local target = self.targets[self.selected]
   if target and target > 0 then
     ${luaTemplateRouteSnippet("target")}
@@ -3832,7 +3863,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   end,
   enterKey = function(self)
   self.visible = false
-  var.store("${luaString(options.variableBase || "popup_ok")}", 1)
+  setVar("${luaString(options.variableBase || "popup_ok")}", 1)
   ${action}
   end
 })`;
@@ -3887,6 +3918,7 @@ function tiBasicToLuaExpression(expr = "") {
     .replaceAll("->", "")
     .replace(/\bnCr\b/gi, "ncr")
     .replace(/\bapprox\s*\(([\s\S]*)\)$/i, "$1")
+    .replace(/(\d+(?:\.\d+)?)\s*\*\s*e\s*([+-]?\d+)/gi, "$1e$2")
     .trim();
 }
 
@@ -4079,8 +4111,37 @@ function prettifyTnsRequestLabel(label = "", variable = "") {
   if (compact === "haltura" || compact === "altura") return "Altura (h)";
   if (compact === "mdistancia" || compact === "distanciam") return "Distancia (m)";
   if (compact === "vvelocidad" || compact === "velocidadms") return "Velocidad (m/s)";
+  if (compact === "gravedad") return "Gravedad (m/s^2)";
+  if (compact === "constanteg") return "Constante G";
   if (compact === "angulo") return "Angulo";
   return clean;
+}
+
+function mergeTnsFields(...groups) {
+  const map = new Map();
+  for (const group of groups) {
+    for (const field of group || []) {
+      if (!field?.variable || map.has(field.variable)) continue;
+      map.set(field.variable, field);
+    }
+  }
+  return Array.from(map.values());
+}
+
+function tnsGeneratedField(variable = "", path = []) {
+  return { label: prettifyTnsRequestLabel(variable, variable), variable, path, generated: true };
+}
+
+function tnsMissingInputFields(expression = "", fields = [], calculatedTargets = new Set(), path = []) {
+  const knownFields = new Set((fields || []).map((field) => field.variable));
+  return extractTiExpressionNames(expression)
+    .filter((name) => !isTnsNavigationVariable(name) && !knownFields.has(name) && !calculatedTargets.has(name))
+    .map((name) => tnsGeneratedField(name, path));
+}
+
+function markPostStoreResultPlaceholders(text = "", target = "") {
+  if (!target) return text;
+  return String(text || "").replaceAll(`[[${target}]]`, "[[__result]]");
 }
 
 function tnsExactPath(stack = [], labelByPath = new Map()) {
@@ -4264,6 +4325,8 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
   const recentRequests = [];
   const recentDisps = [];
   const contentPathKeys = new Set();
+  const pendingConstantActions = new Map();
+  const menuOptionActions = new Map();
   let pageId = 0;
   const markContentPath = (path = []) => {
     const key = tnsPathKey(path);
@@ -4358,10 +4421,46 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
     if (!expression || !target) continue;
     const usedNames = extractTiExpressionNames(expression);
     const currentPath = tnsExactPath(stack, labelByPath);
-    const fields = recentRequests
-      .filter((field) => usedNames.includes(field.variable) && tnsPathsOverlap(currentPath, field.path || []))
+    const currentPathKey = tnsPathKey(currentPath);
+    if (!usedNames.length) {
+      const action = {
+        type: "calc",
+        expression,
+        target,
+        strictCondition: false,
+        silent: true,
+        details: [`${target}=${expression}`, `${target}=[[${target}]]`],
+      };
+      pendingConstantActions.set(`${currentPathKey}::${target}`, action);
+      if (currentPathKey) {
+        const list = menuOptionActions.get(currentPathKey) || [];
+        list.push(action);
+        menuOptionActions.set(currentPathKey, list);
+      }
+      continue;
+    }
+    const constantActions = usedNames
+      .map((name) => pendingConstantActions.get(`${currentPathKey}::${name}`))
+      .filter(Boolean);
+    const requestFields = recentRequests
+      .filter((field) => tnsPathsOverlap(currentPath, field.path || []))
       .slice(-5);
-    if (!fields.length) continue;
+    const fields = requestFields;
+    const previousPage = pages[pages.length - 1];
+    const previousActions = previousPage?.actions || (previousPage?.type === "form" ? [{
+      type: "calc",
+      condition: previousPage.condition,
+      expression: previousPage.expression,
+      target: previousPage.target,
+      strictCondition: false,
+      details: previousPage.details,
+    }] : []);
+    const calculatedTargets = new Set([...constantActions, ...previousActions].map((action) => action.target).filter(Boolean));
+    const isChainedCalculation = previousPage?.type === "form"
+      && tnsPathKey(previousPage.path) === tnsPathKey(currentPath)
+      && usedNames.some((name) => calculatedTargets.has(name));
+    const missingFields = tnsMissingInputFields(expression, fields, calculatedTargets, currentPath);
+    if (!fields.length && !missingFields.length && !isChainedCalculation) continue;
     const relatedCondition = activeTnsStoreCondition(stack, usedNames);
     const details = recentDisps.slice(-4);
     for (let cursor = index + 1; cursor < lines.length && details.length < 6; cursor += 1) {
@@ -4369,29 +4468,48 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
       if (/^(If|EndIf|Request|clrio)\b/i.test(nextLine)) break;
       if (/^Disp\s+/i.test(nextLine)) {
         const procedure = tiBasicDispToProcedureText(nextLine);
-        if (procedure) details.push(procedure);
+        if (procedure) details.push(markPostStoreResultPlaceholders(procedure, target));
       }
     }
     if (!details.length) details.push(`${target}=${expression}`, `${target}=[[${target}]]`);
+    const action = { type: "calc", condition: relatedCondition, expression, target, strictCondition: false, details };
+    if (isChainedCalculation) {
+      previousActions.forEach((item) => { item.silent = true; });
+      previousPage.actions = [...constantActions, ...previousActions, action];
+      previousPage.fields = mergeTnsFields(previousPage.fields, fields, missingFields);
+      previousPage.expression = expression;
+      previousPage.target = target;
+      previousPage.condition = relatedCondition;
+      previousPage.details = details;
+      previousPage.title = tnsFormTitle(target, currentPath);
+      markContentPath(currentPath);
+      continue;
+    }
     pages.push({
       id: `page_${++pageId}`,
       type: "form",
       title: tnsFormTitle(target, currentPath),
       path: currentPath,
       pathText: tnsPathText(currentPath),
-      fields,
+      fields: mergeTnsFields(fields, missingFields),
       expression,
       target,
       condition: relatedCondition,
       details,
+      actions: [...constantActions, action],
       lineIndex: index,
     });
     markContentPath(currentPath);
   }
   const pageNumberById = new Map(pages.map((page, index) => [page.id, firstPageNumber + index]));
+  const providedVarsByPageId = new Map();
   for (const [pageIndex, page] of pages.entries()) {
     if (page.type !== "menu") continue;
-    page.targets = page.options.map((option) => {
+    page.optionActions = page.options.map((option) => {
+      const optionPath = tnsPathWith(page.parentPath, page.variable, option.value);
+      return menuOptionActions.get(tnsPathKey(optionPath)) || [];
+    });
+    page.targets = page.options.map((option, optionIndex) => {
       const optionPath = tnsPathWith(page.parentPath, page.variable, option.value);
       const direct = pages.find((candidate, candidateIndex) => {
         if (candidateIndex <= pageIndex) return false;
@@ -4407,8 +4525,20 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
         if (candidateIndex <= pageIndex) return false;
         return tnsPathKey(candidate.path || candidate.parentPath || []) === tnsPathKey(page.parentPath);
       });
+      if (continuation) {
+        const provided = providedVarsByPageId.get(continuation.id) || new Set();
+        for (const action of page.optionActions?.[optionIndex] || []) {
+          if (action?.target) provided.add(action.target);
+        }
+        if (provided.size) providedVarsByPageId.set(continuation.id, provided);
+      }
       return continuation ? pageNumberById.get(continuation.id) || 0 : 0;
     });
+  }
+  for (const page of pages) {
+    const provided = providedVarsByPageId.get(page.id);
+    if (!provided?.size || page.type !== "form") continue;
+    page.fields = (page.fields || []).filter((field) => !(field.generated && provided.has(field.variable)));
   }
   return pages;
 }
@@ -4467,6 +4597,7 @@ function buildLuaFromTnsPrograms(programs = []) {
           inputCount: page.options.length,
           menuLabels: page.options.map((option) => option.label),
           menuTargets: page.targets || [],
+          optionActions: page.optionActions || [],
           variableBase: page.variable || "selected_item",
           showBackButton: page.parentPath.length > 0,
           backButtonText: "◀ Retour",
@@ -4482,7 +4613,7 @@ function buildLuaFromTnsPrograms(programs = []) {
           inputCount: page.fields.length,
           fieldLabels: page.fields.map((field) => field.label),
           fieldBindings: page.fields.map((field) => field.variable),
-          buttonActions: [{ type: "calc", condition: page.condition, expression: page.expression, target: page.target, strictCondition: false, details: page.details }],
+          buttonActions: page.actions?.length ? page.actions : [{ type: "calc", condition: page.condition, expression: page.expression, target: page.target, strictCondition: false, details: page.details }],
           primaryButtonAction: "none",
         })}\n-- [[TNS_TOOL_CONVERTED_FORM_END]]`);
       } else if (page.type === "info") {
