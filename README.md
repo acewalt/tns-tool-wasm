@@ -27,6 +27,7 @@ https://acewalt.github.io/tns-tool-wasm/
 - Edit generated Lua pages visually after inserting templates.
 - Convert common TI-Basic/PRG menu-and-request programs into visual Lua pages.
 - Work in Spanish, English, and French.
+  
  ![New](docs/images/new.gif)
 
 ## Syntax Doctor XML
@@ -47,6 +48,8 @@ It includes:
 - Save-back into XML.
 - ZIP download of the edited XML project.
 
+![Syntax](docs/images/sintax_doctor.gif)
+
 ## Lua ScriptApp Tools
 
 The Lua editor helps create and edit Lua ScriptApp code inside TI-Nspire XML.
@@ -66,7 +69,7 @@ It includes:
 ## Lua Templates
 
 The template builder can generate reusable visual Lua pages.
-![Templates](docs/images/templates.gif)
+
  inspired by ProbasMaster, Formula Pro, and ABA Logique Nspire 2, were an experiment.
 
 Available template families include:
@@ -78,10 +81,11 @@ Available template families include:
 
 Templates can be inserted into existing Lua code. Generated blocks include comments so users can see where each inserted template starts and ends.
 
+![Templates](docs/images/templates.gif)
+
 ## TI-Basic/PRG To Lua Visual Converter
 
 The `TNS to Lua convert code` tool is experimental.
-![Convert](docs/images/convert.gif)
 
 It is not a universal converter for every possible program or every programming language. It is a pattern-based converter focused on common TI-Basic/PRG structures:
 
@@ -92,6 +96,8 @@ It is not a universal converter for every possible program or every programming 
 - formulas using variables, arithmetic, powers, square roots, and common math functions.
 - result/procedure text generated from nearby `Disp` lines.
 - menu choices that set constants before opening the next form.
+
+  ![Convert](docs/images/convert.gif)
 
 The goal is to convert many structured calculator programs into editable Lua visual pages, not to perfectly understand every possible TI-Basic program.
 
