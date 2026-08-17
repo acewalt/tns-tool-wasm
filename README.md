@@ -68,6 +68,32 @@ It includes:
 
  ![Lua](docs/images/lua.gif)
 
+## Agent And CLI Lua Testing
+
+TNS Tool WASM also exposes a programmatic Lua runner for agents and automated tests. It does not require browser clicks, DOM state, or the visual preview.
+
+Examples:
+
+```bash
+npm install
+npm test
+npm run lua-test -- archivo.lua --call solveAnyEquation --arg "y''+4*y=0"
+npm run lua-suite -- archivo.lua tests/edo.sample.json --json
+```
+
+The JavaScript API is available from `src/lua/index.js`:
+
+```js
+import { loadLuaScript, runLuaTestSuite } from "./src/lua/index.js";
+
+const lua = await loadLuaScript("archivo.lua");
+const result = lua.call("solveAnyEquation", ["y''+4*y=0"]);
+console.log(result);
+lua.close();
+```
+
+See [AGENTS.md](AGENTS.md) for the full machine-readable test format, exit codes, JSON output, and TI-Nspire mock limitations.
+
 ## Lua Templates
 
 The template builder can generate reusable visual Lua pages.

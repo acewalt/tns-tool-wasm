@@ -1,0 +1,14 @@
+{
+  "name": "tns-tool-wasm",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node tests/smoke.test.js",
+    "lua-test": "node cli/lua-test.js",
+    "lua-suite": "node cli/lua-suite.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

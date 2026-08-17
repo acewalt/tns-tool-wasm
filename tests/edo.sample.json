@@ -1,0 +1,16 @@
+[
+  {
+    "name": "Segundo orden complejo",
+    "input": "y''+4*y=0",
+    "expected": {
+      "solved": true
+    }
+  },
+  {
+    "name": "Verificar coseno",
+    "input": "y''+4*y=0;y=cos(2*x)",
+    "expected": {
+      "verified": true
+    }
+  }
+]
