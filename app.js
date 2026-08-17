@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-06-04-tns-menu-actions";
+const SOURCE_VERSION = "2026-08-17-lua-copy-screen";
 
 const I18N = {
   es: {
@@ -111,7 +111,10 @@ const I18N = {
     viewDetails: "Ver detalle",
     close: "Cerrar",
     copyLog: "Copiar log",
+    copyScreenContent: "Copiar contenido",
     logCopied: "Log copiado al portapapeles.",
+    screenContentCopied: "Contenido de pantalla copiado al portapapeles.",
+    screenContentEmpty: "No hay texto visible capturado en la pantalla.",
     documentSettings: "Ajuste de documento",
     documentName: "Nombre",
     documentType: "Tipo",
@@ -274,7 +277,10 @@ const I18N = {
     viewDetails: "View details",
     close: "Close",
     copyLog: "Copy log",
+    copyScreenContent: "Copy content",
     logCopied: "Log copied to clipboard.",
+    screenContentCopied: "Screen content copied to clipboard.",
+    screenContentEmpty: "No visible text was captured on the screen.",
     documentSettings: "Document settings",
     documentName: "Name",
     documentType: "Type",
@@ -437,7 +443,10 @@ const I18N = {
     viewDetails: "Voir detail",
     close: "Fermer",
     copyLog: "Copier log",
+    copyScreenContent: "Copier contenu",
     logCopied: "Log copie dans le presse-papiers.",
+    screenContentCopied: "Contenu de l'ecran copie dans le presse-papiers.",
+    screenContentEmpty: "Aucun texte visible capture sur l'ecran.",
     documentSettings: "Paramètres du document",
     documentName: "Nom",
     documentType: "Type",
@@ -3454,6 +3463,7 @@ const LUA_TEMPLATE_PRESETS = [
   end,
   drawMultiline = function(self, gc, text, x, y, lineHeight, maxLines)
   local content = tostring(text or "")
+  _G.__tnsToolCopyText = content
   local pos = 1
   local line = 0
   while pos <= #content and line < maxLines do
@@ -3471,6 +3481,7 @@ const LUA_TEMPLATE_PRESETS = [
   end
   end,
   paint = function(self, gc)
+  _G.__tnsToolCopyText = ""
   gc:setColorRGB(${bg})
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
   gc:setFont("sansserif", "b", 10)
@@ -3487,6 +3498,7 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
     self:drawButton(gc, button.text, button.x, button.y, button.w)
   end
   if self.resultText ~= "" then
+    _G.__tnsToolCopyText = self.resultText
     gc:setColorRGB(${text})
     gc:drawString(self.resultText, 82, ${resultY}, "top")
   end
@@ -3628,6 +3640,11 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   targets = {${targetList}},
   optionActions = ${optionActionsTable},
   paint = function(self, gc)
+  local copyText = "${luaString(options.title)}"
+  for _, item in ipairs(self.items) do
+    copyText = copyText .. "\\n" .. item
+  end
+  _G.__tnsToolCopyText = copyText
   gc:setColorRGB(${bg})
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
   gc:setFont("sansserif", "b", 12)
@@ -3734,6 +3751,12 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   optionActions = ${optionActionsTable},
   subtitle = "${luaString(options.subtitle || this.defaults.subtitle)}",
   paint = function(self, gc)
+  local copyText = "${luaString(options.title)}"
+  if self.subtitle and self.subtitle ~= "" then copyText = copyText .. "\\n" .. self.subtitle end
+  for _, item in ipairs(self.items) do
+    copyText = copyText .. "\\n" .. item
+  end
+  _G.__tnsToolCopyText = copyText
   local w = platform.window:width()
   local h = platform.window:height()
   gc:setColorRGB(${bg})
@@ -4545,11 +4568,16 @@ function collectTnsRoutedPages(code = "", firstPageNumber = 2) {
 
 function buildTnsInfoPage(page = {}) {
   const title = luaString(page.title || page.name || "Informacion");
-  const lines = (page.details || []).slice(0, 8).map((line) => `"${luaString(line)}"`).join(", ");
+  const lines = (page.details || []).map((line) => `"${luaString(line)}"`).join(", ");
   return `addPage({
   name = "${title}",
   lines = {${lines}},
   paint = function(self, gc)
+  local copyText = "${title}"
+  for _, line in ipairs(self.lines) do
+    copyText = copyText .. "\\n" .. line
+  end
+  _G.__tnsToolCopyText = copyText
   gc:setColorRGB(245, 245, 245)
   gc:fillRect(0, 0, platform.window:width(), platform.window:height())
   gc:setFont("sansserif", "b", 12)
@@ -5880,6 +5908,112 @@ function tiDocumentNameError(name) {
   return "";
 }
 
+async function copyPlainText(text) {
+  const value = String(text ?? "");
+  try {
+    await navigator.clipboard.writeText(value);
+  } catch (_error) {
+    const textarea = document.createElement("textarea");
+    textarea.value = value;
+    textarea.style.position = "fixed";
+    textarea.style.opacity = "0";
+    document.body.append(textarea);
+    textarea.select();
+    document.execCommand("copy");
+    textarea.remove();
+  }
+}
+
+function appendPreviewLog(logEl, message) {
+  logEl.textContent += `${logEl.textContent ? "\n" : ""}${message}`;
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function recordLuaPreviewText(screenText, text, x, y, lineHeight = 12) {
+  if (!Array.isArray(screenText)) return;
+  const raw = String(text ?? "").replace(/\r/g, "");
+  if (!raw.trim()) return;
+  let lineY = Number(y) || 0;
+  for (const line of raw.split("\n")) {
+    if (line.trim()) {
+      screenText.push({
+        text: line.trimEnd(),
+        x: Number(x) || 0,
+        y: lineY,
+      });
+    }
+    lineY += lineHeight;
+  }
+}
+
+function eraseCoveredLuaPreviewText(screenText, x, y, w, h) {
+  if (!Array.isArray(screenText) || Math.abs(Number(w) || 0) < 4 || Math.abs(Number(h) || 0) < 4) return;
+  const left = Math.min(Number(x) || 0, (Number(x) || 0) + (Number(w) || 0));
+  const right = Math.max(Number(x) || 0, (Number(x) || 0) + (Number(w) || 0));
+  const top = Math.min(Number(y) || 0, (Number(y) || 0) + (Number(h) || 0));
+  const bottom = Math.max(Number(y) || 0, (Number(y) || 0) + (Number(h) || 0));
+  for (let index = screenText.length - 1; index >= 0; index -= 1) {
+    const item = screenText[index];
+    if (item.x >= left - 2 && item.x <= right + 2 && item.y >= top - 2 && item.y <= bottom + 14) {
+      screenText.splice(index, 1);
+    }
+  }
+}
+
+function formatLuaPreviewScreenText(screenText) {
+  const seen = new Set();
+  const items = (Array.isArray(screenText) ? screenText : [])
+    .map((item) => ({
+      text: String(item.text ?? "").trim(),
+      x: Number(item.x) || 0,
+      y: Number(item.y) || 0,
+    }))
+    .filter((item) => item.text);
+  items.sort((a, b) => a.y - b.y || a.x - b.x || a.text.localeCompare(b.text));
+  const rows = [];
+  for (const item of items) {
+    const key = `${Math.round(item.x)}|${Math.round(item.y)}|${item.text}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const last = rows[rows.length - 1];
+    if (last && Math.abs(last.y - item.y) <= 5) {
+      last.items.push(item);
+      last.y = (last.y + item.y) / 2;
+    } else {
+      rows.push({ y: item.y, items: [item] });
+    }
+  }
+  return rows
+    .map((row) => row.items.sort((a, b) => a.x - b.x).map((item) => item.text).join("    ").trim())
+    .filter(Boolean)
+    .join("\n")
+    .trim();
+}
+
+function normalizeLuaPreviewCopiedText(text) {
+  return normalizeTiRichText(String(text ?? "").replace(/\r/g, "")).trim();
+}
+
+function luaJsGlobalText(global, names = []) {
+  for (const name of names) {
+    const value = global?.G?.str?.[name];
+    if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") {
+      const text = normalizeLuaPreviewCopiedText(value);
+      if (text) return text;
+    }
+  }
+  return "";
+}
+
+function luaJsNativeEditorsFullText(nativeEditors = []) {
+  const parts = [];
+  for (const state of nativeEditors) {
+    if (!state || state.visible === false || !String(state.text || "").trim()) continue;
+    parts.push(normalizeLuaPreviewCopiedText(state.text));
+  }
+  return parts.filter(Boolean).join("\n\n").trim();
+}
+
 async function showLuaPreview(code, item = null) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -5898,6 +6032,7 @@ async function showLuaPreview(code, item = null) {
       <input id="lua-preview-input" class="preview-text-capture" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Entrada: escribe simbolos aqui" />
       <pre id="lua-preview-log" class="mini-log"></pre>
       <div class="modal-actions">
+        <button type="button" id="lua-preview-copy-content">${escapeHtml(t("copyScreenContent"))}</button>
         <button type="button" id="lua-preview-copy-log">${escapeHtml(t("copyLog"))}</button>
         <button type="button" id="lua-preview-close">${escapeHtml(t("close"))}</button>
       </div>
@@ -5947,23 +6082,14 @@ async function showLuaPreview(code, item = null) {
   };
   document.addEventListener("keydown", keyHandler);
   setTimeout(() => textCapture.focus(), 50);
+  backdrop.querySelector("#lua-preview-copy-content").addEventListener("click", async () => {
+    const text = runtime.getScreenText ? runtime.getScreenText() : "";
+    await copyPlainText(text);
+    appendPreviewLog(previewLog, text.trim() ? t("screenContentCopied") : t("screenContentEmpty"));
+  });
   backdrop.querySelector("#lua-preview-copy-log").addEventListener("click", async () => {
-    const text = previewLog.textContent || "";
-    try {
-      await navigator.clipboard.writeText(text);
-      previewLog.textContent += `${previewLog.textContent ? "\n" : ""}${t("logCopied")}`;
-    } catch (_error) {
-      const textarea = document.createElement("textarea");
-      textarea.value = text;
-      textarea.style.position = "fixed";
-      textarea.style.opacity = "0";
-      document.body.append(textarea);
-      textarea.select();
-      document.execCommand("copy");
-      textarea.remove();
-      previewLog.textContent += `${previewLog.textContent ? "\n" : ""}${t("logCopied")}`;
-    }
-    previewLog.scrollTop = previewLog.scrollHeight;
+    await copyPlainText(previewLog.textContent || "");
+    appendPreviewLog(previewLog, t("logCopied"));
   });
   backdrop.querySelector("#lua-preview-close").addEventListener("click", () => {
     document.removeEventListener("keydown", keyHandler);
@@ -6129,7 +6255,8 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.G.str.on = global.lua_newtable();
   const previewGc = global.lua_newtable();
   const previewWindow = global.lua_newtable();
-  attachLuaJsGc(previewGc, ctx, canvas);
+  const screenText = [];
+  attachLuaJsGc(previewGc, ctx, canvas, screenText);
   global.lua_tableset(previewWindow, "w", canvas.width);
   global.lua_tableset(previewWindow, "h", canvas.height);
   global.lua_tableset(previewWindow, "gc", previewGc);
@@ -6221,6 +6348,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     return global.lua_tableget(windowTable(), "gc");
   }
   function clear() {
+    screenText.length = 0;
     canvas.width = canvas.width;
     global.context = canvas.getContext("2d");
     global.context.font = "20px Arial";
@@ -6229,7 +6357,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     clear();
     try {
       global.callEvent("paint", gc());
-      drawLuaJsNativeEditors(ctx, nativeEditors);
+      drawLuaJsNativeEditors(ctx, nativeEditors, screenText);
     } catch (error) {
       log(`ERROR repaint LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
       throw error;
@@ -6382,7 +6510,14 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   function close() {
     if (timerId) window.clearInterval(timerId);
   }
-  return { boot, callEvent, charIn, mouseClick, close };
+  function getScreenText() {
+    const explicit = luaJsGlobalText(global, ["__tnsToolCopyText", "__tnsPreviewText", "__copyScreenText"]);
+    if (explicit) return explicit;
+    const editorText = luaJsNativeEditorsFullText(nativeEditors);
+    if (editorText) return editorText;
+    return formatLuaPreviewScreenText(screenText);
+  }
+  return { boot, callEvent, charIn, mouseClick, close, getScreenText };
 }
 
 function hardenLuaJsPreviewRuntime() {
@@ -7074,7 +7209,7 @@ function normalizeTiRichText(text) {
     .replace(//g, "e");
 }
 
-function drawLuaJsNativeEditors(ctx, nativeEditors) {
+function drawLuaJsNativeEditors(ctx, nativeEditors, screenText = null) {
   for (const state of nativeEditors) {
     if (!state.visible) continue;
     const x = Math.max(0, Number(state.x) || 0);
@@ -7097,6 +7232,7 @@ function drawLuaJsNativeEditors(ctx, nativeEditors) {
     for (let index = 0; index < lines.length; index += 1) {
       const baseline = y + 4 + (index + 1) * lineHeight;
       if (baseline > y + h) break;
+      recordLuaPreviewText(screenText, lines[index], x + 4, baseline, lineHeight);
       ctx.fillText(lines[index], x + 4, baseline);
     }
     ctx.restore();
@@ -7125,7 +7261,7 @@ function wrapLuaJsEditorText(ctx, text, width) {
   return output;
 }
 
-function attachLuaJsGc(gcTable, ctx, canvas) {
+function attachLuaJsGc(gcTable, ctx, canvas, screenText = null) {
   let fontSize = 12;
   const setColor = (r, g = r, b = r) => {
     ctx.fillStyle = `rgb(${Number(r) || 0}, ${Number(g) || 0}, ${Number(b) || 0})`;
@@ -7148,7 +7284,11 @@ function attachLuaJsGc(gcTable, ctx, canvas) {
   });
   window.lua_tableset(gcTable, "drawString", (_self, text, x, y, pos) => {
     const offset = { top: fontSize * 0.85, middle: fontSize * 0.35, bottom: 0, baseline: 0 }[String(pos || "bottom")] ?? 0;
-    ctx.fillText(String(text ?? ""), Number(x) || 0, (Number(y) || 0) + offset);
+    const px = Number(x) || 0;
+    const py = (Number(y) || 0) + offset;
+    const visibleText = String(text ?? "");
+    recordLuaPreviewText(screenText, visibleText, px, py, Math.max(10, fontSize + 2));
+    ctx.fillText(visibleText, px, py);
     return [];
   });
   window.lua_tableset(gcTable, "drawLine", (_self, x1, y1, x2, y2) => {
@@ -7163,7 +7303,12 @@ function attachLuaJsGc(gcTable, ctx, canvas) {
     return [];
   });
   window.lua_tableset(gcTable, "fillRect", (_self, x, y, w, h) => {
-    ctx.fillRect(Number(x) || 0, Number(y) || 0, Number(w) || 0, Number(h) || 0);
+    const px = Number(x) || 0;
+    const py = Number(y) || 0;
+    const pw = Number(w) || 0;
+    const ph = Number(h) || 0;
+    eraseCoveredLuaPreviewText(screenText, px, py, pw, ph);
+    ctx.fillRect(px, py, pw, ph);
     return [];
   });
   window.lua_tableset(gcTable, "drawPolyLine", (_self, points) => drawLuaJsPolyline(points, false));
@@ -7254,7 +7399,7 @@ function createLuaPreviewRuntime(code, ctx, canvas, logEl) {
   const env = parseLuaPreviewGlobals(code);
   env.__canvasWidth = canvas.width;
   env.__canvasHeight = canvas.height;
-  const state = { rendered: 0, invalidated: false, timerActive: false, fontSize: 12, fontStyle: "r", lineWidth: 1 };
+  const state = { rendered: 0, invalidated: false, timerActive: false, fontSize: 12, fontStyle: "r", lineWidth: 1, screenText: [] };
   let timerId = null;
 
   function log(message) {
@@ -7273,6 +7418,7 @@ function createLuaPreviewRuntime(code, ctx, canvas, logEl) {
     ctx.lineWidth = state.lineWidth;
     ctx.font = `${state.fontSize}px sans-serif`;
     state.rendered = 0;
+    state.screenText.length = 0;
   }
 
   function boot() {
@@ -7314,7 +7460,11 @@ function createLuaPreviewRuntime(code, ctx, canvas, logEl) {
     if (timerId) window.clearInterval(timerId);
   }
 
-  return { boot, callEvent, close };
+  function getScreenText() {
+    return formatLuaPreviewScreenText(state.screenText);
+  }
+
+  return { boot, callEvent, close, getScreenText };
 }
 
 function luaPreviewValue(value) {
@@ -7604,7 +7754,12 @@ function executeLuaPreviewCall(root, method, rawArgs, env, ctx, canvas, state) {
     ctx.lineWidth = state.lineWidth;
     state.rendered += 1;
   } else if (method === "fillRect") {
-    ctx.fillRect(Number(args[0]) || 0, Number(args[1]) || 0, Number(args[2]) || 0, Number(args[3]) || 0);
+    const x = Number(args[0]) || 0;
+    const y = Number(args[1]) || 0;
+    const w = Number(args[2]) || 0;
+    const h = Number(args[3]) || 0;
+    eraseCoveredLuaPreviewText(state.screenText, x, y, w, h);
+    ctx.fillRect(x, y, w, h);
     state.rendered += 1;
   } else if (method === "drawRect") {
     ctx.strokeRect((Number(args[0]) || 0) + 1, (Number(args[1]) || 0) + 1, Number(args[2]) || 0, Number(args[3]) || 0);
@@ -7617,7 +7772,11 @@ function executeLuaPreviewCall(root, method, rawArgs, env, ctx, canvas, state) {
     state.rendered += 1;
   } else if (method === "drawString") {
     const offset = { top: 0, middle: -state.fontSize / 2, bottom: -state.fontSize, baseline: -state.fontSize + 4 }[String(args[3] || "bottom")] ?? 0;
-    ctx.fillText(String(args[0] ?? ""), Number(args[1]) || 0, (Number(args[2]) || 0) + offset);
+    const x = Number(args[1]) || 0;
+    const y = (Number(args[2]) || 0) + offset;
+    const text = String(args[0] ?? "");
+    recordLuaPreviewText(state.screenText, text, x, y, Math.max(10, state.fontSize + 2));
+    ctx.fillText(text, x, y);
     state.rendered += 1;
   } else if (method === "clipRect") {
     const op = String(args[0] || "set");
