@@ -1236,6 +1236,19 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
 }
 
+.py-preview-terminal-label {
+  margin-top: 12px;
+}
+
+.py-preview-terminal-label input {
+  min-height: 42px;
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+}
+
+.py-preview-terminal-label input::placeholder {
+  color: var(--muted);
+}
+
 .py-preview-output {
   min-height: 220px;
   max-height: 330px;

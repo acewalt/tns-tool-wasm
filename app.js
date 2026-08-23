@@ -114,16 +114,21 @@ const I18N = {
     pyFileDownloaded: "Archivo .py descargado.",
     previewPy: "Preview PY",
     pythonPreviewTitle: "Preview Python",
-    pythonPreviewIntro: "Ejecuta el codigo actual con Pyodide. Si tu script usa input(), escribe cada respuesta en una linea. En menus con pausa, agrega tambien una linea vacia y una opcion de salida.",
-    pythonPreviewInput: "Entrada para input()",
+    pythonPreviewIntro: "Ejecuta el codigo actual con Pyodide en modo terminal. Escribe una respuesta y presiona Enter o Enviar cuando el programa pida input().",
+    pythonPreviewInput: "Entrada de terminal",
     pythonPreviewRun: "Ejecutar",
+    pythonPreviewSend: "Enviar",
+    pythonPreviewRestart: "Reiniciar",
     pythonPreviewOutput: "Salida",
     pythonPreviewRunning: "Ejecutando Python...",
-    pythonPreviewReady: "Escribe la entrada necesaria y presiona Ejecutar.",
+    pythonPreviewReady: "Presiona Ejecutar para iniciar el programa.",
     pythonPreviewNoOutput: "El programa termino sin imprimir salida.",
     pythonPreviewOk: "Python ejecutado correctamente.",
     pythonPreviewFailed: "Python fallo durante la ejecucion.",
-    pythonPreviewInputExhausted: "Faltan entradas para input(). Agrega una linea por cada pregunta, incluyendo Enter de pausa y opcion de salida si el menu vuelve a empezar.",
+    pythonPreviewInputExhausted: "El programa esta esperando una respuesta.",
+    pythonPreviewWaiting: "Esperando entrada...",
+    pythonPreviewFinished: "Programa terminado.",
+    pythonPreviewTerminalPlaceholder: "Escribe una respuesta y presiona Enter",
     pythonPreviewLoopLimit: "El preview se detuvo por exceso de iteraciones. Revisa si falta una entrada o si hay un bucle infinito.",
     pythonPreviewOutputLimit: "El preview se detuvo porque el programa imprimio demasiada salida.",
     pythonRuntimeNotReady: "Runtime WASM no esta listo todavia.",
@@ -302,16 +307,21 @@ const I18N = {
     pyFileDownloaded: ".py file downloaded.",
     previewPy: "Preview PY",
     pythonPreviewTitle: "Python preview",
-    pythonPreviewIntro: "Run the current code with Pyodide. If your script uses input(), write each answer on its own line. For menus with pauses, also add a blank line and an exit option.",
-    pythonPreviewInput: "Input for input()",
+    pythonPreviewIntro: "Run the current code with Pyodide in terminal mode. Type one answer and press Enter or Send when the program asks for input().",
+    pythonPreviewInput: "Terminal input",
     pythonPreviewRun: "Run",
+    pythonPreviewSend: "Send",
+    pythonPreviewRestart: "Restart",
     pythonPreviewOutput: "Output",
     pythonPreviewRunning: "Running Python...",
-    pythonPreviewReady: "Write the required input and press Run.",
+    pythonPreviewReady: "Press Run to start the program.",
     pythonPreviewNoOutput: "The program finished without printing output.",
     pythonPreviewOk: "Python executed successfully.",
     pythonPreviewFailed: "Python failed during execution.",
-    pythonPreviewInputExhausted: "Not enough input() answers. Add one line for each prompt, including pause Enter lines and an exit option if the menu starts again.",
+    pythonPreviewInputExhausted: "The program is waiting for an answer.",
+    pythonPreviewWaiting: "Waiting for input...",
+    pythonPreviewFinished: "Program finished.",
+    pythonPreviewTerminalPlaceholder: "Type an answer and press Enter",
     pythonPreviewLoopLimit: "Preview stopped after too many iterations. Check for missing input or an infinite loop.",
     pythonPreviewOutputLimit: "Preview stopped because the program printed too much output.",
     pythonRuntimeNotReady: "WASM runtime is not ready yet.",
@@ -490,16 +500,21 @@ const I18N = {
     pyFileDownloaded: "Fichier .py telecharge.",
     previewPy: "Apercu PY",
     pythonPreviewTitle: "Apercu Python",
-    pythonPreviewIntro: "Execute le code actuel avec Pyodide. Si votre script utilise input(), ecrivez chaque reponse sur une ligne. Pour les menus avec pause, ajoutez aussi une ligne vide et une option de sortie.",
-    pythonPreviewInput: "Entree pour input()",
+    pythonPreviewIntro: "Execute le code actuel avec Pyodide en mode terminal. Ecrivez une reponse et appuyez sur Entree ou Envoyer quand le programme demande input().",
+    pythonPreviewInput: "Entree du terminal",
     pythonPreviewRun: "Executer",
+    pythonPreviewSend: "Envoyer",
+    pythonPreviewRestart: "Redemarrer",
     pythonPreviewOutput: "Sortie",
     pythonPreviewRunning: "Execution Python...",
-    pythonPreviewReady: "Ecrivez l'entree requise et appuyez sur Executer.",
+    pythonPreviewReady: "Appuyez sur Executer pour demarrer le programme.",
     pythonPreviewNoOutput: "Le programme s'est termine sans sortie imprimee.",
     pythonPreviewOk: "Python execute correctement.",
     pythonPreviewFailed: "Python a echoue pendant l'execution.",
-    pythonPreviewInputExhausted: "Il manque des reponses pour input(). Ajoutez une ligne pour chaque question, y compris les pauses Entree et une option de sortie si le menu recommence.",
+    pythonPreviewInputExhausted: "Le programme attend une reponse.",
+    pythonPreviewWaiting: "En attente d'entree...",
+    pythonPreviewFinished: "Programme termine.",
+    pythonPreviewTerminalPlaceholder: "Ecrivez une reponse et appuyez sur Entree",
     pythonPreviewLoopLimit: "L'apercu s'est arrete apres trop d'iterations. Verifiez s'il manque une entree ou s'il y a une boucle infinie.",
     pythonPreviewOutputLimit: "L'apercu s'est arrete car le programme a imprime trop de sortie.",
     pythonRuntimeNotReady: "Le runtime WASM n'est pas encore pret.",
@@ -9519,6 +9534,7 @@ old_stdin = sys.stdin
 preview_input_exhausted = False
 preview_loop_steps = 0
 preview_loop_limit = 20000
+last_input_prompt = ""
 
 def tns_preview_loop_guard(line=0):
     global preview_loop_steps
@@ -9528,12 +9544,19 @@ def tns_preview_loop_guard(line=0):
     if preview_loop_steps > preview_loop_limit:
         raise PreviewLoopLimit(loop_error)
 
+def tns_preview_exception_guard(line=0):
+    if preview_input_exhausted:
+        raise PreviewInputExhausted(input_error)
+
 def preview_input(prompt=""):
-    global preview_input_exhausted
+    global preview_input_exhausted, last_input_prompt
+    last_input_prompt = str(prompt or "")
     if prompt:
         print(prompt, end="")
     try:
-        return next(stdin_lines)
+        value = next(stdin_lines)
+        print(value)
+        return value
     except StopIteration as exc:
         preview_input_exhausted = True
         raise PreviewInputExhausted(input_error) from exc
@@ -9559,7 +9582,25 @@ class PreviewLoopInstrumenter(ast.NodeTransformer):
     def visit_While(self, node):
         return self._with_guard(node)
 
-namespace = {"__name__": "__main__", "tns_preview_loop_guard": tns_preview_loop_guard}
+    def visit_ExceptHandler(self, node):
+        self.generic_visit(node)
+        guard = ast.Expr(
+            value=ast.Call(
+                func=ast.Name(id="tns_preview_exception_guard", ctx=ast.Load()),
+                args=[ast.Constant(getattr(node, "lineno", 0))],
+                keywords=[],
+            )
+        )
+        if node.body:
+            guard = ast.copy_location(guard, node.body[0])
+        node.body.insert(0, guard)
+        return node
+
+namespace = {
+    "__name__": "__main__",
+    "tns_preview_loop_guard": tns_preview_loop_guard,
+    "tns_preview_exception_guard": tns_preview_exception_guard,
+}
 success = True
 error = None
 
@@ -9584,6 +9625,8 @@ finally:
 
 json.dumps({
     "success": success,
+    "waitingForInput": error is not None and error.get("type") == "PreviewInputExhausted",
+    "inputPrompt": last_input_prompt,
     "stdout": stdout.getvalue(),
     "stderr": stderr.getvalue(),
     "error": error,
@@ -9593,59 +9636,114 @@ json.dumps({
 }
 
 function formatPythonPreviewResult(result) {
-  const sections = [];
-  sections.push(result.success ? t("pythonPreviewOk") : t("pythonPreviewFailed"));
-  if (result.stdout) sections.push(`\nSTDOUT\n${result.stdout.trimEnd()}`);
-  if (result.stderr) sections.push(`\nSTDERR\n${result.stderr.trimEnd()}`);
+  const sections = [result.stdout || ""];
+  if (result.stderr) sections.push(`\n[stderr]\n${result.stderr.trimEnd()}`);
+  if (result.waitingForInput) {
+    sections.push(`\n${t("pythonPreviewWaiting")}`);
+    return sections.join("").trimStart();
+  }
   if (result.error) {
     sections.push(`\nERROR ${result.error.type}: ${result.error.message}`);
     if (result.error.traceback) sections.push(`\nTRACEBACK\n${result.error.traceback.trimEnd()}`);
+    return sections.join("").trimStart();
   }
-  if (sections.length === 1) sections.push(`\n${t("pythonPreviewNoOutput")}`);
-  return sections.join("\n");
+  if (result.success) sections.push(`\n${t("pythonPreviewFinished")}`);
+  if (!sections.join("").trim()) return t("pythonPreviewNoOutput");
+  return sections.join("").trimStart();
 }
 
 async function openPyPreviewModal() {
   const code = document.querySelector("#py-code").value;
+  const terminalInputs = [];
+  let lastResult = null;
+  let running = false;
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
     <div class="modal py-preview-modal">
       <h2>${escapeHtml(t("pythonPreviewTitle"))}</h2>
       <p class="muted-text">${escapeHtml(t("pythonPreviewIntro"))}</p>
-      <label class="py-preview-label">
-        <span>${escapeHtml(t("pythonPreviewInput"))}</span>
-        <textarea id="py-preview-stdin" spellcheck="false" placeholder="23&#10;2"></textarea>
-      </label>
       <h3>${escapeHtml(t("pythonPreviewOutput"))}</h3>
       <pre id="py-preview-output" class="py-preview-output">${escapeHtml(t("pythonPreviewReady"))}</pre>
+      <label class="py-preview-label py-preview-terminal-label">
+        <span>${escapeHtml(t("pythonPreviewInput"))}</span>
+        <input id="py-preview-terminal-input" type="text" spellcheck="false" autocomplete="off" placeholder="${escapeHtml(t("pythonPreviewTerminalPlaceholder"))}">
+      </label>
       <div class="modal-actions">
         <button type="button" id="py-preview-run">${escapeHtml(t("pythonPreviewRun"))}</button>
+        <button type="button" id="py-preview-send">${escapeHtml(t("pythonPreviewSend"))}</button>
+        <button type="button" id="py-preview-restart">${escapeHtml(t("pythonPreviewRestart"))}</button>
         <button type="button" id="py-preview-close">${escapeHtml(t("close"))}</button>
       </div>
     </div>`;
   document.body.append(backdrop);
 
-  const input = backdrop.querySelector("#py-preview-stdin");
+  const terminalInput = backdrop.querySelector("#py-preview-terminal-input");
   const output = backdrop.querySelector("#py-preview-output");
-  const run = async () => {
+  const runButton = backdrop.querySelector("#py-preview-run");
+  const sendButton = backdrop.querySelector("#py-preview-send");
+  const restartButton = backdrop.querySelector("#py-preview-restart");
+  const setBusy = (busy) => {
+    running = busy;
+    runButton.disabled = busy;
+    sendButton.disabled = busy || (lastResult && !lastResult.waitingForInput);
+    restartButton.disabled = busy;
+    terminalInput.disabled = busy || (lastResult && !lastResult.waitingForInput);
+  };
+  const scrollOutput = () => {
+    output.scrollTop = output.scrollHeight;
+  };
+  const runWithHistory = async () => {
+    setBusy(true);
     output.textContent = t("pythonPreviewRunning");
     try {
-      const result = await executePythonPreview(code, input.value);
+      const result = await executePythonPreview(code, terminalInputs.join("\n"));
+      lastResult = result;
       output.textContent = formatPythonPreviewResult(result);
-      pyLog(result.success ? t("pythonPreviewOk") : t("pythonPreviewFailed"));
+      pyLog(result.waitingForInput ? t("pythonPreviewWaiting") : (result.success ? t("pythonPreviewOk") : t("pythonPreviewFailed")));
+      setBusy(false);
+      scrollOutput();
+      if (result.waitingForInput) terminalInput.focus();
     } catch (error) {
       output.textContent = `ERROR: ${error.stack || error.message}`;
       pyLog(`ERROR: ${error.message}`);
+      lastResult = { success: false, waitingForInput: false, error };
+      setBusy(false);
+      scrollOutput();
     }
   };
+  const sendInput = async () => {
+    if (running) return;
+    if (!lastResult) {
+      await runWithHistory();
+      return;
+    }
+    if (!lastResult.waitingForInput) return;
+    terminalInputs.push(terminalInput.value);
+    terminalInput.value = "";
+    await runWithHistory();
+  };
+  const restart = async () => {
+    terminalInputs.length = 0;
+    lastResult = null;
+    terminalInput.value = "";
+    await runWithHistory();
+  };
 
-  backdrop.querySelector("#py-preview-run").addEventListener("click", run);
+  runButton.addEventListener("click", runWithHistory);
+  sendButton.addEventListener("click", sendInput);
+  restartButton.addEventListener("click", restart);
+  terminalInput.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") return;
+    event.preventDefault();
+    sendInput();
+  });
   backdrop.querySelector("#py-preview-close").addEventListener("click", () => closeModal(backdrop));
   backdrop.addEventListener("click", (event) => {
     if (event.target === backdrop) closeModal(backdrop);
   });
-  if (!/\binput\s*\(|sys\.stdin|stdin\./.test(code)) await run();
+  setBusy(false);
+  if (!/\binput\s*\(|sys\.stdin|stdin\./.test(code)) await runWithHistory();
 }
 
 async function autoFixPyDoctor() {
