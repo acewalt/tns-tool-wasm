@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acewalt.github.io/tns-tool-wasm/schemas/inspect-result.schema.json",
+  "title": "TNS Tool WASM Inspect Result",
+  "description": "Reserved output shape for future DOM-free TNS/XML document inspection.",
+  "type": "object",
+  "properties": {
+    "success": { "type": "boolean" },
+    "document": {
+      "type": "object",
+      "properties": {
+        "pages": { "type": "integer" },
+        "luaScripts": { "type": "integer" },
+        "pythonPrograms": { "type": "integer" },
+        "widgets": { "type": "integer" }
+      },
+      "additionalProperties": true
+    },
+    "warnings": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "type": "object" }
+    }
+  },
+  "required": ["success"],
+  "additionalProperties": true
+}

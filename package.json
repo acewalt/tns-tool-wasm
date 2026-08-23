@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node tests/smoke.test.js",
+    "test": "node tests/smoke.test.js && node tests/e2e.test.js",
+    "tns-tool": "node cli/tns-tool.js",
     "lua-test": "node cli/lua-test.js",
     "lua-suite": "node cli/lua-suite.js"
   },

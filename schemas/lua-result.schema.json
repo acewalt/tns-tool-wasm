@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acewalt.github.io/tns-tool-wasm/schemas/lua-result.schema.json",
+  "title": "TNS Tool WASM Lua Result",
+  "type": "object",
+  "properties": {
+    "success": { "type": "boolean" },
+    "syntaxOk": { "type": "boolean" },
+    "runtimeOk": { "type": "boolean" },
+    "stdout": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "stderr": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "errors": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/error" }
+    },
+    "missingApis": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "api": { "type": "string" },
+              "status": { "type": "string" },
+              "message": { "type": "string" }
+            },
+            "additionalProperties": true
+          }
+        ]
+      }
+    },
+    "results": { "type": "array" },
+    "passed": { "type": "integer" },
+    "failed": { "type": "integer" },
+    "total": { "type": "integer" }
+  },
+  "required": ["success", "syntaxOk", "runtimeOk", "stdout", "stderr", "errors"],
+  "additionalProperties": true,
+  "$defs": {
+    "error": {
+      "type": "object",
+      "properties": {
+        "code": { "type": "string" },
+        "phase": { "type": "string" },
+        "message": { "type": "string" },
+        "file": { "type": ["string", "null"] },
+        "line": { "type": ["integer", "null"] },
+        "details": { "type": "object" }
+      },
+      "required": ["code", "message"],
+      "additionalProperties": true
+    }
+  }
+}

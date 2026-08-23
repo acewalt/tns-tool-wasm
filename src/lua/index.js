@@ -11,3 +11,8 @@ export {
   runLuaTest,
   runLuaTestSuite
 } from "./runner.js";
+
+export {
+  TI_NSPIRE_MOCK_CAPABILITIES,
+  getTiNspireMockCapabilities
+} from "./ti-nspire-mocks.js";

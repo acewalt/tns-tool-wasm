@@ -31,8 +31,29 @@ export async function runSuite(runtime, tests = [], options = {}) {
 
 function runSingleTest(runtime, test = {}, options = {}) {
   const name = test.name || "(unnamed)";
-  const functionName = test.function || test.functionName || options.functionName || "solveAnyEquation";
+  const functionName = test.function || test.functionName || options.functionName;
   const args = Array.isArray(test.args) ? test.args : test.input == null ? [] : [test.input];
+  if (!functionName) {
+    return {
+      name,
+      function: null,
+      args,
+      passed: false,
+      expected: test.expected || {},
+      received: null,
+      failures: [{
+        path: "$.function",
+        expected: "A Lua function name",
+        received: null
+      }],
+      error: {
+        code: "LUA_TEST_FUNCTION_REQUIRED",
+        phase: `test:${name}`,
+        message: "Suite tests must specify function/functionName, or the suite must define a default function.",
+        details: {}
+      }
+    };
+  }
   try {
     const received = runtime.call(functionName, args);
     const assertion = assertExpected(received, test.expected || {});

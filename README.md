@@ -26,6 +26,7 @@ https://acewalt.github.io/tns-tool-wasm/
 - Insert visual Lua templates such as forms, menus, advanced menus, and popups.
 - Edit generated Lua pages visually after inserting templates.
 - Convert common TI-Basic/PRG menu-and-request programs into visual Lua pages.
+- Run Lua ScriptApps programmatically from a Node CLI/API for agent-driven tests.
 - Work in Spanish, English, and French.
   
  ![New](docs/images/new.gif)
@@ -77,22 +78,24 @@ Examples:
 ```bash
 npm install
 npm test
-npm run lua-test -- archivo.lua --call solveAnyEquation --arg "y''+4*y=0"
-npm run lua-suite -- archivo.lua tests/edo.sample.json --json
+npm run tns-tool -- capabilities --json
+npm run tns-tool -- lua check archivo.lua --json
+npm run tns-tool -- lua call archivo.lua --function miFuncion --args "[1,2]" --json
+npm run tns-tool -- lua suite archivo.lua tests/edo.sample.json --json
 ```
 
-The JavaScript API is available from `src/lua/index.js`:
+The public JavaScript API is available from `src/api/index.js`:
 
 ```js
-import { loadLuaScript, runLuaTestSuite } from "./src/lua/index.js";
+import { loadLuaScript, runLuaSuite } from "./src/api/index.js";
 
 const lua = await loadLuaScript("archivo.lua");
-const result = lua.call("solveAnyEquation", ["y''+4*y=0"]);
+const result = lua.call("miFuncion", [1, 2]);
 console.log(result);
 lua.close();
 ```
 
-See [AGENTS.md](AGENTS.md) for the full machine-readable test format, exit codes, JSON output, and TI-Nspire mock limitations.
+See [AGENTS.md](AGENTS.md) for the full machine-readable test format, capabilities, exit codes, JSON output, schemas, and TI-Nspire mock limitations.
 
 ## Lua Templates
 

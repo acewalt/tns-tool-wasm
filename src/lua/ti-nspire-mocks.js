@@ -1,3 +1,90 @@
+export const TI_NSPIRE_MOCK_CAPABILITIES = {
+  platform: {
+    status: "partial",
+    apis: [
+      "platform.apilevel",
+      "platform.apiLevel",
+      "platform.os",
+      "platform.hw",
+      "platform.isColorDisplay",
+      "platform.isDeviceModeRendering",
+      "platform.registerErrorHandler",
+      "platform.window",
+      "platform.gc",
+      "platform.withGC"
+    ]
+  },
+  "platform.window": {
+    status: "partial",
+    apis: [
+      "platform.window.width",
+      "platform.window.height",
+      "platform.window.invalidate",
+      "platform.window.setFocus"
+    ]
+  },
+  gc: {
+    status: "partial",
+    apis: [
+      "begin",
+      "finish",
+      "setFont",
+      "setPen",
+      "setColorRGB",
+      "setAlpha",
+      "drawString",
+      "drawRect",
+      "fillRect",
+      "drawLine",
+      "drawArc",
+      "fillArc",
+      "drawImage",
+      "fillPolygon",
+      "drawPolygon",
+      "drawPolyLine",
+      "clipRect",
+      "getStringWidth",
+      "getStringHeight"
+    ]
+  },
+  timer: {
+    status: "partial",
+    apis: ["timer.start", "timer.stop", "timer.getMilliSecCounter"]
+  },
+  var: {
+    status: "partial",
+    apis: ["var.store", "var.recall", "var.list"]
+  },
+  D2Editor: {
+    status: "partial",
+    apis: ["D2Editor.newRichText", "D2Editor.createMathBox", "D2Editor.createChemBox"]
+  },
+  image: {
+    status: "partial",
+    apis: ["image.new"]
+  },
+  string: {
+    status: "partial",
+    apis: ["string.uchar", "string.len", "string.lower", "string.upper", "string.sub", "string.format", "string.find", "string.match", "string.gsub"]
+  },
+  math: {
+    status: "partial",
+    apis: ["math.eval"]
+  }
+};
+
+export function getTiNspireMockCapabilities() {
+  return JSON.parse(JSON.stringify({
+    success: true,
+    mockedApis: TI_NSPIRE_MOCK_CAPABILITIES,
+    notes: [
+      "This is not a full TI-Nspire emulator.",
+      "Drawing APIs are no-op mocks intended to let computational ScriptApp logic load.",
+      "Unsupported APIs are reported as structured runtime errors."
+    ]
+  }));
+}
+
 export function installTiNspireMocks(global, state = {}, options = {}) {
   const width = Number(options.width) || 318;
   const height = Number(options.height) || 212;

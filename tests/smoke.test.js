@@ -22,7 +22,7 @@ assert.deepEqual(nested.data.items, [1, 2, 3]);
 lua.close();
 
 const tests = JSON.parse(await fs.readFile(path.join(__dirname, "edo.sample.json"), "utf8"));
-const suite = await runLuaTestSuite(luaSource, tests);
+const suite = await runLuaTestSuite(luaSource, tests.tests, { functionName: tests.function });
 assert.equal(suite.success, true);
 assert.equal(suite.passed, 2);
 assert.equal(suite.failed, 0);

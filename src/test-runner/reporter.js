@@ -24,7 +24,7 @@ export function formatSuiteText(suite) {
   if (suite.missingApis?.length) {
     lines.push("");
     lines.push("Missing TI-Nspire APIs:");
-    for (const api of suite.missingApis) lines.push(`- ${api}`);
+    for (const api of suite.missingApis) lines.push(`- ${formatMissingApi(api)}`);
   }
   return lines.join("\n");
 }
@@ -49,4 +49,9 @@ export function formatLuaTestText(result) {
 function formatValue(value) {
   if (typeof value === "string") return value;
   return JSON.stringify(value);
+}
+
+function formatMissingApi(api) {
+  if (typeof api === "string") return api;
+  return `${api.api || "unknown"}: ${api.message || api.status || "unsupported"}`;
 }

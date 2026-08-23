@@ -168,15 +168,15 @@ export function jsToLua(global, value) {
     }
     return table;
   }
-  return null;
+  throw new TypeError(`Cannot convert JavaScript value to Lua: ${typeof value}`);
 }
 
 export function luaToJson(global, value, seen = new WeakSet()) {
   if (value == null) return null;
   if (typeof value === "string" || typeof value === "number" || typeof value === "boolean") return value;
-  if (typeof value === "function") return { __luaType: "function" };
+  if (typeof value === "function") throw new TypeError("Cannot convert Lua function to JSON");
   if (typeof value !== "object") return String(value);
-  if (seen.has(value)) return "[Circular]";
+  if (seen.has(value)) throw new TypeError("Cannot convert circular Lua table to JSON");
   seen.add(value);
 
   const stringKeys = Object.keys(value.str || {}).filter((key) => key !== "__nativeState");
@@ -206,12 +206,32 @@ export function luaToJson(global, value, seen = new WeakSet()) {
   return output;
 }
 
-export function serializeError(error, phase = "runtime") {
+export function serializeError(error, phase = "runtime", details = {}) {
   return {
+    code: inferErrorCode(error, phase),
     phase,
     message: String(error?.message || error),
+    file: details.file || null,
+    line: details.line || extractLine(error),
+    details,
     stack: String(error?.stack || "").split("\n").slice(0, 8)
   };
+}
+
+function inferErrorCode(error, phase) {
+  const message = String(error?.message || error || "");
+  const lower = message.toLowerCase();
+  if (message.includes("Unsupported LuaJS/TI-Nspire API")) return "TI_NSPIRE_API_UNSUPPORTED";
+  if (lower.includes("function not found")) return "LUA_FUNCTION_NOT_FOUND";
+  if (phase === "syntax") return "LUA_SYNTAX_ERROR";
+  if (phase.startsWith("call:")) return "LUA_CALL_ERROR";
+  return "LUA_RUNTIME_ERROR";
+}
+
+function extractLine(error) {
+  const stack = String(error?.stack || "");
+  const match = stack.match(/:(\d+):\d+\)?(?:\n|$)/);
+  return match ? Number(match[1]) : null;
 }
 
 function createSandbox(state, options) {
@@ -288,7 +308,12 @@ function installLuaJsCompatibilityPatches(global, state) {
   };
   global.not_supported = () => {
     const message = "Unsupported LuaJS/TI-Nspire API called";
-    state.missingApis.push(message);
+    state.missingApis.push({
+      code: "TI_NSPIRE_API_UNSUPPORTED",
+      api: "unknown",
+      status: "unsupported",
+      message
+    });
     throw new Error(message);
   };
 }

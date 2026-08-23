@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acewalt.github.io/tns-tool-wasm/schemas/lua-suite.schema.json",
+  "title": "TNS Tool WASM Lua Suite",
+  "description": "Input format for tns-tool lua suite.",
+  "oneOf": [
+    {
+      "type": "array",
+      "items": { "$ref": "#/$defs/testCase" }
+    },
+    {
+      "type": "object",
+      "properties": {
+        "function": { "type": "string" },
+        "functionName": { "type": "string" },
+        "tests": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/testCase" }
+        }
+      },
+      "required": ["tests"],
+      "additionalProperties": true
+    }
+  ],
+  "$defs": {
+    "testCase": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "function": { "type": "string" },
+        "functionName": { "type": "string" },
+        "input": {},
+        "args": {
+          "type": "array",
+          "items": {}
+        },
+        "expected": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": ["name", "expected"],
+      "additionalProperties": true
+    }
+  }
+}

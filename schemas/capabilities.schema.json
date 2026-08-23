@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://acewalt.github.io/tns-tool-wasm/schemas/capabilities.schema.json",
+  "title": "TNS Tool WASM Capabilities",
+  "type": "object",
+  "properties": {
+    "success": { "type": "boolean" },
+    "version": { "type": "string" },
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "boolean" }
+      }
+    },
+    "notes": {
+      "type": "array",
+      "items": { "type": "string" }
+    }
+  },
+  "required": ["success", "version", "capabilities"],
+  "additionalProperties": true
+}

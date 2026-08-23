@@ -82,7 +82,7 @@ function normalizeCalls(options) {
 function normalizeCall(call) {
   return {
     name: call.name || call.functionName || call.function || "call",
-    functionName: call.functionName || call.function || "solveAnyEquation",
+    functionName: call.functionName || call.function,
     args: Array.isArray(call.args) ? call.args : call.input == null ? [] : [call.input]
   };
 }
