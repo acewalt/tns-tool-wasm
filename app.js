@@ -114,7 +114,7 @@ const I18N = {
     pyFileDownloaded: "Archivo .py descargado.",
     previewPy: "Preview PY",
     pythonPreviewTitle: "Preview Python",
-    pythonPreviewIntro: "Ejecuta el codigo actual con Pyodide. Si tu script usa input(), escribe cada respuesta en una linea.",
+    pythonPreviewIntro: "Ejecuta el codigo actual con Pyodide. Si tu script usa input(), escribe cada respuesta en una linea. En menus con pausa, agrega tambien una linea vacia y una opcion de salida.",
     pythonPreviewInput: "Entrada para input()",
     pythonPreviewRun: "Ejecutar",
     pythonPreviewOutput: "Salida",
@@ -123,6 +123,9 @@ const I18N = {
     pythonPreviewNoOutput: "El programa termino sin imprimir salida.",
     pythonPreviewOk: "Python ejecutado correctamente.",
     pythonPreviewFailed: "Python fallo durante la ejecucion.",
+    pythonPreviewInputExhausted: "Faltan entradas para input(). Agrega una linea por cada pregunta, incluyendo Enter de pausa y opcion de salida si el menu vuelve a empezar.",
+    pythonPreviewLoopLimit: "El preview se detuvo por exceso de iteraciones. Revisa si falta una entrada o si hay un bucle infinito.",
+    pythonPreviewOutputLimit: "El preview se detuvo porque el programa imprimio demasiada salida.",
     pythonRuntimeNotReady: "Runtime WASM no esta listo todavia.",
     viewValue: "Ver valor",
     viewXml: "Ver XML",
@@ -299,7 +302,7 @@ const I18N = {
     pyFileDownloaded: ".py file downloaded.",
     previewPy: "Preview PY",
     pythonPreviewTitle: "Python preview",
-    pythonPreviewIntro: "Run the current code with Pyodide. If your script uses input(), write each answer on its own line.",
+    pythonPreviewIntro: "Run the current code with Pyodide. If your script uses input(), write each answer on its own line. For menus with pauses, also add a blank line and an exit option.",
     pythonPreviewInput: "Input for input()",
     pythonPreviewRun: "Run",
     pythonPreviewOutput: "Output",
@@ -308,6 +311,9 @@ const I18N = {
     pythonPreviewNoOutput: "The program finished without printing output.",
     pythonPreviewOk: "Python executed successfully.",
     pythonPreviewFailed: "Python failed during execution.",
+    pythonPreviewInputExhausted: "Not enough input() answers. Add one line for each prompt, including pause Enter lines and an exit option if the menu starts again.",
+    pythonPreviewLoopLimit: "Preview stopped after too many iterations. Check for missing input or an infinite loop.",
+    pythonPreviewOutputLimit: "Preview stopped because the program printed too much output.",
     pythonRuntimeNotReady: "WASM runtime is not ready yet.",
     viewValue: "View value",
     viewXml: "View XML",
@@ -484,7 +490,7 @@ const I18N = {
     pyFileDownloaded: "Fichier .py telecharge.",
     previewPy: "Apercu PY",
     pythonPreviewTitle: "Apercu Python",
-    pythonPreviewIntro: "Execute le code actuel avec Pyodide. Si votre script utilise input(), ecrivez chaque reponse sur une ligne.",
+    pythonPreviewIntro: "Execute le code actuel avec Pyodide. Si votre script utilise input(), ecrivez chaque reponse sur une ligne. Pour les menus avec pause, ajoutez aussi une ligne vide et une option de sortie.",
     pythonPreviewInput: "Entree pour input()",
     pythonPreviewRun: "Executer",
     pythonPreviewOutput: "Sortie",
@@ -493,6 +499,9 @@ const I18N = {
     pythonPreviewNoOutput: "Le programme s'est termine sans sortie imprimee.",
     pythonPreviewOk: "Python execute correctement.",
     pythonPreviewFailed: "Python a echoue pendant l'execution.",
+    pythonPreviewInputExhausted: "Il manque des reponses pour input(). Ajoutez une ligne pour chaque question, y compris les pauses Entree et une option de sortie si le menu recommence.",
+    pythonPreviewLoopLimit: "L'apercu s'est arrete apres trop d'iterations. Verifiez s'il manque une entree ou s'il y a une boucle infinie.",
+    pythonPreviewOutputLimit: "L'apercu s'est arrete car le programme a imprime trop de sortie.",
     pythonRuntimeNotReady: "Le runtime WASM n'est pas encore pret.",
     viewValue: "Voir valeur",
     viewXml: "Voir XML",
@@ -9462,7 +9471,11 @@ async function executePythonPreview(code, stdinText) {
   if (!pyodide) throw new Error(t("pythonRuntimeNotReady"));
   pyodide.globals.set("wasm_py_preview_code", code);
   pyodide.globals.set("wasm_py_preview_stdin", stdinText || "");
+  pyodide.globals.set("wasm_py_preview_input_error", t("pythonPreviewInputExhausted"));
+  pyodide.globals.set("wasm_py_preview_loop_error", t("pythonPreviewLoopLimit"));
+  pyodide.globals.set("wasm_py_preview_output_error", t("pythonPreviewOutputLimit"));
   const payload = await pyodide.runPythonAsync(`
+import ast
 import builtins
 import contextlib
 import io
@@ -9472,22 +9485,81 @@ import traceback
 
 code = wasm_py_preview_code
 stdin_text = wasm_py_preview_stdin or ""
-stdout = io.StringIO()
-stderr = io.StringIO()
+input_error = wasm_py_preview_input_error
+loop_error = wasm_py_preview_loop_error
+output_error = wasm_py_preview_output_error
+
+class PreviewInputExhausted(RuntimeError):
+    pass
+
+class PreviewLoopLimit(RuntimeError):
+    pass
+
+class PreviewOutputLimit(RuntimeError):
+    pass
+
+class GuardedStringIO(io.StringIO):
+    def __init__(self, max_chars=60000):
+        super().__init__()
+        self.max_chars = max_chars
+        self.size = 0
+
+    def write(self, value):
+        self.size += len(value or "")
+        if self.size > self.max_chars:
+            raise PreviewOutputLimit(output_error)
+        return super().write(value)
+
+stdout = GuardedStringIO()
+stderr = GuardedStringIO()
 stdin = io.StringIO(stdin_text)
 stdin_lines = iter(stdin_text.splitlines())
 old_input = builtins.input
 old_stdin = sys.stdin
+preview_input_exhausted = False
+preview_loop_steps = 0
+preview_loop_limit = 20000
+
+def tns_preview_loop_guard(line=0):
+    global preview_loop_steps
+    preview_loop_steps += 1
+    if preview_input_exhausted:
+        raise PreviewInputExhausted(input_error)
+    if preview_loop_steps > preview_loop_limit:
+        raise PreviewLoopLimit(loop_error)
 
 def preview_input(prompt=""):
+    global preview_input_exhausted
     if prompt:
         print(prompt, end="")
     try:
         return next(stdin_lines)
     except StopIteration as exc:
-        raise EOFError("No hay mas datos de entrada para input().") from exc
+        preview_input_exhausted = True
+        raise PreviewInputExhausted(input_error) from exc
 
-namespace = {"__name__": "__main__"}
+class PreviewLoopInstrumenter(ast.NodeTransformer):
+    def _with_guard(self, node):
+        self.generic_visit(node)
+        guard = ast.Expr(
+            value=ast.Call(
+                func=ast.Name(id="tns_preview_loop_guard", ctx=ast.Load()),
+                args=[ast.Constant(getattr(node, "lineno", 0))],
+                keywords=[],
+            )
+        )
+        if node.body:
+            guard = ast.copy_location(guard, node.body[0])
+        node.body.insert(0, guard)
+        return node
+
+    def visit_For(self, node):
+        return self._with_guard(node)
+
+    def visit_While(self, node):
+        return self._with_guard(node)
+
+namespace = {"__name__": "__main__", "tns_preview_loop_guard": tns_preview_loop_guard}
 success = True
 error = None
 
@@ -9495,7 +9567,10 @@ try:
     builtins.input = preview_input
     sys.stdin = stdin
     with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
-        exec(code, namespace, namespace)
+        tree = ast.parse(code, filename="<python-preview>", mode="exec")
+        tree = PreviewLoopInstrumenter().visit(tree)
+        ast.fix_missing_locations(tree)
+        exec(compile(tree, "<python-preview>", "exec"), namespace, namespace)
 except BaseException as exc:
     success = False
     error = {
