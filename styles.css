@@ -1316,6 +1316,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 .love-preview-stage.expanded-view {
   width: min(800px, 100%);
+  max-width: 800px;
 }
 
 .love-preview-calculator-bar {
@@ -1349,7 +1350,9 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 #love-preview-canvas.expanded-view {
-  max-height: min(58vh, 600px);
+  width: 100%;
+  max-height: none;
+  aspect-ratio: 4 / 3;
 }
 
 .preview-controls {
@@ -2810,7 +2813,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   }
 
   #love-preview-canvas.expanded-view {
-    max-height: 60vh;
+    max-height: none;
   }
 
   .preview-controls button {

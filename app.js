@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-calculator-chrome";
+const SOURCE_VERSION = "2026-08-23-love-expanded-canvas-fix";
 
 const I18N = {
   es: {
