@@ -830,9 +830,15 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .lua-toolbar .love-preview-tool-button {
-  background: linear-gradient(135deg, #a6ff2e, #d9ff73);
-  color: #203900;
-  box-shadow: 0 0 24px rgb(166 255 46 / 32%), 0 0 74px rgb(166 255 46 / 12%);
+  background: linear-gradient(135deg, #e658a0, #ff7dbc);
+  color: #fff7fb;
+  box-shadow: 0 0 24px rgb(230 88 160 / 36%), 0 0 74px rgb(230 88 160 / 15%);
+}
+
+.lua-toolbar .love-preview-tool-button:hover {
+  background: linear-gradient(135deg, #ff69ad, #ff9aca);
+  color: #ffffff;
+  box-shadow: 0 0 30px rgb(230 88 160 / 45%), 0 0 88px rgb(230 88 160 / 18%);
 }
 
 .doctor-grid {
