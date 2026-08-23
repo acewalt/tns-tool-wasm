@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-preview-experiment";
+const SOURCE_VERSION = "2026-08-23-love-nspire-bridge";
 
 const I18N = {
   es: {
@@ -43,6 +43,13 @@ const I18N = {
     previewLove: "Preview LÖVE",
     lovePreviewNote: "Preview experimental de LÖVE: soporta love.load, love.update, love.draw, love.keypressed, love.mousepressed y love.graphics basico. No es el motor LÖVE completo.",
     lovePreviewStarted: "Preview LÖVE experimental activo.",
+    loveConvertNspire: "Convertir LÖVE a TI-Nspire",
+    loveCopyNspire: "Copiar TI-Nspire",
+    loveReplaceNspire: "Reemplazar con TI-Nspire",
+    loveConvertedNspire: "Codigo LÖVE convertido a ScriptApp TI-Nspire en el editor.",
+    loveCopiedNspire: "Codigo TI-Nspire copiado al portapapeles.",
+    lovePreviewNspireHint: "Este codigo parece ScriptApp TI-Nspire; usa Preview Lua. Preview LÖVE solo ejecuta codigo que define love.*.",
+    lovePreviewNoCallbacks: "No se encontro love.draw ni love.update. Si este codigo es TI-Nspire, usa Preview Lua.",
     luaGuide: "Guia Lua",
     luaTemplates: "Plantillas Lua",
     luaEditPages: "Editar paginas",
@@ -239,6 +246,13 @@ const I18N = {
     previewLove: "Preview LÖVE",
     lovePreviewNote: "Experimental LÖVE preview: supports love.load, love.update, love.draw, love.keypressed, love.mousepressed, and basic love.graphics. This is not the full LÖVE engine.",
     lovePreviewStarted: "Experimental LÖVE preview active.",
+    loveConvertNspire: "Convert LÖVE to TI-Nspire",
+    loveCopyNspire: "Copy TI-Nspire",
+    loveReplaceNspire: "Replace with TI-Nspire",
+    loveConvertedNspire: "LÖVE code converted to TI-Nspire ScriptApp in the editor.",
+    loveCopiedNspire: "TI-Nspire code copied to clipboard.",
+    lovePreviewNspireHint: "This code looks like a TI-Nspire ScriptApp; use Preview Lua. Preview LÖVE only runs code that defines love.*.",
+    lovePreviewNoCallbacks: "No love.draw or love.update callback was found. If this is TI-Nspire code, use Preview Lua.",
     luaGuide: "Lua guide",
     luaTemplates: "Lua templates",
     luaEditPages: "Edit pages",
@@ -435,6 +449,13 @@ const I18N = {
     previewLove: "Apercu LÖVE",
     lovePreviewNote: "Apercu LÖVE experimental : prend en charge love.load, love.update, love.draw, love.keypressed, love.mousepressed et love.graphics basique. Ce n'est pas le moteur LÖVE complet.",
     lovePreviewStarted: "Apercu LÖVE experimental actif.",
+    loveConvertNspire: "Convertir LÖVE vers TI-Nspire",
+    loveCopyNspire: "Copier TI-Nspire",
+    loveReplaceNspire: "Remplacer par TI-Nspire",
+    loveConvertedNspire: "Code LÖVE converti en ScriptApp TI-Nspire dans l'editeur.",
+    loveCopiedNspire: "Code TI-Nspire copie dans le presse-papiers.",
+    lovePreviewNspireHint: "Ce code ressemble a une ScriptApp TI-Nspire; utilisez Apercu Lua. L'apercu LÖVE execute seulement le code qui definit love.*.",
+    lovePreviewNoCallbacks: "Aucun callback love.draw ou love.update trouve. Si ce code est TI-Nspire, utilisez Apercu Lua.",
     luaGuide: "Guide Lua",
     luaTemplates: "Modeles Lua",
     luaEditPages: "Editer pages",
@@ -6534,6 +6555,7 @@ function showLuaEditor(item) {
             <button type="button" id="lua-templates">${escapeHtml(t("luaTemplates"))}</button>
             <button type="button" id="lua-page-editor">${escapeHtml(t("luaEditPages"))}</button>
             <button type="button" id="lua-tns-convert">${escapeHtml(t("luaTnsConvert"))}</button>
+            <button type="button" id="lua-love-convert">${escapeHtml(t("loveConvertNspire"))}</button>
           </div>
         </div>
         <button type="button" id="lua-save" class="green-tool-button">${escapeHtml(t("saveMenu"))}</button>
@@ -6674,6 +6696,13 @@ function showLuaEditor(item) {
     convertTnsToLuaInEditor(editor, item);
     analyze();
   });
+  backdrop.querySelector("#lua-love-convert").addEventListener("click", () => {
+    editMenuPanel.hidden = true;
+    editor.value = convertLoveToNspireScriptApp(editor.value);
+    editor.dispatchEvent(new Event("input"));
+    log.textContent = t("loveConvertedNspire");
+    analyze();
+  });
   backdrop.querySelector("#lua-preview").addEventListener("click", () => {
     const caret = editor.selectionStart;
     editor.setSelectionRange(caret, caret);
@@ -6688,7 +6717,7 @@ function showLuaEditor(item) {
     editor.setSelectionRange(caret, caret);
     editor.blur();
     window.getSelection?.()?.removeAllRanges?.();
-    showLovePreview(editor.value).catch((error) => {
+    showLovePreview(editor.value, editor, log).catch((error) => {
       log.textContent += `\n[ERROR] Preview LÖVE: ${error.message}`;
     });
   });
@@ -6811,6 +6840,331 @@ async function copyPlainText(text) {
 function appendPreviewLog(logEl, message) {
   logEl.textContent += `${logEl.textContent ? "\n" : ""}${message}`;
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+function looksLikeLoveSource(source) {
+  const text = String(source || "");
+  return /\blove\./.test(text) || /\bfunction\s+love\./.test(text);
+}
+
+function looksLikeTINSPIRELuaSource(source) {
+  const text = String(source || "");
+  return /\bplatform\./.test(text) || /\bon\.paint\b/.test(text) || /\bgc:/.test(text);
+}
+
+function convertLoveToNspireScriptApp(source = "") {
+  const rawSource = decodeXmlTextEntities(String(source || "")).replace(/\r\n?/g, "\n").trim();
+  if (/TNS Tool LOVE compatibility layer: start/.test(rawSource)) return rawSource;
+  return `platform.apilevel = '2.0'
+
+--[[ TNS Tool LOVE compatibility layer: start
+This wrapper lets simple LÖVE-style scripts run as TI-Nspire ScriptApps.
+It supports basic love.load/update/draw/input/window/graphics calls.
+It is not the full LÖVE engine: images, audio, physics, files and shaders
+need explicit TI-Nspire replacements.
+]]
+
+local __love_gc = nil
+local __love_booted = false
+local __love_dt = 0.03
+local __love_quit = false
+local __love_font_size = 12
+local __love_color = {255, 255, 255}
+local __love_bg = {0, 0, 0}
+local __love_keys = {}
+local __love_mouse_x = 0
+local __love_mouse_y = 0
+local __love_title = ""
+
+love = love or {}
+love.graphics = love.graphics or {}
+love.window = love.window or {}
+love.keyboard = love.keyboard or {}
+love.mouse = love.mouse or {}
+love.timer = love.timer or {}
+love.event = love.event or {}
+love.math = love.math or {}
+
+local function __love_channel(value)
+    value = tonumber(value) or 0
+    if value <= 1 then value = value * 255 end
+    if value < 0 then return 0 end
+    if value > 255 then return 255 end
+    return math.floor(value + 0.5)
+end
+
+local function __love_set_gc_color(color)
+    if __love_gc then
+        __love_gc:setColorRGB(color[1], color[2], color[3])
+    end
+end
+
+local function __love_apply_color()
+    __love_set_gc_color(__love_color)
+end
+
+local function __love_set_font(size)
+    __love_font_size = tonumber(size) or __love_font_size
+    if __love_gc then
+        __love_gc:setFont("sansserif", "r", __love_font_size)
+    end
+end
+
+local function __love_clear()
+    if not __love_gc then return end
+    __love_set_gc_color(__love_bg)
+    __love_gc:fillRect(0, 0, platform.window:width(), platform.window:height())
+    __love_set_font(__love_font_size)
+    __love_apply_color()
+end
+
+function love.graphics.setColor(r, g, b, a)
+    __love_color = {__love_channel(r), __love_channel(g or r), __love_channel(b or g or r)}
+    __love_apply_color()
+end
+
+function love.graphics.getColor()
+    return __love_color[1], __love_color[2], __love_color[3], 255
+end
+
+function love.graphics.setBackgroundColor(r, g, b, a)
+    __love_bg = {__love_channel(r), __love_channel(g or r), __love_channel(b or g or r)}
+end
+
+function love.graphics.getBackgroundColor()
+    return __love_bg[1], __love_bg[2], __love_bg[3], 255
+end
+
+function love.graphics.clear(r, g, b, a)
+    if r ~= nil then
+        love.graphics.setBackgroundColor(r, g, b, a)
+    end
+    __love_clear()
+end
+
+function love.graphics.print(text, x, y)
+    if not __love_gc then return end
+    __love_apply_color()
+    __love_gc:drawString(tostring(text or ""), tonumber(x) or 0, tonumber(y) or 0, "top")
+end
+
+function love.graphics.printf(text, x, y, limit, align)
+    if not __love_gc then return end
+    local drawX = tonumber(x) or 0
+    local width = tonumber(limit) or platform.window:width()
+    local label = tostring(text or "")
+    if align == "center" then
+        drawX = drawX + (width - __love_gc:getStringWidth(label)) / 2
+    elseif align == "right" then
+        drawX = drawX + width - __love_gc:getStringWidth(label)
+    end
+    love.graphics.print(label, drawX, y)
+end
+
+function love.graphics.rectangle(mode, x, y, w, h)
+    if not __love_gc then return end
+    x, y, w, h = tonumber(x) or 0, tonumber(y) or 0, tonumber(w) or 0, tonumber(h) or 0
+    __love_apply_color()
+    if mode == "fill" then
+        __love_gc:fillRect(x, y, w, h)
+    else
+        __love_gc:drawRect(x, y, w, h)
+    end
+end
+
+function love.graphics.circle(mode, x, y, radius)
+    if not __love_gc then return end
+    x, y, radius = tonumber(x) or 0, tonumber(y) or 0, math.max(0, tonumber(radius) or 0)
+    __love_apply_color()
+    if mode == "fill" then
+        __love_gc:fillArc(x - radius, y - radius, radius * 2, radius * 2, 0, 360)
+    else
+        __love_gc:drawArc(x - radius, y - radius, radius * 2, radius * 2, 0, 360)
+    end
+end
+
+function love.graphics.line(...)
+    if not __love_gc then return end
+    local values = {...}
+    if #values < 4 then return end
+    __love_apply_color()
+    local index = 1
+    while index + 3 <= #values do
+        __love_gc:drawLine(tonumber(values[index]) or 0, tonumber(values[index + 1]) or 0, tonumber(values[index + 2]) or 0, tonumber(values[index + 3]) or 0)
+        index = index + 2
+    end
+end
+
+function love.graphics.points(...)
+    if not __love_gc then return end
+    local values = {...}
+    __love_apply_color()
+    local index = 1
+    while index + 1 <= #values do
+        __love_gc:fillRect(tonumber(values[index]) or 0, tonumber(values[index + 1]) or 0, 1, 1)
+        index = index + 2
+    end
+end
+
+function love.graphics.setLineWidth(width)
+    if __love_gc and __love_gc.setPen then
+        local size = tonumber(width) or 1
+        __love_gc:setPen(size >= 3 and "thick" or size >= 2 and "medium" or "thin", "smooth")
+    end
+end
+
+function love.graphics.getWidth()
+    return platform.window:width()
+end
+
+function love.graphics.getHeight()
+    return platform.window:height()
+end
+
+function love.graphics.getDimensions()
+    return platform.window:width(), platform.window:height()
+end
+
+function love.graphics.newFont(size)
+    return {size = tonumber(size) or __love_font_size}
+end
+
+function love.graphics.setFont(font)
+    if type(font) == "table" then
+        __love_set_font(font.size)
+    else
+        __love_set_font(font)
+    end
+end
+
+function love.graphics.getFont()
+    return {size = __love_font_size}
+end
+
+function love.graphics.push() end
+function love.graphics.pop() end
+function love.graphics.origin() end
+function love.graphics.translate() end
+function love.graphics.scale() end
+function love.graphics.rotate() end
+function love.graphics.setDefaultFilter() end
+
+function love.window.setTitle(title)
+    __love_title = tostring(title or "")
+end
+
+function love.window.setMode(width, height)
+    return true
+end
+
+function love.window.getMode()
+    return platform.window:width(), platform.window:height(), {}
+end
+
+function love.keyboard.isDown(...)
+    for _, key in ipairs({...}) do
+        if __love_keys[tostring(key)] then return true end
+    end
+    return false
+end
+
+function love.mouse.getPosition()
+    return __love_mouse_x, __love_mouse_y
+end
+
+function love.timer.getDelta()
+    return __love_dt
+end
+
+function love.timer.getTime()
+    if timer and timer.getMilliSecCounter then
+        return timer.getMilliSecCounter() / 1000
+    end
+    return 0
+end
+
+function love.event.quit()
+    __love_quit = true
+end
+
+function love.math.random(a, b)
+    if a == nil then return math.random() end
+    if b == nil then return math.random(a) end
+    return math.random(a, b)
+end
+
+--[[ User LOVE source: start ]]
+${rawSource || "-- Paste or write LÖVE code here."}
+--[[ User LOVE source: end ]]
+
+local function __love_boot()
+    if __love_booted then return end
+    __love_booted = true
+    if love.load then love.load() end
+    if timer and timer.start then timer.start(__love_dt) end
+end
+
+function on.create()
+    __love_boot()
+end
+
+function on.construction()
+    __love_boot()
+end
+
+function on.paint(gc)
+    __love_gc = gc
+    __love_boot()
+    __love_clear()
+    if love.draw then love.draw() end
+end
+
+function on.timer()
+    if __love_quit then
+        if timer and timer.stop then timer.stop() end
+        return
+    end
+    __love_boot()
+    if love.update then love.update(__love_dt) end
+    platform.window:invalidate()
+end
+
+function on.arrowKey(key)
+    key = tostring(key or "")
+    __love_keys[key] = true
+    if love.keypressed then love.keypressed(key) end
+    platform.window:invalidate()
+end
+
+function on.enterKey()
+    __love_keys["return"] = true
+    if love.keypressed then love.keypressed("return") end
+    platform.window:invalidate()
+end
+
+function on.escapeKey()
+    __love_keys["escape"] = true
+    if love.keypressed then love.keypressed("escape") end
+    platform.window:invalidate()
+end
+
+function on.charIn(ch)
+    if love.keypressed then love.keypressed(ch) end
+    platform.window:invalidate()
+end
+
+function on.mouseDown(x, y)
+    __love_mouse_x, __love_mouse_y = x, y
+    if love.mousepressed then love.mousepressed(x, y, 1) end
+    platform.window:invalidate()
+end
+
+function on.mouseMove(x, y)
+    __love_mouse_x, __love_mouse_y = x, y
+end
+
+--[[ TNS Tool LOVE compatibility layer: end ]]
+`;
 }
 
 function recordLuaPreviewText(screenText, text, x, y, lineHeight = 12) {
@@ -6981,7 +7335,7 @@ async function showLuaPreview(code, item = null) {
   });
 }
 
-async function showLovePreview(code) {
+async function showLovePreview(code, editor = null, editorLog = null) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
@@ -7000,6 +7354,8 @@ async function showLovePreview(code) {
       </div>
       <pre id="love-preview-log" class="mini-log"></pre>
       <div class="modal-actions">
+        <button type="button" id="love-copy-nspire">${escapeHtml(t("loveCopyNspire"))}</button>
+        <button type="button" id="love-replace-nspire" class="green-tool-button">${escapeHtml(t("loveReplaceNspire"))}</button>
         <button type="button" id="love-preview-close">${escapeHtml(t("close"))}</button>
       </div>
     </div>`;
@@ -7008,11 +7364,16 @@ async function showLovePreview(code) {
   const ctx = canvas.getContext("2d");
   const previewLog = backdrop.querySelector("#love-preview-log");
   let runtime = null;
-  try {
-    runtime = await createLovePreviewRuntime(code, ctx, canvas, previewLog);
-    runtime.boot();
-  } catch (error) {
-    appendPreviewLog(previewLog, `ERROR Preview LÖVE: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+  if (!looksLikeLoveSource(code)) {
+    appendPreviewLog(previewLog, looksLikeTINSPIRELuaSource(code) ? t("lovePreviewNspireHint") : t("lovePreviewNoCallbacks"));
+  } else {
+    if (!/\blove\.(draw|update|load)\b/.test(String(code || ""))) appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
+    try {
+      runtime = await createLovePreviewRuntime(code, ctx, canvas, previewLog);
+      runtime.boot();
+    } catch (error) {
+      appendPreviewLog(previewLog, `ERROR Preview LÖVE: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+    }
   }
 
   for (const button of backdrop.querySelectorAll(".preview-controls button")) {
@@ -7044,6 +7405,17 @@ async function showLovePreview(code) {
   };
   document.addEventListener("keydown", keyDownHandler);
   document.addEventListener("keyup", keyUpHandler);
+  backdrop.querySelector("#love-copy-nspire").addEventListener("click", async () => {
+    await copyPlainText(convertLoveToNspireScriptApp(code));
+    appendPreviewLog(previewLog, t("loveCopiedNspire"));
+  });
+  backdrop.querySelector("#love-replace-nspire").addEventListener("click", () => {
+    if (!editor) return;
+    editor.value = convertLoveToNspireScriptApp(code);
+    editor.dispatchEvent(new Event("input"));
+    appendPreviewLog(previewLog, t("loveConvertedNspire"));
+    if (editorLog) editorLog.textContent = t("loveConvertedNspire");
+  });
   backdrop.querySelector("#love-preview-close").addEventListener("click", () => {
     document.removeEventListener("keydown", keyDownHandler);
     document.removeEventListener("keyup", keyUpHandler);
