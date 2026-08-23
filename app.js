@@ -2313,16 +2313,16 @@ function analyzeLuaBasic(code) {
         else errors.push({ level: "ERROR", line: lineNumber, message: `Delimitador extra: ${char}` });
       }
     }
-    if (/\bif\b/.test(line) && !/\bthen\b/.test(line)) {
+    if (/\bif\b/.test(line) && !luaHeaderHasTerminator(cleanedLines, index, "then")) {
       errors.push({ level: "ERROR", line: lineNumber, message: "If sin then" });
     }
-    if (/\belseif\b/.test(line) && !/\bthen\b/.test(line)) {
+    if (/\belseif\b/.test(line) && !luaHeaderHasTerminator(cleanedLines, index, "then")) {
       errors.push({ level: "ERROR", line: lineNumber, message: "Elseif sin then" });
     }
-    if (/\bwhile\b/.test(line) && !/\bdo\b/.test(line)) {
+    if (/\bwhile\b/.test(line) && !luaHeaderHasTerminator(cleanedLines, index, "do")) {
       errors.push({ level: "ERROR", line: lineNumber, message: "While sin do" });
     }
-    if (/\bfor\b/.test(line) && !/\bdo\b/.test(line)) {
+    if (/\bfor\b/.test(line) && !luaHeaderHasTerminator(cleanedLines, index, "do")) {
       errors.push({ level: "ERROR", line: lineNumber, message: "For sin do" });
     }
     handleLuaBlocks(line, lineNumber, stack, errors);
@@ -2335,6 +2335,49 @@ function analyzeLuaBasic(code) {
     errors.push({ level: "ERROR", line: item.line, message: `Delimitador sin cerrar: ${item.char}` });
   }
   return { errors, warnings };
+}
+
+function luaHeaderHasTerminator(cleanedLines, startIndex, terminator) {
+  const terminatorRegex = new RegExp(`\\b${terminator}\\b`);
+  let previous = "";
+  let depth = 0;
+  for (let i = startIndex; i < cleanedLines.length; i += 1) {
+    const compact = (cleanedLines[i] || "").trim();
+    if (!compact) continue;
+    if (i > startIndex && depth <= 0 && !luaHeaderCanContinue(previous, compact, terminator)) {
+      return false;
+    }
+    depth += luaDelimiterDelta(compact);
+    if (terminatorRegex.test(compact)) return true;
+    previous = compact;
+  }
+  return false;
+}
+
+function luaHeaderCanContinue(previous, current, terminator) {
+  const terminatorRegex = new RegExp(`^${terminator}\\b`);
+  return terminatorRegex.test(current)
+    || luaLineEndsAsContinuation(previous)
+    || /^(if|elseif|while|for)\s*$/.test(previous)
+    || /^[),}\]]/.test(current)
+    || /^(and|or|in)\b/.test(current)
+    || /^[+\-*\/%^#=<>~,.]/.test(current);
+}
+
+function luaLineEndsAsContinuation(line) {
+  const compact = (line || "").trim();
+  return /[\(\[\{,+\-*\/%^#=<>~.]$/.test(compact)
+    || /\b(and|or|not|in)\s*$/.test(compact)
+    || /\.\.\s*$/.test(compact);
+}
+
+function luaDelimiterDelta(line) {
+  let depth = 0;
+  for (const char of line) {
+    if ("([{".includes(char)) depth += 1;
+    else if (")]}".includes(char)) depth -= 1;
+  }
+  return Math.max(depth, -1);
 }
 
 function stripLuaCode(code) {
