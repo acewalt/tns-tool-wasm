@@ -4,12 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20260823-monaco-all-editors" />
-    <link rel="stylesheet" href="./dist/monaco-lua-editor.css?v=20260823-monaco-all-editors" />
+    <link rel="stylesheet" href="./styles.css?v=20260823-py-modal-preview" />
+    <link rel="stylesheet" href="./dist/monaco-lua-editor.css?v=20260823-py-modal-preview" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script type="module" src="./dist/monaco-lua-editor.js?v=20260823-monaco-all-editors"></script>
-    <script defer src="./app.js?v=20260823-monaco-all-editors"></script>
+    <script type="module" src="./dist/monaco-lua-editor.js?v=20260823-py-modal-preview"></script>
+    <script defer src="./app.js?v=20260823-py-modal-preview"></script>
   </head>
   <body>
     <div id="mouse-glow" class="mouse-glow" aria-hidden="true"></div>
@@ -194,6 +194,7 @@
             <button id="py-doctor-save-btn" disabled data-i18n="saveBlock">Guardar bloque</button>
             <button id="py-doctor-download-btn" disabled data-i18n="downloadPy">Descargar .py</button>
             <button id="py-doctor-syntax-btn" disabled data-i18n="runSyntax">Ejecutar sintaxis</button>
+            <button id="py-doctor-preview-btn" disabled data-i18n="previewPy">Preview PY</button>
             <button id="py-doctor-autofix-btn" disabled>Auto Fix</button>
             <button id="py-doctor-changes-btn" disabled data-i18n="showChanges">Mostrar cambios</button>
             <span id="py-line-label">Linea: 1 Col: 1 Total: 1</span>

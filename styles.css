@@ -1188,6 +1188,66 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   width: min(1100px, calc(100vw - 28px));
 }
 
+.py-doctor-modal {
+  width: min(1240px, calc(100vw - 28px));
+  max-height: min(92vh, 820px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.py-doctor-modal #py-doctor-modal-slot {
+  min-height: 0;
+  overflow: auto;
+}
+
+.py-doctor-modal #py-doctor-panel {
+  margin: 0;
+  box-shadow: none;
+}
+
+.py-doctor-modal #py-doctor-panel:not(.collapsed) {
+  display: block;
+}
+
+.py-doctor-modal .doctor-grid {
+  min-height: min(58vh, 560px);
+}
+
+.py-preview-modal {
+  width: min(780px, calc(100vw - 28px));
+}
+
+.py-preview-modal .muted-text {
+  color: var(--muted);
+  margin: -4px 0 14px;
+}
+
+.py-preview-label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.py-preview-label textarea {
+  min-height: 110px;
+  resize: vertical;
+  font-family: "Cascadia Code", "Fira Code", Consolas, monospace;
+}
+
+.py-preview-output {
+  min-height: 220px;
+  max-height: 330px;
+  overflow: auto;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--code-bg);
+  color: var(--code-text);
+  white-space: pre-wrap;
+}
+
 .lua-modal {
   width: min(1240px, calc(100vw - 28px));
 }

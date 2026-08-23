@@ -112,6 +112,18 @@ const I18N = {
     pyStageUpdated: "Codigo Python guardado en el staging XML/TNS.",
     pyStageLogUpdated: "Python del inspector actualizado desde Syntax Doctor PY.",
     pyFileDownloaded: "Archivo .py descargado.",
+    previewPy: "Preview PY",
+    pythonPreviewTitle: "Preview Python",
+    pythonPreviewIntro: "Ejecuta el codigo actual con Pyodide. Si tu script usa input(), escribe cada respuesta en una linea.",
+    pythonPreviewInput: "Entrada para input()",
+    pythonPreviewRun: "Ejecutar",
+    pythonPreviewOutput: "Salida",
+    pythonPreviewRunning: "Ejecutando Python...",
+    pythonPreviewReady: "Escribe la entrada necesaria y presiona Ejecutar.",
+    pythonPreviewNoOutput: "El programa termino sin imprimir salida.",
+    pythonPreviewOk: "Python ejecutado correctamente.",
+    pythonPreviewFailed: "Python fallo durante la ejecucion.",
+    pythonRuntimeNotReady: "Runtime WASM no esta listo todavia.",
     viewValue: "Ver valor",
     viewXml: "Ver XML",
     viewDetails: "Ver detalle",
@@ -285,6 +297,18 @@ const I18N = {
     pyStageUpdated: "Python code saved to the XML/TNS staging area.",
     pyStageLogUpdated: "Inspector Python updated from Syntax Doctor PY.",
     pyFileDownloaded: ".py file downloaded.",
+    previewPy: "Preview PY",
+    pythonPreviewTitle: "Python preview",
+    pythonPreviewIntro: "Run the current code with Pyodide. If your script uses input(), write each answer on its own line.",
+    pythonPreviewInput: "Input for input()",
+    pythonPreviewRun: "Run",
+    pythonPreviewOutput: "Output",
+    pythonPreviewRunning: "Running Python...",
+    pythonPreviewReady: "Write the required input and press Run.",
+    pythonPreviewNoOutput: "The program finished without printing output.",
+    pythonPreviewOk: "Python executed successfully.",
+    pythonPreviewFailed: "Python failed during execution.",
+    pythonRuntimeNotReady: "WASM runtime is not ready yet.",
     viewValue: "View value",
     viewXml: "View XML",
     viewDetails: "View details",
@@ -458,6 +482,18 @@ const I18N = {
     pyStageUpdated: "Code Python enregistre dans le staging XML/TNS.",
     pyStageLogUpdated: "Python de l'inspecteur mis a jour depuis Syntax Doctor PY.",
     pyFileDownloaded: "Fichier .py telecharge.",
+    previewPy: "Apercu PY",
+    pythonPreviewTitle: "Apercu Python",
+    pythonPreviewIntro: "Execute le code actuel avec Pyodide. Si votre script utilise input(), ecrivez chaque reponse sur une ligne.",
+    pythonPreviewInput: "Entree pour input()",
+    pythonPreviewRun: "Executer",
+    pythonPreviewOutput: "Sortie",
+    pythonPreviewRunning: "Execution Python...",
+    pythonPreviewReady: "Ecrivez l'entree requise et appuyez sur Executer.",
+    pythonPreviewNoOutput: "Le programme s'est termine sans sortie imprimee.",
+    pythonPreviewOk: "Python execute correctement.",
+    pythonPreviewFailed: "Python a echoue pendant l'execution.",
+    pythonRuntimeNotReady: "Le runtime WASM n'est pas encore pret.",
     viewValue: "Voir valeur",
     viewXml: "Voir XML",
     viewDetails: "Voir detail",
@@ -716,6 +752,11 @@ const pyDoctor = {
   lastReport: null,
   issueLines: new Map(),
   target: null,
+};
+const pyDoctorModal = {
+  backdrop: null,
+  parent: null,
+  nextSibling: null,
 };
 const codeEditorAdapters = new Map();
 
@@ -1355,7 +1396,7 @@ function setXmlDoctorDocumentActionsEnabled(enabled) {
 }
 
 function setPyDoctorEnabled(enabled) {
-  for (const id of ["py-doctor-save-btn", "py-doctor-download-btn", "py-doctor-syntax-btn", "py-doctor-autofix-btn", "py-doctor-changes-btn"]) {
+  for (const id of ["py-doctor-save-btn", "py-doctor-download-btn", "py-doctor-syntax-btn", "py-doctor-preview-btn", "py-doctor-autofix-btn", "py-doctor-changes-btn"]) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#py-code").disabled = !enabled;
@@ -2530,19 +2571,6 @@ function showTextModal(title, content) {
   backdrop.querySelector("#text-close").addEventListener("click", () => closeModal(backdrop));
 }
 
-function showPythonEditor(item) {
-  closeDocumentInspectorModals();
-  openExclusivePanel(panelForTool("python"));
-  openPyDoctor({
-    forceOpen: true,
-    code: item.content || "",
-    target: { mode: "xml-python", item },
-  }).catch((error) => {
-    pyLog(`ERROR: ${error.message}`);
-    xmlLog(`ERROR: ${error.message}`);
-  });
-}
-
 function closeDocumentInspectorModals() {
   for (const modalBackdrop of document.querySelectorAll(".modal-backdrop")) {
     if (modalBackdrop.querySelector(".inspector-modal")) {
@@ -2558,6 +2586,79 @@ function closeModal(backdrop, afterClose = null) {
     if (typeof afterClose === "function") afterClose();
     backdrop.remove();
   }, 240);
+}
+
+function restorePyDoctorPanelFromModal({ collapse = true } = {}) {
+  const panel = document.querySelector("#py-doctor-panel");
+  if (panel && pyDoctorModal.parent && panel.parentElement !== pyDoctorModal.parent) {
+    pyDoctorModal.parent.insertBefore(panel, pyDoctorModal.nextSibling);
+  }
+  if (panel) {
+    panel.classList.remove("py-doctor-panel-modalized");
+    if (collapse) panel.classList.add("collapsed");
+  }
+  pyDoctorModal.backdrop = null;
+  pyDoctorModal.parent = null;
+  pyDoctorModal.nextSibling = null;
+  layoutCodeEditors();
+}
+
+function closePyDoctorModal() {
+  const backdrop = pyDoctorModal.backdrop;
+  if (!backdrop) return;
+  closeModal(backdrop, () => {
+    restorePyDoctorPanelFromModal();
+    pyDoctor.target = null;
+    updatePyDoctorSaveLabel();
+    syncToggleLabels();
+  });
+}
+
+async function openPyDoctorModal(options = {}) {
+  const panel = document.querySelector("#py-doctor-panel");
+  if (!panel) return;
+  if (pyDoctorModal.backdrop) {
+    const previousBackdrop = pyDoctorModal.backdrop;
+    restorePyDoctorPanelFromModal();
+    previousBackdrop.remove();
+  }
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal py-doctor-modal">
+      <div class="modal-top-actions">
+        <button type="button" id="py-doctor-modal-close">${escapeHtml(t("close"))}</button>
+      </div>
+      <div id="py-doctor-modal-slot"></div>
+    </div>`;
+
+  pyDoctorModal.backdrop = backdrop;
+  pyDoctorModal.parent = panel.parentElement;
+  pyDoctorModal.nextSibling = panel.nextSibling;
+  document.body.append(backdrop);
+  backdrop.querySelector("#py-doctor-modal-slot").append(panel);
+  panel.classList.add("py-doctor-panel-modalized");
+  panel.classList.remove("collapsed");
+
+  backdrop.querySelector("#py-doctor-modal-close").addEventListener("click", closePyDoctorModal);
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) closePyDoctorModal();
+  });
+
+  await openPyDoctor({ ...options, forceOpen: true, modal: true });
+  window.setTimeout(layoutCodeEditors, 0);
+}
+
+function showPythonEditor(item) {
+  closeDocumentInspectorModals();
+  openPyDoctorModal({
+    code: item.content || "",
+    target: { mode: "xml-python", item },
+  }).catch((error) => {
+    pyLog(`ERROR: ${error.message}`);
+    xmlLog(`ERROR: ${error.message}`);
+  });
 }
 
 function analyzeLuaBasic(code) {
@@ -9357,6 +9458,121 @@ json.dumps({
   return report;
 }
 
+async function executePythonPreview(code, stdinText) {
+  if (!pyodide) throw new Error(t("pythonRuntimeNotReady"));
+  pyodide.globals.set("wasm_py_preview_code", code);
+  pyodide.globals.set("wasm_py_preview_stdin", stdinText || "");
+  const payload = await pyodide.runPythonAsync(`
+import builtins
+import contextlib
+import io
+import json
+import sys
+import traceback
+
+code = wasm_py_preview_code
+stdin_text = wasm_py_preview_stdin or ""
+stdout = io.StringIO()
+stderr = io.StringIO()
+stdin = io.StringIO(stdin_text)
+stdin_lines = iter(stdin_text.splitlines())
+old_input = builtins.input
+old_stdin = sys.stdin
+
+def preview_input(prompt=""):
+    if prompt:
+        print(prompt, end="")
+    try:
+        return next(stdin_lines)
+    except StopIteration as exc:
+        raise EOFError("No hay mas datos de entrada para input().") from exc
+
+namespace = {"__name__": "__main__"}
+success = True
+error = None
+
+try:
+    builtins.input = preview_input
+    sys.stdin = stdin
+    with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+        exec(code, namespace, namespace)
+except BaseException as exc:
+    success = False
+    error = {
+        "type": type(exc).__name__,
+        "message": str(exc),
+        "traceback": traceback.format_exc(),
+    }
+finally:
+    builtins.input = old_input
+    sys.stdin = old_stdin
+
+json.dumps({
+    "success": success,
+    "stdout": stdout.getvalue(),
+    "stderr": stderr.getvalue(),
+    "error": error,
+}, ensure_ascii=False)
+`);
+  return JSON.parse(payload);
+}
+
+function formatPythonPreviewResult(result) {
+  const sections = [];
+  sections.push(result.success ? t("pythonPreviewOk") : t("pythonPreviewFailed"));
+  if (result.stdout) sections.push(`\nSTDOUT\n${result.stdout.trimEnd()}`);
+  if (result.stderr) sections.push(`\nSTDERR\n${result.stderr.trimEnd()}`);
+  if (result.error) {
+    sections.push(`\nERROR ${result.error.type}: ${result.error.message}`);
+    if (result.error.traceback) sections.push(`\nTRACEBACK\n${result.error.traceback.trimEnd()}`);
+  }
+  if (sections.length === 1) sections.push(`\n${t("pythonPreviewNoOutput")}`);
+  return sections.join("\n");
+}
+
+async function openPyPreviewModal() {
+  const code = document.querySelector("#py-code").value;
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal py-preview-modal">
+      <h2>${escapeHtml(t("pythonPreviewTitle"))}</h2>
+      <p class="muted-text">${escapeHtml(t("pythonPreviewIntro"))}</p>
+      <label class="py-preview-label">
+        <span>${escapeHtml(t("pythonPreviewInput"))}</span>
+        <textarea id="py-preview-stdin" spellcheck="false" placeholder="23&#10;2"></textarea>
+      </label>
+      <h3>${escapeHtml(t("pythonPreviewOutput"))}</h3>
+      <pre id="py-preview-output" class="py-preview-output">${escapeHtml(t("pythonPreviewReady"))}</pre>
+      <div class="modal-actions">
+        <button type="button" id="py-preview-run">${escapeHtml(t("pythonPreviewRun"))}</button>
+        <button type="button" id="py-preview-close">${escapeHtml(t("close"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+
+  const input = backdrop.querySelector("#py-preview-stdin");
+  const output = backdrop.querySelector("#py-preview-output");
+  const run = async () => {
+    output.textContent = t("pythonPreviewRunning");
+    try {
+      const result = await executePythonPreview(code, input.value);
+      output.textContent = formatPythonPreviewResult(result);
+      pyLog(result.success ? t("pythonPreviewOk") : t("pythonPreviewFailed"));
+    } catch (error) {
+      output.textContent = `ERROR: ${error.stack || error.message}`;
+      pyLog(`ERROR: ${error.message}`);
+    }
+  };
+
+  backdrop.querySelector("#py-preview-run").addEventListener("click", run);
+  backdrop.querySelector("#py-preview-close").addEventListener("click", () => closeModal(backdrop));
+  backdrop.addEventListener("click", (event) => {
+    if (event.target === backdrop) closeModal(backdrop);
+  });
+  if (!/\binput\s*\(|sys\.stdin|stdin\./.test(code)) await run();
+}
+
 async function autoFixPyDoctor() {
   const code = document.querySelector("#py-code").value;
   pyodide.globals.set("wasm_py_doctor_code", code);
@@ -9585,6 +9801,7 @@ function wireEvents() {
   document.querySelector("#py-syntax-btn").addEventListener("click", () => analyzePython().catch((err) => log(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-toggle-btn").addEventListener("click", () => openPyDoctor().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-syntax-btn").addEventListener("click", () => runPyDoctorSyntax().catch((err) => pyLog(`ERROR: ${err.message}`)));
+  document.querySelector("#py-doctor-preview-btn").addEventListener("click", () => openPyPreviewModal().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-autofix-btn").addEventListener("click", () => autoFixPyDoctor().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-changes-btn").addEventListener("click", showPyChanges);
   document.querySelector("#py-doctor-save-btn").addEventListener("click", () => savePyDoctorBlock().catch((err) => pyLog(`ERROR: ${err.message}`)));
