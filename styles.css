@@ -1304,21 +1304,51 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   margin: 8px auto 12px;
 }
 
-#love-preview-canvas {
+.love-preview-stage {
   width: min(320px, 100%);
-  max-height: 240px;
-  aspect-ratio: 4 / 3;
-  image-rendering: auto;
   border: 1px solid var(--line);
   border-radius: 6px;
+  overflow: hidden;
   background: #000;
   display: block;
   margin: 8px auto 12px;
+}
+
+.love-preview-stage.expanded-view {
+  width: min(800px, 100%);
+}
+
+.love-preview-calculator-bar {
+  height: 26px;
+  width: 100%;
+  background: #313531;
+  color: #edf2ed;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font: 700 12px Consolas, "Courier New", monospace;
+  letter-spacing: 0.2px;
+  text-transform: uppercase;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.love-preview-stage.expanded-view .love-preview-calculator-bar {
+  display: none;
+}
+
+#love-preview-canvas {
+  width: 100%;
+  height: auto;
+  image-rendering: auto;
+  border: 0;
+  border-radius: 0;
+  background: #000;
+  display: block;
+  margin: 0;
   outline: none;
 }
 
 #love-preview-canvas.expanded-view {
-  width: min(800px, 100%);
   max-height: min(58vh, 600px);
 }
 
@@ -1365,6 +1395,30 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   font: inherit;
 }
 
+.lua-guide-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: -2px 0 14px;
+}
+
+.lua-guide-categories button {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--muted);
+  padding: 8px 13px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.lua-guide-categories button.active {
+  border-color: var(--lime);
+  background: linear-gradient(135deg, var(--lime), var(--lime2));
+  color: #203900;
+  box-shadow: 0 0 18px rgb(183 243 77 / 22%);
+}
+
 .lua-guide-list {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
@@ -1382,13 +1436,31 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   padding: 13px;
 }
 
+.lua-guide-item-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
 .lua-guide-item code {
   color: #2563eb;
   font-weight: 800;
+  overflow-wrap: anywhere;
 }
 
 [data-theme="dark"] .lua-guide-item code {
   color: #93c5fd;
+}
+
+.lua-guide-category {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--lime) 18%, transparent);
+  color: var(--lime2);
+  flex: 0 0 auto;
+  font-size: 0.74rem;
+  font-weight: 900;
+  padding: 4px 8px;
 }
 
 .lua-guide-item p,
@@ -2729,13 +2801,15 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     height: auto;
   }
 
-  #love-preview-canvas {
+  .love-preview-stage {
     width: min(320px, 100%);
-    max-height: 240px;
+  }
+
+  .love-preview-stage.expanded-view {
+    width: min(800px, 100%);
   }
 
   #love-preview-canvas.expanded-view {
-    width: min(800px, 100%);
     max-height: 60vh;
   }
 

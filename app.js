@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-pink-button";
+const SOURCE_VERSION = "2026-08-23-love-calculator-chrome";
 
 const I18N = {
   es: {
@@ -44,6 +44,7 @@ const I18N = {
     lovePreviewNote: "Preview LÖVE: soporta codigo love.* y ScriptApp TI-Nspire mediante una capa platform/on/gc sobre canvas.",
     lovePreviewExpandedView: "Vista expandida",
     lovePreviewCalculatorView: "Vista calculadora",
+    lovePreviewCalculatorChromeTitle: "Vista calculadora",
     lovePreviewSizeChanged: "Vista del preview",
     lovePreviewStarted: "Preview LÖVE experimental activo.",
     loveConvertNspire: "Convertir LÖVE a TI-Nspire",
@@ -60,6 +61,10 @@ const I18N = {
     luaEditPages: "Editar paginas",
     luaTnsConvert: "TNS to Lua convert code",
     luaGuideSearch: "Buscar funciones, eventos o variables...",
+    luaGuideCategoryAll: "Todo",
+    luaGuideCategoryTi: "TI-Nspire",
+    luaGuideCategoryLove: "LÖVE",
+    luaGuideCategoryBridge: "Equivalencias",
     luaTemplatesIntro: "Elige una plantilla y ajusta sus opciones. Sin seleccion, reemplaza el script actual; con seleccion, reemplaza ese bloque.",
     luaInsertTemplate: "Insertar plantilla",
     luaInputCount: "Cantidad de inputs",
@@ -252,6 +257,7 @@ const I18N = {
     lovePreviewNote: "LÖVE preview: supports love.* code and TI-Nspire ScriptApps through a platform/on/gc canvas layer.",
     lovePreviewExpandedView: "Expanded view",
     lovePreviewCalculatorView: "Calculator view",
+    lovePreviewCalculatorChromeTitle: "Calculator view",
     lovePreviewSizeChanged: "Preview view",
     lovePreviewStarted: "Experimental LÖVE preview active.",
     loveConvertNspire: "Convert LÖVE to TI-Nspire",
@@ -268,6 +274,10 @@ const I18N = {
     luaEditPages: "Edit pages",
     luaTnsConvert: "TNS to Lua convert code",
     luaGuideSearch: "Search functions, events, or variables...",
+    luaGuideCategoryAll: "All",
+    luaGuideCategoryTi: "TI-Nspire",
+    luaGuideCategoryLove: "LÖVE",
+    luaGuideCategoryBridge: "Mappings",
     luaTemplatesIntro: "Choose a template and adjust its options. With no selection, it replaces the current script; with a selection, it replaces that block.",
     luaInsertTemplate: "Insert template",
     luaInputCount: "Input count",
@@ -460,6 +470,7 @@ const I18N = {
     lovePreviewNote: "Apercu LÖVE : prend en charge le code love.* et les ScriptApps TI-Nspire via une couche platform/on/gc sur canvas.",
     lovePreviewExpandedView: "Vue agrandie",
     lovePreviewCalculatorView: "Vue calculatrice",
+    lovePreviewCalculatorChromeTitle: "Vue calculatrice",
     lovePreviewSizeChanged: "Vue de l'apercu",
     lovePreviewStarted: "Apercu LÖVE experimental actif.",
     loveConvertNspire: "Convertir LÖVE vers TI-Nspire",
@@ -476,6 +487,10 @@ const I18N = {
     luaEditPages: "Editer pages",
     luaTnsConvert: "TNS vers Lua",
     luaGuideSearch: "Rechercher fonctions, evenements ou variables...",
+    luaGuideCategoryAll: "Tout",
+    luaGuideCategoryTi: "TI-Nspire",
+    luaGuideCategoryLove: "LÖVE",
+    luaGuideCategoryBridge: "Equivalences",
     luaTemplatesIntro: "Choisissez un modele et ajustez ses options. Sans selection, il remplace le script actuel; avec selection, il remplace ce bloc.",
     luaInsertTemplate: "Inserer le modele",
     luaInputCount: "Nombre de champs",
@@ -3466,6 +3481,294 @@ const LUA_GUIDE_ITEMS = [
       fr: "Lit une variable CAS enregistree dans le document.",
     },
   },
+  {
+    name: "love.load()",
+    category: "love",
+    description: {
+      es: "Inicializa recursos y variables del juego o animacion LÖVE.",
+      en: "Initializes resources and variables for a LÖVE game or animation.",
+      fr: "Initialise les ressources et variables d'un jeu ou d'une animation LÖVE.",
+    },
+  },
+  {
+    name: "love.update(dt)",
+    category: "love",
+    description: {
+      es: "Actualiza logica por frame. dt es el tiempo en segundos desde el frame anterior.",
+      en: "Updates per-frame logic. dt is the elapsed seconds since the previous frame.",
+      fr: "Met a jour la logique par frame. dt est le temps en secondes depuis la frame precedente.",
+    },
+  },
+  {
+    name: "love.draw()",
+    category: "love",
+    description: {
+      es: "Dibuja la escena LÖVE. En el conversor se ejecuta desde on.paint(gc).",
+      en: "Draws the LÖVE scene. In the converter it runs from on.paint(gc).",
+      fr: "Dessine la scene LÖVE. Dans le convertisseur, elle s'execute depuis on.paint(gc).",
+    },
+  },
+  {
+    name: "love.resize(w,h)",
+    category: "love",
+    description: {
+      es: "Se llama cuando cambia el tamano del preview o ventana.",
+      en: "Runs when the preview or window size changes.",
+      fr: "S'execute lorsque la taille de l'apercu ou de la fenetre change.",
+    },
+  },
+  {
+    name: "love.keypressed(key)",
+    category: "love",
+    description: {
+      es: "Recibe teclas como up, down, left, right, return, escape o space.",
+      en: "Receives keys such as up, down, left, right, return, escape, or space.",
+      fr: "Recoit les touches comme up, down, left, right, return, escape ou space.",
+    },
+  },
+  {
+    name: "love.mousepressed(x,y,button)",
+    category: "love",
+    description: {
+      es: "Recibe clicks del preview LÖVE con coordenadas del canvas.",
+      en: "Receives LÖVE preview clicks with canvas coordinates.",
+      fr: "Recoit les clics de l'apercu LÖVE avec les coordonnees du canvas.",
+    },
+  },
+  {
+    name: "love.graphics.setColor(r,g,b,a)",
+    category: "love",
+    description: {
+      es: "Define el color de dibujo. Acepta 0..1 estilo LÖVE o 0..255.",
+      en: "Sets the drawing color. Accepts LÖVE-style 0..1 or 0..255 values.",
+      fr: "Definit la couleur de dessin. Accepte les valeurs LÖVE 0..1 ou 0..255.",
+    },
+  },
+  {
+    name: "love.graphics.setBackgroundColor(r,g,b,a)",
+    category: "love",
+    description: {
+      es: "Define el color usado por love.graphics.clear y por el fondo del preview.",
+      en: "Sets the color used by love.graphics.clear and the preview background.",
+      fr: "Definit la couleur utilisee par love.graphics.clear et le fond de l'apercu.",
+    },
+  },
+  {
+    name: "love.graphics.print(text,x,y)",
+    category: "love",
+    description: {
+      es: "Dibuja texto y queda disponible en Copiar contenido.",
+      en: "Draws text and makes it available through Copy content.",
+      fr: "Dessine du texte et le rend disponible via Copier contenu.",
+    },
+  },
+  {
+    name: "love.graphics.printf(text,x,y,limit,align)",
+    category: "love",
+    description: {
+      es: "Dibuja texto alineado a izquierda, centro o derecha dentro de un ancho.",
+      en: "Draws text aligned left, center, or right inside a width.",
+      fr: "Dessine du texte aligne a gauche, centre ou droite dans une largeur.",
+    },
+  },
+  {
+    name: "love.graphics.rectangle(mode,x,y,w,h)",
+    category: "love",
+    description: {
+      es: "Dibuja o rellena rectangulos. mode suele ser fill o line.",
+      en: "Draws or fills rectangles. mode is usually fill or line.",
+      fr: "Dessine ou remplit des rectangles. mode vaut souvent fill ou line.",
+    },
+  },
+  {
+    name: "love.graphics.circle(mode,x,y,radius)",
+    category: "love",
+    description: {
+      es: "Dibuja o rellena circulos usando el canvas del preview.",
+      en: "Draws or fills circles using the preview canvas.",
+      fr: "Dessine ou remplit des cercles avec le canvas de l'apercu.",
+    },
+  },
+  {
+    name: "love.graphics.ellipse(mode,x,y,rx,ry)",
+    category: "love",
+    description: {
+      es: "Dibuja o rellena elipses. En TI-Nspire se traduce a arcos.",
+      en: "Draws or fills ellipses. On TI-Nspire it is translated to arcs.",
+      fr: "Dessine ou remplit des ellipses. Sur TI-Nspire, cela se traduit en arcs.",
+    },
+  },
+  {
+    name: "love.graphics.arc(mode,x,y,r,a1,a2)",
+    category: "love",
+    description: {
+      es: "Dibuja o rellena arcos usando angulos en radianes.",
+      en: "Draws or fills arcs using angles in radians.",
+      fr: "Dessine ou remplit des arcs avec des angles en radians.",
+    },
+  },
+  {
+    name: "love.graphics.line(...)",
+    category: "love",
+    description: {
+      es: "Dibuja segmentos entre pares x,y. Tambien acepta una tabla de puntos.",
+      en: "Draws segments between x,y pairs. It also accepts a point table.",
+      fr: "Dessine des segments entre paires x,y. Accepte aussi une table de points.",
+    },
+  },
+  {
+    name: "love.graphics.polygon(mode,...)",
+    category: "love",
+    description: {
+      es: "Dibuja o rellena poligonos con pares de coordenadas.",
+      en: "Draws or fills polygons from coordinate pairs.",
+      fr: "Dessine ou remplit des polygones avec des paires de coordonnees.",
+    },
+  },
+  {
+    name: "love.graphics.push/pop/translate/scale/rotate",
+    category: "love",
+    description: {
+      es: "Maneja transformaciones graficas. El conversor aplica transformaciones basicas.",
+      en: "Manages graphics transforms. The converter applies basic transforms.",
+      fr: "Gere les transformations graphiques. Le convertisseur applique les transformations de base.",
+    },
+  },
+  {
+    name: "love.window.setTitle(title)",
+    category: "love",
+    description: {
+      es: "Guarda el titulo de la ventana. En TI-Nspire no cambia la barra real.",
+      en: "Stores the window title. On TI-Nspire it does not change the real title bar.",
+      fr: "Enregistre le titre de la fenetre. Sur TI-Nspire, la vraie barre ne change pas.",
+    },
+  },
+  {
+    name: "love.keyboard.isDown(key)",
+    category: "love",
+    description: {
+      es: "Consulta si una tecla esta activa durante el preview o timer.",
+      en: "Checks whether a key is active during preview or timer updates.",
+      fr: "Verifie si une touche est active pendant l'apercu ou le timer.",
+    },
+  },
+  {
+    name: "love.mouse.getPosition() / love.mouse.isDown(button)",
+    category: "love",
+    description: {
+      es: "Consulta posicion y botones del mouse en el preview.",
+      en: "Reads mouse position and buttons in the preview.",
+      fr: "Lit la position et les boutons de la souris dans l'apercu.",
+    },
+  },
+  {
+    name: "love.timer.getDelta() / getTime() / getFPS()",
+    category: "love",
+    description: {
+      es: "Expone tiempo basico para animaciones y pruebas.",
+      en: "Exposes basic timing for animations and tests.",
+      fr: "Expose un temps de base pour animations et tests.",
+    },
+  },
+  {
+    name: "love.filesystem.write/read/append/lines",
+    category: "love",
+    description: {
+      es: "Emulacion virtual de texto. No lee archivos reales ni recursos binarios.",
+      en: "Virtual text emulation. It does not read real files or binary assets.",
+      fr: "Emulation virtuelle de texte. Ne lit pas de vrais fichiers ni ressources binaires.",
+    },
+  },
+  {
+    name: "love.draw() -> on.paint(gc)",
+    category: "bridge",
+    description: {
+      es: "El conversor llama love.draw desde on.paint para que TI-Nspire repinte la pantalla.",
+      en: "The converter calls love.draw from on.paint so TI-Nspire redraws the screen.",
+      fr: "Le convertisseur appelle love.draw depuis on.paint pour repeindre l'ecran TI-Nspire.",
+    },
+  },
+  {
+    name: "love.update(dt) -> on.timer()",
+    category: "bridge",
+    description: {
+      es: "La animacion LÖVE se ejecuta con timer.start y on.timer en la calculadora.",
+      en: "LÖVE animation runs through timer.start and on.timer on the calculator.",
+      fr: "L'animation LÖVE s'execute avec timer.start et on.timer sur la calculatrice.",
+    },
+  },
+  {
+    name: "love.graphics.print() -> gc:drawString()",
+    category: "bridge",
+    description: {
+      es: "Texto LÖVE se traduce al dibujo de texto nativo de TI-Nspire.",
+      en: "LÖVE text is translated to native TI-Nspire text drawing.",
+      fr: "Le texte LÖVE est traduit en dessin de texte natif TI-Nspire.",
+    },
+  },
+  {
+    name: "love.graphics.rectangle() -> gc:drawRect/fillRect",
+    category: "bridge",
+    description: {
+      es: "Rectangulos LÖVE se traducen a drawRect o fillRect.",
+      en: "LÖVE rectangles are translated to drawRect or fillRect.",
+      fr: "Les rectangles LÖVE sont traduits en drawRect ou fillRect.",
+    },
+  },
+  {
+    name: "love.graphics.circle/ellipse/arc() -> gc:drawArc/fillArc",
+    category: "bridge",
+    description: {
+      es: "Circulos, elipses y arcos se dibujan con las primitivas de arco de TI-Nspire.",
+      en: "Circles, ellipses, and arcs are drawn with TI-Nspire arc primitives.",
+      fr: "Cercles, ellipses et arcs sont dessines avec les primitives d'arc TI-Nspire.",
+    },
+  },
+  {
+    name: "love.graphics.getWidth/Height() -> platform.window:width/height()",
+    category: "bridge",
+    description: {
+      es: "Dimensiones LÖVE se resuelven al tamano de pantalla de TI-Nspire.",
+      en: "LÖVE dimensions resolve to the TI-Nspire screen size.",
+      fr: "Les dimensions LÖVE correspondent a la taille de l'ecran TI-Nspire.",
+    },
+  },
+  {
+    name: "love.keypressed('return') -> on.enterKey()",
+    category: "bridge",
+    description: {
+      es: "Enter de LÖVE se conecta con on.enterKey en la calculadora.",
+      en: "LÖVE return is connected to on.enterKey on the calculator.",
+      fr: "La touche return de LÖVE est connectee a on.enterKey sur la calculatrice.",
+    },
+  },
+  {
+    name: "love.keypressed('escape') -> on.escapeKey()",
+    category: "bridge",
+    description: {
+      es: "Escape de LÖVE se conecta con on.escapeKey.",
+      en: "LÖVE escape is connected to on.escapeKey.",
+      fr: "La touche escape de LÖVE est connectee a on.escapeKey.",
+    },
+  },
+  {
+    name: "Variables Lua locales/globales",
+    category: "bridge",
+    description: {
+      es: "local x, pages o currentPage siguen siendo Lua normal. No se convierten; la capa solo traduce APIs graficas/eventos.",
+      en: "local x, pages, or currentPage remain normal Lua. They are not converted; only graphics/event APIs are bridged.",
+      fr: "local x, pages ou currentPage restent du Lua normal. Seules les API graphiques/evenements sont traduites.",
+    },
+  },
+  {
+    name: "Limitaciones LÖVE -> TI-Nspire",
+    category: "bridge",
+    description: {
+      es: "Audio, imagenes, shaders, fisica nativa y filesystem real no son portables sin reescritura especifica.",
+      en: "Audio, images, shaders, native physics, and real filesystem access are not portable without specific rewrites.",
+      fr: "Audio, images, shaders, physique native et vrai filesystem ne sont pas portables sans reecriture specifique.",
+    },
+  },
 ];
 
 function luaString(value) {
@@ -5338,12 +5641,22 @@ function showLuaGuide() {
   backdrop.className = "modal-backdrop";
   const guideItems = LUA_GUIDE_ITEMS.map((item) => ({
     name: item.name,
+    category: item.category || "ti",
     description: item.description?.[language] || item.description?.en || item.description?.es || "",
   }));
+  const categories = [
+    { id: "all", label: t("luaGuideCategoryAll") },
+    { id: "ti", label: t("luaGuideCategoryTi") },
+    { id: "love", label: t("luaGuideCategoryLove") },
+    { id: "bridge", label: t("luaGuideCategoryBridge") },
+  ];
+  const categoryLabel = (id) => categories.find((category) => category.id === id)?.label || id;
+  let activeCategory = "all";
   backdrop.innerHTML = `
     <div class="modal lua-library-modal">
       <h2>${escapeHtml(t("luaGuide"))}</h2>
       <input id="lua-guide-search" class="library-search" placeholder="${escapeHtml(t("luaGuideSearch"))}">
+      <div id="lua-guide-categories" class="lua-guide-categories"></div>
       <div id="lua-guide-list" class="lua-guide-list"></div>
       <div class="modal-actions">
         <button type="button" id="lua-guide-close">${escapeHtml(t("close"))}</button>
@@ -5352,16 +5665,33 @@ function showLuaGuide() {
   document.body.append(backdrop);
   const list = backdrop.querySelector("#lua-guide-list");
   const search = backdrop.querySelector("#lua-guide-search");
+  const categoryBar = backdrop.querySelector("#lua-guide-categories");
   const render = () => {
     const query = search.value.trim().toLowerCase();
-    const items = guideItems.filter((item) => `${item.name} ${item.description}`.toLowerCase().includes(query));
+    categoryBar.innerHTML = categories.map((category) => `
+      <button type="button" class="${category.id === activeCategory ? "active" : ""}" data-category="${escapeHtml(category.id)}">${escapeHtml(category.label)}</button>
+    `).join("");
+    const items = guideItems.filter((item) => {
+      const categoryMatch = activeCategory === "all" || item.category === activeCategory;
+      const queryMatch = `${item.name} ${item.description} ${categoryLabel(item.category)}`.toLowerCase().includes(query);
+      return categoryMatch && queryMatch;
+    });
     list.innerHTML = items.map((item) => `
       <article class="lua-guide-item">
-        <code>${escapeHtml(item.name)}</code>
+        <div class="lua-guide-item-head">
+          <code>${escapeHtml(item.name)}</code>
+          <span class="lua-guide-category">${escapeHtml(categoryLabel(item.category))}</span>
+        </div>
         <p>${escapeHtml(item.description)}</p>
       </article>`).join("");
   };
   search.addEventListener("input", render);
+  categoryBar.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-category]");
+    if (!button) return;
+    activeCategory = button.dataset.category || "all";
+    render();
+  });
   backdrop.querySelector("#lua-guide-close").addEventListener("click", () => closeModal(backdrop));
   render();
   search.focus();
@@ -6874,9 +7204,9 @@ function convertLoveToNspireScriptApp(source = "") {
 
 --[[ TNS Tool LOVE compatibility layer: start
 This wrapper lets simple LÖVE-style scripts run as TI-Nspire ScriptApps.
-It supports basic love.load/update/draw/input/window/graphics calls.
-For calculator export, images, audio, physics, files and shaders need
-explicit TI-Nspire replacements.
+It supports basic love.load/update/draw/input/window/graphics and text-only
+love.filesystem calls. Images, audio, physics and shaders still need explicit
+TI-Nspire replacements.
 ]]
 
 local __love_gc = nil
@@ -6886,10 +7216,15 @@ local __love_quit = false
 local __love_font_size = 12
 local __love_color = {255, 255, 255}
 local __love_bg = {0, 0, 0}
+local __love_line_width = 1
 local __love_keys = {}
 local __love_mouse_x = 0
 local __love_mouse_y = 0
+local __love_mouse_buttons = {}
 local __love_title = ""
+local __love_transform = {1, 0, 0, 1, 0, 0}
+local __love_transform_stack = {}
+local __love_files = {}
 
 love = love or {}
 love.graphics = love.graphics or {}
@@ -6899,6 +7234,7 @@ love.mouse = love.mouse or {}
 love.timer = love.timer or {}
 love.event = love.event or {}
 love.math = love.math or {}
+love.filesystem = love.filesystem or {}
 
 local function __love_channel(value)
     value = tonumber(value) or 0
@@ -6925,6 +7261,90 @@ local function __love_set_font(size)
     end
 end
 
+local function __love_copy_table(source)
+    local out = {}
+    for key, value in pairs(source or {}) do
+        out[key] = value
+    end
+    return out
+end
+
+local function __love_transform_point(x, y)
+    x, y = tonumber(x) or 0, tonumber(y) or 0
+    local m = __love_transform
+    return m[1] * x + m[3] * y + m[5], m[2] * x + m[4] * y + m[6]
+end
+
+local function __love_transform_rect(x, y, w, h)
+    x, y, w, h = tonumber(x) or 0, tonumber(y) or 0, tonumber(w) or 0, tonumber(h) or 0
+    local x1, y1 = __love_transform_point(x, y)
+    local x2, y2 = __love_transform_point(x + w, y + h)
+    local x3, y3 = __love_transform_point(x + w, y)
+    local x4, y4 = __love_transform_point(x, y + h)
+    local left, right = math.min(x1, x2, x3, x4), math.max(x1, x2, x3, x4)
+    local top, bottom = math.min(y1, y2, y3, y4), math.max(y1, y2, y3, y4)
+    return left, top, right - left, bottom - top
+end
+
+local function __love_apply_matrix(a, b, c, d, e, f)
+    local m = __love_transform
+    __love_transform = {
+        m[1] * a + m[3] * b,
+        m[2] * a + m[4] * b,
+        m[1] * c + m[3] * d,
+        m[2] * c + m[4] * d,
+        m[1] * e + m[3] * f + m[5],
+        m[2] * e + m[4] * f + m[6],
+    }
+end
+
+local function __love_points_from_args(args)
+    local raw = {}
+    if #args == 1 and type(args[1]) == "table" then
+        raw = args[1]
+    else
+        raw = args
+    end
+    local points = {}
+    local index = 1
+    while index + 1 <= #raw do
+        local px, py = __love_transform_point(raw[index], raw[index + 1])
+        table.insert(points, px)
+        table.insert(points, py)
+        index = index + 2
+    end
+    return points
+end
+
+local function __love_file_key(filename)
+    filename = tostring(filename or ""):gsub("[^%w_]", "_")
+    if filename == "" then filename = "unnamed" end
+    return "__love_fs_" .. filename
+end
+
+local function __love_read_file(filename)
+    local name = tostring(filename or "")
+    if __love_files[name] ~= nil then return __love_files[name] end
+    if var and var.recall then
+        local ok, value = pcall(var.recall, __love_file_key(name))
+        if ok and value ~= nil and tostring(value) ~= "__love_removed__" then
+            __love_files[name] = tostring(value)
+            return __love_files[name]
+        end
+    end
+    return nil
+end
+
+local function __love_write_file(filename, data)
+    local name = tostring(filename or "")
+    local text = tostring(data or "")
+    __love_files[name] = text
+    if var and var.store then
+        pcall(var.store, __love_file_key(name), text)
+    end
+    return true
+end
+
 local function __love_clear()
     if not __love_gc then return end
     __love_set_gc_color(__love_bg)
@@ -6933,21 +7353,34 @@ local function __love_clear()
     __love_apply_color()
 end
 
+local function __love_clear_transient_input()
+    __love_keys = {}
+    __love_mouse_buttons = {}
+end
+
 function love.graphics.setColor(r, g, b, a)
-    __love_color = {__love_channel(r), __love_channel(g or r), __love_channel(b or g or r)}
+    if type(r) == "table" then
+        __love_color = {__love_channel(r[1]), __love_channel(r[2] or r[1]), __love_channel(r[3] or r[2] or r[1])}
+    else
+        __love_color = {__love_channel(r), __love_channel(g or r), __love_channel(b or g or r)}
+    end
     __love_apply_color()
 end
 
 function love.graphics.getColor()
-    return __love_color[1], __love_color[2], __love_color[3], 255
+    return __love_color[1] / 255, __love_color[2] / 255, __love_color[3] / 255, 1
 end
 
 function love.graphics.setBackgroundColor(r, g, b, a)
-    __love_bg = {__love_channel(r), __love_channel(g or r), __love_channel(b or g or r)}
+    if type(r) == "table" then
+        __love_bg = {__love_channel(r[1]), __love_channel(r[2] or r[1]), __love_channel(r[3] or r[2] or r[1])}
+    else
+        __love_bg = {__love_channel(r), __love_channel(g or r), __love_channel(b or g or r)}
+    end
 end
 
 function love.graphics.getBackgroundColor()
-    return __love_bg[1], __love_bg[2], __love_bg[3], 255
+    return __love_bg[1] / 255, __love_bg[2] / 255, __love_bg[3] / 255, 1
 end
 
 function love.graphics.clear(r, g, b, a)
@@ -6960,7 +7393,8 @@ end
 function love.graphics.print(text, x, y)
     if not __love_gc then return end
     __love_apply_color()
-    __love_gc:drawString(tostring(text or ""), tonumber(x) or 0, tonumber(y) or 0, "top")
+    local px, py = __love_transform_point(x, y)
+    __love_gc:drawString(tostring(text or ""), px, py, "top")
 end
 
 function love.graphics.printf(text, x, y, limit, align)
@@ -6978,7 +7412,7 @@ end
 
 function love.graphics.rectangle(mode, x, y, w, h)
     if not __love_gc then return end
-    x, y, w, h = tonumber(x) or 0, tonumber(y) or 0, tonumber(w) or 0, tonumber(h) or 0
+    x, y, w, h = __love_transform_rect(x, y, w, h)
     __love_apply_color()
     if mode == "fill" then
         __love_gc:fillRect(x, y, w, h)
@@ -6989,18 +7423,52 @@ end
 
 function love.graphics.circle(mode, x, y, radius)
     if not __love_gc then return end
-    x, y, radius = tonumber(x) or 0, tonumber(y) or 0, math.max(0, tonumber(radius) or 0)
+    radius = math.max(0, tonumber(radius) or 0)
+    x, y = __love_transform_point(x, y)
+    local _, _, rw, rh = __love_transform_rect(-radius, -radius, radius * 2, radius * 2)
+    local diameter = math.max(math.abs(rw), math.abs(rh))
     __love_apply_color()
     if mode == "fill" then
-        __love_gc:fillArc(x - radius, y - radius, radius * 2, radius * 2, 0, 360)
+        __love_gc:fillArc(x - diameter / 2, y - diameter / 2, diameter, diameter, 0, 360)
     else
-        __love_gc:drawArc(x - radius, y - radius, radius * 2, radius * 2, 0, 360)
+        __love_gc:drawArc(x - diameter / 2, y - diameter / 2, diameter, diameter, 0, 360)
+    end
+end
+
+function love.graphics.ellipse(mode, x, y, rx, ry)
+    if not __love_gc then return end
+    x, y = __love_transform_point(x, y)
+    rx, ry = math.max(0, tonumber(rx) or 0), math.max(0, tonumber(ry) or 0)
+    local left, top, width, height = __love_transform_rect(-rx, -ry, rx * 2, ry * 2)
+    __love_apply_color()
+    if mode == "fill" then
+        __love_gc:fillArc(x - width / 2, y - height / 2, width, height, 0, 360)
+    else
+        __love_gc:drawArc(x - width / 2, y - height / 2, width, height, 0, 360)
+    end
+end
+
+function love.graphics.arc(...)
+    if not __love_gc then return end
+    local args = {...}
+    local mode = args[1]
+    local offset = 2
+    if type(args[2]) == "string" then offset = 3 end
+    local x, y, radius = args[offset], args[offset + 1], tonumber(args[offset + 2]) or 0
+    local a1, a2 = tonumber(args[offset + 3]) or 0, tonumber(args[offset + 4]) or math.pi * 2
+    x, y = __love_transform_point(x, y)
+    radius = math.max(0, radius)
+    __love_apply_color()
+    if mode == "fill" then
+        __love_gc:fillArc(x - radius, y - radius, radius * 2, radius * 2, -a1 * 180 / math.pi, -(a2 - a1) * 180 / math.pi)
+    else
+        __love_gc:drawArc(x - radius, y - radius, radius * 2, radius * 2, -a1 * 180 / math.pi, -(a2 - a1) * 180 / math.pi)
     end
 end
 
 function love.graphics.line(...)
     if not __love_gc then return end
-    local values = {...}
+    local values = __love_points_from_args({...})
     if #values < 4 then return end
     __love_apply_color()
     local index = 1
@@ -7012,7 +7480,7 @@ end
 
 function love.graphics.points(...)
     if not __love_gc then return end
-    local values = {...}
+    local values = __love_points_from_args({...})
     __love_apply_color()
     local index = 1
     while index + 1 <= #values do
@@ -7021,12 +7489,43 @@ function love.graphics.points(...)
     end
 end
 
+function love.graphics.polygon(mode, ...)
+    if not __love_gc then return end
+    local points = __love_points_from_args({...})
+    if #points < 6 then return end
+    __love_apply_color()
+    if mode == "fill" and __love_gc.fillPolygon then
+        __love_gc:fillPolygon(points)
+    elseif __love_gc.drawPolyLine then
+        table.insert(points, points[1])
+        table.insert(points, points[2])
+        __love_gc:drawPolyLine(points)
+    else
+        local index = 1
+        while index + 3 <= #points do
+            __love_gc:drawLine(points[index], points[index + 1], points[index + 2], points[index + 3])
+            index = index + 2
+        end
+        __love_gc:drawLine(points[#points - 1], points[#points], points[1], points[2])
+    end
+end
+
 function love.graphics.setLineWidth(width)
+    __love_line_width = tonumber(width) or 1
     if __love_gc and __love_gc.setPen then
-        local size = tonumber(width) or 1
+        local size = __love_line_width
         __love_gc:setPen(size >= 3 and "thick" or size >= 2 and "medium" or "thin", "smooth")
     end
 end
+
+function love.graphics.getLineWidth()
+    return __love_line_width
+end
+
+function love.graphics.setLineStyle(style) end
+function love.graphics.getLineStyle() return "smooth" end
+function love.graphics.setPointSize(size) end
+function love.graphics.getPointSize() return 1 end
 
 function love.graphics.getWidth()
     return platform.window:width()
@@ -7052,20 +7551,72 @@ function love.graphics.setFont(font)
     end
 end
 
+function love.graphics.setNewFont(size)
+    local font = love.graphics.newFont(size)
+    love.graphics.setFont(font)
+    return font
+end
+
 function love.graphics.getFont()
     return {size = __love_font_size}
 end
 
-function love.graphics.push() end
-function love.graphics.pop() end
-function love.graphics.origin() end
-function love.graphics.translate() end
-function love.graphics.scale() end
-function love.graphics.rotate() end
+function love.graphics.push()
+    table.insert(__love_transform_stack, __love_copy_table(__love_transform))
+end
+
+function love.graphics.pop()
+    if #__love_transform_stack > 0 then
+        __love_transform = table.remove(__love_transform_stack)
+    end
+end
+
+function love.graphics.origin()
+    __love_transform = {1, 0, 0, 1, 0, 0}
+end
+
+function love.graphics.translate(x, y)
+    __love_apply_matrix(1, 0, 0, 1, tonumber(x) or 0, tonumber(y) or 0)
+end
+
+function love.graphics.scale(x, y)
+    x = tonumber(x) or 1
+    y = tonumber(y) or x
+    __love_apply_matrix(x, 0, 0, y, 0, 0)
+end
+
+function love.graphics.rotate(angle)
+    angle = tonumber(angle) or 0
+    local s, c = math.sin(angle), math.cos(angle)
+    __love_apply_matrix(c, s, -s, c, 0, 0)
+end
 function love.graphics.setDefaultFilter() end
+function love.graphics.setBlendMode() end
+function love.graphics.getBlendMode() return "alpha" end
+function love.graphics.setScissor(x, y, w, h)
+    if __love_gc and __love_gc.clipRect then
+        if x == nil then
+            __love_gc:clipRect("reset")
+        else
+            local px, py, pw, ph = __love_transform_rect(x, y, w, h)
+            __love_gc:clipRect("set", px, py, pw, ph)
+        end
+    end
+end
+function love.graphics.intersectScissor(x, y, w, h)
+    love.graphics.setScissor(x, y, w, h)
+end
+function love.graphics.newImage() return {__love_unsupported = "image"} end
+function love.graphics.newCanvas(width, height) return {width = width, height = height, __love_unsupported = "canvas"} end
+function love.graphics.setCanvas() end
+function love.graphics.draw() end
 
 function love.window.setTitle(title)
     __love_title = tostring(title or "")
+end
+
+function love.window.getTitle()
+    return __love_title
 end
 
 function love.window.setMode(width, height)
@@ -7076,6 +7627,26 @@ function love.window.getMode()
     return platform.window:width(), platform.window:height(), {}
 end
 
+function love.window.getDesktopDimensions()
+    return platform.window:width(), platform.window:height()
+end
+
+function love.window.setFullscreen()
+    return false
+end
+
+function love.window.getFullscreen()
+    return false, "desktop"
+end
+
+function love.window.hasFocus()
+    return true
+end
+
+function love.window.isVisible()
+    return true
+end
+
 function love.keyboard.isDown(...)
     for _, key in ipairs({...}) do
         if __love_keys[tostring(key)] then return true end
@@ -7083,9 +7654,30 @@ function love.keyboard.isDown(...)
     return false
 end
 
+function love.keyboard.setKeyRepeat() end
+function love.keyboard.hasKeyRepeat() return false end
+
 function love.mouse.getPosition()
     return __love_mouse_x, __love_mouse_y
 end
+
+function love.mouse.getX()
+    return __love_mouse_x
+end
+
+function love.mouse.getY()
+    return __love_mouse_y
+end
+
+function love.mouse.isDown(...)
+    for _, button in ipairs({...}) do
+        if __love_mouse_buttons[button] then return true end
+    end
+    return false
+end
+
+function love.mouse.setVisible() end
+function love.mouse.isVisible() return true end
 
 function love.timer.getDelta()
     return __love_dt
@@ -7098,14 +7690,94 @@ function love.timer.getTime()
     return 0
 end
 
+function love.timer.getFPS()
+    if __love_dt <= 0 then return 0 end
+    return math.floor(1 / __love_dt + 0.5)
+end
+
+function love.timer.sleep() end
+function love.timer.step() return __love_dt end
+
 function love.event.quit()
     __love_quit = true
+end
+
+function love.event.clear() end
+function love.event.pump() end
+function love.event.push() end
+function love.event.poll()
+    return function() return nil end
 end
 
 function love.math.random(a, b)
     if a == nil then return math.random() end
     if b == nil then return math.random(a) end
     return math.random(a, b)
+end
+
+function love.math.setRandomSeed(seed)
+    math.randomseed(tonumber(seed) or 1)
+end
+
+function love.math.getRandomSeed()
+    return 0, 0
+end
+
+function love.filesystem.write(filename, data)
+    return __love_write_file(filename, data)
+end
+
+function love.filesystem.append(filename, data)
+    local current = __love_read_file(filename) or ""
+    return __love_write_file(filename, current .. tostring(data or ""))
+end
+
+function love.filesystem.read(filename)
+    return __love_read_file(filename)
+end
+
+function love.filesystem.getInfo(filename)
+    local data = __love_read_file(filename)
+    if data == nil then return nil end
+    return {type = "file", size = #data}
+end
+
+function love.filesystem.exists(filename)
+    return __love_read_file(filename) ~= nil
+end
+
+function love.filesystem.remove(filename)
+    __love_files[tostring(filename or "")] = nil
+    if var and var.store then
+        pcall(var.store, __love_file_key(filename), "__love_removed__")
+    end
+    return true
+end
+
+function love.filesystem.lines(filename)
+    local data = __love_read_file(filename) or ""
+    local pos = 1
+    return function()
+        if pos > #data then return nil end
+        local nextPos = string.find(data, "\\n", pos, true)
+        local line
+        if nextPos then
+            line = string.sub(data, pos, nextPos - 1)
+            pos = nextPos + 1
+        else
+            line = string.sub(data, pos)
+            pos = #data + 1
+        end
+        return line
+    end
+end
+
+function love.filesystem.getSaveDirectory()
+    return "TI-Nspire var.store"
+end
+
+function love.filesystem.getWorkingDirectory()
+    return "TI-Nspire ScriptApp"
 end
 
 --[[ User LOVE source: start ]]
@@ -7134,6 +7806,12 @@ function on.paint(gc)
     if love.draw then love.draw() end
 end
 
+function on.resize(width, height)
+    __love_boot()
+    if love.resize then love.resize(width or platform.window:width(), height or platform.window:height()) end
+    platform.window:invalidate()
+end
+
 function on.timer()
     if __love_quit then
         if timer and timer.stop then timer.stop() end
@@ -7141,6 +7819,7 @@ function on.timer()
     end
     __love_boot()
     if love.update then love.update(__love_dt) end
+    __love_clear_transient_input()
     platform.window:invalidate()
 end
 
@@ -7163,6 +7842,18 @@ function on.escapeKey()
     platform.window:invalidate()
 end
 
+function on.backspaceKey()
+    __love_keys["backspace"] = true
+    if love.keypressed then love.keypressed("backspace") end
+    platform.window:invalidate()
+end
+
+function on.tabKey()
+    __love_keys["tab"] = true
+    if love.keypressed then love.keypressed("tab") end
+    platform.window:invalidate()
+end
+
 function on.charIn(ch)
     if love.keypressed then love.keypressed(ch) end
     platform.window:invalidate()
@@ -7170,7 +7861,15 @@ end
 
 function on.mouseDown(x, y)
     __love_mouse_x, __love_mouse_y = x, y
+    __love_mouse_buttons[1] = true
     if love.mousepressed then love.mousepressed(x, y, 1) end
+    platform.window:invalidate()
+end
+
+function on.mouseUp(x, y)
+    __love_mouse_x, __love_mouse_y = x, y
+    __love_mouse_buttons[1] = nil
+    if love.mousereleased then love.mousereleased(x, y, 1) end
     platform.window:invalidate()
 end
 
@@ -7350,7 +8049,8 @@ async function showLuaPreview(code, item = null) {
   });
 }
 
-const LOVE_PREVIEW_CALCULATOR_SIZE = Object.freeze({ width: 320, height: 240 });
+const LOVE_PREVIEW_CALCULATOR_CHROME_HEIGHT = 26;
+const LOVE_PREVIEW_CALCULATOR_SIZE = Object.freeze({ width: 320, height: 214 });
 const LOVE_PREVIEW_EXPANDED_SIZE = Object.freeze({ width: 800, height: 600 });
 
 async function showLovePreview(code, editor = null, editorLog = null) {
@@ -7364,7 +8064,10 @@ async function showLovePreview(code, editor = null, editorLog = null) {
       </div>
       <h2>${escapeHtml(t("previewLove"))}</h2>
       <p class="muted-text">${escapeHtml(t("lovePreviewNote"))}</p>
-      <canvas id="love-preview-canvas" class="calculator-view" width="320" height="240"></canvas>
+      <div id="love-preview-stage" class="love-preview-stage calculator-view">
+        <div class="love-preview-calculator-bar">${escapeHtml(t("lovePreviewCalculatorChromeTitle"))}</div>
+        <canvas id="love-preview-canvas" class="calculator-view" width="320" height="214" tabindex="0"></canvas>
+      </div>
       <div class="preview-controls">
         <button type="button" data-key="up">Up</button>
         <button type="button" data-key="down">Down</button>
@@ -7376,6 +8079,7 @@ async function showLovePreview(code, editor = null, editorLog = null) {
       </div>
       <pre id="love-preview-log" class="mini-log"></pre>
       <div class="modal-actions">
+        <button type="button" id="love-preview-copy-content">${escapeHtml(t("copyScreenContent"))}</button>
         <button type="button" id="love-copy-nspire">${escapeHtml(t("loveCopyNspire"))}</button>
         <button type="button" id="love-replace-nspire" class="green-tool-button">${escapeHtml(t("loveReplaceNspire"))}</button>
         <button type="button" id="love-preview-close">${escapeHtml(t("close"))}</button>
@@ -7383,6 +8087,7 @@ async function showLovePreview(code, editor = null, editorLog = null) {
     </div>`;
   document.body.append(backdrop);
   const canvas = backdrop.querySelector("#love-preview-canvas");
+  const stage = backdrop.querySelector("#love-preview-stage");
   const ctx = canvas.getContext("2d");
   const previewLog = backdrop.querySelector("#love-preview-log");
   const sizeToggle = backdrop.querySelector("#love-preview-size-toggle");
@@ -7394,12 +8099,18 @@ async function showLovePreview(code, editor = null, editorLog = null) {
     previewSizeMode = normalizedMode;
     canvas.width = size.width;
     canvas.height = size.height;
+    stage.classList.toggle("expanded-view", normalizedMode === "expanded");
+    stage.classList.toggle("calculator-view", normalizedMode !== "expanded");
     canvas.classList.toggle("expanded-view", normalizedMode === "expanded");
     canvas.classList.toggle("calculator-view", normalizedMode !== "expanded");
     sizeToggle.textContent = t(normalizedMode === "expanded" ? "lovePreviewCalculatorView" : "lovePreviewExpandedView");
     sizeToggle.setAttribute("aria-pressed", String(normalizedMode === "expanded"));
     runtime?.resize?.(size.width, size.height);
-    if (shouldLog) appendPreviewLog(previewLog, `${t("lovePreviewSizeChanged")}: ${size.width}x${size.height}`);
+    if (shouldLog) {
+      const totalHeight = normalizedMode === "calculator" ? size.height + LOVE_PREVIEW_CALCULATOR_CHROME_HEIGHT : size.height;
+      const canvasNote = normalizedMode === "calculator" ? ` (canvas ${size.width}x${size.height})` : "";
+      appendPreviewLog(previewLog, `${t("lovePreviewSizeChanged")}: ${size.width}x${totalHeight}${canvasNote}`);
+    }
   };
   applyPreviewSize("calculator");
   const isLoveSource = looksLikeLoveSource(code);
@@ -7462,6 +8173,11 @@ async function showLovePreview(code, editor = null, editorLog = null) {
     await copyPlainText(convertLoveToNspireScriptApp(code));
     appendPreviewLog(previewLog, t("loveCopiedNspire"));
   });
+  backdrop.querySelector("#love-preview-copy-content").addEventListener("click", async () => {
+    const text = runtime?.getScreenText?.() || "";
+    await copyPlainText(text);
+    appendPreviewLog(previewLog, text.trim() ? t("screenContentCopied") : t("screenContentEmpty"));
+  });
   backdrop.querySelector("#love-replace-nspire").addEventListener("click", () => {
     if (!editor) return;
     editor.value = convertLoveToNspireScriptApp(code);
@@ -7510,6 +8226,7 @@ async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl) {
     mousepressed: (x, y) => luaRuntime.mouseClick(x, y),
     resize: (width, height) => luaRuntime.resize?.(width, height),
     close: () => luaRuntime.close?.(),
+    getScreenText: () => luaRuntime.getScreenText?.() || "",
   };
 }
 
@@ -7996,15 +8713,32 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   const filesystem = global.lua_newtable();
   const loveMath = global.lua_newtable();
   const pressedKeys = new Set();
+  const mouseButtons = new Set();
+  const virtualFiles = new Map();
+  const scissorStack = [];
+  const screenText = [];
+  const consoleText = [];
   let rafId = null;
   let running = false;
   let lastFrame = performance.now();
   let fontSize = 12;
   let currentColor = [255, 255, 255, 1];
   let backgroundColor = [0, 0, 0, 1];
+  let pointSize = 1;
+  let lineStyle = "smooth";
+  let blendMode = "alpha";
+  let keyRepeat = false;
+  let mouseVisible = true;
+  let fullscreen = false;
+  let mouseX = 0;
+  let mouseY = 0;
+  let windowTitle = "";
   const startedAt = performance.now();
 
   const log = (message) => appendPreviewLog(logEl, message);
+  const captureLoveText = (text, x = 0, y = 0, lineHeight = fontSize || 12) => {
+    recordLuaPreviewText(screenText, text, x, y, lineHeight);
+  };
   const cssColor = ([r, g, b, a = 1]) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${Math.max(0, Math.min(1, a))})`;
   const stripSelf = (args, table) => args[0] === table ? args.slice(1) : args;
   const unsupported = (name) => () => {
@@ -8034,6 +8768,7 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   };
   const clearCanvas = (...args) => {
     const color = args.length ? normalizeColor(args, backgroundColor) : backgroundColor;
+    screenText.length = 0;
     ctx.save();
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.fillStyle = cssColor(color);
@@ -8055,12 +8790,75 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     const tableValues = args.length === 1 ? luaArrayToJs(args[0]) : null;
     return (tableValues || args).map((value) => toNumber(value));
   };
+  const colorArgs = (args, fallback = currentColor) => normalizeColor(luaArrayToJs(args[0]) || args, fallback);
+  const tableFromObject = (object) => {
+    const table = global.lua_newtable();
+    for (const [key, value] of Object.entries(object)) global.lua_tableset(table, key, value);
+    return table;
+  };
+  const jsString = (value) => String(value ?? "");
+  const loveFileKey = (filename) => jsString(filename).replace(/[^\w.-]/g, "_") || "unnamed";
+  const loveFileStorageKey = (filename) => `tns-tool-love-fs:${loveFileKey(filename)}`;
+  const readVirtualFile = (filename) => {
+    const key = loveFileKey(filename);
+    if (virtualFiles.has(key)) return virtualFiles.get(key);
+    try {
+      const stored = window.localStorage?.getItem(loveFileStorageKey(key));
+      if (stored !== null && stored !== "__love_removed__") {
+        virtualFiles.set(key, stored);
+        return stored;
+      }
+    } catch (_error) {
+      // Local storage can be unavailable in some browser/privacy modes.
+    }
+    return null;
+  };
+  const writeVirtualFile = (filename, data) => {
+    const key = loveFileKey(filename);
+    const text = jsString(data);
+    virtualFiles.set(key, text);
+    try {
+      window.localStorage?.setItem(loveFileStorageKey(key), text);
+    } catch (_error) {
+      // Keep the in-memory copy even if persistent storage is unavailable.
+    }
+    return true;
+  };
+  const removeVirtualFile = (filename) => {
+    const key = loveFileKey(filename);
+    virtualFiles.delete(key);
+    try {
+      window.localStorage?.setItem(loveFileStorageKey(key), "__love_removed__");
+    } catch (_error) {
+      // Ignore storage cleanup failures.
+    }
+    return true;
+  };
+  const withCanvasState = (fn) => {
+    try {
+      return fn();
+    } finally {
+      ctx.font = `${fontSize}px sans-serif`;
+      ctx.textBaseline = "top";
+      applyColor();
+    }
+  };
+  const resetScissor = () => {
+    while (scissorStack.length) {
+      ctx.restore();
+      scissorStack.pop();
+    }
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textBaseline = "top";
+    applyColor();
+  };
   const callLove = (table, name, args = []) => {
     const fn = global.lua_tableget(table, name);
     if (!fn) return null;
     return global.lua_call(fn, args);
   };
   const redraw = () => {
+    resetScissor();
     clearCanvas();
     callLove(love, "draw");
   };
@@ -8071,7 +8869,9 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
 
   global.G.str.love = love;
   global.G.str.print = (...args) => {
-    log(args.map((value) => String(value ?? "nil")).join("\t"));
+    const line = args.map((value) => String(value ?? "nil")).join("\t");
+    consoleText.push(line);
+    log(line);
     return [];
   };
 
@@ -8086,13 +8886,16 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
 
   global.lua_tableset(graphics, "print", (...rawArgs) => {
     const [text, x = 0, y = 0, rotation = 0, sx = 1, sy = sx, ox = 0, oy = 0] = stripSelf(rawArgs, graphics);
+    const drawX = -toNumber(ox);
+    const drawY = -toNumber(oy);
     ctx.save();
     ctx.translate(toNumber(x), toNumber(y));
     ctx.rotate(toNumber(rotation));
     ctx.scale(toNumber(sx, 1), toNumber(sy, 1));
     applyColor();
-    ctx.fillText(String(text ?? ""), -toNumber(ox), -toNumber(oy));
+    ctx.fillText(String(text ?? ""), drawX, drawY);
     ctx.restore();
+    captureLoveText(text, toNumber(x) + drawX, toNumber(y) + drawY);
     return [];
   });
   global.lua_tableset(graphics, "printf", (...rawArgs) => {
@@ -8103,19 +8906,20 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     applyColor();
     ctx.fillText(String(text ?? ""), drawX, toNumber(y));
     ctx.textAlign = previousAlign;
+    captureLoveText(text, drawX, toNumber(y));
     return [];
   });
   global.lua_tableset(graphics, "setColor", (...rawArgs) => {
-    currentColor = normalizeColor(stripSelf(rawArgs, graphics), currentColor);
+    currentColor = colorArgs(stripSelf(rawArgs, graphics), currentColor);
     applyColor();
     return [];
   });
-  global.lua_tableset(graphics, "getColor", () => currentColor);
+  global.lua_tableset(graphics, "getColor", () => [currentColor[0] / 255, currentColor[1] / 255, currentColor[2] / 255, currentColor[3]]);
   global.lua_tableset(graphics, "setBackgroundColor", (...rawArgs) => {
-    backgroundColor = normalizeColor(stripSelf(rawArgs, graphics), backgroundColor);
+    backgroundColor = colorArgs(stripSelf(rawArgs, graphics), backgroundColor);
     return [];
   });
-  global.lua_tableset(graphics, "getBackgroundColor", () => backgroundColor);
+  global.lua_tableset(graphics, "getBackgroundColor", () => [backgroundColor[0] / 255, backgroundColor[1] / 255, backgroundColor[2] / 255, backgroundColor[3]]);
   global.lua_tableset(graphics, "clear", (...rawArgs) => {
     clearCanvas(...stripSelf(rawArgs, graphics));
     return [];
@@ -8134,6 +8938,25 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     else ctx.stroke();
     return [];
   });
+  global.lua_tableset(graphics, "ellipse", (...rawArgs) => {
+    const [mode, x, y, rx, ry = rx] = stripSelf(rawArgs, graphics);
+    ctx.beginPath();
+    ctx.ellipse(toNumber(x), toNumber(y), Math.max(0, toNumber(rx)), Math.max(0, toNumber(ry)), 0, 0, Math.PI * 2);
+    if (String(mode) === "fill") ctx.fill();
+    else ctx.stroke();
+    return [];
+  });
+  global.lua_tableset(graphics, "arc", (...rawArgs) => {
+    const args = stripSelf(rawArgs, graphics);
+    const mode = args[0];
+    const offset = typeof args[1] === "string" ? 2 : 1;
+    const [x, y, radius, angle1 = 0, angle2 = Math.PI * 2] = args.slice(offset);
+    ctx.beginPath();
+    ctx.arc(toNumber(x), toNumber(y), Math.max(0, toNumber(radius)), toNumber(angle1), toNumber(angle2));
+    if (String(mode) === "fill") ctx.fill();
+    else ctx.stroke();
+    return [];
+  });
   global.lua_tableset(graphics, "line", (...rawArgs) => {
     const points = numberList(stripSelf(rawArgs, graphics));
     if (points.length < 4) return [];
@@ -8145,7 +8968,20 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   });
   global.lua_tableset(graphics, "points", (...rawArgs) => {
     const points = numberList(stripSelf(rawArgs, graphics));
-    for (let index = 0; index + 1 < points.length; index += 2) ctx.fillRect(points[index], points[index + 1], 1, 1);
+    for (let index = 0; index + 1 < points.length; index += 2) ctx.fillRect(points[index], points[index + 1], pointSize, pointSize);
+    return [];
+  });
+  global.lua_tableset(graphics, "polygon", (...rawArgs) => {
+    const args = stripSelf(rawArgs, graphics);
+    const mode = args[0];
+    const points = numberList(args.slice(1));
+    if (points.length < 6) return [];
+    ctx.beginPath();
+    ctx.moveTo(points[0], points[1]);
+    for (let index = 2; index + 1 < points.length; index += 2) ctx.lineTo(points[index], points[index + 1]);
+    ctx.closePath();
+    if (String(mode) === "fill") ctx.fill();
+    else ctx.stroke();
     return [];
   });
   global.lua_tableset(graphics, "setLineWidth", (...rawArgs) => {
@@ -8154,6 +8990,20 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     return [];
   });
   global.lua_tableset(graphics, "getLineWidth", () => [ctx.lineWidth]);
+  global.lua_tableset(graphics, "setLineStyle", (...rawArgs) => {
+    const [style] = stripSelf(rawArgs, graphics);
+    lineStyle = String(style || "smooth");
+    ctx.lineCap = lineStyle === "rough" ? "butt" : "round";
+    ctx.lineJoin = lineStyle === "rough" ? "miter" : "round";
+    return [];
+  });
+  global.lua_tableset(graphics, "getLineStyle", () => [lineStyle]);
+  global.lua_tableset(graphics, "setPointSize", (...rawArgs) => {
+    const [size] = stripSelf(rawArgs, graphics);
+    pointSize = Math.max(1, toNumber(size, 1));
+    return [];
+  });
+  global.lua_tableset(graphics, "getPointSize", () => [pointSize]);
   global.lua_tableset(graphics, "getWidth", () => [canvas.width]);
   global.lua_tableset(graphics, "getHeight", () => [canvas.height]);
   global.lua_tableset(graphics, "getDimensions", () => [canvas.width, canvas.height]);
@@ -8170,6 +9020,11 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     fontSize = Math.max(1, toNumber(size, fontSize));
     ctx.font = `${fontSize}px sans-serif`;
     return [];
+  });
+  global.lua_tableset(graphics, "setNewFont", (...rawArgs) => {
+    const [font] = global.lua_tableget(graphics, "newFont")(...rawArgs);
+    global.lua_tableget(graphics, "setFont")(graphics, font);
+    return [font];
   });
   global.lua_tableset(graphics, "getFont", () => {
     const font = global.lua_newtable();
@@ -8207,8 +9062,45 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     return [];
   });
   global.lua_tableset(graphics, "setDefaultFilter", () => []);
-  global.lua_tableset(graphics, "newImage", unsupported("love.graphics.newImage"));
-  global.lua_tableset(graphics, "draw", unsupported("love.graphics.draw"));
+  global.lua_tableset(graphics, "setBlendMode", (...rawArgs) => {
+    const [mode] = stripSelf(rawArgs, graphics);
+    blendMode = String(mode || "alpha");
+    ctx.globalCompositeOperation = blendMode === "add" ? "lighter" : "source-over";
+    return [];
+  });
+  global.lua_tableset(graphics, "getBlendMode", () => [blendMode]);
+  global.lua_tableset(graphics, "setScissor", (...rawArgs) => {
+    const [x, y, w, h] = stripSelf(rawArgs, graphics);
+    resetScissor();
+    if (x == null) return [];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
+    ctx.clip();
+    scissorStack.push(true);
+    return [];
+  });
+  global.lua_tableset(graphics, "intersectScissor", (...rawArgs) => {
+    const [x, y, w, h] = stripSelf(rawArgs, graphics);
+    if (x == null) return [];
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
+    ctx.clip();
+    scissorStack.push(true);
+    return [];
+  });
+  global.lua_tableset(graphics, "newImage", (...rawArgs) => {
+    const [path] = stripSelf(rawArgs, graphics);
+    const image = tableFromObject({ type: "image", path: jsString(path), unsupported: true });
+    return [image];
+  });
+  global.lua_tableset(graphics, "newCanvas", (...rawArgs) => {
+    const [width = canvas.width, height = canvas.height] = stripSelf(rawArgs, graphics);
+    return [tableFromObject({ type: "canvas", width: toNumber(width, canvas.width), height: toNumber(height, canvas.height), unsupported: true })];
+  });
+  global.lua_tableset(graphics, "setCanvas", () => []);
+  global.lua_tableset(graphics, "draw", () => []);
 
   global.lua_tableset(windowTable, "setMode", (...rawArgs) => {
     const [width, height] = stripSelf(rawArgs, windowTable);
@@ -8220,29 +9112,108 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   global.lua_tableset(windowTable, "getMode", () => [canvas.width, canvas.height, global.lua_newtable()]);
   global.lua_tableset(windowTable, "setTitle", (...rawArgs) => {
     const [title] = stripSelf(rawArgs, windowTable);
-    log(`love.window.setTitle: ${String(title ?? "")}`);
+    windowTitle = String(title ?? "");
+    log(`love.window.setTitle: ${windowTitle}`);
     return [];
   });
+  global.lua_tableset(windowTable, "getTitle", () => [windowTitle]);
+  global.lua_tableset(windowTable, "getDesktopDimensions", () => [canvas.width, canvas.height]);
+  global.lua_tableset(windowTable, "setFullscreen", (...rawArgs) => {
+    const [value] = stripSelf(rawArgs, windowTable);
+    fullscreen = Boolean(value);
+    return [false];
+  });
+  global.lua_tableset(windowTable, "getFullscreen", () => [fullscreen, "desktop"]);
+  global.lua_tableset(windowTable, "hasFocus", () => [true]);
+  global.lua_tableset(windowTable, "isVisible", () => [true]);
 
   global.lua_tableset(keyboard, "isDown", (...rawArgs) => {
     const keys = stripSelf(rawArgs, keyboard).map((key) => String(key));
     return [keys.some((key) => pressedKeys.has(key))];
   });
-  global.lua_tableset(mouse, "getPosition", () => [0, 0]);
+  global.lua_tableset(keyboard, "setKeyRepeat", (...rawArgs) => {
+    const [enabled] = stripSelf(rawArgs, keyboard);
+    keyRepeat = Boolean(enabled);
+    return [];
+  });
+  global.lua_tableset(keyboard, "hasKeyRepeat", () => [keyRepeat]);
+  global.lua_tableset(mouse, "getPosition", () => [mouseX, mouseY]);
+  global.lua_tableset(mouse, "getX", () => [mouseX]);
+  global.lua_tableset(mouse, "getY", () => [mouseY]);
+  global.lua_tableset(mouse, "isDown", (...rawArgs) => {
+    const buttons = stripSelf(rawArgs, mouse).map((button) => Number(button));
+    return [buttons.some((button) => mouseButtons.has(button))];
+  });
+  global.lua_tableset(mouse, "setVisible", (...rawArgs) => {
+    const [visible] = stripSelf(rawArgs, mouse);
+    mouseVisible = Boolean(visible);
+    return [];
+  });
+  global.lua_tableset(mouse, "isVisible", () => [mouseVisible]);
   global.lua_tableset(timer, "getDelta", () => [(performance.now() - lastFrame) / 1000]);
   global.lua_tableset(timer, "getTime", () => [(performance.now() - startedAt) / 1000]);
+  global.lua_tableset(timer, "getFPS", () => {
+    const delta = (performance.now() - lastFrame) / 1000;
+    return [delta > 0 ? Math.round(1 / delta) : 0];
+  });
+  global.lua_tableset(timer, "sleep", () => []);
+  global.lua_tableset(timer, "step", () => [(performance.now() - lastFrame) / 1000]);
   global.lua_tableset(event, "quit", () => {
     running = false;
     return [];
   });
-  global.lua_tableset(filesystem, "read", unsupported("love.filesystem.read"));
-  global.lua_tableset(filesystem, "write", unsupported("love.filesystem.write"));
+  global.lua_tableset(event, "clear", () => []);
+  global.lua_tableset(event, "pump", () => []);
+  global.lua_tableset(event, "push", () => []);
+  global.lua_tableset(event, "poll", () => [() => [null]]);
+  global.lua_tableset(filesystem, "write", (...rawArgs) => {
+    const [filename, data] = stripSelf(rawArgs, filesystem);
+    return [writeVirtualFile(filename, data)];
+  });
+  global.lua_tableset(filesystem, "append", (...rawArgs) => {
+    const [filename, data] = stripSelf(rawArgs, filesystem);
+    const current = readVirtualFile(filename) || "";
+    return [writeVirtualFile(filename, `${current}${jsString(data)}`)];
+  });
+  global.lua_tableset(filesystem, "read", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
+    const data = readVirtualFile(filename);
+    return [data ?? null];
+  });
+  global.lua_tableset(filesystem, "getInfo", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
+    const data = readVirtualFile(filename);
+    if (data == null) return [null];
+    return [tableFromObject({ type: "file", size: data.length })];
+  });
+  global.lua_tableset(filesystem, "exists", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
+    return [readVirtualFile(filename) != null];
+  });
+  global.lua_tableset(filesystem, "remove", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
+    return [removeVirtualFile(filename)];
+  });
+  global.lua_tableset(filesystem, "lines", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
+    const lines = String(readVirtualFile(filename) ?? "").split(/\r?\n/);
+    let index = 0;
+    return [() => (index < lines.length ? [lines[index++]] : [null])];
+  });
+  global.lua_tableset(filesystem, "getSaveDirectory", () => ["browser://tns-tool-love-fs"]);
+  global.lua_tableset(filesystem, "getWorkingDirectory", () => ["browser://tns-tool-love"]);
   global.lua_tableset(loveMath, "random", (...rawArgs) => {
     const args = stripSelf(rawArgs, loveMath).map((value) => Number(value));
     if (!args.length) return [Math.random()];
     if (args.length === 1) return [Math.floor(Math.random() * args[0]) + 1];
     return [Math.floor(Math.random() * (args[1] - args[0] + 1)) + args[0]];
   });
+  global.lua_tableset(loveMath, "setRandomSeed", (...rawArgs) => {
+    const [seed] = stripSelf(rawArgs, loveMath);
+    log(`love.math.setRandomSeed: ${String(seed ?? 0)}`);
+    return [];
+  });
+  global.lua_tableset(loveMath, "getRandomSeed", () => [0, 0]);
 
   evalLuaJsSource(decodeXmlTextEntities(code));
 
@@ -8308,12 +9279,16 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   }
   function mousepressed(x, y, button = 1) {
     if (!running) return;
+    mouseX = toNumber(x);
+    mouseY = toNumber(y);
+    mouseButtons.add(Number(button) || 1);
     try {
-      callLove(love, "mousepressed", [x, y, button]);
+      callLove(love, "mousepressed", [mouseX, mouseY, Number(button) || 1]);
       redraw();
     } catch (error) {
       log(`ERROR LÖVE mousepressed ${x},${y}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
     }
+    window.setTimeout(() => mouseButtons.delete(Number(button) || 1), 90);
   }
   function resize(width, height) {
     const nextWidth = Math.max(1, Math.min(1280, Math.round(Number(width) || canvas.width)));
@@ -8334,9 +9309,15 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   function close() {
     running = false;
     if (rafId) window.cancelAnimationFrame(rafId);
+    resetScissor();
+  }
+  function getScreenText() {
+    const visibleText = formatLuaPreviewScreenText(screenText);
+    const printedText = consoleText.join("\n").trim();
+    return [visibleText, printedText ? `STDOUT\n${printedText}` : ""].filter(Boolean).join("\n\n");
   }
 
-  return { boot, keydown, keyup, keypressed, mousepressed, resize, close };
+  return { boot, keydown, keyup, keypressed, mousepressed, resize, close, getScreenText };
 }
 
 function hardenLuaJsPreviewRuntime() {
