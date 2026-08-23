@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-luajs-safe-next";
+const SOURCE_VERSION = "2026-08-23-love-preview-experiment";
 
 const I18N = {
   es: {
@@ -40,6 +40,9 @@ const I18N = {
     runLuaSyntax: "Ejecutar sintaxis Lua",
     saveLuaXml: "Guardar Lua en XML",
     previewLua: "Preview Lua",
+    previewLove: "Preview LÖVE",
+    lovePreviewNote: "Preview experimental de LÖVE: soporta love.load, love.update, love.draw, love.keypressed, love.mousepressed y love.graphics basico. No es el motor LÖVE completo.",
+    lovePreviewStarted: "Preview LÖVE experimental activo.",
     luaGuide: "Guia Lua",
     luaTemplates: "Plantillas Lua",
     luaEditPages: "Editar paginas",
@@ -233,6 +236,9 @@ const I18N = {
     runLuaSyntax: "Run Lua syntax",
     saveLuaXml: "Save Lua to XML",
     previewLua: "Preview Lua",
+    previewLove: "Preview LÖVE",
+    lovePreviewNote: "Experimental LÖVE preview: supports love.load, love.update, love.draw, love.keypressed, love.mousepressed, and basic love.graphics. This is not the full LÖVE engine.",
+    lovePreviewStarted: "Experimental LÖVE preview active.",
     luaGuide: "Lua guide",
     luaTemplates: "Lua templates",
     luaEditPages: "Edit pages",
@@ -426,6 +432,9 @@ const I18N = {
     runLuaSyntax: "Analyser syntaxe Lua",
     saveLuaXml: "Enregistrer Lua dans XML",
     previewLua: "Apercu Lua",
+    previewLove: "Apercu LÖVE",
+    lovePreviewNote: "Apercu LÖVE experimental : prend en charge love.load, love.update, love.draw, love.keypressed, love.mousepressed et love.graphics basique. Ce n'est pas le moteur LÖVE complet.",
+    lovePreviewStarted: "Apercu LÖVE experimental actif.",
     luaGuide: "Guide Lua",
     luaTemplates: "Modeles Lua",
     luaEditPages: "Editer pages",
@@ -6517,6 +6526,7 @@ function showLuaEditor(item) {
         <span id="lua-line-label">Linea: 1 Col: 1 Total: 1</span>
         <button type="button" id="lua-syntax" class="yellow-tool-button">${escapeHtml(t("runLuaSyntax"))}</button>
         <button type="button" id="lua-preview" class="green-tool-button">${escapeHtml(t("previewLua"))}</button>
+        <button type="button" id="lua-love-preview" class="secondary-button">${escapeHtml(t("previewLove"))}</button>
         <button type="button" id="lua-guide" class="secondary-button">${escapeHtml(t("luaGuide"))}</button>
         <div class="lua-edit-menu">
           <button type="button" id="lua-edit-menu-trigger" class="green-tool-button">${escapeHtml(t("editMenu"))}</button>
@@ -6671,6 +6681,15 @@ function showLuaEditor(item) {
     window.getSelection?.()?.removeAllRanges?.();
     showLuaPreview(editor.value, item).catch((error) => {
       log.textContent += `\n[ERROR] Preview Lua: ${error.message}`;
+    });
+  });
+  backdrop.querySelector("#lua-love-preview").addEventListener("click", () => {
+    const caret = editor.selectionStart;
+    editor.setSelectionRange(caret, caret);
+    editor.blur();
+    window.getSelection?.()?.removeAllRanges?.();
+    showLovePreview(editor.value).catch((error) => {
+      log.textContent += `\n[ERROR] Preview LÖVE: ${error.message}`;
     });
   });
   updateLines();
@@ -6960,6 +6979,93 @@ async function showLuaPreview(code, item = null) {
     document.removeEventListener("keydown", keyHandler);
     closeModal(backdrop, () => runtime.close());
   });
+}
+
+async function showLovePreview(code) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal love-preview-modal">
+      <h2>${escapeHtml(t("previewLove"))}</h2>
+      <p class="muted-text">${escapeHtml(t("lovePreviewNote"))}</p>
+      <canvas id="love-preview-canvas" width="800" height="600"></canvas>
+      <div class="preview-controls">
+        <button type="button" data-key="up">Up</button>
+        <button type="button" data-key="down">Down</button>
+        <button type="button" data-key="left">Left</button>
+        <button type="button" data-key="right">Right</button>
+        <button type="button" data-key="space">Space</button>
+        <button type="button" data-key="return">Enter</button>
+        <button type="button" data-key="escape">Esc</button>
+      </div>
+      <pre id="love-preview-log" class="mini-log"></pre>
+      <div class="modal-actions">
+        <button type="button" id="love-preview-close">${escapeHtml(t("close"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  const canvas = backdrop.querySelector("#love-preview-canvas");
+  const ctx = canvas.getContext("2d");
+  const previewLog = backdrop.querySelector("#love-preview-log");
+  let runtime = null;
+  try {
+    runtime = await createLovePreviewRuntime(code, ctx, canvas, previewLog);
+    runtime.boot();
+  } catch (error) {
+    appendPreviewLog(previewLog, `ERROR Preview LÖVE: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+  }
+
+  for (const button of backdrop.querySelectorAll(".preview-controls button")) {
+    button.addEventListener("click", () => {
+      runtime?.keypressed(button.dataset.key);
+      canvas.focus();
+    });
+  }
+  canvas.addEventListener("click", (event) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.round((event.clientX - rect.left) * (canvas.width / rect.width));
+    const y = Math.round((event.clientY - rect.top) * (canvas.height / rect.height));
+    runtime?.mousepressed(x, y, 1);
+    canvas.focus();
+  });
+  const keyDownHandler = (event) => {
+    if (!backdrop.isConnected || event.ctrlKey || event.altKey || event.metaKey) return;
+    const key = lovePreviewKeyboardName(event);
+    if (!key) return;
+    event.preventDefault();
+    runtime?.keydown(key);
+  };
+  const keyUpHandler = (event) => {
+    if (!backdrop.isConnected || event.ctrlKey || event.altKey || event.metaKey) return;
+    const key = lovePreviewKeyboardName(event);
+    if (!key) return;
+    event.preventDefault();
+    runtime?.keyup(key);
+  };
+  document.addEventListener("keydown", keyDownHandler);
+  document.addEventListener("keyup", keyUpHandler);
+  backdrop.querySelector("#love-preview-close").addEventListener("click", () => {
+    document.removeEventListener("keydown", keyDownHandler);
+    document.removeEventListener("keyup", keyUpHandler);
+    closeModal(backdrop, () => runtime?.close());
+  });
+}
+
+function lovePreviewKeyboardName(event) {
+  const map = {
+    Enter: "return",
+    Escape: "escape",
+    ArrowLeft: "left",
+    ArrowRight: "right",
+    ArrowUp: "up",
+    ArrowDown: "down",
+    Backspace: "backspace",
+    Tab: "tab",
+    " ": "space",
+  };
+  if (map[event.key]) return map[event.key];
+  if (event.key?.length === 1) return event.key.toLowerCase();
+  return null;
 }
 
 function previewKeyboardEventToLua(event) {
@@ -7388,6 +7494,351 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     return formatLuaPreviewScreenText(screenText);
   }
   return { boot, callEvent, charIn, mouseClick, close, getScreenText };
+}
+
+async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
+  const sources = await loadLuaJsRuntimeSources();
+  for (const source of sources) {
+    (0, eval)(source);
+  }
+  hardenLuaJsPreviewRuntime();
+
+  const global = window;
+  const love = global.lua_newtable();
+  const graphics = global.lua_newtable();
+  const windowTable = global.lua_newtable();
+  const keyboard = global.lua_newtable();
+  const mouse = global.lua_newtable();
+  const timer = global.lua_newtable();
+  const event = global.lua_newtable();
+  const filesystem = global.lua_newtable();
+  const loveMath = global.lua_newtable();
+  const pressedKeys = new Set();
+  let rafId = null;
+  let running = false;
+  let lastFrame = performance.now();
+  let fontSize = 12;
+  let currentColor = [255, 255, 255, 1];
+  let backgroundColor = [0, 0, 0, 1];
+  const startedAt = performance.now();
+
+  const log = (message) => appendPreviewLog(logEl, message);
+  const cssColor = ([r, g, b, a = 1]) => `rgba(${Math.round(r)}, ${Math.round(g)}, ${Math.round(b)}, ${Math.max(0, Math.min(1, a))})`;
+  const stripSelf = (args, table) => args[0] === table ? args.slice(1) : args;
+  const unsupported = (name) => () => {
+    throw new Error(`LÖVE API no implementada: ${name}`);
+  };
+  const toNumber = (value, fallback = 0) => {
+    const numeric = Number(value);
+    return Number.isFinite(numeric) ? numeric : fallback;
+  };
+  const normalizeColor = (values, fallback = currentColor) => {
+    const raw = values.map((value) => Number(value));
+    const r = Number.isFinite(raw[0]) ? raw[0] : fallback[0];
+    const g = Number.isFinite(raw[1]) ? raw[1] : r;
+    const b = Number.isFinite(raw[2]) ? raw[2] : g;
+    const a = Number.isFinite(raw[3]) ? raw[3] : fallback[3];
+    const useUnitRange = [r, g, b].every((value) => value >= 0 && value <= 1);
+    return [
+      Math.max(0, Math.min(255, useUnitRange ? r * 255 : r)),
+      Math.max(0, Math.min(255, useUnitRange ? g * 255 : g)),
+      Math.max(0, Math.min(255, useUnitRange ? b * 255 : b)),
+      Math.max(0, Math.min(1, a <= 1 ? a : a / 255)),
+    ];
+  };
+  const applyColor = () => {
+    ctx.fillStyle = cssColor(currentColor);
+    ctx.strokeStyle = cssColor(currentColor);
+  };
+  const clearCanvas = (...args) => {
+    const color = args.length ? normalizeColor(args, backgroundColor) : backgroundColor;
+    ctx.save();
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.fillStyle = cssColor(color);
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.restore();
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textBaseline = "top";
+    applyColor();
+  };
+  const luaArrayToJs = (value) => {
+    if (!value || typeof value !== "object" || !value.uints) return null;
+    const out = [];
+    for (let index = 1; index <= global.lua_len(value); index += 1) {
+      out.push(global.lua_tableget(value, index));
+    }
+    return out;
+  };
+  const numberList = (args) => {
+    const tableValues = args.length === 1 ? luaArrayToJs(args[0]) : null;
+    return (tableValues || args).map((value) => toNumber(value));
+  };
+  const callLove = (table, name, args = []) => {
+    const fn = global.lua_tableget(table, name);
+    if (!fn) return null;
+    return global.lua_call(fn, args);
+  };
+  const redraw = () => {
+    clearCanvas();
+    callLove(love, "draw");
+  };
+  const evalLuaJsSource = (source) => {
+    const parsed = global.lua_parser.parse(source).split("\n").slice(19).join("\n");
+    (0, eval)(parsed);
+  };
+
+  global.G.str.love = love;
+  global.G.str.print = (...args) => {
+    log(args.map((value) => String(value ?? "nil")).join("\t"));
+    return [];
+  };
+
+  global.lua_tableset(love, "graphics", graphics);
+  global.lua_tableset(love, "window", windowTable);
+  global.lua_tableset(love, "keyboard", keyboard);
+  global.lua_tableset(love, "mouse", mouse);
+  global.lua_tableset(love, "timer", timer);
+  global.lua_tableset(love, "event", event);
+  global.lua_tableset(love, "filesystem", filesystem);
+  global.lua_tableset(love, "math", loveMath);
+
+  global.lua_tableset(graphics, "print", (...rawArgs) => {
+    const [text, x = 0, y = 0, rotation = 0, sx = 1, sy = sx, ox = 0, oy = 0] = stripSelf(rawArgs, graphics);
+    ctx.save();
+    ctx.translate(toNumber(x), toNumber(y));
+    ctx.rotate(toNumber(rotation));
+    ctx.scale(toNumber(sx, 1), toNumber(sy, 1));
+    applyColor();
+    ctx.fillText(String(text ?? ""), -toNumber(ox), -toNumber(oy));
+    ctx.restore();
+    return [];
+  });
+  global.lua_tableset(graphics, "printf", (...rawArgs) => {
+    const [text, x = 0, y = 0, limit = canvas.width, align = "left"] = stripSelf(rawArgs, graphics);
+    const previousAlign = ctx.textAlign;
+    ctx.textAlign = String(align || "left");
+    const drawX = String(align) === "center" ? toNumber(x) + toNumber(limit) / 2 : String(align) === "right" ? toNumber(x) + toNumber(limit) : toNumber(x);
+    applyColor();
+    ctx.fillText(String(text ?? ""), drawX, toNumber(y));
+    ctx.textAlign = previousAlign;
+    return [];
+  });
+  global.lua_tableset(graphics, "setColor", (...rawArgs) => {
+    currentColor = normalizeColor(stripSelf(rawArgs, graphics), currentColor);
+    applyColor();
+    return [];
+  });
+  global.lua_tableset(graphics, "getColor", () => currentColor);
+  global.lua_tableset(graphics, "setBackgroundColor", (...rawArgs) => {
+    backgroundColor = normalizeColor(stripSelf(rawArgs, graphics), backgroundColor);
+    return [];
+  });
+  global.lua_tableset(graphics, "getBackgroundColor", () => backgroundColor);
+  global.lua_tableset(graphics, "clear", (...rawArgs) => {
+    clearCanvas(...stripSelf(rawArgs, graphics));
+    return [];
+  });
+  global.lua_tableset(graphics, "rectangle", (...rawArgs) => {
+    const [mode, x, y, w, h] = stripSelf(rawArgs, graphics);
+    if (String(mode) === "fill") ctx.fillRect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
+    else ctx.strokeRect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
+    return [];
+  });
+  global.lua_tableset(graphics, "circle", (...rawArgs) => {
+    const [mode, x, y, radius] = stripSelf(rawArgs, graphics);
+    ctx.beginPath();
+    ctx.arc(toNumber(x), toNumber(y), Math.max(0, toNumber(radius)), 0, Math.PI * 2);
+    if (String(mode) === "fill") ctx.fill();
+    else ctx.stroke();
+    return [];
+  });
+  global.lua_tableset(graphics, "line", (...rawArgs) => {
+    const points = numberList(stripSelf(rawArgs, graphics));
+    if (points.length < 4) return [];
+    ctx.beginPath();
+    ctx.moveTo(points[0], points[1]);
+    for (let index = 2; index + 1 < points.length; index += 2) ctx.lineTo(points[index], points[index + 1]);
+    ctx.stroke();
+    return [];
+  });
+  global.lua_tableset(graphics, "points", (...rawArgs) => {
+    const points = numberList(stripSelf(rawArgs, graphics));
+    for (let index = 0; index + 1 < points.length; index += 2) ctx.fillRect(points[index], points[index + 1], 1, 1);
+    return [];
+  });
+  global.lua_tableset(graphics, "setLineWidth", (...rawArgs) => {
+    const [width] = stripSelf(rawArgs, graphics);
+    ctx.lineWidth = Math.max(1, toNumber(width, 1));
+    return [];
+  });
+  global.lua_tableset(graphics, "getLineWidth", () => [ctx.lineWidth]);
+  global.lua_tableset(graphics, "getWidth", () => [canvas.width]);
+  global.lua_tableset(graphics, "getHeight", () => [canvas.height]);
+  global.lua_tableset(graphics, "getDimensions", () => [canvas.width, canvas.height]);
+  global.lua_tableset(graphics, "newFont", (...rawArgs) => {
+    const args = stripSelf(rawArgs, graphics);
+    const size = toNumber(args.find((value) => Number.isFinite(Number(value))), fontSize);
+    const font = global.lua_newtable();
+    global.lua_tableset(font, "size", Math.max(1, size));
+    return [font];
+  });
+  global.lua_tableset(graphics, "setFont", (...rawArgs) => {
+    const [font] = stripSelf(rawArgs, graphics);
+    const size = font && typeof font === "object" ? global.lua_tableget(font, "size") : font;
+    fontSize = Math.max(1, toNumber(size, fontSize));
+    ctx.font = `${fontSize}px sans-serif`;
+    return [];
+  });
+  global.lua_tableset(graphics, "getFont", () => {
+    const font = global.lua_newtable();
+    global.lua_tableset(font, "size", fontSize);
+    return [font];
+  });
+  global.lua_tableset(graphics, "push", () => {
+    ctx.save();
+    return [];
+  });
+  global.lua_tableset(graphics, "pop", () => {
+    ctx.restore();
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textBaseline = "top";
+    applyColor();
+    return [];
+  });
+  global.lua_tableset(graphics, "origin", () => {
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    return [];
+  });
+  global.lua_tableset(graphics, "translate", (...rawArgs) => {
+    const [x, y] = stripSelf(rawArgs, graphics);
+    ctx.translate(toNumber(x), toNumber(y));
+    return [];
+  });
+  global.lua_tableset(graphics, "scale", (...rawArgs) => {
+    const [x, y = x] = stripSelf(rawArgs, graphics);
+    ctx.scale(toNumber(x, 1), toNumber(y, 1));
+    return [];
+  });
+  global.lua_tableset(graphics, "rotate", (...rawArgs) => {
+    const [angle] = stripSelf(rawArgs, graphics);
+    ctx.rotate(toNumber(angle));
+    return [];
+  });
+  global.lua_tableset(graphics, "setDefaultFilter", () => []);
+  global.lua_tableset(graphics, "newImage", unsupported("love.graphics.newImage"));
+  global.lua_tableset(graphics, "draw", unsupported("love.graphics.draw"));
+
+  global.lua_tableset(windowTable, "setMode", (...rawArgs) => {
+    const [width, height] = stripSelf(rawArgs, windowTable);
+    canvas.width = Math.max(1, Math.min(1280, Math.round(toNumber(width, canvas.width))));
+    canvas.height = Math.max(1, Math.min(900, Math.round(toNumber(height, canvas.height))));
+    clearCanvas();
+    return [true];
+  });
+  global.lua_tableset(windowTable, "getMode", () => [canvas.width, canvas.height, global.lua_newtable()]);
+  global.lua_tableset(windowTable, "setTitle", (...rawArgs) => {
+    const [title] = stripSelf(rawArgs, windowTable);
+    log(`love.window.setTitle: ${String(title ?? "")}`);
+    return [];
+  });
+
+  global.lua_tableset(keyboard, "isDown", (...rawArgs) => {
+    const keys = stripSelf(rawArgs, keyboard).map((key) => String(key));
+    return [keys.some((key) => pressedKeys.has(key))];
+  });
+  global.lua_tableset(mouse, "getPosition", () => [0, 0]);
+  global.lua_tableset(timer, "getDelta", () => [(performance.now() - lastFrame) / 1000]);
+  global.lua_tableset(timer, "getTime", () => [(performance.now() - startedAt) / 1000]);
+  global.lua_tableset(event, "quit", () => {
+    running = false;
+    return [];
+  });
+  global.lua_tableset(filesystem, "read", unsupported("love.filesystem.read"));
+  global.lua_tableset(filesystem, "write", unsupported("love.filesystem.write"));
+  global.lua_tableset(loveMath, "random", (...rawArgs) => {
+    const args = stripSelf(rawArgs, loveMath).map((value) => Number(value));
+    if (!args.length) return [Math.random()];
+    if (args.length === 1) return [Math.floor(Math.random() * args[0]) + 1];
+    return [Math.floor(Math.random() * (args[1] - args[0] + 1)) + args[0]];
+  });
+
+  evalLuaJsSource(decodeXmlTextEntities(code));
+
+  function frame() {
+    if (!running) return;
+    const now = performance.now();
+    const dt = Math.max(0, (now - lastFrame) / 1000);
+    lastFrame = now;
+    try {
+      callLove(love, "update", [dt]);
+      redraw();
+    } catch (error) {
+      log(`ERROR LÖVE frame: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      running = false;
+      return;
+    }
+    rafId = window.requestAnimationFrame(frame);
+  }
+
+  function boot() {
+    ctx.imageSmoothingEnabled = true;
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textBaseline = "top";
+    clearCanvas();
+    try {
+      callLove(love, "load");
+      redraw();
+    } catch (error) {
+      log(`ERROR LÖVE boot: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      throw error;
+    }
+    running = true;
+    lastFrame = performance.now();
+    rafId = window.requestAnimationFrame(frame);
+    log(t("lovePreviewStarted"));
+  }
+  function keydown(key) {
+    if (!running) return;
+    const normalized = String(key);
+    const wasDown = pressedKeys.has(normalized);
+    pressedKeys.add(normalized);
+    try {
+      if (!wasDown) callLove(love, "keypressed", [normalized]);
+      redraw();
+    } catch (error) {
+      log(`ERROR LÖVE keypressed ${normalized}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+    }
+  }
+  function keyup(key) {
+    if (!running) return;
+    const normalized = String(key);
+    pressedKeys.delete(normalized);
+    try {
+      callLove(love, "keyreleased", [normalized]);
+      redraw();
+    } catch (error) {
+      log(`ERROR LÖVE keyreleased ${normalized}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+    }
+  }
+  function keypressed(key) {
+    keydown(key);
+    window.setTimeout(() => keyup(key), 80);
+  }
+  function mousepressed(x, y, button = 1) {
+    if (!running) return;
+    try {
+      callLove(love, "mousepressed", [x, y, button]);
+      redraw();
+    } catch (error) {
+      log(`ERROR LÖVE mousepressed ${x},${y}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+    }
+  }
+  function close() {
+    running = false;
+    if (rafId) window.cancelAnimationFrame(rafId);
+  }
+
+  return { boot, keydown, keyup, keypressed, mousepressed, close };
 }
 
 function hardenLuaJsPreviewRuntime() {

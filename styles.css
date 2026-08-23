@@ -1273,6 +1273,14 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   overflow: hidden;
 }
 
+.love-preview-modal {
+  width: min(920px, calc(100vw - 28px));
+  max-height: min(92vh, 820px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
 #lua-preview-canvas {
   width: 318px;
   height: 212px;
@@ -1282,6 +1290,19 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   background: #fff;
   display: block;
   margin: 8px auto 12px;
+}
+
+#love-preview-canvas {
+  width: min(800px, 100%);
+  max-height: min(58vh, 600px);
+  aspect-ratio: 4 / 3;
+  image-rendering: auto;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #000;
+  display: block;
+  margin: 8px auto 12px;
+  outline: none;
 }
 
 .preview-controls {
@@ -2616,6 +2637,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
   .lua-modal,
   .lua-preview-modal,
+  .love-preview-modal,
   .lua-library-modal {
     width: 100%;
     max-height: none;
@@ -2688,6 +2710,11 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   #lua-preview-canvas {
     width: min(318px, 100%);
     height: auto;
+  }
+
+  #love-preview-canvas {
+    width: min(800px, 100%);
+    max-height: 60vh;
   }
 
   .preview-controls button {
