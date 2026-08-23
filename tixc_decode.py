@@ -262,7 +262,10 @@ def decode_tixc(data: bytes) -> bytes:
                     state = 4
                 elif b == 0x2F:
                     out.append(0x2F)
-                    state = 10 if not token else 9
+                    # Some TI-Nspire documents, especially mixed documents with
+                    # Graphs/Geometry/Python/etc., emit literal close tags such
+                    # as </gg:vis> instead of using the TIXC tag dictionary.
+                    state = 9
                 elif b == 0x3E:
                     if not token:
                         raise TixcDecodeError("empty tag before '>'")
