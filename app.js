@@ -34,6 +34,9 @@ const I18N = {
     openLua: "Ver Lua",
     editLua: "Editar Lua",
     addLuaWidget: "Agregar Lua ScriptApp",
+    openPython: "Ver Python",
+    editPython: "Editar Python",
+    addPythonWidget: "Agregar Python",
     runLuaSyntax: "Ejecutar sintaxis Lua",
     saveLuaXml: "Guardar Lua en XML",
     previewLua: "Preview Lua",
@@ -93,6 +96,7 @@ const I18N = {
     editableBlocksLoaded: "Cargados {count} bloques editables.",
     selectedProgram: "Programa seleccionado: {name}",
     luaScriptAdded: "Lua ScriptApp agregado en una nueva card.",
+    pythonWidgetAdded: "Python agregado en una nueva card.",
     funcAdded: "Func agregada: {name}",
     analysisDone: "Analisis completado. Errores: {errors}, advertencias: {warnings}.",
     autoFixApplied: "Auto Fix aplicado. Use Mostrar cambios para revisar.",
@@ -200,6 +204,9 @@ const I18N = {
     openLua: "View Lua",
     editLua: "Edit Lua",
     addLuaWidget: "Add Lua ScriptApp",
+    openPython: "View Python",
+    editPython: "Edit Python",
+    addPythonWidget: "Add Python",
     runLuaSyntax: "Run Lua syntax",
     saveLuaXml: "Save Lua to XML",
     previewLua: "Preview Lua",
@@ -259,6 +266,7 @@ const I18N = {
     editableBlocksLoaded: "Loaded {count} editable blocks.",
     selectedProgram: "Selected program: {name}",
     luaScriptAdded: "Lua ScriptApp added in a new card.",
+    pythonWidgetAdded: "Python added in a new card.",
     funcAdded: "Func added: {name}",
     analysisDone: "Analysis completed. Errors: {errors}, warnings: {warnings}.",
     autoFixApplied: "Auto Fix applied. Use Show changes to review.",
@@ -366,6 +374,9 @@ const I18N = {
     openLua: "Voir Lua",
     editLua: "Editer Lua",
     addLuaWidget: "Ajouter Lua ScriptApp",
+    openPython: "Voir Python",
+    editPython: "Editer Python",
+    addPythonWidget: "Ajouter Python",
     runLuaSyntax: "Analyser syntaxe Lua",
     saveLuaXml: "Enregistrer Lua dans XML",
     previewLua: "Apercu Lua",
@@ -425,6 +436,7 @@ const I18N = {
     editableBlocksLoaded: "{count} blocs editables charges.",
     selectedProgram: "Programme selectionne : {name}",
     luaScriptAdded: "Lua ScriptApp ajoute dans une nouvelle carte.",
+    pythonWidgetAdded: "Python ajoute dans une nouvelle carte.",
     funcAdded: "Func ajoutee : {name}",
     analysisDone: "Analyse terminee. Erreurs : {errors}, avertissements : {warnings}.",
     autoFixApplied: "Auto Fix applique. Utilisez Voir changements pour verifier.",
@@ -1301,11 +1313,18 @@ function xmlLog(message) {
 }
 
 function setXmlDoctorEnabled(enabled) {
-  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
+  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-add-python-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#xml-programs").disabled = !enabled;
   document.querySelector("#xml-code").disabled = !enabled;
+}
+
+function setXmlDoctorDocumentActionsEnabled(enabled) {
+  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-add-python-btn", "xml-document-btn"]) {
+    const el = document.querySelector(`#${id}`);
+    if (el) el.disabled = !enabled;
+  }
 }
 
 function setPyDoctorEnabled(enabled) {
@@ -1411,6 +1430,10 @@ json.dumps(items)
   }
   if (!xmlDoctor.candidates.length) {
     setXmlDoctorEnabled(false);
+    setXmlDoctorDocumentActionsEnabled(true);
+    xmlDoctor.current = null;
+    document.querySelector("#xml-code").value = "";
+    updateXmlLineNumbers();
     xmlLog(t("noEditablePrograms"));
     return;
   }
@@ -1444,7 +1467,8 @@ from xml_scanner import local_name, namespace_uri
 
 root_path = Path(wasm_xml_inspect_path)
 items = []
-summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "basic_blocks": 0, "symbols": 0}
+summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "python_editors": 0, "python_files": 0, "resources": 0, "basic_blocks": 0, "symbols": 0}
+python_files_seen = set()
 
 def element_path(element, parent_map):
     parts = []
@@ -1477,6 +1501,29 @@ for xml_file in sorted(root_path.rglob("*.xml")):
                 return (child.text or "").strip()
         return ""
 
+    def find_python_file(py_name):
+        candidates = []
+        if py_name:
+            py_path = Path(py_name.replace("\\\\", "/"))
+            candidates.append(root_path / py_path.name)
+            stem = py_path.stem
+            candidates.extend(sorted(root_path.rglob(f"{stem}.py")))
+            candidates.extend(sorted(root_path.rglob(f"{stem}.pyt")))
+        candidates.extend(sorted(root_path.rglob("*.py")))
+        candidates.extend(sorted(root_path.rglob("*.pyt")))
+        seen = set()
+        for candidate in candidates:
+            candidate = Path(candidate)
+            key = candidate.as_posix()
+            if key in seen or not candidate.is_file() or "_artifacts" in candidate.parts:
+                continue
+            seen.add(key)
+            try:
+                return candidate, candidate.read_text(encoding="utf-8")
+            except UnicodeDecodeError:
+                return candidate, candidate.read_text(encoding="utf-8", errors="replace")
+        return None, ""
+
     for element in root.iter():
         lname = local_name(element.tag)
         ns = namespace_uri(element.tag)
@@ -1498,6 +1545,25 @@ for xml_file in sorted(root_path.rglob("*.xml")):
                 })
                 content = child_text(element, pe_ns, "laststoredexpr")
                 content_label = "ProgramEditor"
+            elif widget_type == "TI.PythonEditor":
+                py_ns = "urn:TI.PythonEditor"
+                py_name = child_text(element, py_ns, "name")
+                py_file, py_content = find_python_file(py_name)
+                summary["python_editors"] += 1
+                if py_file:
+                    summary["python_files"] += 1
+                    python_files_seen.add(str(py_file))
+                detail.update({
+                    "name": py_name,
+                    "dirf": child_text(element, py_ns, "dirf"),
+                    "python_file": str(py_file) if py_file else "",
+                    "length": len(py_content),
+                })
+                content = py_content
+                content_label = "Python"
+            elif widget_type == "TI.PythonShell":
+                pysh_ns = "urn:TI.PythonShell"
+                detail.update({"name": child_text(element, pysh_ns, "name")})
             elif widget_type == "TI.Scratchpad":
                 sp_ns = "urn:TI.Scratchpad"
                 rows = []
@@ -1533,6 +1599,27 @@ for xml_file in sorted(root_path.rglob("*.xml")):
                 summary["basic_blocks"] += 1
             items.append({"type": symbol_type, "name": name or "(sin nombre)", "file": str(xml_file), "path": element_path(element, parent_map), "detail": {"t": element.attrib.get("t"), "f": element.attrib.get("f"), "parameters": params, "length": len(value)}, "content": value if symbol_type not in {"Func", "Prgm"} else "", "content_label": "Value", "raw_xml": raw_xml(element)})
 
+for resource in sorted(root_path.rglob("*")):
+    if not resource.is_file() or resource.suffix.lower() == ".xml" or "_artifacts" in resource.parts:
+        continue
+    if str(resource) in python_files_seen:
+        continue
+    summary["resources"] += 1
+    content = ""
+    content_label = ""
+    detail = {"length": resource.stat().st_size, "extension": resource.suffix.lower()}
+    if resource.suffix.lower() in {".py", ".pyt", ".txt", ".lua"} and resource.stat().st_size <= 1000000:
+        try:
+            content = resource.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            content = resource.read_text(encoding="utf-8", errors="replace")
+        if resource.suffix.lower() in {".py", ".pyt"}:
+            content_label = "Python"
+            detail.update({"name": resource.name, "python_file": str(resource)})
+        else:
+            content_label = "Resource"
+    items.append({"type": "Resource", "name": resource.name, "file": str(resource), "path": "/" + resource.relative_to(root_path).as_posix(), "detail": detail, "content": content, "content_label": content_label, "raw_xml": ""})
+
 json.dumps({"summary": summary, "items": items})
 `);
   return JSON.parse(payload);
@@ -1556,7 +1643,7 @@ else:
         target = dst / rel
         if item.is_dir():
             target.mkdir(parents=True, exist_ok=True)
-        elif item.suffix.lower() == ".xml":
+        elif "_artifacts" not in item.parts:
             target.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(item, target)
 `);
@@ -1613,6 +1700,39 @@ else:
 `);
   xmlDoctor.embedded = true;
   xmlLog(t("luaSaved"));
+}
+
+async function savePythonFileToStage(item, content) {
+  await ensureXmlStageCopy();
+  pyodide.globals.set("wasm_python_file", item.detail?.python_file || "");
+  pyodide.globals.set("wasm_python_name", item.detail?.name || "script.py");
+  pyodide.globals.set("wasm_python_content", content);
+  await pyodide.runPythonAsync(`
+from pathlib import Path
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+python_file = (wasm_python_file or "").strip()
+python_name = (wasm_python_name or "script.py").strip() or "script.py"
+
+if python_file:
+    source_file = Path(python_file)
+    try:
+        rel = source_file.relative_to(stage_root)
+    except ValueError:
+        try:
+            rel = source_file.relative_to(source_root)
+        except ValueError:
+            rel = Path(source_file.name)
+    target = stage_root / rel
+else:
+    target = stage_root / Path(python_name).name
+
+target.parent.mkdir(parents=True, exist_ok=True)
+target.write_text(wasm_python_content, encoding="utf-8")
+`);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
 }
 
 function buildDefaultLuaScriptApp() {
@@ -2175,6 +2295,118 @@ json.dumps({
   return JSON.parse(payload);
 }
 
+function buildDefaultPythonProgram() {
+  return `# Python Program
+from math import *
+
+print("Hello Python")
+`;
+}
+
+async function addPythonEditorToStage() {
+  await ensureXmlStageCopy();
+  const currentFile = xmlDoctor.current?.file || "";
+  const inlineCode = document.querySelector("#py-inline")?.value || "";
+  pyodide.globals.set("wasm_python_current_file", currentFile);
+  pyodide.globals.set("wasm_python_default", inlineCode.trim() ? inlineCode : buildDefaultPythonProgram());
+  const payload = await pyodide.runPythonAsync(`
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+current_file = Path(wasm_python_current_file) if wasm_python_current_file else None
+xml_file = None
+if current_file:
+    try:
+        rel = current_file.relative_to(stage_root)
+    except ValueError:
+        try:
+            rel = current_file.relative_to(source_root)
+        except ValueError:
+            rel = Path(current_file.name)
+    candidate = stage_root / rel
+    if candidate.exists():
+        xml_file = candidate
+if xml_file is None:
+    problem_files = sorted(
+        [p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")],
+        key=lambda p: p.name.lower(),
+    )
+    xml_files = problem_files or sorted(stage_root.rglob("*.xml"))
+    if xml_files:
+        xml_file = xml_files[0]
+if xml_file is None:
+    raise RuntimeError("No XML file available for Python widget")
+
+tree = ET.parse(xml_file)
+root = tree.getroot()
+prob_ns = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+py_ns = "urn:TI.PythonEditor"
+ET.register_namespace("", prob_ns)
+ET.register_namespace("py", py_ns)
+
+def q(ns, name):
+    return f"{{{ns}}}{name}" if ns else name
+
+existing = {p.name.lower() for p in stage_root.rglob("*.py")}
+existing.update(p.name.lower() for p in stage_root.rglob("*.pyt"))
+base = "script"
+counter = 1
+python_name = f"{base}.py"
+while python_name.lower() in existing:
+    counter += 1
+    python_name = f"{base}_{counter}.py"
+python_path = stage_root / python_name
+python_path.write_text(wasm_python_default, encoding="utf-8")
+
+card = ET.Element(q(prob_ns, "card"), {"clay": "0", "h1": "10000", "h2": "10000", "w1": "10000", "w2": "10000"})
+ET.SubElement(card, q(prob_ns, "isDummyCard")).text = "0"
+ET.SubElement(card, q(prob_ns, "flag")).text = "0"
+wdgt = ET.SubElement(card, q(prob_ns, "wdgt"), {"type": "TI.PythonEditor", "ver": "1.0"})
+data = ET.SubElement(wdgt, q(py_ns, "data"))
+ET.SubElement(data, q(py_ns, "name")).text = python_name
+ET.SubElement(data, q(py_ns, "dirf")).text = "0"
+ET.SubElement(wdgt, q(py_ns, "mFlags")).text = "1024"
+ET.SubElement(wdgt, q(py_ns, "value")).text = "10"
+root.append(card)
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+
+parent_map = {child: parent for parent in root.iter() for child in parent}
+def element_path(element):
+    parts = []
+    current = element
+    while current is not None:
+        parent = parent_map.get(current)
+        name = local_name(current.tag)
+        if parent is not None:
+            same = [child for child in parent if local_name(child.tag) == name]
+            if len(same) > 1:
+                name = f"{name}[{same.index(current)+1}]"
+        parts.append(name)
+        current = parent
+    return "/" + "/".join(reversed(parts))
+
+json.dumps({
+    "type": "Widget",
+    "name": "TI.PythonEditor",
+    "file": str(xml_file),
+    "path": element_path(wdgt),
+    "detail": {"name": python_name, "dirf": "0", "python_file": str(python_path), "length": len(wasm_python_default), "created": "true"},
+    "content": wasm_python_default,
+    "content_label": "Python",
+    "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False),
+})
+`);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  xmlLog(t("pythonWidgetAdded"));
+  return JSON.parse(payload);
+}
+
 async function addBasicFuncToStage() {
   await ensureXmlStageCopy();
   const currentFile = xmlDoctor.current?.file || "";
@@ -2268,6 +2500,37 @@ function showTextModal(title, content) {
     </div>`;
   document.body.append(backdrop);
   backdrop.querySelector("#text-close").addEventListener("click", () => closeModal(backdrop));
+}
+
+function showPythonEditor(item) {
+  closeDocumentInspectorModals();
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal inspector-modal">
+      <h2>${escapeHtml(t("editPython"))}: ${escapeHtml(item.detail?.name || item.name)}</h2>
+      <textarea id="python-file-editor" spellcheck="false">${escapeHtml(item.content || "")}</textarea>
+      <div class="modal-actions">
+        <button type="button" id="python-file-cancel">${escapeHtml(t("cancel"))}</button>
+        <button type="button" id="python-file-save" class="green-tool-button">${escapeHtml(t("saveMenu"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  const editor = backdrop.querySelector("#python-file-editor");
+  editor.focus();
+  backdrop.querySelector("#python-file-cancel").addEventListener("click", () => closeModal(backdrop));
+  backdrop.querySelector("#python-file-save").addEventListener("click", async () => {
+    try {
+      const content = editor.value;
+      await savePythonFileToStage(item, content);
+      item.content = content;
+      closeModal(backdrop, () => {
+        openDocumentInspector().catch((error) => xmlLog(`ERROR: ${error.message}`));
+      });
+    } catch (error) {
+      xmlLog(`ERROR: ${error.message}`);
+    }
+  });
 }
 
 function closeDocumentInspectorModals() {
@@ -7862,16 +8125,19 @@ async function openDocumentInspector() {
   backdrop.className = "modal-backdrop";
   const summary = data.summary || {};
   const sortedItems = [...(data.items || [])].sort((a, b) => {
-    const rank = (item) => item.type === "Lua Script" ? 0 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 1 : item.type === "Card" ? 2 : 3;
+    const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 2 : item.type === "Card" ? 3 : 4;
     return rank(a) - rank(b) || String(a.file).localeCompare(String(b.file)) || String(a.path).localeCompare(String(b.path));
   });
   const rows = sortedItems.map((item, index) => {
     const detail = item.detail ? Object.entries(item.detail).map(([key, value]) => `${key}: ${value}`).join(", ") : "";
-    const contentAction = item.content
-      ? item.type === "Lua Script"
-        ? `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action green-mini-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`
-        : `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(item.content_label === "Scratchpad" ? t("viewDetails") : t("viewValue"))}</button>`
-      : "";
+    let contentAction = "";
+    if (item.type === "Lua Script") {
+      contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action green-mini-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`;
+    } else if (item.content_label === "Python") {
+      contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openPython"))}</button><button type="button" class="mini-action edit-python-action green-mini-action" data-index="${index}">${escapeHtml(t("editPython"))}</button>`;
+    } else if (item.content) {
+      contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(item.content_label === "Scratchpad" ? t("viewDetails") : t("viewValue"))}</button>`;
+    }
     const xmlAction = item.raw_xml ? `<button type="button" class="mini-action xml-action" data-index="${index}">${escapeHtml(t("viewXml"))}</button>` : "";
     const action = `${contentAction}${xmlAction}`;
     return `<tr><td>${escapeHtml(item.name)}</td><td>${action}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td></tr>`;
@@ -7885,6 +8151,8 @@ async function openDocumentInspector() {
         <span>Cards: ${summary.cards || 0}</span>
         <span>Widgets: ${summary.widgets || 0}</span>
         <span>Lua: ${summary.lua_scripts || 0}</span>
+        <span>Python: ${summary.python_editors || 0}</span>
+        <span>Resources: ${summary.resources || 0}</span>
         <span>Basic: ${summary.basic_blocks || 0}</span>
         <span>Symbols: ${summary.symbols || 0}</span>
       </div>
@@ -7897,6 +8165,7 @@ async function openDocumentInspector() {
       </div>
       <div class="modal-actions">
         <button type="button" id="add-lua-widget" class="green-tool-button">${escapeHtml(t("addLuaWidget"))}</button>
+        <button type="button" id="add-python-widget" class="green-tool-button">${escapeHtml(t("addPythonWidget"))}</button>
         <button type="button" id="inspector-close">${escapeHtml(t("close"))}</button>
       </div>
     </div>`;
@@ -7906,6 +8175,14 @@ async function openDocumentInspector() {
     try {
       const item = await addLuaScriptAppToStage();
       showLuaEditor(item);
+    } catch (error) {
+      xmlLog(`ERROR: ${error.message}`);
+    }
+  });
+  backdrop.querySelector("#add-python-widget").addEventListener("click", async () => {
+    try {
+      const item = await addPythonEditorToStage();
+      showPythonEditor(item);
     } catch (error) {
       xmlLog(`ERROR: ${error.message}`);
     }
@@ -7926,6 +8203,12 @@ async function openDocumentInspector() {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
       showLuaEditor(item);
+    });
+  }
+  for (const button of backdrop.querySelectorAll(".edit-python-action")) {
+    button.addEventListener("click", () => {
+      const item = sortedItems[Number(button.dataset.index)];
+      showPythonEditor(item);
     });
   }
 }
@@ -8426,22 +8709,35 @@ async function extractPython() {
   const file = document.querySelector("#extract-file").files[0];
   if (!file) return;
   await writeFileToFs(file, "/work/extract.tns");
-  log("Extrayendo q.py...");
-  const code = await pyodide.runPythonAsync(`
+  log("Extrayendo Python...");
+  const payload = await pyodide.runPythonAsync(`
+import json
 from pathlib import Path
 import tns_reader
 data = Path("/work/extract.tns").read_bytes()
 entries = tns_reader.parse_central_directory(data)
+ranked = []
 for entry in entries:
-    if entry.name == "q.py":
-        result = tns_reader.extract_entry(data, entry).decode("utf-8")
-        break
+    name = entry.name.lower()
+    if name == "q.py":
+        ranked.append((0, entry))
+    elif name.endswith(".py"):
+        ranked.append((1, entry))
+    elif name.endswith(".pyt"):
+        ranked.append((2, entry))
+ranked.sort(key=lambda item: (item[0], item[1].name.lower()))
+if ranked:
+    entry = ranked[0][1]
+    result = tns_reader.extract_entry(data, entry).decode("utf-8")
 else:
-    raise ValueError("No se encontro q.py")
-result
+    raise ValueError("No se encontro q.py, .py ni .pyt")
+json.dumps({"name": entry.name, "code": result})
 `);
-  downloadBytes(`${file.name.replace(/\\.tns$/i, "")}.py`, new TextEncoder().encode(code), "text/x-python");
-  log("q.py descargado.");
+  const extracted = JSON.parse(payload);
+  const internalName = extracted.name.split(/[\\/]/).pop().replace(/\.pyt$/i, ".py");
+  const downloadName = internalName.toLowerCase() === "q.py" ? `${file.name.replace(/\.tns$/i, "")}.py` : internalName;
+  downloadBytes(downloadName, new TextEncoder().encode(extracted.code), "text/x-python");
+  log(`Python descargado: ${extracted.name}`);
 }
 
 async function analyzePython() {
@@ -8797,6 +9093,7 @@ function wireEvents() {
   document.querySelector("#xml-format-btn").addEventListener("click", () => formatXmlCode().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-inspector-btn").addEventListener("click", () => openDocumentInspector().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-add-func-btn").addEventListener("click", () => addBasicFuncToStage().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#xml-add-python-btn").addEventListener("click", () => addPythonEditorToStage().then(showPythonEditor).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-document-btn").addEventListener("click", openXmlDocumentSettings);
   document.querySelector("#xml-resolve-btn").addEventListener("click", () => resolveXmlProblems().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-changes-btn").addEventListener("click", showXmlChanges);

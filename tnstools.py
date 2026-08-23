@@ -87,6 +87,11 @@ def _inflate_method8(payload: bytes) -> bytes:
     raise RuntimeError("method 8 inflate failed: " + "; ".join(errors))
 
 
+def _deflate_method8(payload: bytes) -> bytes:
+    compressor = zlib.compressobj(level=9, wbits=-15)
+    return compressor.compress(payload) + compressor.flush()
+
+
 def _make_tixc_backend(kind: str, phoenix: pathlib.Path | None) -> PureTixcExpander | PhoenixTixcExpander | None:
     if kind == "none":
         return None
@@ -212,23 +217,31 @@ def decode_tns_file(
 
     wrote = 0
     for entry in entries:
-        if not entry.name.lower().endswith(XML_ENTRY_SUFFIX):
-            continue
         payload = entry_payload(data, entry)
-        if entry.method == 0:
-            out = payload
-        elif entry.method == 8:
-            out = _inflate_method8(payload)
-        elif entry.method == 13:
-            out = decode_method13(
-                payload,
-                entry.uncompressed_size,
-                tixc_backend=backend,
-                allow_tixc_passthrough=write_tixc_on_failure,
-            )
+        is_xml = entry.name.lower().endswith(XML_ENTRY_SUFFIX)
+        if is_xml:
+            if entry.method == 0:
+                out = payload
+            elif entry.method == 8:
+                out = _inflate_method8(payload)
+            elif entry.method == 13:
+                out = decode_method13(
+                    payload,
+                    entry.uncompressed_size,
+                    tixc_backend=backend,
+                    allow_tixc_passthrough=write_tixc_on_failure,
+                )
+            else:
+                print(f"skip {entry.name}: unsupported compression method {entry.method}")
+                continue
         else:
-            print(f"skip {entry.name}: unsupported compression method {entry.method}")
-            continue
+            if entry.method == 0:
+                out = payload
+            elif entry.method == 8:
+                out = _inflate_method8(payload)
+            else:
+                print(f"skip {entry.name}: unsupported non-XML compression method {entry.method}")
+                continue
 
         suffix = ".tixc" if out.startswith(b"TIXC0100") else ""
         out_path = _safe_output_path(out_dir, entry.name + suffix)
@@ -267,6 +280,10 @@ def _entry_name_for_xml(xml_dir: pathlib.Path, path: pathlib.Path) -> str:
     return path.relative_to(xml_dir).as_posix()
 
 
+def _entry_name_for_file(xml_dir: pathlib.Path, path: pathlib.Path) -> str:
+    return path.relative_to(xml_dir).as_posix()
+
+
 def _collect_xml_entries(xml_dir: pathlib.Path, *, method13: bool = True) -> list[BuildEntry]:
     files = sorted(
         [p for p in xml_dir.rglob("*.xml") if p.is_file() and "_artifacts" not in p.parts],
@@ -296,6 +313,32 @@ def _collect_xml_entries(xml_dir: pathlib.Path, *, method13: bool = True) -> lis
                 crc32=crc,
                 compressed_size=len(payload),
                 uncompressed_size=len(xml),
+            )
+        )
+    return entries
+
+
+def _collect_project_entries(xml_dir: pathlib.Path, *, method13: bool = True) -> list[BuildEntry]:
+    entries = _collect_xml_entries(xml_dir, method13=method13)
+    files = sorted(
+        [
+            p
+            for p in xml_dir.rglob("*")
+            if p.is_file() and p.suffix.lower() != XML_ENTRY_SUFFIX and "_artifacts" not in p.parts
+        ],
+        key=lambda p: _entry_name_for_file(xml_dir, p).lower(),
+    )
+    for path in files:
+        raw = path.read_bytes()
+        payload = _deflate_method8(raw)
+        entries.append(
+            BuildEntry(
+                name=_entry_name_for_file(xml_dir, path),
+                payload=payload,
+                method=8,
+                crc32=binascii.crc32(raw) & 0xFFFFFFFF,
+                compressed_size=len(payload),
+                uncompressed_size=len(raw),
             )
         )
     return entries
@@ -358,7 +401,7 @@ def build_tns_from_xml(
     if not xml_dir.is_dir():
         raise RuntimeError(f"XML input is not a directory: {xml_dir}")
     out_tns = out_tns or _default_tns_path(xml_dir)
-    entries = _collect_xml_entries(xml_dir, method13=not allow_stored_xml)
+    entries = _collect_project_entries(xml_dir, method13=not allow_stored_xml)
     dos_time, dos_date = _dos_datetime()
 
     chunks: list[bytes] = []
