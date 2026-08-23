@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-preview-close";
+const SOURCE_VERSION = "2026-08-23-love-calculator-toggle";
 
 const I18N = {
   es: {
@@ -41,7 +41,10 @@ const I18N = {
     saveLuaXml: "Guardar Lua en XML",
     previewLua: "Preview Lua",
     previewLove: "Preview LÖVE",
-    lovePreviewNote: "Preview experimental de LÖVE: soporta love.load, love.update, love.draw, love.keypressed, love.mousepressed y love.graphics basico. No es el motor LÖVE completo.",
+    lovePreviewNote: "Preview LÖVE: soporta codigo love.* y ScriptApp TI-Nspire mediante una capa platform/on/gc sobre canvas.",
+    lovePreviewExpandedView: "Vista expandida",
+    lovePreviewCalculatorView: "Vista calculadora",
+    lovePreviewSizeChanged: "Vista del preview",
     lovePreviewStarted: "Preview LÖVE experimental activo.",
     loveConvertNspire: "Convertir LÖVE a TI-Nspire",
     loveCopyNspire: "Copiar TI-Nspire",
@@ -246,7 +249,10 @@ const I18N = {
     saveLuaXml: "Save Lua to XML",
     previewLua: "Preview Lua",
     previewLove: "Preview LÖVE",
-    lovePreviewNote: "Experimental LÖVE preview: supports love.load, love.update, love.draw, love.keypressed, love.mousepressed, and basic love.graphics. This is not the full LÖVE engine.",
+    lovePreviewNote: "LÖVE preview: supports love.* code and TI-Nspire ScriptApps through a platform/on/gc canvas layer.",
+    lovePreviewExpandedView: "Expanded view",
+    lovePreviewCalculatorView: "Calculator view",
+    lovePreviewSizeChanged: "Preview view",
     lovePreviewStarted: "Experimental LÖVE preview active.",
     loveConvertNspire: "Convert LÖVE to TI-Nspire",
     loveCopyNspire: "Copy TI-Nspire",
@@ -451,7 +457,10 @@ const I18N = {
     saveLuaXml: "Enregistrer Lua dans XML",
     previewLua: "Apercu Lua",
     previewLove: "Apercu LÖVE",
-    lovePreviewNote: "Apercu LÖVE experimental : prend en charge love.load, love.update, love.draw, love.keypressed, love.mousepressed et love.graphics basique. Ce n'est pas le moteur LÖVE complet.",
+    lovePreviewNote: "Apercu LÖVE : prend en charge le code love.* et les ScriptApps TI-Nspire via une couche platform/on/gc sur canvas.",
+    lovePreviewExpandedView: "Vue agrandie",
+    lovePreviewCalculatorView: "Vue calculatrice",
+    lovePreviewSizeChanged: "Vue de l'apercu",
     lovePreviewStarted: "Apercu LÖVE experimental actif.",
     loveConvertNspire: "Convertir LÖVE vers TI-Nspire",
     loveCopyNspire: "Copier TI-Nspire",
@@ -6553,7 +6562,7 @@ function showLuaEditor(item) {
         <span id="lua-line-label">Linea: 1 Col: 1 Total: 1</span>
         <button type="button" id="lua-syntax" class="yellow-tool-button">${escapeHtml(t("runLuaSyntax"))}</button>
         <button type="button" id="lua-preview" class="green-tool-button">${escapeHtml(t("previewLua"))}</button>
-        <button type="button" id="lua-love-preview" class="secondary-button">${escapeHtml(t("previewLove"))}</button>
+        <button type="button" id="lua-love-preview" class="green-tool-button love-preview-tool-button">${escapeHtml(t("previewLove"))}</button>
         <button type="button" id="lua-guide" class="secondary-button">${escapeHtml(t("luaGuide"))}</button>
         <div class="lua-edit-menu">
           <button type="button" id="lua-edit-menu-trigger" class="green-tool-button">${escapeHtml(t("editMenu"))}</button>
@@ -6866,8 +6875,8 @@ function convertLoveToNspireScriptApp(source = "") {
 --[[ TNS Tool LOVE compatibility layer: start
 This wrapper lets simple LÖVE-style scripts run as TI-Nspire ScriptApps.
 It supports basic love.load/update/draw/input/window/graphics calls.
-It is not the full LÖVE engine: images, audio, physics, files and shaders
-need explicit TI-Nspire replacements.
+For calculator export, images, audio, physics, files and shaders need
+explicit TI-Nspire replacements.
 ]]
 
 local __love_gc = nil
@@ -7341,17 +7350,21 @@ async function showLuaPreview(code, item = null) {
   });
 }
 
+const LOVE_PREVIEW_CALCULATOR_SIZE = Object.freeze({ width: 320, height: 240 });
+const LOVE_PREVIEW_EXPANDED_SIZE = Object.freeze({ width: 800, height: 600 });
+
 async function showLovePreview(code, editor = null, editorLog = null) {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
     <div class="modal love-preview-modal">
       <div class="modal-top-actions">
+        <button type="button" id="love-preview-size-toggle" class="green-tool-button" aria-pressed="false">${escapeHtml(t("lovePreviewExpandedView"))}</button>
         <button type="button" id="love-preview-close-top">${escapeHtml(t("close"))}</button>
       </div>
       <h2>${escapeHtml(t("previewLove"))}</h2>
       <p class="muted-text">${escapeHtml(t("lovePreviewNote"))}</p>
-      <canvas id="love-preview-canvas" width="800" height="600"></canvas>
+      <canvas id="love-preview-canvas" class="calculator-view" width="320" height="240"></canvas>
       <div class="preview-controls">
         <button type="button" data-key="up">Up</button>
         <button type="button" data-key="down">Down</button>
@@ -7372,7 +7385,23 @@ async function showLovePreview(code, editor = null, editorLog = null) {
   const canvas = backdrop.querySelector("#love-preview-canvas");
   const ctx = canvas.getContext("2d");
   const previewLog = backdrop.querySelector("#love-preview-log");
+  const sizeToggle = backdrop.querySelector("#love-preview-size-toggle");
   let runtime = null;
+  let previewSizeMode = "calculator";
+  const applyPreviewSize = (mode, shouldLog = false) => {
+    const normalizedMode = mode === "expanded" ? "expanded" : "calculator";
+    const size = normalizedMode === "expanded" ? LOVE_PREVIEW_EXPANDED_SIZE : LOVE_PREVIEW_CALCULATOR_SIZE;
+    previewSizeMode = normalizedMode;
+    canvas.width = size.width;
+    canvas.height = size.height;
+    canvas.classList.toggle("expanded-view", normalizedMode === "expanded");
+    canvas.classList.toggle("calculator-view", normalizedMode !== "expanded");
+    sizeToggle.textContent = t(normalizedMode === "expanded" ? "lovePreviewCalculatorView" : "lovePreviewExpandedView");
+    sizeToggle.setAttribute("aria-pressed", String(normalizedMode === "expanded"));
+    runtime?.resize?.(size.width, size.height);
+    if (shouldLog) appendPreviewLog(previewLog, `${t("lovePreviewSizeChanged")}: ${size.width}x${size.height}`);
+  };
+  applyPreviewSize("calculator");
   const isLoveSource = looksLikeLoveSource(code);
   const isNspireSource = looksLikeTINSPIRELuaSource(code);
   if (isLoveSource && !isNspireSource) {
@@ -7402,6 +7431,10 @@ async function showLovePreview(code, editor = null, editorLog = null) {
       canvas.focus();
     });
   }
+  sizeToggle.addEventListener("click", () => {
+    applyPreviewSize(previewSizeMode === "expanded" ? "calculator" : "expanded", true);
+    canvas.focus();
+  });
   canvas.addEventListener("click", (event) => {
     const rect = canvas.getBoundingClientRect();
     const x = Math.round((event.clientX - rect.left) * (canvas.width / rect.width));
@@ -7475,6 +7508,7 @@ async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl) {
     keyup: () => {},
     keypressed: dispatchKey,
     mousepressed: (x, y) => luaRuntime.mouseClick(x, y),
+    resize: (width, height) => luaRuntime.resize?.(width, height),
     close: () => luaRuntime.close?.(),
   };
 }
@@ -7757,6 +7791,26 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     global.context = canvas.getContext("2d");
     global.context.font = "20px Arial";
   }
+  function resize(width, height) {
+    const nextWidth = Math.max(1, Math.min(1280, Math.round(Number(width) || canvas.width)));
+    const nextHeight = Math.max(1, Math.min(900, Math.round(Number(height) || canvas.height)));
+    canvas.width = nextWidth;
+    canvas.height = nextHeight;
+    global._WIDTH = nextWidth;
+    global._HEIGHT = nextHeight;
+    global.context = canvas.getContext("2d");
+    global.context.font = "20px Arial";
+    const currentWindow = windowTable();
+    global.lua_tableset(currentWindow, "w", nextWidth);
+    global.lua_tableset(currentWindow, "h", nextHeight);
+    global.lua_tableset(currentWindow, "invalidated", true);
+    try {
+      global.callEvent("resize", nextWidth, nextHeight);
+      repaint(true);
+    } catch (error) {
+      log(`ERROR resize LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+    }
+  }
   function repaint(shouldLog = false) {
     clear();
     try {
@@ -7921,7 +7975,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     if (editorText) return editorText;
     return formatLuaPreviewScreenText(screenText);
   }
-  return { boot, callEvent, charIn, mouseClick, close, getScreenText };
+  return { boot, callEvent, charIn, mouseClick, resize, close, getScreenText };
 }
 
 async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
@@ -8261,12 +8315,28 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
       log(`ERROR LÖVE mousepressed ${x},${y}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
     }
   }
+  function resize(width, height) {
+    const nextWidth = Math.max(1, Math.min(1280, Math.round(Number(width) || canvas.width)));
+    const nextHeight = Math.max(1, Math.min(900, Math.round(Number(height) || canvas.height)));
+    canvas.width = nextWidth;
+    canvas.height = nextHeight;
+    ctx.imageSmoothingEnabled = true;
+    ctx.font = `${fontSize}px sans-serif`;
+    ctx.textBaseline = "top";
+    try {
+      callLove(love, "resize", [nextWidth, nextHeight]);
+      if (running) redraw();
+      else clearCanvas();
+    } catch (error) {
+      log(`ERROR LÖVE resize ${nextWidth}x${nextHeight}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+    }
+  }
   function close() {
     running = false;
     if (rafId) window.cancelAnimationFrame(rafId);
   }
 
-  return { boot, keydown, keyup, keypressed, mousepressed, close };
+  return { boot, keydown, keyup, keypressed, mousepressed, resize, close };
 }
 
 function hardenLuaJsPreviewRuntime() {
@@ -9074,9 +9144,16 @@ function wrapLuaJsEditorText(ctx, text, width) {
 
 function attachLuaJsGc(gcTable, ctx, canvas, screenText = null) {
   let fontSize = 12;
+  const clipStack = [];
   const setColor = (r, g = r, b = r) => {
     ctx.fillStyle = `rgb(${Number(r) || 0}, ${Number(g) || 0}, ${Number(b) || 0})`;
     ctx.strokeStyle = ctx.fillStyle;
+  };
+  const resetClip = () => {
+    while (clipStack.length) {
+      ctx.restore();
+      clipStack.pop();
+    }
   };
   window.lua_tableset(gcTable, "setColorRGB", (_self, r, g, b) => {
     setColor(r, g, b);
@@ -9135,7 +9212,34 @@ function attachLuaJsGc(gcTable, ctx, canvas, screenText = null) {
   });
   window.lua_tableset(gcTable, "getStringWidth", (_self, text) => [ctx.measureText(String(text ?? "")).width]);
   window.lua_tableset(gcTable, "getStringHeight", () => [fontSize]);
-  window.lua_tableset(gcTable, "clipRect", () => []);
+  window.lua_tableset(gcTable, "clipRect", (_self, mode, x, y, w, h) => {
+    const action = String(mode || "").toLowerCase();
+    if (action === "reset") {
+      resetClip();
+      return [];
+    }
+    if (action === "restore") {
+      if (clipStack.length) {
+        ctx.restore();
+        clipStack.pop();
+      }
+      return [];
+    }
+    if (action === "set" || action === "subset") {
+      const px = Number(x) || 0;
+      const py = Number(y) || 0;
+      const pw = Number(w) || 0;
+      const ph = Number(h) || 0;
+      if (pw > 0 && ph > 0) {
+        ctx.save();
+        clipStack.push(true);
+        ctx.beginPath();
+        ctx.rect(px, py, pw, ph);
+        ctx.clip();
+      }
+    }
+    return [];
+  });
   window.lua_tableset(gcTable, "drawImage", () => []);
   window.lua_tableset(gcTable, "begin", () => []);
   window.lua_tableset(gcTable, "finish", () => []);

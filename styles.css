@@ -829,6 +829,12 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   box-shadow: 0 0 30px rgb(183 243 77 / 35%), 0 0 80px rgb(183 243 77 / 12%);
 }
 
+.lua-toolbar .love-preview-tool-button {
+  background: linear-gradient(135deg, #a6ff2e, #d9ff73);
+  color: #203900;
+  box-shadow: 0 0 24px rgb(166 255 46 / 32%), 0 0 74px rgb(166 255 46 / 12%);
+}
+
 .doctor-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(340px, 0.75fr);
@@ -1293,8 +1299,8 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 #love-preview-canvas {
-  width: min(800px, 100%);
-  max-height: min(58vh, 600px);
+  width: min(320px, 100%);
+  max-height: 240px;
   aspect-ratio: 4 / 3;
   image-rendering: auto;
   border: 1px solid var(--line);
@@ -1303,6 +1309,11 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   display: block;
   margin: 8px auto 12px;
   outline: none;
+}
+
+#love-preview-canvas.expanded-view {
+  width: min(800px, 100%);
+  max-height: min(58vh, 600px);
 }
 
 .preview-controls {
@@ -2713,6 +2724,11 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   }
 
   #love-preview-canvas {
+    width: min(320px, 100%);
+    max-height: 240px;
+  }
+
+  #love-preview-canvas.expanded-view {
     width: min(800px, 100%);
     max-height: 60vh;
   }
