@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-tixc-literal-close";
+const SOURCE_VERSION = "2026-08-23-lua-guide-i18n";
 
 const I18N = {
   es: {
@@ -3081,31 +3081,206 @@ function highlightLuaLine(line) {
 }
 
 const LUA_GUIDE_ITEMS = [
-  ["platform.apilevel", "Define el nivel de API Lua que el documento espera usar."],
-  ["platform.window:width()", "Devuelve el ancho actual de la pantalla de la calculadora."],
-  ["platform.window:height()", "Devuelve el alto actual de la pantalla de la calculadora."],
-  ["platform.window:invalidate()", "Solicita repintar la pantalla y vuelve a llamar on.paint."],
-  ["on.paint(gc)", "Evento principal de dibujo. Todo lo visual se renderiza aqui."],
-  ["on.create()", "Se ejecuta al crear/iniciar el script Lua."],
-  ["on.timer()", "Evento repetido cuando timer.start esta activo."],
-  ["on.enterKey()", "Evento al presionar Enter."],
-  ["on.escapeKey()", "Evento al presionar Esc."],
-  ["on.arrowKey(direction)", "Evento de flechas. direction suele ser up, down, left o right."],
-  ["on.charIn(ch)", "Recibe caracteres escritos por teclado."],
-  ["gc:setColorRGB(r,g,b)", "Cambia el color para las siguientes operaciones graficas."],
-  ["gc:setFont(family, style, size)", "Configura fuente, estilo y tamano antes de dibujar texto."],
-  ["gc:drawString(text,x,y,pos)", "Dibuja texto en una coordenada. pos puede ser top, middle o baseline."],
-  ["gc:getStringWidth(text)", "Calcula el ancho en pixeles de un texto con la fuente actual."],
-  ["gc:drawRect(x,y,w,h)", "Dibuja el borde de un rectangulo."],
-  ["gc:fillRect(x,y,w,h)", "Rellena un rectangulo."],
-  ["gc:drawLine(x1,y1,x2,y2)", "Dibuja una linea entre dos puntos."],
-  ["gc:drawArc(x,y,w,h,start,angle)", "Dibuja un arco o borde circular."],
-  ["gc:fillArc(x,y,w,h,start,angle)", "Rellena un arco o circulo parcial."],
-  ["timer.start(seconds)", "Activa eventos on.timer con intervalo aproximado."],
-  ["timer.stop()", "Detiene el timer."],
-  ["D2Editor.newRichText()", "Crea un editor nativo de texto enriquecido/matematico."],
-  ["var.store(name,value)", "Guarda una variable CAS accesible desde el documento."],
-  ["var.recall(name)", "Lee una variable CAS guardada en el documento."],
+  {
+    name: "platform.apilevel",
+    description: {
+      es: "Define el nivel de API Lua que el documento espera usar.",
+      en: "Defines the Lua API level expected by the document.",
+      fr: "Definit le niveau d'API Lua attendu par le document.",
+    },
+  },
+  {
+    name: "platform.window:width()",
+    description: {
+      es: "Devuelve el ancho actual de la pantalla de la calculadora.",
+      en: "Returns the current calculator screen width.",
+      fr: "Renvoie la largeur actuelle de l'ecran de la calculatrice.",
+    },
+  },
+  {
+    name: "platform.window:height()",
+    description: {
+      es: "Devuelve el alto actual de la pantalla de la calculadora.",
+      en: "Returns the current calculator screen height.",
+      fr: "Renvoie la hauteur actuelle de l'ecran de la calculatrice.",
+    },
+  },
+  {
+    name: "platform.window:invalidate()",
+    description: {
+      es: "Solicita repintar la pantalla y vuelve a llamar on.paint.",
+      en: "Requests a screen redraw and calls on.paint again.",
+      fr: "Demande un rafraichissement de l'ecran et rappelle on.paint.",
+    },
+  },
+  {
+    name: "on.paint(gc)",
+    description: {
+      es: "Evento principal de dibujo. Todo lo visual se renderiza aqui.",
+      en: "Main drawing event. All visual output is rendered here.",
+      fr: "Evenement principal de dessin. Tout l'affichage visuel est rendu ici.",
+    },
+  },
+  {
+    name: "on.create()",
+    description: {
+      es: "Se ejecuta al crear/iniciar el script Lua.",
+      en: "Runs when the Lua script is created or started.",
+      fr: "S'execute lors de la creation ou du demarrage du script Lua.",
+    },
+  },
+  {
+    name: "on.timer()",
+    description: {
+      es: "Evento repetido cuando timer.start esta activo.",
+      en: "Repeated event while timer.start is active.",
+      fr: "Evenement repete lorsque timer.start est actif.",
+    },
+  },
+  {
+    name: "on.enterKey()",
+    description: {
+      es: "Evento al presionar Enter.",
+      en: "Event fired when Enter is pressed.",
+      fr: "Evenement declenche lorsque Entree est pressee.",
+    },
+  },
+  {
+    name: "on.escapeKey()",
+    description: {
+      es: "Evento al presionar Esc.",
+      en: "Event fired when Esc is pressed.",
+      fr: "Evenement declenche lorsque Echap est pressee.",
+    },
+  },
+  {
+    name: "on.arrowKey(direction)",
+    description: {
+      es: "Evento de flechas. direction suele ser up, down, left o right.",
+      en: "Arrow-key event. direction is usually up, down, left, or right.",
+      fr: "Evenement des fleches. direction vaut souvent up, down, left ou right.",
+    },
+  },
+  {
+    name: "on.charIn(ch)",
+    description: {
+      es: "Recibe caracteres escritos por teclado.",
+      en: "Receives characters typed from the keyboard.",
+      fr: "Recoit les caracteres saisis au clavier.",
+    },
+  },
+  {
+    name: "gc:setColorRGB(r,g,b)",
+    description: {
+      es: "Cambia el color para las siguientes operaciones graficas.",
+      en: "Changes the color used by the next drawing operations.",
+      fr: "Change la couleur utilisee par les prochaines operations graphiques.",
+    },
+  },
+  {
+    name: "gc:setFont(family, style, size)",
+    description: {
+      es: "Configura fuente, estilo y tamano antes de dibujar texto.",
+      en: "Sets font family, style, and size before drawing text.",
+      fr: "Definit la police, le style et la taille avant de dessiner du texte.",
+    },
+  },
+  {
+    name: "gc:drawString(text,x,y,pos)",
+    description: {
+      es: "Dibuja texto en una coordenada. pos puede ser top, middle o baseline.",
+      en: "Draws text at a coordinate. pos can be top, middle, or baseline.",
+      fr: "Dessine du texte a une coordonnee. pos peut valoir top, middle ou baseline.",
+    },
+  },
+  {
+    name: "gc:getStringWidth(text)",
+    description: {
+      es: "Calcula el ancho en pixeles de un texto con la fuente actual.",
+      en: "Calculates the pixel width of text using the current font.",
+      fr: "Calcule la largeur en pixels du texte avec la police actuelle.",
+    },
+  },
+  {
+    name: "gc:drawRect(x,y,w,h)",
+    description: {
+      es: "Dibuja el borde de un rectangulo.",
+      en: "Draws the outline of a rectangle.",
+      fr: "Dessine le contour d'un rectangle.",
+    },
+  },
+  {
+    name: "gc:fillRect(x,y,w,h)",
+    description: {
+      es: "Rellena un rectangulo.",
+      en: "Fills a rectangle.",
+      fr: "Remplit un rectangle.",
+    },
+  },
+  {
+    name: "gc:drawLine(x1,y1,x2,y2)",
+    description: {
+      es: "Dibuja una linea entre dos puntos.",
+      en: "Draws a line between two points.",
+      fr: "Dessine une ligne entre deux points.",
+    },
+  },
+  {
+    name: "gc:drawArc(x,y,w,h,start,angle)",
+    description: {
+      es: "Dibuja un arco o borde circular.",
+      en: "Draws an arc or circular outline.",
+      fr: "Dessine un arc ou un contour circulaire.",
+    },
+  },
+  {
+    name: "gc:fillArc(x,y,w,h,start,angle)",
+    description: {
+      es: "Rellena un arco o circulo parcial.",
+      en: "Fills an arc or partial circle.",
+      fr: "Remplit un arc ou un cercle partiel.",
+    },
+  },
+  {
+    name: "timer.start(seconds)",
+    description: {
+      es: "Activa eventos on.timer con intervalo aproximado.",
+      en: "Starts on.timer events at an approximate interval.",
+      fr: "Active les evenements on.timer avec un intervalle approximatif.",
+    },
+  },
+  {
+    name: "timer.stop()",
+    description: {
+      es: "Detiene el timer.",
+      en: "Stops the timer.",
+      fr: "Arrete le timer.",
+    },
+  },
+  {
+    name: "D2Editor.newRichText()",
+    description: {
+      es: "Crea un editor nativo de texto enriquecido/matematico.",
+      en: "Creates a native rich-text or math editor.",
+      fr: "Cree un editeur natif de texte enrichi ou mathematique.",
+    },
+  },
+  {
+    name: "var.store(name,value)",
+    description: {
+      es: "Guarda una variable CAS accesible desde el documento.",
+      en: "Stores a CAS variable accessible from the document.",
+      fr: "Enregistre une variable CAS accessible depuis le document.",
+    },
+  },
+  {
+    name: "var.recall(name)",
+    description: {
+      es: "Lee una variable CAS guardada en el documento.",
+      en: "Reads a CAS variable stored in the document.",
+      fr: "Lit une variable CAS enregistree dans le document.",
+    },
+  },
 ];
 
 function luaString(value) {
@@ -4976,6 +5151,10 @@ function convertTnsToLuaInEditor(editor, currentLuaItem = null) {
 function showLuaGuide() {
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
+  const guideItems = LUA_GUIDE_ITEMS.map((item) => ({
+    name: item.name,
+    description: item.description?.[language] || item.description?.en || item.description?.es || "",
+  }));
   backdrop.innerHTML = `
     <div class="modal lua-library-modal">
       <h2>${escapeHtml(t("luaGuide"))}</h2>
@@ -4990,11 +5169,11 @@ function showLuaGuide() {
   const search = backdrop.querySelector("#lua-guide-search");
   const render = () => {
     const query = search.value.trim().toLowerCase();
-    const items = LUA_GUIDE_ITEMS.filter(([name, description]) => `${name} ${description}`.toLowerCase().includes(query));
-    list.innerHTML = items.map(([name, description]) => `
+    const items = guideItems.filter((item) => `${item.name} ${item.description}`.toLowerCase().includes(query));
+    list.innerHTML = items.map((item) => `
       <article class="lua-guide-item">
-        <code>${escapeHtml(name)}</code>
-        <p>${escapeHtml(description)}</p>
+        <code>${escapeHtml(item.name)}</code>
+        <p>${escapeHtml(item.description)}</p>
       </article>`).join("");
   };
   search.addEventListener("input", render);
