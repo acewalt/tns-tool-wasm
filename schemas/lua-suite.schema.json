@@ -11,8 +11,16 @@
     {
       "type": "object",
       "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["function", "preview"]
+        },
         "function": { "type": "string" },
         "functionName": { "type": "string" },
+        "globals": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
         "tests": {
           "type": "array",
           "items": { "$ref": "#/$defs/testCase" }
@@ -33,6 +41,14 @@
         "args": {
           "type": "array",
           "items": {}
+        },
+        "actions": {
+          "type": "array",
+          "items": { "type": "object" }
+        },
+        "globals": {
+          "type": "array",
+          "items": { "type": "string" }
         },
         "expected": {
           "type": "object",

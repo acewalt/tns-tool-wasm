@@ -1,0 +1,9 @@
+{
+  "globals": ["counter", "textValue"],
+  "actions": [
+    { "type": "event", "event": "charIn", "args": ["A"] },
+    { "type": "event", "event": "enterKey" },
+    { "type": "event", "event": "arrowDown" },
+    { "type": "paint" }
+  ]
+}

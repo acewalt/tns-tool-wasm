@@ -1,0 +1,39 @@
+{
+  "type": "preview",
+  "globals": ["counter", "textValue"],
+  "tests": [
+    {
+      "name": "paint initial text",
+      "actions": [
+        { "type": "paint" }
+      ],
+      "expected": {
+        "runtimeOk": true,
+        "noErrors": true,
+        "textContains": ["Counter: 0", "Text: "],
+        "drawCallExists": "drawString",
+        "globalEquals": {
+          "counter": 0,
+          "textValue": ""
+        }
+      }
+    },
+    {
+      "name": "keyboard events update globals",
+      "actions": [
+        { "type": "event", "event": "charIn", "args": ["A"] },
+        { "type": "event", "event": "enterKey" },
+        { "type": "event", "event": "arrowDown" }
+      ],
+      "expected": {
+        "runtimeOk": true,
+        "noErrors": true,
+        "textContains": ["Counter: 1", "Text: A[down]"],
+        "globalEquals": {
+          "counter": 1,
+          "textValue": "A[down]"
+        }
+      }
+    }
+  ]
+}

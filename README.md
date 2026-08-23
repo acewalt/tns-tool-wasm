@@ -82,6 +82,9 @@ npm run tns-tool -- capabilities --json
 npm run tns-tool -- lua check archivo.lua --json
 npm run tns-tool -- lua call archivo.lua --function miFuncion --args "[1,2]" --json
 npm run tns-tool -- lua suite archivo.lua tests/edo.sample.json --json
+npm run tns-tool -- lua preview archivo.lua --actions tests/preview.actions.json --json
+npm run tns-tool -- tns create --output out/document.tns --json
+npm run tns-tool -- tns add-lua out/document.tns archivo.lua --output out/with-lua.tns --json
 ```
 
 The public JavaScript API is available from `src/api/index.js`:
@@ -95,7 +98,7 @@ console.log(result);
 lua.close();
 ```
 
-See [AGENTS.md](AGENTS.md) for the full machine-readable test format, capabilities, exit codes, JSON output, schemas, and TI-Nspire mock limitations.
+See [AGENTS.md](AGENTS.md) for the full machine-readable test format, preview actions, TNS commands, capabilities, exit codes, JSON output, schemas, and TI-Nspire mock limitations.
 
 ## Lua Templates
 
@@ -181,7 +184,8 @@ Do not open `index.html` with `file://`, because browsers block the `fetch()` ca
 - Pyodide is loaded from the official CDN.
 - JSZip is loaded from CDN for ZIP generation.
 - Python modules are loaded into Pyodide at runtime.
-- Lua preview runs through a browser-side LuaJS/Nspire-like runtime.
+- Lua preview runs through a LuaJS/Nspire-like runtime. The CLI/API can capture paint output as structured draw calls and visible text for agents.
+- TNS CLI commands reuse the repository `tnstools.py` decode/build path through a Node/Python bridge.
 - The browser cannot write directly to local Windows paths, so files are handled through upload and download.
 - A fully offline version would need bundled Pyodide, JSZip, and runtime assets.
 

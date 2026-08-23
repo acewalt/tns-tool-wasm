@@ -10,22 +10,25 @@ export function getCapabilities() {
         execute: true,
         callFunction: true,
         testSuite: true,
+        preview: true,
+        previewAssertions: true,
         mocks: true,
         stdin: true,
         jsonOutput: true
       },
       tns: {
-        inspect: false,
-        extract: false,
-        build: false,
-        addLuaScriptApp: false
+        inspect: true,
+        extract: true,
+        build: true,
+        create: true,
+        addLuaScriptApp: true
       },
       document: {
-        createDocument: false,
-        openDocument: false,
-        addLuaScriptApp: false,
+        createDocument: true,
+        openDocument: true,
+        addLuaScriptApp: true,
         replaceLuaScript: false,
-        saveDocument: false
+        saveDocument: true
       },
       xml: {
         validateXml: false,
@@ -39,9 +42,9 @@ export function getCapabilities() {
     },
     notes: [
       "Lua automation is available through the shared core runner.",
-      "TNS/XML/Python browser features still need extraction from the current UI/Pyodide path before they can be advertised for CLI agents.",
+      "TNS document automation is available through the Node/Python bridge that calls the same tnstools.py decode/build path.",
+      "Lua preview automation captures TI-Nspire draw calls and text output without DOM clicks.",
       "No capability is marked true unless this version exposes it outside the DOM."
     ]
   };
 }
-

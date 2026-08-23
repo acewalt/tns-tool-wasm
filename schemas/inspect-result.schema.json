@@ -2,19 +2,39 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://acewalt.github.io/tns-tool-wasm/schemas/inspect-result.schema.json",
   "title": "TNS Tool WASM Inspect Result",
-  "description": "Reserved output shape for future DOM-free TNS/XML document inspection.",
+  "description": "Output shape for DOM-free TNS/XML document inspection.",
   "type": "object",
   "properties": {
     "success": { "type": "boolean" },
-    "document": {
+    "input": { "type": "string" },
+    "projectDir": { "type": ["string", "null"] },
+    "temporaryProject": { "type": "boolean" },
+    "summary": {
       "type": "object",
       "properties": {
-        "pages": { "type": "integer" },
-        "luaScripts": { "type": "integer" },
-        "pythonPrograms": { "type": "integer" },
-        "widgets": { "type": "integer" }
+        "xmlFileCount": { "type": "integer" },
+        "luaScriptCount": { "type": "integer" },
+        "files": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
       },
       "additionalProperties": true
+    },
+    "luaScripts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "file": { "type": "string" },
+          "path": { "type": "string" },
+          "version": { "type": ["string", "null"] },
+          "id": { "type": ["string", "null"] },
+          "length": { "type": "integer" },
+          "source": { "type": "string" }
+        },
+        "additionalProperties": true
+      }
     },
     "warnings": {
       "type": "array",

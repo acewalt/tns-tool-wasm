@@ -39,6 +39,7 @@ export class LuaRuntime {
       stderr: [],
       errors: [],
       missingApis: [],
+      drawCalls: [],
       store: { ...(options.variables || {}) },
       nativeEditors: []
     };
@@ -136,6 +137,25 @@ export class LuaRuntime {
     this.context.lua_tableset(this.context.G, name, jsToLua(this.context, value));
   }
 
+  getGlobal(name) {
+    const value = this.getGlobalPath(name);
+    return luaToJson(this.context, value);
+  }
+
+  resetDrawCalls() {
+    this.state.drawCalls = [];
+  }
+
+  getDrawSnapshot() {
+    const drawCalls = [...(this.state.drawCalls || [])];
+    return {
+      drawCalls,
+      texts: drawCalls
+        .filter((call) => call.op === "drawString")
+        .map((call) => String(call.text ?? ""))
+    };
+  }
+
   snapshot() {
     return {
       success: this.syntaxOk && this.runtimeOk && this.state.errors.length === 0,
@@ -144,7 +164,10 @@ export class LuaRuntime {
       stdout: [...this.state.stdout],
       stderr: [...this.state.stderr],
       errors: [...this.state.errors],
-      missingApis: [...this.state.missingApis]
+      warnings: [...(this.state.warnings || [])],
+      missingApis: [...this.state.missingApis],
+      unsupportedApis: [...this.state.missingApis],
+      ...this.getDrawSnapshot()
     };
   }
 

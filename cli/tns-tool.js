@@ -1,8 +1,14 @@
 #!/usr/bin/env node
 import {
+  addLuaScriptAppFromFile,
+  buildTns,
   callLuaFunctionFromFile,
+  createTnsDocument,
+  extractTns,
   getCapabilities,
   getTiNspireMockCapabilities,
+  inspectTns,
+  runLuaPreview,
   runLuaSuite,
   validateLua
 } from "../src/api/index.js";
@@ -36,10 +42,62 @@ async function main(args) {
     return runLuaCommand(args);
   }
 
+  if (command === "tns") {
+    return runTnsCommand(args);
+  }
+
   return {
     output: structuredError("INVALID_COMMAND", `Unknown command: ${command}`, { command }),
     exitCode: EXIT_CODES.INVALID_ARGUMENTS
   };
+}
+
+async function runTnsCommand(args) {
+  const subcommand = args.shift();
+  if (!subcommand || subcommand === "--help" || subcommand === "-h") {
+    return { output: tnsHelpText(), exitCode: EXIT_CODES.OK };
+  }
+
+  if (subcommand === "inspect") {
+    const input = args.shift();
+    if (!input) return invalidArgs("tns inspect requires a .tns file path or extracted XML folder");
+    const result = await inspectTns(input);
+    return { output: result, exitCode: result.success ? EXIT_CODES.OK : EXIT_CODES.OPERATION_FAILED };
+  }
+
+  if (subcommand === "extract") {
+    const input = args.shift();
+    const output = takeOption(args, "--output");
+    if (!input || !output) return invalidArgs("tns extract requires input.tns and --output dir");
+    const result = await extractTns(input, output);
+    return { output: result, exitCode: result.success ? EXIT_CODES.OK : EXIT_CODES.OPERATION_FAILED };
+  }
+
+  if (subcommand === "build") {
+    const input = args.shift();
+    const output = takeOption(args, "--output");
+    if (!input || !output) return invalidArgs("tns build requires an XML project directory and --output file.tns");
+    const result = await buildTns(input, output);
+    return { output: result, exitCode: result.success ? EXIT_CODES.OK : EXIT_CODES.OPERATION_FAILED };
+  }
+
+  if (subcommand === "create") {
+    const output = takeOption(args, "--output");
+    if (!output) return invalidArgs("tns create requires --output file.tns");
+    const result = await createTnsDocument(output);
+    return { output: result, exitCode: result.success ? EXIT_CODES.OK : EXIT_CODES.OPERATION_FAILED };
+  }
+
+  if (subcommand === "add-lua") {
+    const input = args.shift();
+    const luaFile = args.shift();
+    const output = takeOption(args, "--output");
+    if (!input || !luaFile || !output) return invalidArgs("tns add-lua requires input.tns|xmlDir luaFile.lua --output file.tns");
+    const result = await addLuaScriptAppFromFile(input, luaFile, output);
+    return { output: result, exitCode: result.success ? EXIT_CODES.OK : EXIT_CODES.OPERATION_FAILED };
+  }
+
+  return invalidArgs(`Unknown tns command: ${subcommand}`);
 }
 
 async function runLuaCommand(args) {
@@ -92,6 +150,30 @@ async function runLuaCommand(args) {
       functionName: suiteDefinition.value?.function || suiteDefinition.value?.functionName
     });
     return { output: suite, exitCode: suite.success ? EXIT_CODES.OK : EXIT_CODES.OPERATION_FAILED };
+  }
+
+  if (subcommand === "preview") {
+    const luaPath = args.shift();
+    if (!luaPath) return invalidArgs("lua preview requires a Lua file path or - for stdin");
+    const actionsPath = takeOption(args, "--actions");
+    const globals = takeRepeatedOption(args, "--get-global");
+    const luaSource = await safeReadText(luaPath);
+    if (!luaSource.success) return { output: luaSource, exitCode: EXIT_CODES.INVALID_FILE };
+
+    let actionDefinition = { actions: [], globals };
+    if (actionsPath) {
+      const parsed = await safeReadJson(actionsPath);
+      if (!parsed.success) return { output: parsed, exitCode: EXIT_CODES.INVALID_FILE };
+      actionDefinition = Array.isArray(parsed.value)
+        ? { actions: parsed.value, globals }
+        : { ...parsed.value, globals: [...new Set([...(parsed.value.globals || []), ...globals])] };
+    }
+
+    const result = await runLuaPreview(luaSource.text, actionDefinition, {
+      filename: luaPath,
+      globals: actionDefinition.globals || globals
+    });
+    return { output: result, exitCode: result.success ? EXIT_CODES.OK : EXIT_CODES.OPERATION_FAILED };
   }
 
   return invalidArgs(`Unknown lua command: ${subcommand}`);
@@ -189,13 +271,20 @@ function helpText() {
 Usage:
   node cli/tns-tool.js capabilities [--json]
   node cli/tns-tool.js lua <command> [options]
+  node cli/tns-tool.js tns <command> [options]
 
 Commands:
   capabilities        Print machine-readable capabilities for this build.
   lua check           Load and syntax/runtime-check a Lua ScriptApp.
   lua call            Call a global Lua function from a ScriptApp.
   lua suite           Run a JSON test suite against a ScriptApp.
+  lua preview         Run paint/events and capture draw output.
   lua mocks           List simulated TI-Nspire APIs.
+  tns inspect         Inspect a .tns or extracted XML project.
+  tns extract         Decode a .tns into XML.
+  tns build           Build a .tns from XML.
+  tns create          Create a blank .tns document.
+  tns add-lua         Insert a Lua ScriptApp and rebuild.
 
 Use --json for JSON-only stdout.`;
 }
@@ -206,7 +295,25 @@ function luaHelpText() {
   lua check <file|-> [--json]
   lua call <file> --function <name> [--args '[1,2]'] [--arg value] [--json]
   lua suite <file|-> <tests.json> [--json]
+  lua preview <file|-> [--actions actions.json] [--get-global name] [--json]
   lua mocks [--json]
+
+Exit codes:
+  0 success
+  1 operation or test failed
+  2 invalid arguments
+  3 invalid or unsupported file
+  4 runtime error`;
+}
+
+function tnsHelpText() {
+  return `TNS commands:
+
+  tns inspect <file.tns|xmlDir> [--json]
+  tns extract <file.tns> --output <xmlDir> [--json]
+  tns build <xmlDir> --output <file.tns> [--json]
+  tns create --output <file.tns> [--json]
+  tns add-lua <file.tns|xmlDir> <script.lua> --output <file.tns> [--json]
 
 Exit codes:
   0 success

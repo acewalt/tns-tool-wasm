@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import fs from "node:fs/promises";
-import { runLuaTestSuite } from "../src/lua/index.js";
+import { runLuaSuite } from "../src/api/index.js";
 import { formatSuiteText } from "../src/test-runner/reporter.js";
 
 const args = process.argv.slice(2);
@@ -19,8 +19,7 @@ const [luaSource, testsSource] = await Promise.all([
 ]);
 
 const parsed = JSON.parse(testsSource.replace(/^\uFEFF/, ""));
-const tests = Array.isArray(parsed) ? parsed : parsed.tests || [];
-const suite = await runLuaTestSuite(luaSource, tests, {
+const suite = await runLuaSuite(luaSource, parsed, {
   filename: luaPath,
   functionName: parsed.function || parsed.functionName
 });

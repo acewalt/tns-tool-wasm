@@ -79,7 +79,7 @@ export function getTiNspireMockCapabilities() {
     mockedApis: TI_NSPIRE_MOCK_CAPABILITIES,
     notes: [
       "This is not a full TI-Nspire emulator.",
-      "Drawing APIs are no-op mocks intended to let computational ScriptApp logic load.",
+      "Drawing APIs are instrumented mocks intended to capture paint output as draw calls.",
       "Unsupported APIs are reported as structured runtime errors."
     ]
   }));
@@ -197,29 +197,78 @@ export function ensureLuaTable(global, name) {
 
 function createGcMock(global, state) {
   const gc = global.lua_newtable();
-  const noOp = () => [];
-  const methods = [
-    "begin",
-    "finish",
-    "default",
-    "setFont",
-    "setPen",
-    "setColorRGB",
-    "setAlpha",
-    "drawString",
-    "drawRect",
-    "fillRect",
-    "drawLine",
-    "drawArc",
-    "fillArc",
-    "drawImage",
-    "fillPolygon",
-    "drawPolygon",
-    "drawPolyLine",
-    "clipRect"
-  ];
-  for (const method of methods) global.lua_tableset(gc, method, noOp);
-  global.lua_tableset(gc, "getStringWidth", (_self, value) => [String(value ?? "").length * 6]);
+  state.drawCalls = state.drawCalls || [];
+
+  const record = (op, data = {}) => {
+    state.drawCalls.push({ op, ...data });
+    return [];
+  };
+  const dropSelf = (args) => (args[0] === gc ? args.slice(1) : args);
+  const number = (value, fallback = 0) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : fallback;
+  };
+  const tuple = (values) => values.map((value) => number(value));
+
+  global.lua_tableset(gc, "begin", (...args) => record("begin", { args: dropSelf(args) }));
+  global.lua_tableset(gc, "finish", (...args) => record("finish", { args: dropSelf(args) }));
+  global.lua_tableset(gc, "default", (...args) => record("default", { args: dropSelf(args) }));
+  global.lua_tableset(gc, "setFont", (...args) => {
+    const [family, style, size] = dropSelf(args);
+    return record("setFont", { family: String(family ?? ""), style: String(style ?? ""), size });
+  });
+  global.lua_tableset(gc, "setPen", (...args) => {
+    const [width, style] = dropSelf(args);
+    return record("setPen", { width: String(width ?? ""), style: String(style ?? "") });
+  });
+  global.lua_tableset(gc, "setColorRGB", (...args) => {
+    const [r, g, b] = tuple(dropSelf(args));
+    return record("setColorRGB", { r, g, b });
+  });
+  global.lua_tableset(gc, "setAlpha", (...args) => {
+    const [alpha] = dropSelf(args);
+    return record("setAlpha", { alpha: number(alpha, 1) });
+  });
+  global.lua_tableset(gc, "drawString", (...args) => {
+    const [text, x, y, position] = dropSelf(args);
+    return record("drawString", {
+      text: luaValueToDisplayString(global, text),
+      x: number(x),
+      y: number(y),
+      position: position == null ? null : String(position)
+    });
+  });
+  for (const op of ["drawRect", "fillRect"]) {
+    global.lua_tableset(gc, op, (...args) => {
+      const [x, y, w, h] = dropSelf(args);
+      return record(op, { x: number(x), y: number(y), w: number(w), h: number(h) });
+    });
+  }
+  global.lua_tableset(gc, "drawLine", (...args) => {
+    const [x1, y1, x2, y2] = dropSelf(args);
+    return record("drawLine", { x1: number(x1), y1: number(y1), x2: number(x2), y2: number(y2) });
+  });
+  for (const op of ["drawArc", "fillArc"]) {
+    global.lua_tableset(gc, op, (...args) => {
+      const [x, y, w, h, start, angle] = dropSelf(args);
+      return record(op, { x: number(x), y: number(y), w: number(w), h: number(h), start: number(start), angle: number(angle) });
+    });
+  }
+  global.lua_tableset(gc, "drawImage", (...args) => {
+    const [image, x, y] = dropSelf(args);
+    return record("drawImage", { image: luaValueToDisplayString(global, image), x: number(x), y: number(y) });
+  });
+  for (const op of ["fillPolygon", "drawPolygon", "drawPolyLine"]) {
+    global.lua_tableset(gc, op, (...args) => record(op, { args: dropSelf(args).map((arg) => luaValueToDisplayString(global, arg)) }));
+  }
+  global.lua_tableset(gc, "clipRect", (...args) => {
+    const [mode, x, y, w, h] = dropSelf(args);
+    return record("clipRect", { mode: mode == null ? null : String(mode), x: number(x), y: number(y), w: number(w), h: number(h) });
+  });
+  global.lua_tableset(gc, "getStringWidth", (...args) => {
+    const [value] = dropSelf(args);
+    return [String(value ?? "").length * 6];
+  });
   global.lua_tableset(gc, "getStringHeight", () => [12]);
   global.lua_tableset(gc, "__screenText", global.lua_newtable());
   state.gc = gc;

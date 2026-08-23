@@ -1,8 +1,8 @@
 # Agent Automation Guide
 
-TNS Tool WASM now has a terminal-first automation layer for agents. The existing browser UI remains available, but agents should prefer the CLI and JavaScript API below instead of simulating clicks or DOM events.
+TNS Tool WASM exposes a terminal-first automation layer for agents. The browser UI remains available, but agents should prefer the CLI and JavaScript API instead of simulating DOM clicks.
 
-## Quick Start For Agents
+## Quick Start
 
 ```bash
 npm install
@@ -12,16 +12,19 @@ npm run tns-tool -- lua mocks --json
 npm run tns-tool -- lua check archivo.lua --json
 npm run tns-tool -- lua call archivo.lua --function miFuncion --args "[1,2]" --json
 npm run tns-tool -- lua suite archivo.lua tests/edo.sample.json --json
+npm run tns-tool -- lua preview archivo.lua --actions tests/preview.actions.json --json
+npm run tns-tool -- tns create --output out/document.tns --json
 ```
 
-Use `--json` whenever another program or agent will parse the output. In JSON mode, stdout is JSON only.
+Use `--json` whenever another program will parse the output. In JSON mode, stdout is JSON only.
 
 ## Requirements
 
 - Node.js 18 or newer.
-- No browser, DOM, or Pyodide session is required for the Lua CLI/API.
+- Python 3.10 or newer for `.tns` decode/build operations.
+- No browser, DOM, or Pyodide session is required for the CLI/API.
 - Paths may be absolute or relative.
-- Use `-` for stdin with commands that read source text, for example `lua check -`.
+- Use `-` for stdin with commands that read source text, such as `lua check -`.
 
 ## Main CLI
 
@@ -29,21 +32,29 @@ Use `--json` whenever another program or agent will parse the output. In JSON mo
 npm run tns-tool -- <command>
 ```
 
-Available commands in this build:
+Available commands:
 
 ```bash
 npm run tns-tool -- capabilities [--json]
 npm run tns-tool -- lua check <file|-> [--json]
 npm run tns-tool -- lua call <file> --function <name> [--args "[...]" | --arg value] [--json]
 npm run tns-tool -- lua suite <file|-> <tests.json> [--json]
+npm run tns-tool -- lua preview <file|-> [--actions actions.json] [--get-global name] [--json]
 npm run tns-tool -- lua mocks [--json]
+npm run tns-tool -- tns inspect <file.tns|xmlDir> [--json]
+npm run tns-tool -- tns extract <file.tns> --output <xmlDir> [--json]
+npm run tns-tool -- tns build <xmlDir> --output <file.tns> [--json]
+npm run tns-tool -- tns create --output <file.tns> [--json]
+npm run tns-tool -- tns add-lua <file.tns|xmlDir> <script.lua> --output <file.tns> [--json]
 ```
 
-Legacy wrappers are still available:
+Legacy wrappers remain available:
 
 ```bash
 npm run lua-test -- archivo.lua
 npm run lua-suite -- archivo.lua tests/edo.sample.json --json
+npm run lua-preview -- archivo.lua --actions tests/preview.actions.json --json
+npm run tns -- inspect archivo.tns --json
 ```
 
 The canonical agent entrypoint is `npm run tns-tool -- ...`.
@@ -52,31 +63,34 @@ The canonical agent entrypoint is `npm run tns-tool -- ...`.
 
 ```js
 import {
+  addLuaScriptApp,
+  buildTns,
+  createLuaPreview,
+  createTnsDocument,
+  extractTns,
   getCapabilities,
-  getTiNspireMockCapabilities,
-  validateLua,
-  runLua,
+  inspectTns,
   loadLuaScript,
-  callLuaFunction,
-  callLuaFunctionFromFile,
-  runLuaSuite,
-  runLuaTestSuite
+  runLuaPreview,
+  runLuaSuite
 } from "./src/api/index.js";
 
 const lua = await loadLuaScript("program.lua");
-const result = lua.call("miFuncion", [1, 2, "hola"]);
+const result = lua.call("solveAnyEquation", ["y''+4*y=0"]);
 lua.close();
 
 console.log(result);
 ```
 
-The lower-level Lua API remains available:
+The lower-level Lua API is available from `src/lua/index.js`:
 
 ```js
 import {
   createLuaRuntime,
   loadLuaScript,
   callLuaFunction,
+  createLuaPreview,
+  runLuaPreviewActions,
   runLuaTest,
   runLuaTestSuite
 } from "./src/lua/index.js";
@@ -84,16 +98,14 @@ import {
 
 ## Calling Lua Functions
 
-Example:
-
 ```bash
 npm run tns-tool -- lua call "C:/proyectos/program.lua" \
-  --function miFuncion \
-  --args "[1,2,\"hola\"]" \
+  --function solveAnyEquation \
+  --args "[\"y''+4*y=0\"]" \
   --json
 ```
 
-The runner converts supported values automatically:
+Supported return conversions:
 
 - Lua table to JavaScript object or array.
 - Lua string to JavaScript string.
@@ -101,13 +113,11 @@ The runner converts supported values automatically:
 - Lua boolean to JavaScript boolean.
 - Lua nil to JavaScript null.
 
-Unsupported conversions, such as returning a Lua function or a circular table, fail explicitly instead of silently returning `nil`.
+Unsupported conversions, such as returning a Lua function or circular table, fail explicitly.
 
-## Suite JSON Format
+## Function Suite Format
 
 Schema: [schemas/lua-suite.schema.json](schemas/lua-suite.schema.json)
-
-Preferred object format:
 
 ```json
 {
@@ -124,22 +134,7 @@ Preferred object format:
 }
 ```
 
-Per-test function override:
-
-```json
-[
-  {
-    "name": "Funcion generica",
-    "function": "addPair",
-    "args": [2, 3],
-    "expected": {
-      "sum": 5
-    }
-  }
-]
-```
-
-Important: there is no hardcoded default such as `solveAnyEquation`. A suite must define `function`/`functionName` globally or per test.
+There is no hardcoded default function. A suite must define `function`/`functionName` globally or per test.
 
 Expected fields are matched against the returned Lua table converted to JSON. Dot paths are supported:
 
@@ -151,11 +146,98 @@ Expected fields are matched against the returned Lua table converted to JSON. Do
 }
 ```
 
+## Lua Preview Actions
+
+`lua preview` loads a ScriptApp, calls lifecycle handlers, runs actions, paints through instrumented TI-Nspire mocks, and returns draw calls plus visible text.
+
+Example `actions.json`:
+
+```json
+{
+  "globals": ["counter", "textValue"],
+  "actions": [
+    { "type": "event", "event": "charIn", "args": ["A"] },
+    { "type": "event", "event": "enterKey" },
+    { "type": "event", "event": "arrowDown" },
+    { "type": "paint" }
+  ]
+}
+```
+
+Supported action types:
+
+- `paint`
+- `event` with `enterKey`, `escapeKey`, `backspaceKey`, `charIn`, `arrowKey`, `arrowUp`, `arrowDown`, `arrowLeft`, `arrowRight`, `mouseDown`, `mouseUp`, `mouseMove`, `timer`
+- `call`
+- `setGlobal`
+- `getGlobal`
+
+Preview output includes:
+
+```json
+{
+  "success": true,
+  "final": {
+    "runtimeOk": true,
+    "drawCalls": [],
+    "texts": [],
+    "globals": {}
+  }
+}
+```
+
+## Preview Suite Format
+
+Use `"type": "preview"` or include `actions` in each test:
+
+```json
+{
+  "type": "preview",
+  "globals": ["counter"],
+  "tests": [
+    {
+      "name": "paint initial text",
+      "actions": [{ "type": "paint" }],
+      "expected": {
+        "runtimeOk": true,
+        "noErrors": true,
+        "textContains": ["Counter: 0"],
+        "drawCallExists": "drawString",
+        "globalEquals": {
+          "counter": 0
+        }
+      }
+    }
+  ]
+}
+```
+
+Supported preview assertions:
+
+- `runtimeOk`
+- `noErrors`
+- `textContains`
+- `textNotContains`
+- `drawCallExists`
+- `globalEquals`
+
+## TNS Document Automation
+
+The TNS CLI uses a Node/Python bridge over the repository `tnstools.py` decode/build path.
+
+```bash
+npm run tns-tool -- tns create --output tmp/base.tns --json
+npm run tns-tool -- tns add-lua tmp/base.tns script.lua --output tmp/with-lua.tns --json
+npm run tns-tool -- tns inspect tmp/with-lua.tns --json
+npm run tns-tool -- tns extract tmp/with-lua.tns --output tmp/xml --json
+npm run tns-tool -- tns build tmp/xml --output tmp/rebuilt.tns --json
+```
+
+`tns inspect` returns detected Lua ScriptApps with file path, element path, script id/version, source length, and source text.
+
 ## JSON Output Shapes
 
-Lua result schema: [schemas/lua-result.schema.json](schemas/lua-result.schema.json)
-
-Single check/call results include:
+Lua check/call results include:
 
 ```json
 {
@@ -166,6 +248,7 @@ Single check/call results include:
   "stderr": [],
   "errors": [],
   "missingApis": [],
+  "unsupportedApis": [],
   "results": []
 }
 ```
@@ -175,15 +258,9 @@ Suite results include:
 ```json
 {
   "success": true,
-  "syntaxOk": true,
-  "runtimeOk": true,
   "passed": 2,
   "failed": 0,
   "total": 2,
-  "stdout": [],
-  "stderr": [],
-  "errors": [],
-  "missingApis": [],
   "results": []
 }
 ```
@@ -219,7 +296,7 @@ npm run tns-tool -- capabilities --json
 
 Schema: [schemas/capabilities.schema.json](schemas/capabilities.schema.json)
 
-This command announces only capabilities exposed outside the DOM in the current build. In this version, Lua automation is available. TNS/XML/Python browser features still need extraction from `app.js`/Pyodide before they can be safely used by agents through CLI/API.
+This command announces only capabilities exposed outside the DOM in the current build.
 
 ## TI-Nspire Mocks
 
@@ -233,7 +310,7 @@ The Lua runner separates:
 - TI-Nspire API mocks.
 - User ScriptApp code.
 
-Currently mocked APIs are partial and intended for computational ScriptApps:
+Currently mocked APIs are partial:
 
 - `platform.window`
 - `platform.gc`
@@ -245,7 +322,7 @@ Currently mocked APIs are partial and intended for computational ScriptApps:
 - common `string.*` helpers
 - partial `math.eval`
 
-Unsupported APIs are reported in `errors` or `missingApis`; they are not silently converted to `nil`, `0`, or `false`.
+Unsupported APIs are reported in `errors`, `missingApis`, or `unsupportedApis`; they are not silently converted to `nil`, `0`, or `false`.
 
 ## Current Programmatic Coverage
 
@@ -255,16 +332,19 @@ Unsupported APIs are reported in `errors` or `missingApis`; they are not silentl
 | List TI-Nspire mocks | `getTiNspireMockCapabilities()` | `tns-tool lua mocks` | Yes | Yes |
 | Validate/load Lua | `validateLua()` / `runLuaTest()` | `tns-tool lua check` | Yes | Yes |
 | Call global Lua function | `loadLuaScript().call()` / `callLuaFunctionFromFile()` | `tns-tool lua call` | Yes | Yes |
-| Run Lua suite | `runLuaSuite()` / `runLuaTestSuite()` | `tns-tool lua suite` | Yes | Yes |
-| Open/inspect TNS | Not extracted yet | Not advertised | No | No |
-| Extract/build TNS | Not extracted yet | Not advertised | No | No |
-| Add Lua ScriptApp to TNS/XML | UI/Pyodide only | Not advertised | No | No |
-| Syntax Doctor XML/PY | UI/Pyodide only | Not advertised | No | No |
+| Run Lua function suite | `runLuaSuite()` / `runLuaTestSuite()` | `tns-tool lua suite` | Yes | Yes |
+| Run Lua preview actions | `createLuaPreview()` / `runLuaPreview()` | `tns-tool lua preview` | Yes | Yes |
+| Run Lua preview suite | `runLuaSuite()` | `tns-tool lua suite` | Yes | Yes |
+| Create TNS document | `createTnsDocument()` | `tns-tool tns create` | Yes | Yes |
+| Open/inspect TNS/XML | `inspectTns()` | `tns-tool tns inspect` | Yes | Yes |
+| Extract/build TNS | `extractTns()` / `buildTns()` | `tns-tool tns extract/build` | Yes | Yes |
+| Add Lua ScriptApp | `addLuaScriptApp()` | `tns-tool tns add-lua` | Yes | Yes |
+| Syntax Doctor XML/PY UI | Browser UI only | Not advertised | No | No |
 
 ## Known Limitations
 
 - This is not a full TI-Nspire emulator.
-- Drawing is mocked as no-op behavior, so screenshots are not a test oracle for the CLI.
-- ScriptApps that only expose UI event handlers are harder to test. Add small global functions that accept arguments and return tables for automation.
-- The current CLI does not yet inspect, extract, build, or mutate `.tns` documents. Those operations exist in the web UI path and must be extracted into `src/core` before agents can use them safely.
-- `lua call -` is intentionally not supported yet because direct function calls need a reusable loaded runtime. Save stdin to a temporary file first, or use `lua check -` for load validation.
+- Drawing is captured as structured calls and text, not as pixel-perfect screenshots.
+- Some ScriptApps require APIs that are not mocked yet; unsupported APIs are reported explicitly.
+- `lua call -` is intentionally not supported because direct function calls need a reusable loaded runtime. Use a temporary file or `lua check -`.
+- `tns add-lua` adds a ScriptApp card; replace/remove are not advertised until they are extracted and tested.

@@ -7,7 +7,9 @@
     "test": "node tests/smoke.test.js && node tests/e2e.test.js",
     "tns-tool": "node cli/tns-tool.js",
     "lua-test": "node cli/lua-test.js",
-    "lua-suite": "node cli/lua-suite.js"
+    "lua-suite": "node cli/lua-suite.js",
+    "lua-preview": "node cli/tns-tool.js lua preview",
+    "tns": "node cli/tns-tool.js tns"
   },
   "engines": {
     "node": ">=18"
