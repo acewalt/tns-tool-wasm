@@ -109,6 +109,8 @@ const I18N = {
     pyDoctorOpened: "Syntax Doctor PY abierto.",
     pyInlineUpdated: "Codigo enviado al bloque inline de Python Program.",
     pyInlineLogUpdated: "Codigo Python inline actualizado desde Syntax Doctor PY.",
+    pyStageUpdated: "Codigo Python guardado en el staging XML/TNS.",
+    pyStageLogUpdated: "Python del inspector actualizado desde Syntax Doctor PY.",
     pyFileDownloaded: "Archivo .py descargado.",
     viewValue: "Ver valor",
     viewXml: "Ver XML",
@@ -159,6 +161,7 @@ const I18N = {
     createPythonTns: "Crear Python TNS",
     extractPy: "Extraer q.py",
     saveBlock: "Guardar bloque",
+    savePythonStage: "Guardar en TNS",
     downloadPy: "Descargar .py",
     resolverNoPending: "No hay problemas ambiguos pendientes para resolver.",
     resolverTitle: "Resolver problemas",
@@ -279,6 +282,8 @@ const I18N = {
     pyDoctorOpened: "Syntax Doctor PY opened.",
     pyInlineUpdated: "Code sent to the Python Program inline block.",
     pyInlineLogUpdated: "Python inline code updated from Syntax Doctor PY.",
+    pyStageUpdated: "Python code saved to the XML/TNS staging area.",
+    pyStageLogUpdated: "Inspector Python updated from Syntax Doctor PY.",
     pyFileDownloaded: ".py file downloaded.",
     viewValue: "View value",
     viewXml: "View XML",
@@ -329,6 +334,7 @@ const I18N = {
     createPythonTns: "Create Python TNS",
     extractPy: "Extract q.py",
     saveBlock: "Save block",
+    savePythonStage: "Save to TNS",
     downloadPy: "Download .py",
     resolverNoPending: "There are no pending ambiguous problems to resolve.",
     resolverTitle: "Resolve problems",
@@ -449,6 +455,8 @@ const I18N = {
     pyDoctorOpened: "Syntax Doctor PY ouvert.",
     pyInlineUpdated: "Code envoye au bloc inline de Python Program.",
     pyInlineLogUpdated: "Code Python inline mis a jour depuis Syntax Doctor PY.",
+    pyStageUpdated: "Code Python enregistre dans le staging XML/TNS.",
+    pyStageLogUpdated: "Python de l'inspecteur mis a jour depuis Syntax Doctor PY.",
     pyFileDownloaded: "Fichier .py telecharge.",
     viewValue: "Voir valeur",
     viewXml: "Voir XML",
@@ -499,6 +507,7 @@ const I18N = {
     createPythonTns: "Creer Python TNS",
     extractPy: "Extraire q.py",
     saveBlock: "Enregistrer bloc",
+    savePythonStage: "Enregistrer dans TNS",
     downloadPy: "Telecharger .py",
     resolverNoPending: "Aucun probleme ambigu en attente a resoudre.",
     resolverTitle: "Resoudre les problemes",
@@ -706,6 +715,7 @@ const pyDoctor = {
   lastChanges: [],
   lastReport: null,
   issueLines: new Map(),
+  target: null,
 };
 
 function log(message) {
@@ -835,6 +845,13 @@ function syncToggleLabels() {
   document.querySelector("#normal-toggle-btn").textContent = normalModule.classList.contains("collapsed") ? t("openNormal") : t("hideNormal");
   document.querySelector("#python-toggle-btn").textContent = pythonModule.classList.contains("collapsed") ? t("openPython") : t("hidePython");
   document.querySelector("#py-doctor-toggle-btn").textContent = pyPanel.classList.contains("collapsed") ? t("openPyDoctor") : t("hidePyDoctor");
+  updatePyDoctorSaveLabel();
+}
+
+function updatePyDoctorSaveLabel() {
+  const saveButton = document.querySelector("#py-doctor-save-btn");
+  if (!saveButton) return;
+  saveButton.textContent = pyDoctor.target?.mode === "xml-python" ? t("savePythonStage") : t("saveBlock");
 }
 
 function setReady(value) {
@@ -2504,32 +2521,14 @@ function showTextModal(title, content) {
 
 function showPythonEditor(item) {
   closeDocumentInspectorModals();
-  const backdrop = document.createElement("div");
-  backdrop.className = "modal-backdrop";
-  backdrop.innerHTML = `
-    <div class="modal inspector-modal">
-      <h2>${escapeHtml(t("editPython"))}: ${escapeHtml(item.detail?.name || item.name)}</h2>
-      <textarea id="python-file-editor" spellcheck="false">${escapeHtml(item.content || "")}</textarea>
-      <div class="modal-actions">
-        <button type="button" id="python-file-cancel">${escapeHtml(t("cancel"))}</button>
-        <button type="button" id="python-file-save" class="green-tool-button">${escapeHtml(t("saveMenu"))}</button>
-      </div>
-    </div>`;
-  document.body.append(backdrop);
-  const editor = backdrop.querySelector("#python-file-editor");
-  editor.focus();
-  backdrop.querySelector("#python-file-cancel").addEventListener("click", () => closeModal(backdrop));
-  backdrop.querySelector("#python-file-save").addEventListener("click", async () => {
-    try {
-      const content = editor.value;
-      await savePythonFileToStage(item, content);
-      item.content = content;
-      closeModal(backdrop, () => {
-        openDocumentInspector().catch((error) => xmlLog(`ERROR: ${error.message}`));
-      });
-    } catch (error) {
-      xmlLog(`ERROR: ${error.message}`);
-    }
+  openExclusivePanel(panelForTool("python"));
+  openPyDoctor({
+    forceOpen: true,
+    code: item.content || "",
+    target: { mode: "xml-python", item },
+  }).catch((error) => {
+    pyLog(`ERROR: ${error.message}`);
+    xmlLog(`ERROR: ${error.message}`);
   });
 }
 
@@ -8751,18 +8750,30 @@ report = PythonSyntaxAnalyzer().analyze(wasm_py_code)
   log(report || "Sin errores.");
 }
 
-async function openPyDoctor() {
+async function openPyDoctor(options = {}) {
   const panel = document.querySelector("#py-doctor-panel");
-  panel.classList.toggle("collapsed");
+  const hasInjectedCode = Object.prototype.hasOwnProperty.call(options, "code");
+  const forceOpen = Boolean(options.forceOpen || options.target || hasInjectedCode);
+  if (forceOpen) {
+    panel.classList.remove("collapsed");
+  } else {
+    panel.classList.toggle("collapsed");
+  }
   syncToggleLabels();
-  if (panel.classList.contains("collapsed")) return;
+  if (panel.classList.contains("collapsed")) {
+    pyDoctor.target = null;
+    updatePyDoctorSaveLabel();
+    return;
+  }
 
-  const code = await getPythonCode().catch(() => document.querySelector("#py-inline").value || "");
+  const code = hasInjectedCode ? String(options.code || "") : await getPythonCode().catch(() => document.querySelector("#py-inline").value || "");
+  pyDoctor.target = options.target || null;
   document.querySelector("#py-code").value = code;
   pyDoctor.lastOriginal = code;
   pyDoctor.lastFixed = code;
   pyDoctor.lastChanges = [];
   pyDoctor.issueLines.clear();
+  updatePyDoctorSaveLabel();
   setPyDoctorEnabled(true);
   updateDoctorLineNumbers("py", pyDoctor.issueLines);
   updatePyLineLabel();
@@ -9006,9 +9017,22 @@ function showAbout() {
   });
 }
 
-function savePyDoctorBlock() {
+async function savePyDoctorBlock() {
   const code = document.querySelector("#py-code").value;
+  if (pyDoctor.target?.mode === "xml-python") {
+    const item = pyDoctor.target.item;
+    await savePythonFileToStage(item, code);
+    item.content = code;
+    if (item.detail) item.detail.length = code.length;
+    pyDoctor.lastOriginal = code;
+    pyDoctor.lastFixed = code;
+    pyLog(t("pyStageUpdated"));
+    xmlLog(t("pyStageLogUpdated"));
+    return;
+  }
   document.querySelector("#py-inline").value = code;
+  pyDoctor.lastOriginal = code;
+  pyDoctor.lastFixed = code;
   pyLog(t("pyInlineUpdated"));
   log(t("pyInlineLogUpdated"));
 }
@@ -9055,7 +9079,7 @@ function wireEvents() {
   document.querySelector("#py-doctor-syntax-btn").addEventListener("click", () => runPyDoctorSyntax().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-autofix-btn").addEventListener("click", () => autoFixPyDoctor().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-changes-btn").addEventListener("click", showPyChanges);
-  document.querySelector("#py-doctor-save-btn").addEventListener("click", savePyDoctorBlock);
+  document.querySelector("#py-doctor-save-btn").addEventListener("click", () => savePyDoctorBlock().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-download-btn").addEventListener("click", downloadPyDoctorFile);
   document.querySelector("#py-code").addEventListener("input", () => {
     updateDoctorLineNumbers("py", pyDoctor.issueLines);
