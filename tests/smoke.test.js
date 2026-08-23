@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { createLuaPreview, loadLuaScript, runLuaPreviewActions, runLuaTest, runLuaTestSuite } from "../src/lua/index.js";
+import { createLuaPreview, createLuaRuntime, loadLuaScript, runLuaPreviewActions, runLuaTest, runLuaTestSuite } from "../src/lua/index.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const fixture = path.join(__dirname, "fixtures", "simple_solver.lua");
@@ -22,6 +22,13 @@ assert.deepEqual(nested.data.items, [1, 2, 3]);
 const nextTotal = lua.call("countWithNext", []);
 assert.equal(nextTotal, 6);
 lua.close();
+
+const safeNextRuntime = await createLuaRuntime();
+const brokenObjectKeyTable = safeNextRuntime.context.lua_newtable();
+brokenObjectKeyTable.objs.push(undefined, [undefined, "skip"], [{ marker: true }, "keep"]);
+const safeNext = safeNextRuntime.context.G.str.next(brokenObjectKeyTable, null);
+assert.equal(safeNext[1], "keep");
+safeNextRuntime.close();
 
 const tests = JSON.parse(await fs.readFile(path.join(__dirname, "edo.sample.json"), "utf8"));
 const suite = await runLuaTestSuite(luaSource, tests.tests, { functionName: tests.function });

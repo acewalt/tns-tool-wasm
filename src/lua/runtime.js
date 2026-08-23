@@ -324,7 +324,63 @@ function createDrawingContextMock() {
 }
 
 function installLuaJsCompatibilityPatches(global, state) {
+  const originalRawGet = global.lua_rawget;
+  const originalRawSet = global.lua_rawset;
+  const originalTableGet = global.lua_tableget;
+  const originalTableSet = global.lua_tableset;
   const originalLen = global.lua_len;
+  global.lua_rawget = (table, key) => {
+    if (table == null || table === false || key === undefined || key === null) return null;
+    try {
+      return originalRawGet(table, key);
+    } catch (error) {
+      if (typeof key === "object" && /Cannot read properties|Unsupported key for table|Table index is nil/.test(String(error?.message || ""))) {
+        const objectKeys = Array.isArray(table.objs) ? table.objs : [];
+        for (const entry of objectKeys) {
+          if (Array.isArray(entry) && entry[0] === key) return entry[1];
+        }
+        return null;
+      }
+      throw error;
+    }
+  };
+  global.lua_rawset = (table, key, value) => {
+    if (table == null || table === false || key === undefined || key === null) return [];
+    try {
+      return originalRawSet(table, key, value);
+    } catch (error) {
+      if (typeof key === "object" && /Cannot read properties|Unsupported key for table|Table index is nil/.test(String(error?.message || ""))) {
+        if (!Array.isArray(table.objs)) table.objs = [];
+        const index = table.objs.findIndex((entry) => Array.isArray(entry) && entry[0] === key);
+        if (index >= 0) {
+          if (value == null) table.objs.splice(index, 1);
+          else table.objs[index][1] = value;
+        } else if (value != null) {
+          table.objs.push([key, value]);
+        }
+        return [];
+      }
+      throw error;
+    }
+  };
+  global.lua_tableget = (table, key) => {
+    if (table == null || table === false || key === undefined || key === null) return null;
+    try {
+      return originalTableGet(table, key);
+    } catch (error) {
+      if (/Table is null|Unable to index key|Unsupported key for table|Table index is nil/.test(String(error?.message || ""))) return null;
+      throw error;
+    }
+  };
+  global.lua_tableset = (table, key, value) => {
+    if (table == null || table === false || key === undefined || key === null) return [];
+    try {
+      return originalTableSet(table, key, value);
+    } catch (error) {
+      if (/Table is null|Unable to index key|Unsupported key for table|Table index is nil/.test(String(error?.message || ""))) return [];
+      throw error;
+    }
+  };
   global.lua_len = (value) => {
     if (value == null || value === false) return 0;
     return originalLen(value);
@@ -337,10 +393,32 @@ function installLuaJsCompatibilityPatches(global, state) {
       if (key != null && start <= 0) return [null, null];
       for (let index = start; index < keys.length; index += 1) {
         const entryKey = keys[index];
+        if (entryKey === undefined || entryKey === null) continue;
         const entry = global.lua_rawget(table, entryKey);
         if (entry != null) return [entryKey, entry];
       }
       return [null, null];
+    };
+    global.G.str.pairs = (table) => {
+      if (table == null || table === false || typeof table !== "object") {
+        return [() => [null, null], global.lua_newtable(), null];
+      }
+      const keys = luaTableKeys(table);
+      let cursor = 0;
+      return [
+        (target) => {
+          while (cursor < keys.length) {
+            const key = keys[cursor];
+            cursor += 1;
+            if (key === undefined || key === null) continue;
+            const entry = global.lua_rawget(target, key);
+            if (entry != null) return [key, entry];
+          }
+          return [null, null];
+        },
+        table,
+        null
+      ];
     };
   }
   global.not_supported = () => {
@@ -369,8 +447,10 @@ function luaTableKeys(table) {
   const boolTable = table.bool || table.bools || {};
   for (const key of Object.keys(boolTable)) keys.push(key === "true");
   const objectKeys = Array.isArray(table.objs) ? table.objs : [];
-  for (const entry of objectKeys) keys.push(entry[0]);
-  return keys;
+  for (const entry of objectKeys) {
+    if (Array.isArray(entry) && entry[0] !== undefined && entry[0] !== null) keys.push(entry[0]);
+  }
+  return keys.filter((key) => key !== undefined && key !== null);
 }
 
 function stripLuaJsBootstrap(parsedJs) {
