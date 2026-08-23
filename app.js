@@ -717,6 +717,7 @@ const pyDoctor = {
   issueLines: new Map(),
   target: null,
 };
+const codeEditorAdapters = new Map();
 
 function log(message) {
   logEl.textContent += `${message}\n`;
@@ -750,6 +751,7 @@ function applyTheme(nextTheme = theme) {
   theme = nextTheme === "dark" ? "dark" : "light";
   localStorage.setItem("tns-tool-theme", theme);
   document.documentElement.dataset.theme = theme;
+  window.TnsMonacoEditor?.setTheme?.(theme);
   const button = document.querySelector("#theme-btn");
   if (button) {
     button.textContent = theme === "dark" ? "☀" : "☾";
@@ -846,6 +848,7 @@ function syncToggleLabels() {
   document.querySelector("#python-toggle-btn").textContent = pythonModule.classList.contains("collapsed") ? t("openPython") : t("hidePython");
   document.querySelector("#py-doctor-toggle-btn").textContent = pyPanel.classList.contains("collapsed") ? t("openPyDoctor") : t("hidePyDoctor");
   updatePyDoctorSaveLabel();
+  layoutCodeEditors();
 }
 
 function updatePyDoctorSaveLabel() {
@@ -1035,6 +1038,12 @@ function wireToolMenus() {
 
 async function initPyodideRuntime() {
   setReady(false);
+  if (window.location.protocol === "file:") {
+    throw new Error(
+      "No abras index.html con file://. El navegador bloquea fetch() para Pyodide, LuaJS y plantillas. " +
+      "Ejecuta en la carpeta del proyecto: python -m http.server 8000 y abre http://localhost:8000/"
+    );
+  }
   if (statusEl) statusEl.textContent = "Cargando Pyodide...";
   pyodide = await loadPyodide();
   if (statusEl) statusEl.textContent = "Cargando pycryptodome...";
@@ -1335,6 +1344,7 @@ function setXmlDoctorEnabled(enabled) {
   }
   document.querySelector("#xml-programs").disabled = !enabled;
   document.querySelector("#xml-code").disabled = !enabled;
+  setStaticCodeEditorReadOnly("#xml-code", !enabled);
 }
 
 function setXmlDoctorDocumentActionsEnabled(enabled) {
@@ -1349,6 +1359,7 @@ function setPyDoctorEnabled(enabled) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#py-code").disabled = !enabled;
+  setStaticCodeEditorReadOnly("#py-code", !enabled);
 }
 
 async function loadXmlDoctorFiles(files, mode) {
@@ -6135,6 +6146,241 @@ function showLuaPageEditor(editor) {
   render();
 }
 
+function createCodeEditorAdapter(textarea, wrap, options = {}) {
+  const shell = wrap.closest(".lua-code-shell, .code-shell");
+  const language = options.language || "lua";
+  const listeners = new Map();
+  const nativeHandlers = new Map();
+  let monacoInstance = null;
+  let monacoDisposables = [];
+  let host = null;
+  let patched = false;
+  let lastDisabled = Boolean(textarea.disabled);
+  const nativeValue = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "value");
+  const nativeSelectionStart = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "selectionStart");
+  const nativeSelectionEnd = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, "selectionEnd");
+  const nativeScrollTop = Object.getOwnPropertyDescriptor(Element.prototype, "scrollTop");
+  const nativeScrollLeft = Object.getOwnPropertyDescriptor(Element.prototype, "scrollLeft");
+  const nativeSetSelectionRange = textarea.setSelectionRange.bind(textarea);
+
+  const adapter = {
+    isMonaco: false,
+    get value() {
+      return monacoInstance ? monacoInstance.getValue() : nativeValue.get.call(textarea);
+    },
+    set value(nextValue) {
+      const value = String(nextValue ?? "");
+      nativeValue.set.call(textarea, value);
+      if (monacoInstance) monacoInstance.setValue(value);
+    },
+    get selectionStart() {
+      return monacoInstance ? monacoInstance.getSelectionOffsets().start : (nativeSelectionStart.get.call(textarea) || 0);
+    },
+    get selectionEnd() {
+      return monacoInstance ? monacoInstance.getSelectionOffsets().end : (nativeSelectionEnd.get.call(textarea) || 0);
+    },
+    get scrollTop() {
+      return monacoInstance ? monacoInstance.getScrollTop() : nativeScrollTop.get.call(textarea);
+    },
+    set scrollTop(value) {
+      if (monacoInstance) monacoInstance.setScrollTop(value);
+      else nativeScrollTop.set.call(textarea, value);
+    },
+    get scrollLeft() {
+      return monacoInstance ? monacoInstance.getScrollLeft() : nativeScrollLeft.get.call(textarea);
+    },
+    set scrollLeft(value) {
+      if (monacoInstance) monacoInstance.setScrollLeft(value);
+      else nativeScrollLeft.set.call(textarea, value);
+    },
+    addEventListener(type, handler) {
+      if (!listeners.has(type)) listeners.set(type, new Set());
+      listeners.get(type).add(handler);
+      if (!monacoInstance && !nativeHandlers.has(type)) {
+        const nativeHandler = (event) => emit(type, event);
+        nativeHandlers.set(type, nativeHandler);
+        textarea.addEventListener(type, nativeHandler);
+      }
+    },
+    removeEventListener(type, handler) {
+      listeners.get(type)?.delete(handler);
+    },
+    dispatchEvent(event) {
+      if (!monacoInstance) return textarea.dispatchEvent(event);
+      emit(event?.type || "input", event);
+      return true;
+    },
+    focus() {
+      if (monacoInstance) monacoInstance.focus();
+      else textarea.focus();
+    },
+    blur() {
+      if (monacoInstance) monacoInstance.blur();
+      else textarea.blur();
+    },
+    setSelectionRange(start, end = start) {
+      if (monacoInstance) monacoInstance.setSelectionRange(start, end);
+      else textarea.setSelectionRange(start, end);
+    },
+    setDiagnostics(diagnostics) {
+      monacoInstance?.setDiagnostics?.(diagnostics);
+    },
+    setReadOnly(value) {
+      lastDisabled = Boolean(value);
+      monacoInstance?.setReadOnly?.(lastDisabled);
+    },
+    layout() {
+      monacoInstance?.layout?.();
+    },
+    dispose() {
+      for (const disposable of monacoDisposables) disposable?.dispose?.();
+      monacoDisposables = [];
+      monacoInstance?.dispose?.();
+      monacoInstance = null;
+      host?.remove();
+      host = null;
+      wrap.classList.remove("monaco-enabled");
+      shell?.classList.remove("monaco-enabled");
+    },
+  };
+
+  function emit(type, event = null) {
+    for (const handler of listeners.get(type) || []) {
+      handler.call(adapter, event || new Event(type, { bubbles: true }));
+    }
+  }
+
+  function dispatchNative(type) {
+    textarea.dispatchEvent(new Event(type, { bubbles: true }));
+  }
+
+  function patchTextarea() {
+    if (patched) return;
+    patched = true;
+    try {
+      Object.defineProperty(textarea, "value", {
+        configurable: true,
+        get: () => adapter.value,
+        set: (value) => {
+          adapter.value = value;
+        },
+      });
+      Object.defineProperty(textarea, "selectionStart", {
+        configurable: true,
+        get: () => adapter.selectionStart,
+        set: (value) => adapter.setSelectionRange(value, adapter.selectionEnd),
+      });
+      Object.defineProperty(textarea, "selectionEnd", {
+        configurable: true,
+        get: () => adapter.selectionEnd,
+        set: (value) => adapter.setSelectionRange(adapter.selectionStart, value),
+      });
+      Object.defineProperty(textarea, "scrollTop", {
+        configurable: true,
+        get: () => adapter.scrollTop,
+        set: (value) => {
+          adapter.scrollTop = value;
+        },
+      });
+      Object.defineProperty(textarea, "scrollLeft", {
+        configurable: true,
+        get: () => adapter.scrollLeft,
+        set: (value) => {
+          adapter.scrollLeft = value;
+        },
+      });
+      textarea.setSelectionRange = (start, end = start) => {
+        adapter.setSelectionRange(start, end);
+      };
+    } catch (error) {
+      console.warn("Monaco textarea proxy unavailable, direct textarea fallback remains active.", error);
+    }
+  }
+
+  function tryEnableMonaco() {
+    const monacoApi = window.TnsMonacoEditor;
+    if (!monacoApi?.createTextEditor || monacoInstance) return;
+    try {
+      host = document.createElement("div");
+      host.className = "monaco-code-host";
+      wrap.append(host);
+      monacoInstance = monacoApi.createTextEditor(host, {
+        value: nativeValue.get.call(textarea),
+        language,
+        theme,
+        editorOptions: options.editorOptions || {},
+      });
+      adapter.isMonaco = true;
+      adapter.setReadOnly(lastDisabled);
+      patchTextarea();
+      wrap.classList.add("monaco-enabled");
+      shell?.classList.add("monaco-enabled");
+      monacoDisposables = [
+        monacoInstance.onInput((value) => {
+          nativeValue.set.call(textarea, value);
+          emit("input");
+          dispatchNative("input");
+        }),
+        monacoInstance.onCursor(() => {
+          const offsets = monacoInstance.getSelectionOffsets();
+          nativeSetSelectionRange(offsets.start, offsets.end);
+          emit("keyup");
+          emit("select");
+          dispatchNative("keyup");
+          dispatchNative("select");
+        }),
+        monacoInstance.onScroll(() => {
+          emit("scroll");
+          dispatchNative("scroll");
+        }),
+      ];
+    } catch (error) {
+      console.warn("Monaco editor unavailable, using textarea fallback.", error);
+      monacoInstance = null;
+      adapter.isMonaco = false;
+      host?.remove();
+      host = null;
+      wrap.classList.remove("monaco-enabled");
+      shell?.classList.remove("monaco-enabled");
+    }
+  }
+
+  tryEnableMonaco();
+  if (!monacoInstance) {
+    window.addEventListener("tns-monaco-ready", tryEnableMonaco, { once: true });
+  }
+  return adapter;
+}
+
+function createLuaEditorAdapter(textarea, wrap) {
+  return createCodeEditorAdapter(textarea, wrap, { language: "lua" });
+}
+
+function initializeStaticCodeEditors() {
+  const configs = [
+    { selector: "#xml-code", wrap: "#xml-editor-wrap", language: "ti-basic" },
+    { selector: "#py-code", wrap: "#py-code-wrap", language: "python" },
+  ];
+  for (const config of configs) {
+    const textarea = document.querySelector(config.selector);
+    const wrap = document.querySelector(config.wrap);
+    if (!textarea || !wrap || codeEditorAdapters.has(config.selector)) continue;
+    const adapter = createCodeEditorAdapter(textarea, wrap, { language: config.language });
+    adapter.setReadOnly(textarea.disabled);
+    codeEditorAdapters.set(config.selector, adapter);
+  }
+}
+
+function setStaticCodeEditorReadOnly(selector, readOnly) {
+  codeEditorAdapters.get(selector)?.setReadOnly(readOnly);
+}
+
+function layoutCodeEditors() {
+  window.requestAnimationFrame(() => {
+    for (const adapter of codeEditorAdapters.values()) adapter.layout?.();
+  });
+}
+
 function showLuaEditor(item) {
   const initialLuaContent = decodeXmlTextEntities(item.content || "");
   const backdrop = document.createElement("div");
@@ -6186,7 +6432,8 @@ function showLuaEditor(item) {
       </div>
     </div>`;
   document.body.append(backdrop);
-  const editor = backdrop.querySelector("#lua-editor");
+  const rawEditor = backdrop.querySelector("#lua-editor");
+  const editor = createLuaEditorAdapter(rawEditor, backdrop.querySelector(".lua-editor-wrap"));
   const lines = backdrop.querySelector("#lua-lines");
   const highlight = backdrop.querySelector("#lua-highlight");
   const label = backdrop.querySelector("#lua-line-label");
@@ -6226,6 +6473,7 @@ function showLuaEditor(item) {
     for (const diag of allDiagnostics) {
       if (diag.line && !issueLines.has(diag.line)) issueLines.set(diag.line, diag.level);
     }
+    editor.setDiagnostics(allDiagnostics);
     problems.innerHTML = allDiagnostics.map((diag) => `<tr class="${diag.level}" data-line="${diag.line}"><td>${diag.level}</td><td>${diag.line}</td><td>${escapeHtml(diag.message)}</td></tr>`).join("");
     for (const row of problems.querySelectorAll("tr")) {
       row.addEventListener("dblclick", () => {
@@ -6245,6 +6493,10 @@ function showLuaEditor(item) {
     updateLines();
     updateHighlight();
     updateLabel();
+  };
+  const closeLuaEditor = (afterClose = null) => {
+    editor.dispose?.();
+    closeModal(backdrop, afterClose);
   };
   editor.addEventListener("input", () => {
     updateLines();
@@ -6300,14 +6552,14 @@ function showLuaEditor(item) {
   updateHighlight();
   updateLabel();
   analyze();
-  backdrop.querySelector("#lua-cancel").addEventListener("click", () => closeModal(backdrop));
+  backdrop.querySelector("#lua-cancel").addEventListener("click", () => closeLuaEditor());
   backdrop.querySelector("#lua-save").addEventListener("click", async () => {
     try {
-      const content = backdrop.querySelector("#lua-editor").value;
+      const content = editor.value;
       await saveLuaScriptToStage(item, content);
       item.content = content;
       closeDocumentInspectorModals();
-      closeModal(backdrop, () => {
+      closeLuaEditor(() => {
         openDocumentInspector().catch((error) => xmlLog(`ERROR: ${error.message}`));
       });
     } catch (error) {
@@ -8553,6 +8805,7 @@ function renderXmlAnalysis(report) {
   document.querySelector("#xml-info").textContent = report.infos;
   const body = document.querySelector("#xml-problems");
   body.innerHTML = "";
+  const monacoDiagnostics = [];
   for (const diag of report.diagnostics) {
     const effectiveLine = diag.line || inferredXmlDiagnosticLine(diag);
     if (effectiveLine) {
@@ -8560,6 +8813,7 @@ function renderXmlAnalysis(report) {
       if (diag.severity === "ERROR" || previous !== "ERROR") {
         xmlDoctor.issueLines.set(effectiveLine, diag.severity);
       }
+      monacoDiagnostics.push({ ...diag, line: effectiveLine, level: diag.severity });
     }
     const row = document.createElement("tr");
     row.className = diag.severity;
@@ -8569,6 +8823,7 @@ function renderXmlAnalysis(report) {
     row.addEventListener("dblclick", () => goToXmlLine(Number(row.dataset.line)));
     body.append(row);
   }
+  codeEditorAdapters.get("#xml-code")?.setDiagnostics(monacoDiagnostics);
   updateXmlLineNumbers();
 }
 
@@ -9046,12 +9301,14 @@ function renderPyAnalysis(report) {
   document.querySelector("#py-info").textContent = report.info || 0;
   const body = document.querySelector("#py-problems");
   body.innerHTML = "";
+  const monacoDiagnostics = [];
   for (const diag of report.diagnostics || []) {
     if (diag.line) {
       const previous = pyDoctor.issueLines.get(diag.line);
       if (diag.level === "error" || previous !== "error") {
         pyDoctor.issueLines.set(diag.line, diag.level);
       }
+      monacoDiagnostics.push(diag);
     }
     const row = document.createElement("tr");
     row.className = String(diag.level || "").toUpperCase();
@@ -9060,6 +9317,7 @@ function renderPyAnalysis(report) {
     row.addEventListener("dblclick", () => goToPyLine(Number(row.dataset.line)));
     body.append(row);
   }
+  codeEditorAdapters.get("#py-code")?.setDiagnostics(monacoDiagnostics);
   updateDoctorLineNumbers("py", pyDoctor.issueLines);
 }
 
@@ -9382,6 +9640,7 @@ function wireEvents() {
 
 applyLanguage(language);
 applyTheme(theme);
+initializeStaticCodeEditors();
 wireEvents();
 initPyodideRuntime().catch((err) => {
   if (statusEl) statusEl.textContent = "Error";

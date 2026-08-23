@@ -221,7 +221,8 @@ body {
   border-color: var(--line);
 }
 
-[data-theme="dark"] .line-numbers {
+[data-theme="dark"] .code-shell > .line-numbers,
+[data-theme="dark"] .lua-code-shell > .line-numbers {
   background: #111827;
   color: #9fb0c6;
 }
@@ -847,7 +848,8 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   max-height: 520px;
 }
 
-.line-numbers {
+.code-shell > .line-numbers,
+.lua-code-shell > .line-numbers {
   padding: 10px 6px;
   background: #f8fafc;
   color: #64748b;
@@ -1811,6 +1813,47 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   background:
     radial-gradient(circle at 16px 16px, rgb(37 99 235 / 4%) 0 1px, transparent 1px) 0 0 / 18px 18px,
     linear-gradient(180deg, #f8fbff, #eef5ff);
+}
+
+.monaco-code-host {
+  position: absolute;
+  inset: 0 0 0 10px;
+  z-index: 4;
+  overflow: hidden;
+}
+
+.monaco-code-host .monaco-editor,
+.monaco-code-host .monaco-editor-background,
+.monaco-code-host .monaco-editor .margin {
+  background: transparent;
+}
+
+.monaco-code-host .monaco-editor .glyph-margin,
+.monaco-code-host .monaco-editor .margin-view-overlays {
+  overflow: visible;
+}
+
+.monaco-code-host .monaco-editor .codicon-folding-expanded,
+.monaco-code-host .monaco-editor .codicon-folding-collapsed,
+.monaco-code-host .monaco-editor .cldr {
+  opacity: 1 !important;
+}
+
+.editor-wrap.monaco-enabled > pre,
+.editor-wrap.monaco-enabled > textarea,
+.lua-editor-wrap.monaco-enabled > .lua-highlight,
+.lua-editor-wrap.monaco-enabled > .lua-editor {
+  display: none;
+}
+
+.code-shell.monaco-enabled,
+.lua-code-shell.monaco-enabled {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.code-shell.monaco-enabled > .line-numbers,
+.lua-code-shell.monaco-enabled > .line-numbers {
+  display: none;
 }
 
 .lua-highlight,

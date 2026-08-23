@@ -4,10 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20260823-luajs-safe-next" />
+    <link rel="stylesheet" href="./styles.css?v=20260823-monaco-all-editors" />
+    <link rel="stylesheet" href="./dist/monaco-lua-editor.css?v=20260823-monaco-all-editors" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
-    <script defer src="./app.js?v=20260823-luajs-safe-next"></script>
+    <script type="module" src="./dist/monaco-lua-editor.js?v=20260823-monaco-all-editors"></script>
+    <script defer src="./app.js?v=20260823-monaco-all-editors"></script>
   </head>
   <body>
     <div id="mouse-glow" class="mouse-glow" aria-hidden="true"></div>
@@ -199,7 +201,7 @@
           <div class="doctor-grid">
             <div class="code-shell">
               <div id="py-line-numbers" class="line-numbers">1</div>
-              <div class="editor-wrap">
+              <div id="py-code-wrap" class="editor-wrap">
                 <pre id="py-highlight" aria-hidden="true"></pre>
                 <textarea id="py-code" spellcheck="false" disabled></textarea>
               </div>
