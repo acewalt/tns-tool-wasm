@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-nspire-bridge";
+const SOURCE_VERSION = "2026-08-23-love-hybrid-preview";
 
 const I18N = {
   es: {
@@ -50,6 +50,8 @@ const I18N = {
     loveCopiedNspire: "Codigo TI-Nspire copiado al portapapeles.",
     lovePreviewNspireHint: "Este codigo parece ScriptApp TI-Nspire; usa Preview Lua. Preview LÖVE solo ejecuta codigo que define love.*.",
     lovePreviewNoCallbacks: "No se encontro love.draw ni love.update. Si este codigo es TI-Nspire, usa Preview Lua.",
+    lovePreviewNspireCompat: "Codigo TI-Nspire detectado: Preview LÖVE usara platform/on/gc sobre el canvas interno.",
+    lovePreviewCalculatorWarning: "Aviso: este codigo usa love.* y no corre directamente en la calculadora. Usa Convertir LÖVE a TI-Nspire si quieres guardarlo para TI-Nspire.",
     luaGuide: "Guia Lua",
     luaTemplates: "Plantillas Lua",
     luaEditPages: "Editar paginas",
@@ -253,6 +255,8 @@ const I18N = {
     loveCopiedNspire: "TI-Nspire code copied to clipboard.",
     lovePreviewNspireHint: "This code looks like a TI-Nspire ScriptApp; use Preview Lua. Preview LÖVE only runs code that defines love.*.",
     lovePreviewNoCallbacks: "No love.draw or love.update callback was found. If this is TI-Nspire code, use Preview Lua.",
+    lovePreviewNspireCompat: "TI-Nspire code detected: Preview LÖVE will run platform/on/gc on the internal canvas.",
+    lovePreviewCalculatorWarning: "Warning: this code uses love.* and does not run directly on the calculator. Use Convert LÖVE to TI-Nspire if you want to save it for TI-Nspire.",
     luaGuide: "Lua guide",
     luaTemplates: "Lua templates",
     luaEditPages: "Edit pages",
@@ -456,6 +460,8 @@ const I18N = {
     loveCopiedNspire: "Code TI-Nspire copie dans le presse-papiers.",
     lovePreviewNspireHint: "Ce code ressemble a une ScriptApp TI-Nspire; utilisez Apercu Lua. L'apercu LÖVE execute seulement le code qui definit love.*.",
     lovePreviewNoCallbacks: "Aucun callback love.draw ou love.update trouve. Si ce code est TI-Nspire, utilisez Apercu Lua.",
+    lovePreviewNspireCompat: "Code TI-Nspire detecte : l'apercu LÖVE utilisera platform/on/gc sur le canvas interne.",
+    lovePreviewCalculatorWarning: "Avertissement : ce code utilise love.* et ne s'execute pas directement sur la calculatrice. Utilisez Convertir LÖVE vers TI-Nspire pour l'enregistrer pour TI-Nspire.",
     luaGuide: "Guide Lua",
     luaTemplates: "Modeles Lua",
     luaEditPages: "Editer pages",
@@ -7364,9 +7370,10 @@ async function showLovePreview(code, editor = null, editorLog = null) {
   const ctx = canvas.getContext("2d");
   const previewLog = backdrop.querySelector("#love-preview-log");
   let runtime = null;
-  if (!looksLikeLoveSource(code)) {
-    appendPreviewLog(previewLog, looksLikeTINSPIRELuaSource(code) ? t("lovePreviewNspireHint") : t("lovePreviewNoCallbacks"));
-  } else {
+  const isLoveSource = looksLikeLoveSource(code);
+  const isNspireSource = looksLikeTINSPIRELuaSource(code);
+  if (isLoveSource && !isNspireSource) {
+    appendPreviewLog(previewLog, t("lovePreviewCalculatorWarning"));
     if (!/\blove\.(draw|update|load)\b/.test(String(code || ""))) appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
     try {
       runtime = await createLovePreviewRuntime(code, ctx, canvas, previewLog);
@@ -7374,6 +7381,16 @@ async function showLovePreview(code, editor = null, editorLog = null) {
     } catch (error) {
       appendPreviewLog(previewLog, `ERROR Preview LÖVE: ${describeLuaJsError(error)}\n${compactStack(error)}`);
     }
+  } else if (isNspireSource) {
+    appendPreviewLog(previewLog, t("lovePreviewNspireCompat"));
+    try {
+      runtime = await createLovePreviewNspireRuntime(code, ctx, canvas, previewLog);
+      runtime.boot();
+    } catch (error) {
+      appendPreviewLog(previewLog, `ERROR Preview LÖVE/TI-Nspire: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+    }
+  } else {
+    appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
   }
 
   for (const button of backdrop.querySelectorAll(".preview-controls button")) {
@@ -7421,6 +7438,40 @@ async function showLovePreview(code, editor = null, editorLog = null) {
     document.removeEventListener("keyup", keyUpHandler);
     closeModal(backdrop, () => runtime?.close());
   });
+}
+
+async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl) {
+  const luaRuntime = await createLuaJsPreviewRuntime(code, ctx, canvas, logEl);
+  const keyToEvent = (key) => {
+    const map = {
+      up: "on.arrowUp",
+      down: "on.arrowDown",
+      left: "on.arrowLeft",
+      right: "on.arrowRight",
+      return: "on.enterKey",
+      escape: "on.escapeKey",
+      backspace: "on.backspaceKey",
+      tab: "on.tabKey",
+    };
+    return map[String(key || "").toLowerCase()] || "";
+  };
+  const dispatchKey = (key) => {
+    const normalized = String(key || "");
+    const eventName = keyToEvent(normalized);
+    if (eventName) {
+      luaRuntime.callEvent(eventName);
+      return;
+    }
+    luaRuntime.charIn(normalized === "space" ? " " : normalized);
+  };
+  return {
+    boot: () => luaRuntime.boot(),
+    keydown: dispatchKey,
+    keyup: () => {},
+    keypressed: dispatchKey,
+    mousepressed: (x, y) => luaRuntime.mouseClick(x, y),
+    close: () => luaRuntime.close?.(),
+  };
 }
 
 function lovePreviewKeyboardName(event) {
