@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-hybrid-preview";
+const SOURCE_VERSION = "2026-08-23-love-preview-close";
 
 const I18N = {
   es: {
@@ -7346,6 +7346,9 @@ async function showLovePreview(code, editor = null, editorLog = null) {
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
     <div class="modal love-preview-modal">
+      <div class="modal-top-actions">
+        <button type="button" id="love-preview-close-top">${escapeHtml(t("close"))}</button>
+      </div>
       <h2>${escapeHtml(t("previewLove"))}</h2>
       <p class="muted-text">${escapeHtml(t("lovePreviewNote"))}</p>
       <canvas id="love-preview-canvas" width="800" height="600"></canvas>
@@ -7433,11 +7436,13 @@ async function showLovePreview(code, editor = null, editorLog = null) {
     appendPreviewLog(previewLog, t("loveConvertedNspire"));
     if (editorLog) editorLog.textContent = t("loveConvertedNspire");
   });
-  backdrop.querySelector("#love-preview-close").addEventListener("click", () => {
+  const closeLovePreview = () => {
     document.removeEventListener("keydown", keyDownHandler);
     document.removeEventListener("keyup", keyUpHandler);
     closeModal(backdrop, () => runtime?.close());
-  });
+  };
+  backdrop.querySelector("#love-preview-close-top").addEventListener("click", closeLovePreview);
+  backdrop.querySelector("#love-preview-close").addEventListener("click", closeLovePreview);
 }
 
 async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl) {
