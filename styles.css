@@ -1290,7 +1290,8 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   max-height: min(92vh, 820px);
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 #lua-preview-canvas {
@@ -1306,6 +1307,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 .love-preview-stage {
   width: min(320px, 100%);
+  flex: 0 0 auto;
   border: 1px solid var(--line);
   border-radius: 6px;
   overflow: hidden;
@@ -1317,6 +1319,8 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .love-preview-stage.expanded-view {
   width: min(800px, 100%);
   max-width: 800px;
+  height: auto;
+  aspect-ratio: 4 / 3;
 }
 
 .love-preview-calculator-bar {
@@ -1351,8 +1355,13 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 #love-preview-canvas.expanded-view {
   width: 100%;
+  height: 100%;
   max-height: none;
-  aspect-ratio: 4 / 3;
+}
+
+#love-preview-log {
+  flex: 0 0 auto;
+  max-height: 160px;
 }
 
 .preview-controls {
