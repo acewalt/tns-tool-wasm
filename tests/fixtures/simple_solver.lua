@@ -39,3 +39,14 @@ function nested()
     }
   }
 end
+
+function countWithNext()
+  local total = 0
+  do
+    local values = { a = 1, b = 2, c = 3 }
+    for _key, value in next, values, nil do
+      total = total + value
+    end
+  end
+  return total
+end

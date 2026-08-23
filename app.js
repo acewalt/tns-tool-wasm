@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-lua-guide-i18n";
+const SOURCE_VERSION = "2026-08-23-lua-widget-compat";
 
 const I18N = {
   es: {
@@ -2711,6 +2711,9 @@ function stripLuaCode(code) {
 }
 
 function handleLuaBlocks(line, lineNumber, stack, errors) {
+  if (/^\s*do\b/.test(line)) {
+    stack.push({ word: "do", expected: "end", line: lineNumber });
+  }
   const tokens = line.match(/\b(local\s+function|function|if|for|while|repeat|else|elseif|end|until)\b/g) || [];
   for (const rawToken of tokens) {
     const token = rawToken === "local function" ? "function" : rawToken;
@@ -2811,6 +2814,7 @@ function luaTiApiSpec() {
       "platform.window.invalidate": arg(0, 4),
       "platform.window.width": arg(0),
       "platform.window.height": arg(0),
+      "platform.window.setBackgroundColor": arg(1),
       "platform.window.setFocus": arg(1),
       "platform.withGC": arg(1, 2),
       "platform.gc": arg(0),
@@ -6751,6 +6755,10 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     global.lua_tableset(previewWindow, "invalidated", true);
     return [];
   });
+  global.lua_tableset(previewWindow, "setBackgroundColor", (_self, color) => {
+    global.lua_tableset(previewWindow, "backgroundColor", color);
+    return [];
+  });
   global.lua_tableset(global.G.str.platform, "window", previewWindow);
 
   const store = { ...symbols.variables };
@@ -6777,6 +6785,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.lua_tableset(stringTable, "gsub", luaJsStringGsub);
   global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global, basicFunctions));
   attachLuaJsD2Editor(d2EditorTable, nativeEditors);
+  global.lua_tableset(platformTable, "isTabletModeRendering", () => [false]);
 
   const evalLuaJsSource = (source) => {
     const parsed = global.lua_parser.parse(source).split("\n").slice(19).join("\n");
@@ -7013,6 +7022,19 @@ function hardenLuaJsPreviewRuntime() {
   const originalLt = window.lua_lt;
   const originalLte = window.lua_lte;
   const emptyIterator = () => [null, null];
+  const luaNext = (table, key = null) => {
+    if (table == null || table === false || typeof table !== "object") return [null, null];
+    const props = luaJsTableKeys(table);
+    reorderLuaJsPairsProps(table, props);
+    const start = key == null ? 0 : props.findIndex((candidate) => candidate === key) + 1;
+    if (key != null && start <= 0) return [null, null];
+    for (let index = start; index < props.length; index += 1) {
+      const entryKey = props[index];
+      const entry = window.lua_rawget(table, entryKey);
+      if (entry != null) return [entryKey, entry];
+    }
+    return [null, null];
+  };
   window.lua_tableget = (table, key) => {
     if (table == null || table === false) return null;
     try {
@@ -7086,21 +7108,12 @@ function hardenLuaJsPreviewRuntime() {
         0,
       ];
     };
+    window.G.str.next = luaNext;
     window.G.str.pairs = (table) => {
       if (table == null || table === false || typeof table !== "object") {
         return [emptyIterator, window.lua_newtable(), null];
       }
-      const props = [];
-      for (const key in table.str || {}) props.push(key);
-      if (table.arraymode) {
-        for (let index = (table.uints?.length || 0) - 1; index >= 0; index -= 1) {
-          if (table.uints[index] != null) props.push(index + 1);
-        }
-      } else {
-        for (const key in table.uints || {}) props.push(Number(key));
-      }
-      for (const key in table.floats || {}) props.push(Number(key));
-      for (const key in table.bools || {}) props.push(key === "true");
+      const props = luaJsTableKeys(table);
       reorderLuaJsPairsProps(table, props);
       let cursor = 0;
       return [
@@ -7118,6 +7131,24 @@ function hardenLuaJsPreviewRuntime() {
       ];
     };
   }
+}
+
+function luaJsTableKeys(table) {
+  const props = [];
+  for (const key in table.str || {}) props.push(key);
+  if (table.arraymode) {
+    for (let index = (table.uints?.length || 0) - 1; index >= 0; index -= 1) {
+      if (table.uints[index] != null) props.push(index + 1);
+    }
+  } else {
+    for (const key in table.uints || {}) props.push(Number(key));
+  }
+  for (const key in table.floats || {}) props.push(Number(key));
+  const boolTable = table.bool || table.bools || {};
+  for (const key in boolTable) props.push(key === "true");
+  const objectKeys = Array.isArray(table.objs) ? table.objs : [];
+  for (const entry of objectKeys) props.push(entry[0]);
+  return props;
 }
 
 function reorderLuaJsPairsProps(table, props) {

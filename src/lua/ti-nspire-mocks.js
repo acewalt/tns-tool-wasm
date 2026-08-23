@@ -8,6 +8,7 @@ export const TI_NSPIRE_MOCK_CAPABILITIES = {
       "platform.hw",
       "platform.isColorDisplay",
       "platform.isDeviceModeRendering",
+      "platform.isTabletModeRendering",
       "platform.registerErrorHandler",
       "platform.window",
       "platform.gc",
@@ -20,6 +21,7 @@ export const TI_NSPIRE_MOCK_CAPABILITIES = {
       "platform.window.width",
       "platform.window.height",
       "platform.window.invalidate",
+      "platform.window.setBackgroundColor",
       "platform.window.setFocus"
     ]
   },
@@ -106,6 +108,7 @@ export function installTiNspireMocks(global, state = {}, options = {}) {
   global.lua_tableset(platform, "hw", () => [5]);
   global.lua_tableset(platform, "isColorDisplay", () => [true]);
   global.lua_tableset(platform, "isDeviceModeRendering", () => [false]);
+  global.lua_tableset(platform, "isTabletModeRendering", () => [false]);
   global.lua_tableset(platform, "registerErrorHandler", (_handler) => {
     state.errorHandler = _handler;
     return [];
@@ -120,6 +123,10 @@ export function installTiNspireMocks(global, state = {}, options = {}) {
   global.lua_tableset(windowTable, "width", () => [width]);
   global.lua_tableset(windowTable, "height", () => [height]);
   global.lua_tableset(windowTable, "setFocus", () => []);
+  global.lua_tableset(windowTable, "setBackgroundColor", (_self, color) => {
+    global.lua_tableset(windowTable, "backgroundColor", color);
+    return [];
+  });
   global.lua_tableset(windowTable, "invalidate", () => {
     global.lua_tableset(windowTable, "invalidated", true);
     return [];

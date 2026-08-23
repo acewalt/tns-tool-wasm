@@ -19,6 +19,8 @@ assert.equal(solved.solved, true);
 assert.equal(Array.isArray(solved.lines), true);
 const nested = lua.call("nested", []);
 assert.deepEqual(nested.data.items, [1, 2, 3]);
+const nextTotal = lua.call("countWithNext", []);
+assert.equal(nextTotal, 6);
 lua.close();
 
 const tests = JSON.parse(await fs.readFile(path.join(__dirname, "edo.sample.json"), "utf8"));
@@ -26,6 +28,15 @@ const suite = await runLuaTestSuite(luaSource, tests.tests, { functionName: test
 assert.equal(suite.success, true);
 assert.equal(suite.passed, 2);
 assert.equal(suite.failed, 0);
+
+const appSource = await fs.readFile(path.join(__dirname, "..", "app.js"), "utf8");
+const analyzerStart = appSource.indexOf("function analyzeLuaBasic");
+const analyzerEnd = appSource.indexOf("function highlightLuaLine");
+assert.notEqual(analyzerStart, -1);
+assert.notEqual(analyzerEnd, -1);
+const analyzeLuaBasic = new Function(`${appSource.slice(analyzerStart, analyzerEnd)}; return analyzeLuaBasic;`)();
+const doBlockSyntax = analyzeLuaBasic("do\n  local value = 1\n  function nested()\n    return value\n  end\nend\n");
+assert.deepEqual(doBlockSyntax.errors, []);
 
 const previewFixture = path.join(__dirname, "fixtures", "preview_counter.lua");
 const previewSource = await fs.readFile(previewFixture, "utf8");

@@ -329,6 +329,20 @@ function installLuaJsCompatibilityPatches(global, state) {
     if (value == null || value === false) return 0;
     return originalLen(value);
   };
+  if (global.G?.str) {
+    global.G.str.next = (table, key = null) => {
+      if (table == null || table === false || typeof table !== "object") return [null, null];
+      const keys = luaTableKeys(table);
+      const start = key == null ? 0 : keys.findIndex((candidate) => candidate === key) + 1;
+      if (key != null && start <= 0) return [null, null];
+      for (let index = start; index < keys.length; index += 1) {
+        const entryKey = keys[index];
+        const entry = global.lua_rawget(table, entryKey);
+        if (entry != null) return [entryKey, entry];
+      }
+      return [null, null];
+    };
+  }
   global.not_supported = () => {
     const message = "Unsupported LuaJS/TI-Nspire API called";
     state.missingApis.push({
@@ -339,6 +353,24 @@ function installLuaJsCompatibilityPatches(global, state) {
     });
     throw new Error(message);
   };
+}
+
+function luaTableKeys(table) {
+  const keys = [];
+  for (const key of Object.keys(table.str || {})) keys.push(key);
+  if (table.arraymode && Array.isArray(table.uints)) {
+    for (let index = table.uints.length - 1; index >= 0; index -= 1) {
+      if (table.uints[index] != null) keys.push(index + 1);
+    }
+  } else {
+    for (const key of Object.keys(table.uints || {})) keys.push(Number(key));
+  }
+  for (const key of Object.keys(table.floats || {})) keys.push(Number(key));
+  const boolTable = table.bool || table.bools || {};
+  for (const key of Object.keys(boolTable)) keys.push(key === "true");
+  const objectKeys = Array.isArray(table.objs) ? table.objs : [];
+  for (const entry of objectKeys) keys.push(entry[0]);
+  return keys;
 }
 
 function stripLuaJsBootstrap(parsedJs) {
