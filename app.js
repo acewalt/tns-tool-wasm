@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-ti-image-rgb565";
+const SOURCE_VERSION = "2026-08-23-ti-image-viewport";
 
 const I18N = {
   es: {
@@ -3213,7 +3213,7 @@ function renderBmpToCanvas(canvas, bytes) {
   ctx.putImageData(imageData, 0, 0);
 }
 
-function drawImageCalculatorFrame(targetCanvas, source) {
+function drawImageCalculatorFrame(targetCanvas, source, viewState = null) {
   const frameWidth = 320;
   const frameHeight = 240;
   const chromeHeight = 26;
@@ -3234,13 +3234,18 @@ function drawImageCalculatorFrame(targetCanvas, source) {
   ctx.textBaseline = "middle";
   ctx.fillText(t("imageCalculatorView"), frameWidth / 2, chromeHeight / 2);
   if (!sourceWidth || !sourceHeight) return;
-  const scale = Math.min(frameWidth / sourceWidth, contentHeight / sourceHeight, 1);
-  const drawWidth = Math.max(1, Math.round(sourceWidth * scale));
-  const drawHeight = Math.max(1, Math.round(sourceHeight * scale));
-  const drawX = Math.floor((frameWidth - drawWidth) / 2);
-  const drawY = chromeHeight + Math.floor((contentHeight - drawHeight) / 2);
-  ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+  const state = viewState || { x: 0, y: 0 };
+  const maxX = Math.max(0, sourceWidth - frameWidth);
+  const maxY = Math.max(0, sourceHeight - contentHeight);
+  state.x = Math.max(0, Math.min(maxX, Math.round(Number(state.x) || 0)));
+  state.y = Math.max(0, Math.min(maxY, Math.round(Number(state.y) || 0)));
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(0, chromeHeight, frameWidth, contentHeight);
+  ctx.clip();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, -state.x, chromeHeight - state.y);
+  ctx.restore();
 }
 
 function setupImageCalculatorToggle(backdrop, source) {
@@ -3249,15 +3254,80 @@ function setupImageCalculatorToggle(backdrop, source) {
   if (!preview || !toggle || !source) return;
   const calculatorCanvas = document.createElement("canvas");
   calculatorCanvas.className = "image-calculator-canvas";
+  calculatorCanvas.tabIndex = 0;
   calculatorCanvas.hidden = true;
   preview.append(calculatorCanvas);
+  const viewState = { x: 0, y: 0 };
+  const sourceSize = () => ({
+    width: source.naturalWidth || source.videoWidth || source.width || 0,
+    height: source.naturalHeight || source.videoHeight || source.height || 0,
+  });
+  const clampAndDraw = () => drawImageCalculatorFrame(calculatorCanvas, source, viewState);
+  const moveBy = (dx, dy) => {
+    viewState.x += dx;
+    viewState.y += dy;
+    clampAndDraw();
+  };
   const setMode = (enabled) => {
     preview.classList.toggle("calculator-mode", enabled);
     source.hidden = enabled;
     calculatorCanvas.hidden = !enabled;
     toggle.textContent = enabled ? t("imageOriginalView") : t("imageCalculatorView");
-    if (enabled) drawImageCalculatorFrame(calculatorCanvas, source);
+    if (enabled) {
+      clampAndDraw();
+      calculatorCanvas.focus();
+    }
   };
+  let drag = null;
+  calculatorCanvas.addEventListener("pointerdown", (event) => {
+    const size = sourceSize();
+    if (size.width <= 320 && size.height <= 214) return;
+    const rect = calculatorCanvas.getBoundingClientRect();
+    drag = {
+      pointerId: event.pointerId,
+      x: event.clientX,
+      y: event.clientY,
+      viewX: viewState.x,
+      viewY: viewState.y,
+      scaleX: calculatorCanvas.width / rect.width,
+      scaleY: calculatorCanvas.height / rect.height,
+    };
+    calculatorCanvas.setPointerCapture?.(event.pointerId);
+    calculatorCanvas.classList.add("dragging");
+    calculatorCanvas.focus();
+  });
+  calculatorCanvas.addEventListener("pointermove", (event) => {
+    if (!drag) return;
+    viewState.x = drag.viewX - (event.clientX - drag.x) * drag.scaleX;
+    viewState.y = drag.viewY - (event.clientY - drag.y) * drag.scaleY;
+    clampAndDraw();
+  });
+  const finishDrag = () => {
+    drag = null;
+    calculatorCanvas.classList.remove("dragging");
+  };
+  calculatorCanvas.addEventListener("pointerup", finishDrag);
+  calculatorCanvas.addEventListener("pointercancel", finishDrag);
+  calculatorCanvas.addEventListener("wheel", (event) => {
+    if (calculatorCanvas.hidden) return;
+    event.preventDefault();
+    moveBy(event.deltaX || 0, event.deltaY || 0);
+  }, { passive: false });
+  calculatorCanvas.addEventListener("keydown", (event) => {
+    const step = event.shiftKey ? 80 : 24;
+    const moves = {
+      ArrowLeft: [-step, 0],
+      ArrowRight: [step, 0],
+      ArrowUp: [0, -step],
+      ArrowDown: [0, step],
+      Home: [-100000, -100000],
+      End: [100000, 100000],
+    };
+    const move = moves[event.key];
+    if (!move) return;
+    event.preventDefault();
+    moveBy(move[0], move[1]);
+  });
   toggle.addEventListener("click", () => setMode(calculatorCanvas.hidden));
 }
 

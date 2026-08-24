@@ -2436,6 +2436,12 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   border: 1px solid rgba(226, 232, 240, 0.38);
   border-radius: 4px;
   box-shadow: 0 18px 38px rgba(0, 0, 0, 0.35);
+  cursor: grab;
+  outline: none;
+}
+
+.image-calculator-canvas.dragging {
+  cursor: grabbing;
 }
 
 .image-source-preview[hidden],
