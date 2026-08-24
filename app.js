@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-image-card-support";
+const SOURCE_VERSION = "2026-08-23-image-preview-calculator";
 
 const I18N = {
   es: {
@@ -39,6 +39,8 @@ const I18N = {
     editPython: "Editar Python",
     addPythonWidget: "Agregar Python",
     viewImage: "Ver imagen",
+    imageCalculatorView: "Vista calculadora",
+    imageOriginalView: "Vista original",
     imageWidgetAdded: "Imagen agregada como nueva card.",
     imageWidgetNoFile: "Selecciona una imagen BMP, PNG o JPG.",
     runLuaSyntax: "Ejecutar sintaxis Lua",
@@ -267,6 +269,8 @@ const I18N = {
     editPython: "Edit Python",
     addPythonWidget: "Add Python",
     viewImage: "View image",
+    imageCalculatorView: "Calculator view",
+    imageOriginalView: "Original view",
     imageWidgetAdded: "Image added as a new card.",
     imageWidgetNoFile: "Select a BMP, PNG, or JPG image.",
     runLuaSyntax: "Run Lua syntax",
@@ -495,6 +499,8 @@ const I18N = {
     editPython: "Editer Python",
     addPythonWidget: "Ajouter Python",
     viewImage: "Voir image",
+    imageCalculatorView: "Vue calculatrice",
+    imageOriginalView: "Vue originale",
     imageWidgetAdded: "Image ajoutee comme nouvelle carte.",
     imageWidgetNoFile: "Selectionnez une image BMP, PNG ou JPG.",
     runLuaSyntax: "Analyser syntaxe Lua",
@@ -2805,11 +2811,12 @@ json.dumps({
   return JSON.parse(payload);
 }
 
-async function openAddImageWidgetFlow() {
+async function openAddImageWidgetFlow({ showPreview = true } = {}) {
   const file = await chooseImageResourceFile();
   if (!file) return;
   const item = await addImageWidgetToStage(file);
-  showImageModal(item);
+  if (showPreview) showImageModal(item);
+  return item;
 }
 
 async function addBasicFuncToStage() {
@@ -2916,14 +2923,192 @@ function imageMimeFromName(name = "") {
   return "application/octet-stream";
 }
 
+function isBmpBytes(bytes) {
+  return bytes && bytes.length >= 2 && bytes[0] === 0x42 && bytes[1] === 0x4d;
+}
+
+function readBmpBitfield(value, mask) {
+  if (!mask) return 0;
+  let shift = 0;
+  while (shift < 32 && ((mask >>> shift) & 1) === 0) shift += 1;
+  let bits = 0;
+  while (shift + bits < 32 && ((mask >>> (shift + bits)) & 1) === 1) bits += 1;
+  const channel = (value & mask) >>> shift;
+  const max = (1 << bits) - 1;
+  return max > 0 ? Math.round((channel * 255) / max) : 0;
+}
+
+function decodeBmpToRgba(bytes) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes);
+  if (!isBmpBytes(data) || data.length < 54) {
+    throw new Error("BMP invalido o incompleto.");
+  }
+
+  const view = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  const pixelOffset = view.getUint32(10, true);
+  const dibSize = view.getUint32(14, true);
+  if (dibSize < 40) {
+    throw new Error(`BMP DIB no soportado: ${dibSize}`);
+  }
+
+  const width = view.getInt32(18, true);
+  const signedHeight = view.getInt32(22, true);
+  const planes = view.getUint16(26, true);
+  const headerBpp = view.getUint16(28, true);
+  const compression = view.getUint32(30, true);
+  const declaredImageSize = view.getUint32(34, true);
+  const height = Math.abs(signedHeight);
+  if (width <= 0 || height <= 0 || planes !== 1 || pixelOffset >= data.length) {
+    throw new Error("BMP con dimensiones o cabecera no validas.");
+  }
+
+  const payloadSize = data.length - pixelOffset;
+  let bpp = headerBpp;
+  let tightRows = false;
+  const tight24Size = width * height * 3;
+  if (payloadSize === tight24Size || declaredImageSize === tight24Size) {
+    // Some TI-Nspire resources have a BMP header that reports 16 bpp, but the
+    // payload is packed 24-bit RGB/BGR. Browser <img> rejects that header.
+    bpp = 24;
+    tightRows = true;
+  }
+
+  if (![8, 16, 24, 32].includes(bpp)) {
+    throw new Error(`BMP no soportado: ${bpp} bpp.`);
+  }
+  if (![0, 3, 6, 65543].includes(compression)) {
+    throw new Error(`BMP con compresion no soportada: ${compression}.`);
+  }
+
+  const rowStride = tightRows ? width * 3 : Math.floor((width * bpp + 31) / 32) * 4;
+  const topDown = signedHeight < 0;
+  const rgba = new Uint8ClampedArray(width * height * 4);
+  let palette = [];
+  if (bpp === 8) {
+    const paletteStart = 14 + dibSize;
+    const paletteCount = Math.max(0, Math.min(256, Math.floor((pixelOffset - paletteStart) / 4)));
+    palette = Array.from({ length: paletteCount }, (_, index) => {
+      const p = paletteStart + index * 4;
+      return [data[p + 2] || 0, data[p + 1] || 0, data[p] || 0, 255];
+    });
+  }
+
+  let rMask = 0xf800;
+  let gMask = 0x07e0;
+  let bMask = 0x001f;
+  if ((bpp === 16 || bpp === 32) && (compression === 3 || compression === 6)) {
+    const maskStart = 14 + dibSize;
+    if (maskStart + 12 <= pixelOffset) {
+      rMask = view.getUint32(maskStart, true);
+      gMask = view.getUint32(maskStart + 4, true);
+      bMask = view.getUint32(maskStart + 8, true);
+    }
+  }
+
+  for (let y = 0; y < height; y += 1) {
+    const srcY = topDown ? y : height - 1 - y;
+    const rowStart = pixelOffset + srcY * rowStride;
+    if (rowStart >= data.length) break;
+    for (let x = 0; x < width; x += 1) {
+      const out = (y * width + x) * 4;
+      if (bpp === 24) {
+        const p = rowStart + x * 3;
+        rgba[out] = data[p + 2] || 0;
+        rgba[out + 1] = data[p + 1] || 0;
+        rgba[out + 2] = data[p] || 0;
+        rgba[out + 3] = 255;
+      } else if (bpp === 32) {
+        const p = rowStart + x * 4;
+        rgba[out] = data[p + 2] || 0;
+        rgba[out + 1] = data[p + 1] || 0;
+        rgba[out + 2] = data[p] || 0;
+        rgba[out + 3] = data[p + 3] || 255;
+      } else if (bpp === 16) {
+        const p = rowStart + x * 2;
+        const value = (data[p] || 0) | ((data[p + 1] || 0) << 8);
+        rgba[out] = readBmpBitfield(value, rMask);
+        rgba[out + 1] = readBmpBitfield(value, gMask);
+        rgba[out + 2] = readBmpBitfield(value, bMask);
+        rgba[out + 3] = 255;
+      } else {
+        const p = rowStart + x;
+        const color = palette[data[p] || 0] || [0, 0, 0, 255];
+        rgba[out] = color[0];
+        rgba[out + 1] = color[1];
+        rgba[out + 2] = color[2];
+        rgba[out + 3] = color[3];
+      }
+    }
+  }
+
+  return { width, height, rgba };
+}
+
+function renderBmpToCanvas(canvas, bytes) {
+  const decoded = decodeBmpToRgba(bytes);
+  canvas.width = decoded.width;
+  canvas.height = decoded.height;
+  const ctx = canvas.getContext("2d");
+  const imageData = ctx.createImageData(decoded.width, decoded.height);
+  imageData.data.set(decoded.rgba);
+  ctx.putImageData(imageData, 0, 0);
+}
+
+function drawImageCalculatorFrame(targetCanvas, source) {
+  const frameWidth = 320;
+  const frameHeight = 240;
+  const chromeHeight = 26;
+  const contentHeight = frameHeight - chromeHeight;
+  const sourceWidth = source.naturalWidth || source.videoWidth || source.width || 0;
+  const sourceHeight = source.naturalHeight || source.videoHeight || source.height || 0;
+  targetCanvas.width = frameWidth;
+  targetCanvas.height = frameHeight;
+  const ctx = targetCanvas.getContext("2d");
+  ctx.clearRect(0, 0, frameWidth, frameHeight);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, frameWidth, frameHeight);
+  ctx.fillStyle = "#313531";
+  ctx.fillRect(0, 0, frameWidth, chromeHeight);
+  ctx.fillStyle = "#f8fafc";
+  ctx.font = "bold 12px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(t("imageCalculatorView"), frameWidth / 2, chromeHeight / 2);
+  if (!sourceWidth || !sourceHeight) return;
+  const scale = Math.min(frameWidth / sourceWidth, contentHeight / sourceHeight, 1);
+  const drawWidth = Math.max(1, Math.round(sourceWidth * scale));
+  const drawHeight = Math.max(1, Math.round(sourceHeight * scale));
+  const drawX = Math.floor((frameWidth - drawWidth) / 2);
+  const drawY = chromeHeight + Math.floor((contentHeight - drawHeight) / 2);
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(source, drawX, drawY, drawWidth, drawHeight);
+}
+
+function setupImageCalculatorToggle(backdrop, source) {
+  const preview = backdrop.querySelector(".image-resource-preview");
+  const toggle = backdrop.querySelector("#image-calculator-toggle");
+  if (!preview || !toggle || !source) return;
+  const calculatorCanvas = document.createElement("canvas");
+  calculatorCanvas.className = "image-calculator-canvas";
+  calculatorCanvas.hidden = true;
+  preview.append(calculatorCanvas);
+  const setMode = (enabled) => {
+    preview.classList.toggle("calculator-mode", enabled);
+    source.hidden = enabled;
+    calculatorCanvas.hidden = !enabled;
+    toggle.textContent = enabled ? t("imageOriginalView") : t("imageCalculatorView");
+    if (enabled) drawImageCalculatorFrame(calculatorCanvas, source);
+  };
+  toggle.addEventListener("click", () => setMode(calculatorCanvas.hidden));
+}
+
 function showImageModal(item) {
   const imagePath = item?.detail?.image_file || item?.file || "";
   if (!imagePath) return;
+  let bytes = null;
   let url = "";
   try {
-    const bytes = pyodide.FS.readFile(imagePath);
-    const blob = new Blob([bytes], { type: imageMimeFromName(imagePath) });
-    url = URL.createObjectURL(blob);
+    bytes = pyodide.FS.readFile(imagePath);
   } catch (error) {
     showTextModal(`${t("viewImage")}: ${item?.name || ""}`, `ERROR: ${error.message}`);
     return;
@@ -2934,14 +3119,42 @@ function showImageModal(item) {
     <div class="modal inspector-modal image-resource-modal">
       <h2>${escapeHtml(item?.name || t("viewImage"))}</h2>
       <div class="image-resource-preview">
-        <img alt="${escapeHtml(item?.name || "image")}" src="${url}">
       </div>
       <div class="modal-actions">
+        <button type="button" id="image-calculator-toggle" class="green-tool-button">${escapeHtml(t("imageCalculatorView"))}</button>
         <button type="button" id="image-close">${escapeHtml(t("close"))}</button>
       </div>
     </div>`;
   document.body.append(backdrop);
-  backdrop.querySelector("#image-close").addEventListener("click", () => closeModal(backdrop, () => URL.revokeObjectURL(url)));
+  const preview = backdrop.querySelector(".image-resource-preview");
+  const isBmp = imageMimeFromName(imagePath) === "image/bmp" || isBmpBytes(bytes);
+  if (isBmp) {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.className = "image-source-preview";
+      canvas.setAttribute("aria-label", item?.name || "BMP preview");
+      renderBmpToCanvas(canvas, bytes);
+      preview.append(canvas);
+      setupImageCalculatorToggle(backdrop, canvas);
+    } catch (error) {
+      preview.innerHTML = `<div class="image-resource-error">ERROR: ${escapeHtml(error.message)}</div>`;
+    }
+  } else {
+    const blob = new Blob([bytes], { type: imageMimeFromName(imagePath) });
+    url = URL.createObjectURL(blob);
+    const img = document.createElement("img");
+    img.className = "image-source-preview";
+    img.alt = item?.name || "image";
+    img.src = url;
+    img.addEventListener("load", () => setupImageCalculatorToggle(backdrop, img), { once: true });
+    img.addEventListener("error", () => {
+      preview.innerHTML = `<div class="image-resource-error">ERROR: ${escapeHtml(t("viewImage"))}</div>`;
+    }, { once: true });
+    preview.append(img);
+  }
+  backdrop.querySelector("#image-close").addEventListener("click", () => closeModal(backdrop, () => {
+    if (url) URL.revokeObjectURL(url);
+  }));
 }
 
 function closeDocumentInspectorModals() {
@@ -11938,7 +12151,12 @@ async function openDocumentInspector() {
   });
   backdrop.querySelector("#add-image-widget").addEventListener("click", async () => {
     try {
-      await openAddImageWidgetFlow();
+      const item = await openAddImageWidgetFlow({ showPreview: false });
+      if (!item) return;
+      closeModal(backdrop, async () => {
+        await openDocumentInspector();
+        showImageModal(item);
+      });
     } catch (error) {
       xmlLog(`ERROR: ${error.message}`);
     }
