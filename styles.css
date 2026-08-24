@@ -1294,6 +1294,42 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   overflow-y: auto;
 }
 
+.love-project-modal {
+  width: min(640px, calc(100vw - 28px));
+}
+
+.love-project-picker {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at 0 0, rgba(255, 105, 173, 0.12), transparent 36%),
+    rgba(7, 16, 33, 0.78);
+}
+
+.love-project-picker label {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.love-project-picker input:not([type="file"]) {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(5, 13, 28, 0.92);
+  color: var(--text);
+  padding: 11px 12px;
+  font: inherit;
+}
+
+.love-project-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
 #lua-preview-canvas {
   width: 318px;
   height: 212px;

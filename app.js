@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-compat-shims";
+const SOURCE_VERSION = "2026-08-23-love-project-preview";
 
 const I18N = {
   es: {
@@ -41,7 +41,18 @@ const I18N = {
     saveLuaXml: "Guardar Lua en XML",
     previewLua: "Preview Lua",
     previewLove: "Preview LÖVE",
+    previewLoveProject: "Preview proyecto LÖVE",
     lovePreviewNote: "Preview LÖVE: soporta codigo love.* y ScriptApp TI-Nspire mediante una capa platform/on/gc sobre canvas.",
+    loveProjectTitle: "Preview de proyecto LÖVE",
+    loveProjectIntro: "Abre un ZIP/.love o una carpeta de proyecto. Se montara en memoria y se ejecutara main.lua con soporte para require y love.filesystem.",
+    loveProjectOpenZip: "Abrir ZIP/.love",
+    loveProjectOpenFolder: "Abrir carpeta",
+    loveProjectEntry: "Archivo principal",
+    loveProjectLoaded: "Proyecto LÖVE cargado: {count} archivos, entrada {entry}.",
+    loveProjectLoading: "Cargando proyecto LÖVE...",
+    loveProjectNoFiles: "No se encontraron archivos en el proyecto.",
+    loveProjectNoMain: "No se encontro main.lua. Indica el archivo principal correcto.",
+    loveProjectConversionDisabled: "La conversion a TI-Nspire esta oculta para proyectos multiarchivo; primero usa un archivo LÖVE suelto o integra manualmente sus modulos.",
     lovePreviewExpandedView: "Vista expandida",
     lovePreviewCalculatorView: "Vista calculadora",
     lovePreviewCalculatorChromeTitle: "Vista calculadora",
@@ -254,7 +265,18 @@ const I18N = {
     saveLuaXml: "Save Lua to XML",
     previewLua: "Preview Lua",
     previewLove: "Preview LÖVE",
+    previewLoveProject: "Preview LÖVE Project",
     lovePreviewNote: "LÖVE preview: supports love.* code and TI-Nspire ScriptApps through a platform/on/gc canvas layer.",
+    loveProjectTitle: "LÖVE project preview",
+    loveProjectIntro: "Open a ZIP/.love or a project folder. It will be mounted in memory and main.lua will run with require and love.filesystem support.",
+    loveProjectOpenZip: "Open ZIP/.love",
+    loveProjectOpenFolder: "Open folder",
+    loveProjectEntry: "Main file",
+    loveProjectLoaded: "LÖVE project loaded: {count} files, entry {entry}.",
+    loveProjectLoading: "Loading LÖVE project...",
+    loveProjectNoFiles: "No files were found in the project.",
+    loveProjectNoMain: "main.lua was not found. Set the correct main file.",
+    loveProjectConversionDisabled: "TI-Nspire conversion is hidden for multi-file projects; use a single LÖVE file or merge modules manually first.",
     lovePreviewExpandedView: "Expanded view",
     lovePreviewCalculatorView: "Calculator view",
     lovePreviewCalculatorChromeTitle: "Calculator view",
@@ -467,7 +489,18 @@ const I18N = {
     saveLuaXml: "Enregistrer Lua dans XML",
     previewLua: "Apercu Lua",
     previewLove: "Apercu LÖVE",
+    previewLoveProject: "Apercu projet LÖVE",
     lovePreviewNote: "Apercu LÖVE : prend en charge le code love.* et les ScriptApps TI-Nspire via une couche platform/on/gc sur canvas.",
+    loveProjectTitle: "Apercu de projet LÖVE",
+    loveProjectIntro: "Ouvrez un ZIP/.love ou un dossier de projet. Il sera monte en memoire et main.lua s'executera avec require et love.filesystem.",
+    loveProjectOpenZip: "Ouvrir ZIP/.love",
+    loveProjectOpenFolder: "Ouvrir dossier",
+    loveProjectEntry: "Fichier principal",
+    loveProjectLoaded: "Projet LÖVE charge : {count} fichiers, entree {entry}.",
+    loveProjectLoading: "Chargement du projet LÖVE...",
+    loveProjectNoFiles: "Aucun fichier trouve dans le projet.",
+    loveProjectNoMain: "main.lua est introuvable. Indiquez le bon fichier principal.",
+    loveProjectConversionDisabled: "La conversion TI-Nspire est masquee pour les projets multi-fichiers; utilisez d'abord un seul fichier LÖVE ou fusionnez les modules manuellement.",
     lovePreviewExpandedView: "Vue agrandie",
     lovePreviewCalculatorView: "Vue calculatrice",
     lovePreviewCalculatorChromeTitle: "Vue calculatrice",
@@ -6937,6 +6970,7 @@ function showLuaEditor(item) {
             <button type="button" id="lua-page-editor">${escapeHtml(t("luaEditPages"))}</button>
             <button type="button" id="lua-tns-convert">${escapeHtml(t("luaTnsConvert"))}</button>
             <button type="button" id="lua-love-convert">${escapeHtml(t("loveConvertNspire"))}</button>
+            <button type="button" id="lua-love-project-preview">${escapeHtml(t("previewLoveProject"))}</button>
           </div>
         </div>
         <button type="button" id="lua-save" class="green-tool-button">${escapeHtml(t("saveMenu"))}</button>
@@ -7083,6 +7117,12 @@ function showLuaEditor(item) {
     editor.dispatchEvent(new Event("input"));
     log.textContent = t("loveConvertedNspire");
     analyze();
+  });
+  backdrop.querySelector("#lua-love-project-preview").addEventListener("click", () => {
+    editMenuPanel.hidden = true;
+    showLoveProjectPicker(editor, log).catch((error) => {
+      log.textContent += `\n[ERROR] Preview LÖVE Project: ${error.message}`;
+    });
   });
   backdrop.querySelector("#lua-preview").addEventListener("click", () => {
     const caret = editor.selectionStart;
@@ -8270,8 +8310,252 @@ async function showLuaPreview(code, item = null) {
 const LOVE_PREVIEW_CALCULATOR_CHROME_HEIGHT = 26;
 const LOVE_PREVIEW_CALCULATOR_SIZE = Object.freeze({ width: 320, height: 214 });
 const LOVE_PREVIEW_EXPANDED_SIZE = Object.freeze({ width: 800, height: 600 });
+const LOVE_PROJECT_TEXT_DECODER = new TextDecoder("utf-8");
 
-async function showLovePreview(code, editor = null, editorLog = null) {
+function formatLoveProjectMessage(template, values = {}) {
+  return String(template || "").replace(/\{(\w+)\}/g, (_match, key) => String(values[key] ?? ""));
+}
+
+function normalizeLoveProjectPath(path) {
+  const raw = String(path || "")
+    .replace(/\\/g, "/")
+    .replace(/^[A-Za-z]:\//, "")
+    .replace(/^\/+/, "");
+  const parts = [];
+  for (const part of raw.split("/")) {
+    if (!part || part === ".") continue;
+    if (part === "..") {
+      parts.pop();
+    } else {
+      parts.push(part);
+    }
+  }
+  return parts.join("/");
+}
+
+function normalizeLoveProjectFiles(files) {
+  return (Array.isArray(files) ? files : [])
+    .map((file) => ({
+      path: normalizeLoveProjectPath(file.path || file.name || ""),
+      bytes: file.bytes instanceof Uint8Array ? file.bytes : file.bytes ? new Uint8Array(file.bytes) : null,
+      text: typeof file.text === "string" ? file.text : null,
+    }))
+    .filter((file) => file.path && (file.bytes || file.text != null));
+}
+
+function stripCommonLoveProjectRoot(files) {
+  const normalized = normalizeLoveProjectFiles(files);
+  if (normalized.some((file) => file.path.toLowerCase() === "main.lua")) return normalized;
+  const main = normalized.find((file) => file.path.toLowerCase().endsWith("/main.lua"));
+  if (!main) return normalized;
+  const prefix = main.path.slice(0, -8);
+  return normalized.map((file) => (
+    file.path.startsWith(prefix) ? { ...file, path: file.path.slice(prefix.length) } : file
+  ));
+}
+
+function findLoveProjectFile(files, path) {
+  const target = normalizeLoveProjectPath(path).toLowerCase();
+  if (!target) return null;
+  return (Array.isArray(files) ? files : []).find((file) => file.path.toLowerCase() === target) || null;
+}
+
+function loveProjectFileToText(file) {
+  if (!file) return "";
+  if (typeof file.text === "string") return file.text;
+  file.text = LOVE_PROJECT_TEXT_DECODER.decode(file.bytes || new Uint8Array());
+  return file.text;
+}
+
+function loveProjectBytesToBinaryString(bytes) {
+  const data = bytes instanceof Uint8Array ? bytes : new Uint8Array();
+  let output = "";
+  const chunkSize = 0x8000;
+  for (let index = 0; index < data.length; index += chunkSize) {
+    output += String.fromCharCode(...data.subarray(index, index + chunkSize));
+  }
+  return output;
+}
+
+function loveProjectFileToLuaString(file) {
+  if (!file) return null;
+  if (file._luaString != null) return file._luaString;
+  file._luaString = file.bytes ? loveProjectBytesToBinaryString(file.bytes) : String(file.text ?? "");
+  return file._luaString;
+}
+
+function loveProjectDirectoryItems(files, directory) {
+  const dir = normalizeLoveProjectPath(directory);
+  const prefix = dir ? `${dir}/` : "";
+  const items = new Set();
+  for (const file of files) {
+    if (!file.path.startsWith(prefix)) continue;
+    const rest = file.path.slice(prefix.length);
+    if (!rest) continue;
+    items.add(rest.split("/")[0]);
+  }
+  return [...items].sort((a, b) => a.localeCompare(b));
+}
+
+function resolveLoveProjectModule(files, moduleName) {
+  const modulePath = normalizeLoveProjectPath(String(moduleName || "").replace(/\./g, "/"));
+  const candidates = [
+    `${modulePath}.lua`,
+    `${modulePath}/init.lua`,
+    modulePath,
+  ].filter(Boolean);
+  for (const candidate of candidates) {
+    const file = findLoveProjectFile(files, candidate);
+    if (file) return { path: file.path, file, attempts: candidates };
+  }
+  return { path: "", file: null, attempts: candidates };
+}
+
+function buildLoveProjectSource(project) {
+  const parts = [`-- TNS Tool LÖVE project preview: ${project.entryPath}`];
+  if (project.confPath && project.confSource != null) {
+    parts.push(`--[[ ${project.confPath}: start ]]`);
+    parts.push(project.confSource);
+    parts.push(`--[[ ${project.confPath}: end ]]`);
+    parts.push(`
+local __tns_love_conf = { window = {} }
+if love and love.conf then
+  love.conf(__tns_love_conf)
+end
+if __tns_love_conf.window and love and love.window and love.window.setMode then
+  local __w = tonumber(__tns_love_conf.window.width)
+  local __h = tonumber(__tns_love_conf.window.height)
+  if __w and __h then
+    love.window.setMode(__w, __h)
+  end
+end`);
+  }
+  parts.push(`--[[ ${project.entryPath}: start ]]`);
+  parts.push(project.entrySource);
+  parts.push(`--[[ ${project.entryPath}: end ]]`);
+  return parts.join("\n\n");
+}
+
+function finalizeLoveProject(files, entryPath = "main.lua", title = "LÖVE project") {
+  const normalized = stripCommonLoveProjectRoot(files);
+  if (!normalized.length) throw new Error(t("loveProjectNoFiles"));
+  const requestedEntry = normalizeLoveProjectPath(entryPath || "main.lua");
+  let entryFile = findLoveProjectFile(normalized, requestedEntry);
+  if (!entryFile && requestedEntry.toLowerCase() !== "main.lua") {
+    entryFile = normalized.find((file) => file.path.toLowerCase().endsWith(`/${requestedEntry.toLowerCase()}`)) || null;
+  }
+  if (!entryFile) entryFile = findLoveProjectFile(normalized, "main.lua");
+  if (!entryFile) throw new Error(t("loveProjectNoMain"));
+  const confFile = findLoveProjectFile(normalized, "conf.lua");
+  const project = {
+    title,
+    files: normalized,
+    entryPath: entryFile.path,
+    entrySource: loveProjectFileToText(entryFile),
+    confPath: confFile?.path || "",
+    confSource: confFile ? loveProjectFileToText(confFile) : "",
+  };
+  project.source = buildLoveProjectSource(project);
+  return project;
+}
+
+async function readBrowserFileBytes(file) {
+  return new Uint8Array(await file.arrayBuffer());
+}
+
+async function loadLoveProjectFromFolder(fileList, entryPath) {
+  const files = [];
+  for (const file of Array.from(fileList || [])) {
+    if (!file || file.size == null) continue;
+    files.push({
+      path: file.webkitRelativePath || file.name,
+      bytes: await readBrowserFileBytes(file),
+    });
+  }
+  return finalizeLoveProject(files, entryPath, "folder");
+}
+
+async function loadLoveProjectFromZip(file, entryPath) {
+  if (!window.JSZip) throw new Error("JSZip is not loaded.");
+  const zip = await window.JSZip.loadAsync(file);
+  const files = [];
+  const entries = Object.values(zip.files || {});
+  for (const entry of entries) {
+    if (!entry || entry.dir) continue;
+    files.push({
+      path: entry.name,
+      bytes: await entry.async("uint8array"),
+    });
+  }
+  return finalizeLoveProject(files, entryPath, file.name || "ZIP");
+}
+
+async function showLoveProjectPicker(editor = null, editorLog = null) {
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal love-project-modal">
+      <h2>${escapeHtml(t("loveProjectTitle"))}</h2>
+      <p class="muted-text">${escapeHtml(t("loveProjectIntro"))}</p>
+      <div class="love-project-picker">
+        <label for="love-project-entry">${escapeHtml(t("loveProjectEntry"))}</label>
+        <input id="love-project-entry" value="main.lua" spellcheck="false" />
+        <div class="love-project-actions">
+          <button type="button" id="love-project-open-zip" class="love-preview-tool-button">${escapeHtml(t("loveProjectOpenZip"))}</button>
+          <button type="button" id="love-project-open-folder" class="green-tool-button">${escapeHtml(t("loveProjectOpenFolder"))}</button>
+        </div>
+        <input id="love-project-zip-input" type="file" accept=".zip,.love,application/zip" hidden />
+        <input id="love-project-folder-input" type="file" multiple hidden />
+        <pre id="love-project-status" class="mini-log">${escapeHtml(t("ready"))}</pre>
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="love-project-close">${escapeHtml(t("close"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  const entryInput = backdrop.querySelector("#love-project-entry");
+  const status = backdrop.querySelector("#love-project-status");
+  const zipInput = backdrop.querySelector("#love-project-zip-input");
+  const folderInput = backdrop.querySelector("#love-project-folder-input");
+  folderInput.setAttribute("webkitdirectory", "");
+  folderInput.setAttribute("directory", "");
+  const launch = async (loader) => {
+    status.textContent = t("loveProjectLoading");
+    try {
+      const project = await loader();
+      const loadedMessage = formatLoveProjectMessage(t("loveProjectLoaded"), {
+        count: project.files.length,
+        entry: project.entryPath,
+      });
+      if (editorLog) editorLog.textContent = loadedMessage;
+      closeModal(backdrop, () => {
+        showLovePreview(project.source, editor, editorLog, { project }).catch((error) => {
+          if (editorLog) editorLog.textContent += `\n[ERROR] Preview LÖVE Project: ${error.message}`;
+        });
+      });
+    } catch (error) {
+      status.textContent = `ERROR: ${error.message}`;
+      if (editorLog) editorLog.textContent += `\n[ERROR] Preview LÖVE Project: ${error.message}`;
+    }
+  };
+  backdrop.querySelector("#love-project-open-zip").addEventListener("click", () => zipInput.click());
+  backdrop.querySelector("#love-project-open-folder").addEventListener("click", () => folderInput.click());
+  zipInput.addEventListener("change", () => {
+    const file = zipInput.files?.[0];
+    if (file) launch(() => loadLoveProjectFromZip(file, entryInput.value));
+  });
+  folderInput.addEventListener("change", () => {
+    const files = folderInput.files;
+    if (files?.length) launch(() => loadLoveProjectFromFolder(files, entryInput.value));
+  });
+  backdrop.querySelector("#love-project-close").addEventListener("click", () => closeModal(backdrop));
+}
+
+async function showLovePreview(code, editor = null, editorLog = null, options = {}) {
+  const project = options?.project || null;
+  const projectInfo = project
+    ? formatLoveProjectMessage(t("loveProjectLoaded"), { count: project.files.length, entry: project.entryPath })
+    : "";
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
@@ -8281,7 +8565,7 @@ async function showLovePreview(code, editor = null, editorLog = null) {
         <button type="button" id="love-preview-close-top">${escapeHtml(t("close"))}</button>
       </div>
       <h2>${escapeHtml(t("previewLove"))}</h2>
-      <p class="muted-text">${escapeHtml(t("lovePreviewNote"))}</p>
+      <p class="muted-text">${escapeHtml(projectInfo ? `${t("lovePreviewNote")} ${projectInfo}` : t("lovePreviewNote"))}</p>
       <div id="love-preview-stage" class="love-preview-stage calculator-view">
         <div class="love-preview-calculator-bar">${escapeHtml(t("lovePreviewCalculatorChromeTitle"))}</div>
         <canvas id="love-preview-canvas" class="calculator-view" width="320" height="214" tabindex="0"></canvas>
@@ -8298,8 +8582,8 @@ async function showLovePreview(code, editor = null, editorLog = null) {
       <pre id="love-preview-log" class="mini-log"></pre>
       <div class="modal-actions">
         <button type="button" id="love-preview-copy-content">${escapeHtml(t("copyScreenContent"))}</button>
-        <button type="button" id="love-copy-nspire">${escapeHtml(t("loveCopyNspire"))}</button>
-        <button type="button" id="love-replace-nspire" class="green-tool-button">${escapeHtml(t("loveReplaceNspire"))}</button>
+        ${project ? "" : `<button type="button" id="love-copy-nspire">${escapeHtml(t("loveCopyNspire"))}</button>
+        <button type="button" id="love-replace-nspire" class="green-tool-button">${escapeHtml(t("loveReplaceNspire"))}</button>`}
         <button type="button" id="love-preview-close">${escapeHtml(t("close"))}</button>
       </div>
     </div>`;
@@ -8331,13 +8615,14 @@ async function showLovePreview(code, editor = null, editorLog = null) {
     }
   };
   applyPreviewSize("calculator");
-  const isLoveSource = looksLikeLoveSource(code);
+  const isLoveSource = project || looksLikeLoveSource(code);
   const isNspireSource = looksLikeTINSPIRELuaSource(code);
   if (isLoveSource && !isNspireSource) {
     appendPreviewLog(previewLog, t("lovePreviewCalculatorWarning"));
+    if (project) appendPreviewLog(previewLog, t("loveProjectConversionDisabled"));
     if (!/\blove\.(draw|update|load)\b/.test(String(code || ""))) appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
     try {
-      runtime = await createLovePreviewRuntime(code, ctx, canvas, previewLog);
+      runtime = await createLovePreviewRuntime(code, ctx, canvas, previewLog, { project });
       runtime.boot();
     } catch (error) {
       appendPreviewLog(previewLog, `ERROR Preview LÖVE: ${describeLuaJsError(error)}\n${compactStack(error)}`);
@@ -8387,7 +8672,7 @@ async function showLovePreview(code, editor = null, editorLog = null) {
   };
   document.addEventListener("keydown", keyDownHandler);
   document.addEventListener("keyup", keyUpHandler);
-  backdrop.querySelector("#love-copy-nspire").addEventListener("click", async () => {
+  backdrop.querySelector("#love-copy-nspire")?.addEventListener("click", async () => {
     await copyPlainText(convertLoveToNspireScriptApp(code));
     appendPreviewLog(previewLog, t("loveCopiedNspire"));
   });
@@ -8396,7 +8681,7 @@ async function showLovePreview(code, editor = null, editorLog = null) {
     await copyPlainText(text);
     appendPreviewLog(previewLog, text.trim() ? t("screenContentCopied") : t("screenContentEmpty"));
   });
-  backdrop.querySelector("#love-replace-nspire").addEventListener("click", () => {
+  backdrop.querySelector("#love-replace-nspire")?.addEventListener("click", () => {
     if (!editor) return;
     editor.value = convertLoveToNspireScriptApp(code);
     editor.dispatchEvent(new Event("input"));
@@ -8913,7 +9198,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   return { boot, callEvent, charIn, mouseClick, resize, close, getScreenText };
 }
 
-async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
+async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) {
   const sources = await loadLuaJsRuntimeSources();
   for (const source of sources) {
     (0, eval)(source);
@@ -8939,9 +9224,13 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   const touch = global.lua_newtable();
   const joystick = global.lua_newtable();
   const thread = global.lua_newtable();
+  const ioTable = global.lua_newtable();
+  const packageTable = global.lua_newtable();
+  const packageLoaded = global.lua_newtable();
   const pressedKeys = new Set();
   const mouseButtons = new Set();
   const virtualFiles = new Map();
+  const projectFiles = normalizeLoveProjectFiles(options.project?.files || []);
   const scissorStack = [];
   const screenText = [];
   const consoleText = [];
@@ -9120,6 +9409,8 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   const readVirtualFile = (filename) => {
     const key = loveFileKey(filename);
     if (virtualFiles.has(key)) return virtualFiles.get(key);
+    const projectFile = findLoveProjectFile(projectFiles, filename);
+    if (projectFile) return loveProjectFileToLuaString(projectFile);
     try {
       const stored = window.localStorage?.getItem(loveFileStorageKey(key));
       if (stored !== null && stored !== "__love_removed__") {
@@ -9131,6 +9422,7 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     }
     return null;
   };
+  const isProjectDirectory = (directory) => loveProjectDirectoryItems(projectFiles, directory).length > 0;
   const writeVirtualFile = (filename, data) => {
     const key = loveFileKey(filename);
     const text = jsString(data);
@@ -9151,6 +9443,73 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
       // Ignore storage cleanup failures.
     }
     return true;
+  };
+  const createLuaFileObject = (filename, initialData = "", writable = false) => {
+    let dataText = jsString(initialData);
+    let position = 0;
+    let closed = false;
+    const object = global.lua_newtable();
+    const ensureOpen = () => {
+      if (closed) throw new Error(`file is closed: ${jsString(filename)}`);
+    };
+    const syncWrite = () => {
+      if (writable) writeVirtualFile(filename, dataText);
+    };
+    const readLine = () => {
+      ensureOpen();
+      if (position >= dataText.length) return null;
+      const newline = dataText.indexOf("\n", position);
+      const end = newline >= 0 ? newline : dataText.length;
+      const line = dataText.slice(position, end).replace(/\r$/, "");
+      position = newline >= 0 ? newline + 1 : dataText.length;
+      return line;
+    };
+    global.lua_tableset(object, "read", (...rawArgs) => {
+      const args = stripSelf(rawArgs, object);
+      ensureOpen();
+      const format = args.length ? jsString(args[0]) : "*line";
+      if (format === "*all" || format === "*a") {
+        const out = dataText.slice(position);
+        position = dataText.length;
+        return [out];
+      }
+      if (format === "*line" || format === "*l") return [readLine()];
+      const count = Number(format);
+      if (Number.isFinite(count)) {
+        const out = dataText.slice(position, position + Math.max(0, count));
+        position += out.length;
+        return [out || null];
+      }
+      return [null, `unsupported read format: ${format}`];
+    });
+    global.lua_tableset(object, "write", (...rawArgs) => {
+      const args = stripSelf(rawArgs, object);
+      ensureOpen();
+      if (!writable) return [null, "file is not writable"];
+      const chunk = args.map(jsString).join("");
+      dataText = `${dataText.slice(0, position)}${chunk}${dataText.slice(position)}`;
+      position += chunk.length;
+      syncWrite();
+      return [object];
+    });
+    global.lua_tableset(object, "seek", (...rawArgs) => {
+      const [whence = "cur", offset = 0] = stripSelf(rawArgs, object);
+      ensureOpen();
+      const numericOffset = toNumber(offset);
+      const mode = jsString(whence);
+      if (mode === "set") position = numericOffset;
+      else if (mode === "end") position = dataText.length + numericOffset;
+      else position += numericOffset;
+      position = Math.max(0, Math.min(dataText.length, position));
+      return [position];
+    });
+    global.lua_tableset(object, "lines", () => [() => [readLine()]]);
+    global.lua_tableset(object, "close", () => {
+      closed = true;
+      syncWrite();
+      return [true];
+    });
+    return object;
   };
   const withCanvasState = (fn) => {
     try {
@@ -9180,18 +9539,44 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     clearCanvas();
     callLove(love, "draw");
   };
-  const evalLuaJsSource = (source) => {
+  const evalLuaJsSource = (source, sourcePath = "") => {
     const parsed = global.lua_parser.parse(source).split("\n").slice(19).join("\n");
-    (0, eval)(parsed);
+    try {
+      return (0, eval)(`(function(){\n${parsed}\n})()`);
+    } catch (error) {
+      if (!sourcePath) throw error;
+      const wrapped = new Error(`${sourcePath}: ${describeLuaJsError(error)}`);
+      wrapped.stack = error?.stack || wrapped.stack;
+      throw wrapped;
+    }
   };
 
   global.G.str.love = love;
+  global.G.str.io = ioTable;
+  global.G.str.package = packageTable;
   global.G.str.os = osTable;
   global.G.str.print = (...args) => {
     const line = args.map((value) => String(value ?? "nil")).join("\t");
     consoleText.push(line);
     log(line);
     return [];
+  };
+  global.G.str.require = (...rawArgs) => {
+    const [moduleName] = rawArgs;
+    const key = jsString(moduleName);
+    const cached = global.lua_tableget(packageLoaded, key);
+    if (cached != null) return [cached];
+    const resolved = resolveLoveProjectModule(projectFiles, key);
+    if (!resolved.file) {
+      throw new Error(`module '${key}' not found. Tried: ${resolved.attempts.join(", ")}`);
+    }
+    global.lua_tableset(packageLoaded, key, true);
+    const result = evalLuaJsSource(loveProjectFileToText(resolved.file), resolved.path);
+    const exported = Array.isArray(result)
+      ? (result[0] == null ? true : result[0])
+      : (result == null ? true : result);
+    global.lua_tableset(packageLoaded, key, exported);
+    return [exported];
   };
 
   global.lua_tableset(love, "graphics", graphics);
@@ -9210,6 +9595,8 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   global.lua_tableset(love, "touch", touch);
   global.lua_tableset(love, "joystick", joystick);
   global.lua_tableset(love, "thread", thread);
+  global.lua_tableset(packageTable, "loaded", packageLoaded);
+  global.lua_tableset(packageTable, "path", "?.lua;?/init.lua");
 
   global.lua_tableset(graphics, "print", (...rawArgs) => {
     const [text, x = 0, y = 0, rotation = 0, sx = 1, sy = sx, ox = 0, oy = 0] = stripSelf(rawArgs, graphics);
@@ -9419,7 +9806,10 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   });
   global.lua_tableset(graphics, "newImage", (...rawArgs) => {
     const [path] = stripSelf(rawArgs, graphics);
-    const image = tableFromObject({ type: "image", path: jsString(path), unsupported: true });
+    const image = tableFromObject({ type: "image", path: jsString(path), width: 0, height: 0, unsupported: true });
+    global.lua_tableset(image, "getWidth", () => [0]);
+    global.lua_tableset(image, "getHeight", () => [0]);
+    global.lua_tableset(image, "getDimensions", () => [0, 0]);
     return [image];
   });
   global.lua_tableset(graphics, "newCanvas", (...rawArgs) => {
@@ -9428,6 +9818,18 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   });
   global.lua_tableset(graphics, "setCanvas", () => []);
   global.lua_tableset(graphics, "draw", () => []);
+  let activeShader = null;
+  global.lua_tableset(graphics, "newShader", (...rawArgs) => {
+    const args = stripSelf(rawArgs, graphics);
+    return [makeObjectTable("Shader", { source: jsString(args[0] || ""), supported: false })];
+  });
+  global.lua_tableset(graphics, "setShader", (...rawArgs) => {
+    const [shader = null] = stripSelf(rawArgs, graphics);
+    activeShader = shader || null;
+    if (activeShader) log("love.graphics.setShader: shader stored, visual effect not rendered by Canvas preview.");
+    return [];
+  });
+  global.lua_tableset(graphics, "getShader", () => [activeShader]);
 
   global.lua_tableset(windowTable, "setMode", (...rawArgs) => {
     const [width, height] = stripSelf(rawArgs, windowTable);
@@ -9510,13 +9912,47 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   global.lua_tableset(filesystem, "getInfo", (...rawArgs) => {
     const [filename] = stripSelf(rawArgs, filesystem);
     const data = readVirtualFile(filename);
-    if (data == null) return [null];
-    return [tableFromObject({ type: "file", size: data.length })];
+    if (data != null) return [tableFromObject({ type: "file", size: data.length })];
+    if (isProjectDirectory(filename)) return [tableFromObject({ type: "directory", size: 0 })];
+    return [null];
+  });
+  global.lua_tableset(filesystem, "getDirectoryItems", (...rawArgs) => {
+    const [directory = ""] = stripSelf(rawArgs, filesystem);
+    const table = global.lua_newtable();
+    loveProjectDirectoryItems(projectFiles, directory).forEach((item, index) => {
+      global.lua_tableset(table, index + 1, item);
+    });
+    return [table];
+  });
+  global.lua_tableset(filesystem, "load", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
+    const file = findLoveProjectFile(projectFiles, filename);
+    const data = file ? loveProjectFileToText(file) : readVirtualFile(filename);
+    if (data == null) return [null, `cannot load ${jsString(filename)}`];
+    return [() => {
+      const result = evalLuaJsSource(data, jsString(filename));
+      if (Array.isArray(result)) return result;
+      return result == null ? [] : [result];
+    }];
+  });
+  global.lua_tableset(filesystem, "newFile", (...rawArgs) => {
+    const [filename, mode = "r"] = stripSelf(rawArgs, filesystem);
+    const writable = /[wa]/.test(jsString(mode));
+    return [createLuaFileObject(filename, writable ? readVirtualFile(filename) || "" : readVirtualFile(filename) || "", writable)];
   });
   global.lua_tableset(filesystem, "exists", (...rawArgs) => {
     const [filename] = stripSelf(rawArgs, filesystem);
+    return [readVirtualFile(filename) != null || isProjectDirectory(filename)];
+  });
+  global.lua_tableset(filesystem, "isFile", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
     return [readVirtualFile(filename) != null];
   });
+  global.lua_tableset(filesystem, "isDirectory", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
+    return [isProjectDirectory(filename)];
+  });
+  global.lua_tableset(filesystem, "createDirectory", () => [true]);
   global.lua_tableset(filesystem, "remove", (...rawArgs) => {
     const [filename] = stripSelf(rawArgs, filesystem);
     return [removeVirtualFile(filename)];
@@ -9528,7 +9964,37 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     return [() => (index < lines.length ? [lines[index++]] : [null])];
   });
   global.lua_tableset(filesystem, "getSaveDirectory", () => ["browser://tns-tool-love-fs"]);
+  global.lua_tableset(filesystem, "getSource", () => [options.project?.title || "browser"]);
+  global.lua_tableset(filesystem, "getSourceBaseDirectory", () => ["browser://tns-tool-love-project"]);
   global.lua_tableset(filesystem, "getWorkingDirectory", () => ["browser://tns-tool-love"]);
+  global.lua_tableset(filesystem, "getRealDirectory", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, filesystem);
+    return [readVirtualFile(filename) != null || isProjectDirectory(filename) ? "browser://tns-tool-love-project" : null];
+  });
+  global.lua_tableset(ioTable, "open", (...rawArgs) => {
+    const [filename, mode = "r"] = stripSelf(rawArgs, ioTable);
+    const normalizedMode = jsString(mode);
+    if (/[wa]/.test(normalizedMode)) {
+      const current = normalizedMode.includes("a") ? readVirtualFile(filename) || "" : "";
+      const file = createLuaFileObject(filename, current, true);
+      if (normalizedMode.includes("a")) global.lua_tableget(file, "seek")(file, "end", 0);
+      return [file];
+    }
+    const data = readVirtualFile(filename);
+    if (data == null) return [null, `cannot open ${jsString(filename)}`];
+    return [createLuaFileObject(filename, data, false)];
+  });
+  global.lua_tableset(ioTable, "lines", (...rawArgs) => {
+    const [filename] = stripSelf(rawArgs, ioTable);
+    const data = readVirtualFile(filename);
+    if (data == null) return [() => [null]];
+    const file = createLuaFileObject(filename, data, false);
+    return [global.lua_tableget(file, "lines")(file)[0]];
+  });
+  global.lua_tableset(ioTable, "write", (...rawArgs) => {
+    log(stripSelf(rawArgs, ioTable).map(jsString).join(""));
+    return [];
+  });
   global.lua_tableset(loveMath, "random", (...rawArgs) => {
     const args = stripSelf(rawArgs, loveMath).map((value) => Number(value));
     if (!args.length) return [Math.random()];
@@ -9648,7 +10114,7 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   global.lua_tableset(thread, "newThread", () => [createThreadObject()]);
   global.lua_tableset(thread, "getChannel", () => [createChannelObject()]);
 
-  evalLuaJsSource(decodeXmlTextEntities(code));
+  evalLuaJsSource(decodeXmlTextEntities(code), options.project?.entryPath || "main.lua");
 
   function frame() {
     if (!running) return;
