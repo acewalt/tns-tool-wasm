@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-ti-image-multi-page-2-3-fix";
+const SOURCE_VERSION = "2026-08-24-ti-image-multi-final-1400";
 
 const I18N = {
   es: {
@@ -3172,7 +3172,7 @@ async function addImageWidgetToStage(file) {
   if (!file) throw new Error(t("imageWidgetNoFile"));
   await ensureXmlStageCopy();
   const prepared = await prepareTiImageResource(file);
-  const imageName = reserveStagePageImageName(); // page0.BMP: mapping confirmado
+  const imageName = reserveStagePageImageName(); // pageN.BMP unico por cada ScriptApp
   ensureParent(`${xmlDoctor.stagePath}/${imageName}`);
   pyodide.FS.writeFile(`${xmlDoctor.stagePath}/${imageName}`, prepared.bytes);
   const currentFile = xmlDoctor.current?.file || "";
@@ -3295,8 +3295,9 @@ json.dumps({
 `);
   xmlDoctor.embedded = true;
   xmlDoctor.stagePrepared = true;
-  xmlLog(t("imageWidgetAdded"));
-  return JSON.parse(payload);
+  const createdItem = JSON.parse(payload);
+  xmlLog(`${t("imageWidgetAdded")} [${SOURCE_VERSION}] ${imageName} | ScriptApp API 2.3`);
+  return createdItem;
 }
 
 async function openAddImageWidgetFlow({ showPreview = true } = {}) {
