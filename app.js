@@ -2767,21 +2767,17 @@ async function prepareTiImageResource(file) {
   return { name: outputName, bytes: encodeCanvasToTiRgb565Bmp(canvas) };
 }
 
-function reserveStageResourceName(name) {
-  const dot = name.lastIndexOf(".");
-  const base = dot > 0 ? name.slice(0, dot) : name;
-  const ext = dot > 0 ? name.slice(dot) : "";
-  let candidate = name;
-  let counter = 1;
-  while (pyodide.FS.analyzePath(`${xmlDoctor.stagePath}/${candidate}`).exists) {
-    counter += 1;
-    candidate = `${base}_${counter}${ext}`;
+function reserveStagePageImageName() {
+  let index = 0;
+  while (pyodide.FS.analyzePath(`${xmlDoctor.stagePath}/page${index}.BMP`).exists) {
+    index += 1;
   }
-  return candidate;
+  return `page${index}.BMP`;
 }
 
 function buildImageViewerLua(imageName) {
-  return `platform.apilevel = '2.0'
+  return `-- B!2r]z(*3+00000200
+platform.apilevel = '2.0'
 
 local sourceName = ${JSON.stringify(imageName)}
 local origImage = nil
@@ -2864,6 +2860,9 @@ end
 local function loadImage()
   if origImage ~= nil or loadError ~= nil then return end
   local ok, result = pcall(function()
+    if not _R or not _R.IMG or not _R.IMG.img then
+      error("Recurso _R.IMG.img no disponible")
+    end
     return image.new(_R.IMG.img)
   end)
   if ok and result and type(result) ~= "string" then
@@ -3159,7 +3158,7 @@ async function addImageWidgetToStage(file) {
   if (!file) throw new Error(t("imageWidgetNoFile"));
   await ensureXmlStageCopy();
   const prepared = await prepareTiImageResource(file);
-  const imageName = reserveStageResourceName(sanitizeResourceFileName(prepared.name, "image.BMP"));
+  const imageName = reserveStagePageImageName();
   ensureParent(`${xmlDoctor.stagePath}/${imageName}`);
   pyodide.FS.writeFile(`${xmlDoctor.stagePath}/${imageName}`, prepared.bytes);
   const currentFile = xmlDoctor.current?.file || "";
