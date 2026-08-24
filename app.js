@@ -1,6 +1,6 @@
-﻿const statusEl = document.querySelector("#runtime-status");
+const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-ti-image-multi-final-1400";
+const SOURCE_VERSION = "2026-08-24-image-view-realistic-cx";
 
 const I18N = {
   es: {
@@ -3613,63 +3613,108 @@ function configureImagePreviewElement(element, width, height) {
 }
 
 function calculatorImageViewGeometry(sourceWidth, sourceHeight) {
+  // TI-Nspire CX/CX II: 320x240 total screen. The document chrome uses
+  // ~28 px, leaving a 320x212 ScriptApp viewport. mViewer starts at z=1,
+  // x0=0, y0=0, so large images are shown at native 1:1 scale and cropped,
+  // NOT scaled-to-fit.
   const frameWidth = 320;
-  const chromeHeight = 26;
-  const contentHeight = 240 - chromeHeight;
-  if (!sourceWidth || !sourceHeight) {
-    return { frameWidth, chromeHeight, contentHeight, scale: 1, sourceViewWidth: frameWidth, sourceViewHeight: contentHeight, maxX: 0, maxY: 0 };
-  }
-  const scale = Math.max(frameWidth / sourceWidth, contentHeight / sourceHeight);
-  const sourceViewWidth = Math.min(sourceWidth, frameWidth / scale);
-  const sourceViewHeight = Math.min(sourceHeight, contentHeight / scale);
+  const frameHeight = 240;
+  const chromeHeight = 28;
+  const contentHeight = frameHeight - chromeHeight;
+  const sourceViewWidth = Math.min(Math.max(0, sourceWidth || 0), frameWidth);
+  const sourceViewHeight = Math.min(Math.max(0, sourceHeight || 0), contentHeight);
   return {
     frameWidth,
+    frameHeight,
     chromeHeight,
     contentHeight,
-    scale,
+    scale: 1,
     sourceViewWidth,
     sourceViewHeight,
-    maxX: Math.max(0, sourceWidth - sourceViewWidth),
-    maxY: Math.max(0, sourceHeight - sourceViewHeight),
+    maxX: Math.max(0, (sourceWidth || 0) - frameWidth),
+    maxY: Math.max(0, (sourceHeight || 0) - contentHeight),
   };
 }
 
-function drawImageCalculatorFrame(targetCanvas, source, viewState = null) {
-  const frameWidth = 320;
-  const frameHeight = 240;
-  const chromeHeight = 26;
-  const contentHeight = frameHeight - chromeHeight;
+function drawImageCalculatorFrame(targetCanvas, source, viewState = null, title = "") {
   const sourceWidth = source.naturalWidth || source.videoWidth || source.width || 0;
   const sourceHeight = source.naturalHeight || source.videoHeight || source.height || 0;
   const geometry = calculatorImageViewGeometry(sourceWidth, sourceHeight);
+  const { frameWidth, frameHeight, chromeHeight, contentHeight } = geometry;
   const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+
   targetCanvas.width = Math.round(frameWidth * dpr);
   targetCanvas.height = Math.round(frameHeight * dpr);
   targetCanvas.style.width = `${frameWidth}px`;
   targetCanvas.style.height = `${frameHeight}px`;
+
   const ctx = targetCanvas.getContext("2d");
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, frameWidth, frameHeight);
+
+  // Screen background + simplified TI-Nspire document chrome.
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, frameWidth, frameHeight);
-  ctx.fillStyle = "#313531";
+  ctx.fillStyle = "#efefe9";
   ctx.fillRect(0, 0, frameWidth, chromeHeight);
-  ctx.fillStyle = "#f8fafc";
-  ctx.font = "bold 12px sans-serif";
+  ctx.strokeStyle = "#5f645f";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(0.5, 0.5, frameWidth - 1, frameHeight - 1);
+  ctx.beginPath();
+  ctx.moveTo(0, chromeHeight - 0.5);
+  ctx.lineTo(frameWidth, chromeHeight - 0.5);
+  ctx.stroke();
+
+  // Left navigation marker and first-page tab, close to the real CX UI.
+  ctx.fillStyle = "#1386a8";
+  ctx.beginPath();
+  ctx.moveTo(3, 14);
+  ctx.lineTo(11, 7);
+  ctx.lineTo(11, 21);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.fillStyle = "#f8f8f4";
+  ctx.strokeStyle = "#777b75";
+  ctx.fillRect(14, 2, 34, 24);
+  ctx.strokeRect(14.5, 2.5, 33, 23);
+  ctx.fillStyle = "#202420";
+  ctx.font = "11px sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(t("imageCalculatorView"), frameWidth / 2, chromeHeight / 2);
+  ctx.fillText("1.1", 31, 14);
+
+  const cleanTitle = String(title || "image").replace(/\s+/g, " ").slice(0, 19);
+  ctx.textAlign = "left";
+  ctx.font = "11px sans-serif";
+  ctx.fillText(`*${cleanTitle}`, 57, 14);
+  ctx.textAlign = "right";
+  ctx.fillText("RAD", frameWidth - 39, 14);
+  ctx.strokeRect(frameWidth - 31.5, 7.5, 12, 12);
+  ctx.beginPath();
+  ctx.moveTo(frameWidth - 9, 8);
+  ctx.lineTo(frameWidth - 20, 20);
+  ctx.moveTo(frameWidth - 20, 8);
+  ctx.lineTo(frameWidth - 9, 20);
+  ctx.stroke();
+
   if (!sourceWidth || !sourceHeight) return;
+
   const state = viewState || { x: 0, y: 0 };
-  state.x = Math.max(0, Math.min(geometry.maxX, Number(state.x) || 0));
-  state.y = Math.max(0, Math.min(geometry.maxY, Number(state.y) || 0));
+  state.x = Math.round(Math.max(0, Math.min(geometry.maxX, Number(state.x) || 0)));
+  state.y = Math.round(Math.max(0, Math.min(geometry.maxY, Number(state.y) || 0)));
+
+  const sw = Math.min(frameWidth, sourceWidth - state.x);
+  const sh = Math.min(contentHeight, sourceHeight - state.y);
+  if (sw <= 0 || sh <= 0) return;
+
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, chromeHeight, frameWidth, contentHeight);
   ctx.clip();
-  ctx.imageSmoothingEnabled = true;
-  ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(source, state.x, state.y, geometry.sourceViewWidth, geometry.sourceViewHeight, 0, chromeHeight, frameWidth, contentHeight);
+  // Native 1:1 display, matching mViewer's initial z=1 state.
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(source, state.x, state.y, sw, sh, 0, chromeHeight, sw, sh);
   ctx.restore();
 }
 
@@ -3691,7 +3736,8 @@ function setupImageCalculatorToggle(backdrop, source) {
     const size = sourceSize();
     return calculatorImageViewGeometry(size.width, size.height);
   };
-  const clampAndDraw = () => drawImageCalculatorFrame(calculatorCanvas, source, viewState);
+  const frameTitle = backdrop.querySelector(".image-resource-title")?.textContent || "image";
+  const clampAndDraw = () => drawImageCalculatorFrame(calculatorCanvas, source, viewState, frameTitle);
   const moveBy = (dx, dy) => {
     const view = geometry();
     viewState.x += dx / view.scale;
@@ -3719,8 +3765,8 @@ function setupImageCalculatorToggle(backdrop, source) {
       y: event.clientY,
       viewX: viewState.x,
       viewY: viewState.y,
-      scaleX: (320 / rect.width) / view.scale,
-      scaleY: (240 / rect.height) / view.scale,
+      scaleX: 320 / rect.width,
+      scaleY: 240 / rect.height,
     };
     calculatorCanvas.setPointerCapture?.(event.pointerId);
     calculatorCanvas.classList.add("dragging");
@@ -3759,6 +3805,8 @@ function setupImageCalculatorToggle(backdrop, source) {
     moveBy(move[0], move[1]);
   });
   toggle.addEventListener("click", () => setMode(calculatorCanvas.hidden));
+  // Image viewer opens in calculator mode by default.
+  setMode(true);
 }
 
 function imageResourceMetaText(width, height, extra = "") {
@@ -3784,14 +3832,17 @@ function showImageModal(item) {
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
     <div class="modal inspector-modal image-resource-modal">
-      <h2>${escapeHtml(item?.name || t("viewImage"))}</h2>
-      <p id="image-resource-meta" class="image-resource-meta"></p>
-      <div class="image-resource-preview">
+      <div class="image-resource-modal-header">
+        <div class="image-resource-heading">
+          <h2 class="image-resource-title">${escapeHtml(item?.name || t("viewImage"))}</h2>
+          <p id="image-resource-meta" class="image-resource-meta"></p>
+        </div>
+        <div class="image-resource-top-actions">
+          <button type="button" id="image-calculator-toggle" class="green-tool-button">${escapeHtml(t("imageCalculatorView"))}</button>
+          <button type="button" id="image-close">${escapeHtml(t("close"))}</button>
+        </div>
       </div>
-      <div class="modal-actions">
-        <button type="button" id="image-calculator-toggle" class="green-tool-button">${escapeHtml(t("imageCalculatorView"))}</button>
-        <button type="button" id="image-close">${escapeHtml(t("close"))}</button>
-      </div>
+      <div class="image-resource-preview"></div>
     </div>`;
   document.body.append(backdrop);
   const preview = backdrop.querySelector(".image-resource-preview");

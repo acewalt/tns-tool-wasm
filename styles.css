@@ -2985,3 +2985,76 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     pointer-events: auto;
   }
 }
+
+
+/* Image resource viewer: fixed top controls + TI-Nspire-like default calculator view. */
+.image-resource-modal {
+  width: min(1180px, calc(100vw - 28px));
+  max-height: min(92vh, 860px);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.image-resource-modal-header {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+  position: relative;
+  z-index: 3;
+}
+
+.image-resource-heading {
+  min-width: 0;
+}
+
+.image-resource-modal .image-resource-title {
+  margin: 0 0 8px;
+}
+
+.image-resource-modal .image-resource-meta {
+  margin: 0;
+}
+
+.image-resource-top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
+  flex: 0 0 auto;
+}
+
+.image-resource-modal .image-resource-preview {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  margin-top: 14px;
+  overflow: auto;
+}
+
+.image-resource-preview.calculator-mode {
+  min-height: 310px;
+}
+
+.image-calculator-canvas {
+  width: 320px;
+  height: 240px;
+  max-width: 100%;
+  image-rendering: pixelated;
+}
+
+@media (max-width: 700px) {
+  .image-resource-modal-header {
+    flex-direction: column;
+  }
+  .image-resource-top-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
