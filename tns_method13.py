@@ -17,6 +17,7 @@ import ctypes
 import os
 import pathlib
 import struct
+import xml.etree.ElementTree as ET
 import zlib
 
 from Crypto.Cipher import DES3
@@ -53,6 +54,11 @@ class PureTixcExpander:
     def expand(self, tixc: bytes, expected_size: int | None = None) -> bytes:
         out = decode_tixc(tixc)
         if expected_size is not None and len(out) != expected_size:
+            try:
+                ET.fromstring(out)
+                return out
+            except ET.ParseError:
+                pass
             raise TixcError(f"pure TIXC output size {len(out)} does not match expected {expected_size}")
         return out
 

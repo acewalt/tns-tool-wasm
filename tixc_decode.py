@@ -478,6 +478,8 @@ def decode_tixc(data: bytes) -> bytes:
         else:
             raise TixcDecodeError(f"unsupported TIXC parser state {state}")
 
-    if state not in (3,):
+    # Some documents finish with whitespace after the root close tag, which
+    # leaves the parser in text state even though the emitted XML is complete.
+    if state not in (3, 8) or text.state != 0:
         raise TixcDecodeError(f"TIXC stream ended in state {state}")
     return bytes(out)

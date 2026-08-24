@@ -2400,6 +2400,31 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   white-space: pre;
 }
 
+.image-resource-preview {
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  max-height: 70vh;
+  overflow: auto;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background:
+    linear-gradient(45deg, rgba(148, 163, 184, 0.12) 25%, transparent 25%),
+    linear-gradient(-45deg, rgba(148, 163, 184, 0.12) 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, rgba(148, 163, 184, 0.12) 75%),
+    linear-gradient(-45deg, transparent 75%, rgba(148, 163, 184, 0.12) 75%);
+  background-color: var(--panel-2);
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+  background-size: 20px 20px;
+}
+
+.image-resource-preview img {
+  max-width: 100%;
+  max-height: 66vh;
+  image-rendering: auto;
+}
+
 .document-form {
   display: grid;
   grid-template-columns: 150px minmax(0, 1fr);

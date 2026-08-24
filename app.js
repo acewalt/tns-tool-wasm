@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-project-preview";
+const SOURCE_VERSION = "2026-08-23-image-card-support";
 
 const I18N = {
   es: {
@@ -34,9 +34,13 @@ const I18N = {
     openLua: "Ver Lua",
     editLua: "Editar Lua",
     addLuaWidget: "Agregar Lua ScriptApp",
+    addImageWidget: "Agregar imagen",
     openPython: "Ver Python",
     editPython: "Editar Python",
     addPythonWidget: "Agregar Python",
+    viewImage: "Ver imagen",
+    imageWidgetAdded: "Imagen agregada como nueva card.",
+    imageWidgetNoFile: "Selecciona una imagen BMP, PNG o JPG.",
     runLuaSyntax: "Ejecutar sintaxis Lua",
     saveLuaXml: "Guardar Lua en XML",
     previewLua: "Preview Lua",
@@ -258,9 +262,13 @@ const I18N = {
     openLua: "View Lua",
     editLua: "Edit Lua",
     addLuaWidget: "Add Lua ScriptApp",
+    addImageWidget: "Add image",
     openPython: "View Python",
     editPython: "Edit Python",
     addPythonWidget: "Add Python",
+    viewImage: "View image",
+    imageWidgetAdded: "Image added as a new card.",
+    imageWidgetNoFile: "Select a BMP, PNG, or JPG image.",
     runLuaSyntax: "Run Lua syntax",
     saveLuaXml: "Save Lua to XML",
     previewLua: "Preview Lua",
@@ -482,9 +490,13 @@ const I18N = {
     openLua: "Voir Lua",
     editLua: "Editer Lua",
     addLuaWidget: "Ajouter Lua ScriptApp",
+    addImageWidget: "Ajouter image",
     openPython: "Voir Python",
     editPython: "Editer Python",
     addPythonWidget: "Ajouter Python",
+    viewImage: "Voir image",
+    imageWidgetAdded: "Image ajoutee comme nouvelle carte.",
+    imageWidgetNoFile: "Selectionnez une image BMP, PNG ou JPG.",
     runLuaSyntax: "Analyser syntaxe Lua",
     saveLuaXml: "Enregistrer Lua dans XML",
     previewLua: "Apercu Lua",
@@ -1497,7 +1509,7 @@ function xmlLog(message) {
 }
 
 function setXmlDoctorEnabled(enabled) {
-  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-add-python-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
+  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-add-image-btn", "xml-add-python-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#xml-programs").disabled = !enabled;
@@ -1506,7 +1518,7 @@ function setXmlDoctorEnabled(enabled) {
 }
 
 function setXmlDoctorDocumentActionsEnabled(enabled) {
-  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-add-python-btn", "xml-document-btn"]) {
+  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-add-image-btn", "xml-add-python-btn", "xml-document-btn"]) {
     const el = document.querySelector(`#${id}`);
     if (el) el.disabled = !enabled;
   }
@@ -1653,8 +1665,9 @@ from xml_scanner import local_name, namespace_uri
 
 root_path = Path(wasm_xml_inspect_path)
 items = []
-summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "python_editors": 0, "python_files": 0, "resources": 0, "basic_blocks": 0, "symbols": 0}
+summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "python_editors": 0, "python_files": 0, "resources": 0, "images": 0, "basic_blocks": 0, "symbols": 0}
 python_files_seen = set()
+image_extensions = {".bmp", ".png", ".jpg", ".jpeg", ".gif"}
 
 def element_path(element, parent_map):
     parts = []
@@ -1794,7 +1807,11 @@ for resource in sorted(root_path.rglob("*")):
     content = ""
     content_label = ""
     detail = {"length": resource.stat().st_size, "extension": resource.suffix.lower()}
-    if resource.suffix.lower() in {".py", ".pyt", ".txt", ".lua"} and resource.stat().st_size <= 1000000:
+    if resource.suffix.lower() in image_extensions:
+        summary["images"] += 1
+        content_label = "Image"
+        detail.update({"name": resource.name, "image_file": str(resource)})
+    elif resource.suffix.lower() in {".py", ".pyt", ".txt", ".lua"} and resource.stat().st_size <= 1000000:
         try:
             content = resource.read_text(encoding="utf-8")
         except UnicodeDecodeError:
@@ -2593,6 +2610,208 @@ json.dumps({
   return JSON.parse(payload);
 }
 
+function chooseImageResourceFile() {
+  return new Promise((resolve) => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/bmp,image/png,image/jpeg,image/gif,.bmp,.png,.jpg,.jpeg,.gif";
+    input.addEventListener("change", () => resolve(input.files?.[0] || null), { once: true });
+    input.addEventListener("cancel", () => resolve(null), { once: true });
+    input.click();
+  });
+}
+
+function sanitizeResourceFileName(name, fallback = "image.bmp") {
+  const clean = String(name || "").split(/[\\/]/).pop().replace(/[^A-Za-z0-9._ -]/g, "_").replace(/\s+/g, "_");
+  return clean && clean.includes(".") ? clean : fallback;
+}
+
+function reserveStageResourceName(name) {
+  const dot = name.lastIndexOf(".");
+  const base = dot > 0 ? name.slice(0, dot) : name;
+  const ext = dot > 0 ? name.slice(dot) : "";
+  let candidate = name;
+  let counter = 1;
+  while (pyodide.FS.analyzePath(`${xmlDoctor.stagePath}/${candidate}`).exists) {
+    counter += 1;
+    candidate = `${base}_${counter}${ext}`;
+  }
+  return candidate;
+}
+
+function buildImageViewerLua(imageName) {
+  return `platform.apilevel = '2.0'
+
+local sourceName = ${JSON.stringify(imageName)}
+local img = nil
+local loadError = nil
+
+local function loadImage()
+  if img ~= nil or loadError ~= nil then return end
+  local ok, result = pcall(function()
+    return image.new(_R.IMG.img)
+  end)
+  if ok then
+    img = result
+  else
+    loadError = tostring(result)
+  end
+end
+
+function on.paint(gc)
+  local sw = platform.window:width()
+  local sh = platform.window:height()
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(0, 0, sw, sh)
+  loadImage()
+  if img then
+    local iw, ih = 0, 0
+    if img.width then iw = img:width() end
+    if img.height then ih = img:height() end
+    local draw = img
+    local dw, dh = iw, ih
+    if iw > 0 and ih > 0 then
+      local scale = math.min(sw / iw, sh / ih, 1)
+      dw = math.floor(iw * scale)
+      dh = math.floor(ih * scale)
+      if scale < 1 and image.copy then
+        local ok, copied = pcall(function() return image.copy(img, dw, dh) end)
+        if ok and copied then draw = copied end
+      end
+    end
+    gc:drawImage(draw, math.floor((sw - dw) / 2), math.floor((sh - dh) / 2))
+  else
+    gc:setColorRGB(0, 0, 0)
+    gc:setFont("sansserif", "r", 10)
+    gc:drawString("Imagen: " .. sourceName, 10, 20, "top")
+    gc:drawString(loadError or "No se pudo cargar la imagen.", 10, 38, "top")
+  end
+end`;
+}
+
+async function addImageWidgetToStage(file) {
+  if (!file) throw new Error(t("imageWidgetNoFile"));
+  await ensureXmlStageCopy();
+  const imageName = reserveStageResourceName(sanitizeResourceFileName(file.name));
+  await writeFileToFs(file, `${xmlDoctor.stagePath}/${imageName}`);
+  const currentFile = xmlDoctor.current?.file || "";
+  pyodide.globals.set("wasm_image_current_file", currentFile);
+  pyodide.globals.set("wasm_image_file_name", imageName);
+  pyodide.globals.set("wasm_image_viewer_lua", buildImageViewerLua(imageName));
+  const payload = await pyodide.runPythonAsync(`
+import json
+import uuid
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+current_file = Path(wasm_image_current_file) if wasm_image_current_file else None
+xml_file = None
+if current_file:
+    try:
+        rel = current_file.relative_to(stage_root)
+    except ValueError:
+        try:
+            rel = current_file.relative_to(source_root)
+        except ValueError:
+            rel = Path(current_file.name)
+    candidate = stage_root / rel
+    if candidate.exists():
+        xml_file = candidate
+if xml_file is None:
+    problem_files = sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p: p.name.lower())
+    xml_files = problem_files or sorted(stage_root.rglob("*.xml"))
+    if xml_files:
+        xml_file = xml_files[0]
+if xml_file is None:
+    raise RuntimeError("No XML file available for image widget")
+
+tree = ET.parse(xml_file)
+root = tree.getroot()
+prob_ns = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+sc_ns = "urn:TI.ScriptApp"
+ET.register_namespace("", prob_ns)
+ET.register_namespace("sc", sc_ns)
+
+def q(ns, name):
+    return f"{{{ns}}}{name}" if ns else name
+
+def res_len(n):
+    if n < 0 or n >= 26 ** 3:
+        raise RuntimeError("Resource name too long for TI metadata")
+    a = n // (26 * 26)
+    b = (n // 26) % 26
+    c = n % 26
+    return "".join(chr(ord("A") + part) for part in (a, b, c))
+
+image_name = wasm_image_file_name
+resource_var = "img"
+resource_descriptor = "AAC" + res_len(len(image_name)) + image_name + res_len(len(resource_var)) + resource_var
+
+card = ET.Element(q(prob_ns, "card"), {"clay": "0", "h1": "10000", "h2": "10000", "w1": "10000", "w2": "10000"})
+ET.SubElement(card, q(prob_ns, "isDummyCard")).text = "0"
+ET.SubElement(card, q(prob_ns, "flag")).text = "0"
+wdgt = ET.SubElement(card, q(prob_ns, "wdgt"), {"type": "TI.ScriptApp", "ver": "1.0"})
+ET.SubElement(wdgt, q(sc_ns, "mFlags")).text = "0"
+ET.SubElement(wdgt, q(sc_ns, "value")).text = "0"
+ET.SubElement(wdgt, q(sc_ns, "cry")).text = "0"
+ET.SubElement(wdgt, q(sc_ns, "legal")).text = "none"
+ET.SubElement(wdgt, q(sc_ns, "schk")).text = "false"
+ET.SubElement(wdgt, q(sc_ns, "guid")).text = uuid.uuid4().hex.upper()
+img_info = ET.SubElement(wdgt, q(sc_ns, "img_info"))
+ET.SubElement(img_info, q(sc_ns, "iname")).text = image_name
+md = ET.SubElement(wdgt, q(sc_ns, "md"))
+ET.SubElement(md, q(sc_ns, "mde"), {"name": "TITLE", "prop": "2147549184"}).text = "image-viewer"
+ET.SubElement(md, q(sc_ns, "mde"), {"name": "PERM", "prop": "134217728"}).text = "12"
+ET.SubElement(md, q(sc_ns, "mde"), {"name": "_RES", "prop": "67108864"}).text = resource_descriptor
+script = ET.SubElement(wdgt, q(sc_ns, "script"), {"version": "512", "id": "0"})
+script.text = wasm_image_viewer_lua
+root.append(card)
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+
+parent_map = {child: parent for parent in root.iter() for child in parent}
+def element_path(element):
+    parts = []
+    current = element
+    while current is not None:
+        parent = parent_map.get(current)
+        name = local_name(current.tag)
+        if parent is not None:
+            same = [child for child in parent if local_name(child.tag) == name]
+            if len(same) > 1:
+                name = f"{name}[{same.index(current)+1}]"
+        parts.append(name)
+        current = parent
+    return "/" + "/".join(reversed(parts))
+
+image_path = stage_root / image_name
+json.dumps({
+    "type": "Resource",
+    "name": image_name,
+    "file": str(image_path),
+    "path": "/" + image_name,
+    "detail": {"length": image_path.stat().st_size, "extension": image_path.suffix.lower(), "image_file": str(image_path), "created": "true"},
+    "content": "",
+    "content_label": "Image",
+    "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False),
+})
+`);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  xmlLog(t("imageWidgetAdded"));
+  return JSON.parse(payload);
+}
+
+async function openAddImageWidgetFlow() {
+  const file = await chooseImageResourceFile();
+  if (!file) return;
+  const item = await addImageWidgetToStage(file);
+  showImageModal(item);
+}
+
 async function addBasicFuncToStage() {
   await ensureXmlStageCopy();
   const currentFile = xmlDoctor.current?.file || "";
@@ -2686,6 +2905,43 @@ function showTextModal(title, content) {
     </div>`;
   document.body.append(backdrop);
   backdrop.querySelector("#text-close").addEventListener("click", () => closeModal(backdrop));
+}
+
+function imageMimeFromName(name = "") {
+  const ext = name.split(".").pop()?.toLowerCase() || "";
+  if (ext === "png") return "image/png";
+  if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+  if (ext === "gif") return "image/gif";
+  if (ext === "bmp") return "image/bmp";
+  return "application/octet-stream";
+}
+
+function showImageModal(item) {
+  const imagePath = item?.detail?.image_file || item?.file || "";
+  if (!imagePath) return;
+  let url = "";
+  try {
+    const bytes = pyodide.FS.readFile(imagePath);
+    const blob = new Blob([bytes], { type: imageMimeFromName(imagePath) });
+    url = URL.createObjectURL(blob);
+  } catch (error) {
+    showTextModal(`${t("viewImage")}: ${item?.name || ""}`, `ERROR: ${error.message}`);
+    return;
+  }
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal inspector-modal image-resource-modal">
+      <h2>${escapeHtml(item?.name || t("viewImage"))}</h2>
+      <div class="image-resource-preview">
+        <img alt="${escapeHtml(item?.name || "image")}" src="${url}">
+      </div>
+      <div class="modal-actions">
+        <button type="button" id="image-close">${escapeHtml(t("close"))}</button>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  backdrop.querySelector("#image-close").addEventListener("click", () => closeModal(backdrop, () => URL.revokeObjectURL(url)));
 }
 
 function closeDocumentInspectorModals() {
@@ -11614,7 +11870,7 @@ async function openDocumentInspector() {
   backdrop.className = "modal-backdrop";
   const summary = data.summary || {};
   const sortedItems = [...(data.items || [])].sort((a, b) => {
-    const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 2 : item.type === "Card" ? 3 : 4;
+    const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.content_label === "Image" ? 2 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 3 : item.type === "Card" ? 4 : 5;
     return rank(a) - rank(b) || String(a.file).localeCompare(String(b.file)) || String(a.path).localeCompare(String(b.path));
   });
   const rows = sortedItems.map((item, index) => {
@@ -11624,6 +11880,8 @@ async function openDocumentInspector() {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action green-mini-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`;
     } else if (item.content_label === "Python") {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openPython"))}</button><button type="button" class="mini-action edit-python-action green-mini-action" data-index="${index}">${escapeHtml(t("editPython"))}</button>`;
+    } else if (item.content_label === "Image") {
+      contentAction = `<button type="button" class="mini-action image-action green-mini-action" data-index="${index}">${escapeHtml(t("viewImage"))}</button>`;
     } else if (item.content) {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(item.content_label === "Scratchpad" ? t("viewDetails") : t("viewValue"))}</button>`;
     }
@@ -11642,6 +11900,7 @@ async function openDocumentInspector() {
         <span>Lua: ${summary.lua_scripts || 0}</span>
         <span>Python: ${summary.python_editors || 0}</span>
         <span>Resources: ${summary.resources || 0}</span>
+        <span>Images: ${summary.images || 0}</span>
         <span>Basic: ${summary.basic_blocks || 0}</span>
         <span>Symbols: ${summary.symbols || 0}</span>
       </div>
@@ -11654,6 +11913,7 @@ async function openDocumentInspector() {
       </div>
       <div class="modal-actions">
         <button type="button" id="add-lua-widget" class="green-tool-button">${escapeHtml(t("addLuaWidget"))}</button>
+        <button type="button" id="add-image-widget" class="green-tool-button">${escapeHtml(t("addImageWidget"))}</button>
         <button type="button" id="add-python-widget" class="green-tool-button">${escapeHtml(t("addPythonWidget"))}</button>
         <button type="button" id="inspector-close">${escapeHtml(t("close"))}</button>
       </div>
@@ -11676,6 +11936,13 @@ async function openDocumentInspector() {
       xmlLog(`ERROR: ${error.message}`);
     }
   });
+  backdrop.querySelector("#add-image-widget").addEventListener("click", async () => {
+    try {
+      await openAddImageWidgetFlow();
+    } catch (error) {
+      xmlLog(`ERROR: ${error.message}`);
+    }
+  });
   for (const button of backdrop.querySelectorAll(".view-action")) {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
@@ -11686,6 +11953,12 @@ async function openDocumentInspector() {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
       showTextModal(`XML: ${item.type} ${item.name}`, item.raw_xml || "");
+    });
+  }
+  for (const button of backdrop.querySelectorAll(".image-action")) {
+    button.addEventListener("click", () => {
+      const item = sortedItems[Number(button.dataset.index)];
+      showImageModal(item);
     });
   }
   for (const button of backdrop.querySelectorAll(".edit-lua-action")) {
@@ -12878,6 +13151,7 @@ function wireEvents() {
   document.querySelector("#xml-format-btn").addEventListener("click", () => formatXmlCode().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-inspector-btn").addEventListener("click", () => openDocumentInspector().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-add-func-btn").addEventListener("click", () => addBasicFuncToStage().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#xml-add-image-btn").addEventListener("click", () => openAddImageWidgetFlow().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-add-python-btn").addEventListener("click", () => addPythonEditorToStage().then(showPythonEditor).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-document-btn").addEventListener("click", openXmlDocumentSettings);
   document.querySelector("#xml-resolve-btn").addEventListener("click", () => resolveXmlProblems().catch((err) => xmlLog(`ERROR: ${err.message}`)));
