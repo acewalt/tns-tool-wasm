@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-ti-image-resource-fix";
+const SOURCE_VERSION = "2026-08-24-ti-rgb565-aux-resource-final";
 
 const I18N = {
   es: {
@@ -2712,36 +2712,51 @@ function encodeCanvasToTiRgb565Bmp(sourceCanvas) {
   const width = sourceCanvas.width;
   const height = sourceCanvas.height;
   if (!width || !height) throw new Error("Image has empty dimensions.");
+
   const ctx = sourceCanvas.getContext("2d", { willReadFrequently: true });
   const rgba = ctx.getImageData(0, 0, width, height).data;
-  const rowStride = width * 3;
-  const imageSize = rowStride * height;
-  const bytes = new Uint8Array(54 + imageSize);
+  const pixelCount = width * height;
+  const rgbSize = pixelCount * 2;
+  const auxSize = pixelCount;
+  const imageSize = rgbSize + auxSize;
+  const pixelOffset = 54;
+  const bytes = new Uint8Array(pixelOffset + imageSize);
+
+  // Header observed in the functional mViewer/TI-Nspire resource.
   bytes[0] = 0x42;
   bytes[1] = 0x4d;
   writeUint32Le(bytes, 2, bytes.length);
-  writeUint32Le(bytes, 10, 54);
+  writeUint32Le(bytes, 6, 0);
+  writeUint32Le(bytes, 10, pixelOffset);
   writeUint32Le(bytes, 14, 40);
   writeUint32Le(bytes, 18, width);
   writeUint32Le(bytes, 22, height);
   writeUint16Le(bytes, 26, 1);
   writeUint16Le(bytes, 28, 16);
-  // TI image resources seen in functional .tns files mark 16 bpp with this
-  // marker, but store top-down tightly packed 24-bit BGR pixel data.
-  writeUint32Le(bytes, 30, 65543);
+  writeUint32Le(bytes, 30, 0x00010007);
   writeUint32Le(bytes, 34, imageSize);
-  let dst = 54;
-  for (let y = 0; y < height; y += 1) {
-    const rowStart = dst;
-    for (let x = 0; x < width; x += 1) {
-      const src = (y * width + x) * 4;
-      bytes[dst] = rgba[src + 2];
-      bytes[dst + 1] = rgba[src + 1];
-      bytes[dst + 2] = rgba[src];
-      dst += 3;
-    }
-    dst = rowStart + rowStride;
+  writeUint32Le(bytes, 38, 0);
+  writeUint32Le(bytes, 42, 0);
+  writeUint32Le(bytes, 46, 0);
+  writeUint32Le(bytes, 50, 0);
+
+  // First plane: tightly packed RGB565, little-endian, 2 bytes per pixel.
+  // Do NOT write BGR24 here even though the total payload is 3 bytes/pixel.
+  for (let i = 0; i < pixelCount; i += 1) {
+    const src = i * 4;
+    const r5 = rgba[src] >> 3;
+    const g6 = rgba[src + 1] >> 2;
+    const b5 = rgba[src + 2] >> 3;
+    const value = (r5 << 11) | (g6 << 5) | b5;
+    const dst = pixelOffset + i * 2;
+    bytes[dst] = value & 0xff;
+    bytes[dst + 1] = (value >>> 8) & 0xff;
   }
+
+  // Second plane: one auxiliary byte per pixel. In the known-good resource
+  // every byte is 0xFF, so reproduce it exactly until its semantics are known.
+  const auxOffset = pixelOffset + rgbSize;
+  bytes.fill(0xff, auxOffset, auxOffset + auxSize);
   return bytes;
 }
 
@@ -3430,40 +3445,81 @@ function decodeBmpToRgba(bytes) {
   }
 
   const payloadSize = data.length - pixelOffset;
+
+  // Modern TI-Nspire/mViewer resource observed in user_3183291446.tns:
+  // 16-bpp marker + compression 0x00010007, followed by a packed RGB565 LE
+  // plane (2 bytes/pixel) and then a separate 1-byte/pixel auxiliary plane.
+  const tiPixelCount = width * height;
+  const tiRgbSize = tiPixelCount * 2;
+  const tiAuxSize = tiPixelCount;
+  const tiExpectedPayload = tiRgbSize + tiAuxSize;
+  const isTiResourceBmp =
+    headerBpp === 16
+    && compression === 0x00010007
+    && payloadSize === tiExpectedPayload
+    && declaredImageSize === tiExpectedPayload;
+
+  if (isTiResourceBmp) {
+    const rgba = new Uint8ClampedArray(tiPixelCount * 4);
+    for (let i = 0; i < tiPixelCount; i += 1) {
+      const p = pixelOffset + i * 2;
+      const value = data[p] | (data[p + 1] << 8);
+      const r5 = (value >>> 11) & 0x1f;
+      const g6 = (value >>> 5) & 0x3f;
+      const b5 = value & 0x1f;
+      const out = i * 4;
+      rgba[out] = Math.round((r5 * 255) / 31);
+      rgba[out + 1] = Math.round((g6 * 255) / 63);
+      rgba[out + 2] = Math.round((b5 * 255) / 31);
+      rgba[out + 3] = 255;
+    }
+    return {
+      width,
+      height,
+      rgba,
+      bpp: 16,
+      headerBpp,
+      compression,
+      payloadSize,
+      usefulPixelSize: tiExpectedPayload,
+      tiResource: true,
+      rgb565Size: tiRgbSize,
+      auxPlaneOffset: pixelOffset + tiRgbSize,
+      auxPlaneSize: tiAuxSize,
+      auxAllOpaque: data.subarray(pixelOffset + tiRgbSize, pixelOffset + tiExpectedPayload).every((value) => value === 0xff),
+    };
+  }
+
+  // From this point on, decode only conventional BMP layouts.
+  // Important: never reinterpret a 16-bpp TI resource as BGR24 merely because
+  // its total payload happens to be 3 bytes per pixel. The TI 0x00010007 path
+  // above owns that layout: RGB565 LE (2 bytes/pixel) + a separate aux plane.
   let bpp = headerBpp;
   let tightRows = false;
-  const tight24Size = width * height * 3;
-  const padded24Size = Math.floor((width * 24 + 31) / 32) * 4 * height;
   const tight16Size = width * height * 2;
-  const padded16Size = Math.floor((width * 16 + 31) / 32) * 4 * height;
-  if (payloadSize === tight24Size || declaredImageSize === tight24Size) {
-    // Some TI resources claim 16 bpp but carry tightly packed 24-bit BGR.
-    bpp = 24;
-    tightRows = true;
-  } else if (payloadSize === padded24Size || declaredImageSize === padded24Size) {
-    // Functional TI image documents use this shape: header 16 bpp, payload 24-bit.
-    bpp = 24;
-  } else if (
-    headerBpp === 16
-    || payloadSize === tight16Size
-    || payloadSize === padded16Size
-    || declaredImageSize === tight16Size
-    || declaredImageSize === padded16Size
-  ) {
-    bpp = 16;
-    tightRows = payloadSize === tight16Size || declaredImageSize === tight16Size;
+  const tight24Size = width * height * 3;
+  const tight32Size = width * height * 4;
+
+  if (compression === 0 && payloadSize === width * height * Math.ceil(bpp / 8)) {
+    // Accept tightly packed ordinary BMPs when the header itself declares
+    // the matching bit depth. Do not infer a different bpp from payload size.
+    if ((bpp === 16 && payloadSize === tight16Size)
+      || (bpp === 24 && payloadSize === tight24Size)
+      || (bpp === 32 && payloadSize === tight32Size)) {
+      tightRows = true;
+    }
   }
 
   if (![8, 16, 24, 32].includes(bpp)) {
     throw new Error(`BMP no soportado: ${bpp} bpp.`);
   }
-  if (![0, 3, 6, 65543].includes(compression)) {
+  if (![0, 3, 6].includes(compression)) {
     throw new Error(`BMP con compresion no soportada: ${compression}.`);
   }
 
-  const rowStride = tightRows ? width * 3 : Math.floor((width * bpp + 31) / 32) * 4;
+  const rowStride = tightRows ? width * Math.ceil(bpp / 8) : Math.floor((width * bpp + 31) / 32) * 4;
   const usefulPixelSize = rowStride * height;
-  const topDown = compression === 65543 || signedHeight < 0;
+  const topDown = signedHeight < 0;
   const rgba = new Uint8ClampedArray(width * height * 4);
   let palette = [];
   if (bpp === 8) {
