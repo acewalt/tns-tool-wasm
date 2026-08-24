@@ -2419,6 +2419,13 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   background-size: 20px 20px;
 }
 
+.image-resource-meta {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
 .image-resource-preview img,
 .image-resource-preview canvas {
   max-width: 100%;

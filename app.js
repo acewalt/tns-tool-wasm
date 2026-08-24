@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-nspire-platform-window";
+const SOURCE_VERSION = "2026-08-23-image-aspect-resource";
 
 const I18N = {
   es: {
@@ -43,6 +43,7 @@ const I18N = {
     imageOriginalView: "Vista original",
     imageWidgetAdded: "Imagen agregada como nueva card.",
     imageWidgetNoFile: "Selecciona una imagen BMP, PNG o JPG.",
+    imageResourceInfo: "Recurso",
     runLuaSyntax: "Ejecutar sintaxis Lua",
     saveLuaXml: "Guardar Lua en XML",
     previewLua: "Preview Lua",
@@ -273,6 +274,7 @@ const I18N = {
     imageOriginalView: "Original view",
     imageWidgetAdded: "Image added as a new card.",
     imageWidgetNoFile: "Select a BMP, PNG, or JPG image.",
+    imageResourceInfo: "Resource",
     runLuaSyntax: "Run Lua syntax",
     saveLuaXml: "Save Lua to XML",
     previewLua: "Preview Lua",
@@ -503,6 +505,7 @@ const I18N = {
     imageOriginalView: "Vue originale",
     imageWidgetAdded: "Image ajoutee comme nouvelle carte.",
     imageWidgetNoFile: "Selectionnez une image BMP, PNG ou JPG.",
+    imageResourceInfo: "Ressource",
     runLuaSyntax: "Analyser syntaxe Lua",
     saveLuaXml: "Enregistrer Lua dans XML",
     previewLua: "Apercu Lua",
@@ -2639,6 +2642,20 @@ function bmpResourceNameFromFileName(name) {
   return `${base || "image"}.BMP`;
 }
 
+const TI_IMAGE_MAX_WIDTH = 1009;
+const TI_IMAGE_MAX_HEIGHT = 568;
+
+function fitImageSize(width, height, maxWidth = TI_IMAGE_MAX_WIDTH, maxHeight = TI_IMAGE_MAX_HEIGHT) {
+  const sourceWidth = Math.max(1, Math.round(Number(width) || 1));
+  const sourceHeight = Math.max(1, Math.round(Number(height) || 1));
+  const scale = Math.min(1, maxWidth / sourceWidth, maxHeight / sourceHeight);
+  return {
+    width: Math.max(1, Math.round(sourceWidth * scale)),
+    height: Math.max(1, Math.round(sourceHeight * scale)),
+    scale,
+  };
+}
+
 function writeUint16Le(bytes, offset, value) {
   bytes[offset] = value & 0xff;
   bytes[offset + 1] = (value >>> 8) & 0xff;
@@ -2713,10 +2730,16 @@ async function prepareTiImageResource(file) {
     return { name: outputName, bytes: new Uint8Array(await file.arrayBuffer()) };
   }
   const image = await loadHtmlImageFromFile(file);
+  const sourceWidth = image.naturalWidth || image.width;
+  const sourceHeight = image.naturalHeight || image.height;
+  const fitted = fitImageSize(sourceWidth, sourceHeight);
   const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth || image.width;
-  canvas.height = image.naturalHeight || image.height;
-  canvas.getContext("2d").drawImage(image, 0, 0);
+  canvas.width = fitted.width;
+  canvas.height = fitted.height;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(image, 0, 0, fitted.width, fitted.height);
   return { name: outputName, bytes: encodeCanvasToTiRgb565Bmp(canvas) };
 }
 
@@ -3124,12 +3147,14 @@ function decodeBmpToRgba(bytes) {
   let bpp = headerBpp;
   let tightRows = false;
   const tight24Size = width * height * 3;
-  if (headerBpp !== 16 && (payloadSize === tight24Size || declaredImageSize === tight24Size)) {
-    // Some malformed resources are packed 24-bit despite an incomplete header.
-    // Real TI-Nspire image cards can also have a 16-bit header with extra bytes,
-    // so never override an explicit 16 bpp RGB565 resource from size alone.
+  const padded24Size = Math.floor((width * 24 + 31) / 32) * 4 * height;
+  if (payloadSize === tight24Size || declaredImageSize === tight24Size) {
+    // Some TI image resources declare 16 bpp but store tightly packed 24-bit BGR.
+    // Payload size is stronger evidence than that broken header bit-depth flag.
     bpp = 24;
     tightRows = true;
+  } else if (payloadSize === padded24Size || declaredImageSize === padded24Size) {
+    bpp = 24;
   }
 
   if (![8, 16, 24, 32].includes(bpp)) {
@@ -3200,7 +3225,7 @@ function decodeBmpToRgba(bytes) {
     }
   }
 
-  return { width, height, rgba };
+  return { width, height, rgba, bpp, headerBpp, compression };
 }
 
 function renderBmpToCanvas(canvas, bytes) {
@@ -3211,6 +3236,29 @@ function renderBmpToCanvas(canvas, bytes) {
   const imageData = ctx.createImageData(decoded.width, decoded.height);
   imageData.data.set(decoded.rgba);
   ctx.putImageData(imageData, 0, 0);
+  return decoded;
+}
+
+function calculatorImageViewGeometry(sourceWidth, sourceHeight) {
+  const frameWidth = 320;
+  const chromeHeight = 26;
+  const contentHeight = 240 - chromeHeight;
+  if (!sourceWidth || !sourceHeight) {
+    return { frameWidth, chromeHeight, contentHeight, scale: 1, sourceViewWidth: frameWidth, sourceViewHeight: contentHeight, maxX: 0, maxY: 0 };
+  }
+  const scale = Math.max(frameWidth / sourceWidth, contentHeight / sourceHeight);
+  const sourceViewWidth = Math.min(sourceWidth, frameWidth / scale);
+  const sourceViewHeight = Math.min(sourceHeight, contentHeight / scale);
+  return {
+    frameWidth,
+    chromeHeight,
+    contentHeight,
+    scale,
+    sourceViewWidth,
+    sourceViewHeight,
+    maxX: Math.max(0, sourceWidth - sourceViewWidth),
+    maxY: Math.max(0, sourceHeight - sourceViewHeight),
+  };
 }
 
 function drawImageCalculatorFrame(targetCanvas, source, viewState = null) {
@@ -3220,6 +3268,7 @@ function drawImageCalculatorFrame(targetCanvas, source, viewState = null) {
   const contentHeight = frameHeight - chromeHeight;
   const sourceWidth = source.naturalWidth || source.videoWidth || source.width || 0;
   const sourceHeight = source.naturalHeight || source.videoHeight || source.height || 0;
+  const geometry = calculatorImageViewGeometry(sourceWidth, sourceHeight);
   const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
   targetCanvas.width = Math.round(frameWidth * dpr);
   targetCanvas.height = Math.round(frameHeight * dpr);
@@ -3239,16 +3288,15 @@ function drawImageCalculatorFrame(targetCanvas, source, viewState = null) {
   ctx.fillText(t("imageCalculatorView"), frameWidth / 2, chromeHeight / 2);
   if (!sourceWidth || !sourceHeight) return;
   const state = viewState || { x: 0, y: 0 };
-  const maxX = Math.max(0, sourceWidth - frameWidth);
-  const maxY = Math.max(0, sourceHeight - contentHeight);
-  state.x = Math.max(0, Math.min(maxX, Math.round(Number(state.x) || 0)));
-  state.y = Math.max(0, Math.min(maxY, Math.round(Number(state.y) || 0)));
+  state.x = Math.max(0, Math.min(geometry.maxX, Number(state.x) || 0));
+  state.y = Math.max(0, Math.min(geometry.maxY, Number(state.y) || 0));
   ctx.save();
   ctx.beginPath();
   ctx.rect(0, chromeHeight, frameWidth, contentHeight);
   ctx.clip();
-  ctx.imageSmoothingEnabled = false;
-  ctx.drawImage(source, -state.x, chromeHeight - state.y);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(source, state.x, state.y, geometry.sourceViewWidth, geometry.sourceViewHeight, 0, chromeHeight, frameWidth, contentHeight);
   ctx.restore();
 }
 
@@ -3266,10 +3314,15 @@ function setupImageCalculatorToggle(backdrop, source) {
     width: source.naturalWidth || source.videoWidth || source.width || 0,
     height: source.naturalHeight || source.videoHeight || source.height || 0,
   });
+  const geometry = () => {
+    const size = sourceSize();
+    return calculatorImageViewGeometry(size.width, size.height);
+  };
   const clampAndDraw = () => drawImageCalculatorFrame(calculatorCanvas, source, viewState);
   const moveBy = (dx, dy) => {
-    viewState.x += dx;
-    viewState.y += dy;
+    const view = geometry();
+    viewState.x += dx / view.scale;
+    viewState.y += dy / view.scale;
     clampAndDraw();
   };
   const setMode = (enabled) => {
@@ -3284,8 +3337,8 @@ function setupImageCalculatorToggle(backdrop, source) {
   };
   let drag = null;
   calculatorCanvas.addEventListener("pointerdown", (event) => {
-    const size = sourceSize();
-    if (size.width <= 320 && size.height <= 214) return;
+    const view = geometry();
+    if (view.maxX <= 0 && view.maxY <= 0) return;
     const rect = calculatorCanvas.getBoundingClientRect();
     drag = {
       pointerId: event.pointerId,
@@ -3293,8 +3346,8 @@ function setupImageCalculatorToggle(backdrop, source) {
       y: event.clientY,
       viewX: viewState.x,
       viewY: viewState.y,
-      scaleX: 320 / rect.width,
-      scaleY: 240 / rect.height,
+      scaleX: (320 / rect.width) / view.scale,
+      scaleY: (240 / rect.height) / view.scale,
     };
     calculatorCanvas.setPointerCapture?.(event.pointerId);
     calculatorCanvas.classList.add("dragging");
@@ -3335,6 +3388,14 @@ function setupImageCalculatorToggle(backdrop, source) {
   toggle.addEventListener("click", () => setMode(calculatorCanvas.hidden));
 }
 
+function imageResourceMetaText(width, height, extra = "") {
+  const safeWidth = Math.round(Number(width) || 0);
+  const safeHeight = Math.round(Number(height) || 0);
+  if (!safeWidth || !safeHeight) return "";
+  const ratio = (safeWidth / safeHeight).toFixed(3);
+  return `${t("imageResourceInfo")}: ${safeWidth} x ${safeHeight} · ratio ${ratio}${extra ? ` · ${extra}` : ""}`;
+}
+
 function showImageModal(item) {
   const imagePath = item?.detail?.image_file || item?.file || "";
   if (!imagePath) return;
@@ -3351,6 +3412,7 @@ function showImageModal(item) {
   backdrop.innerHTML = `
     <div class="modal inspector-modal image-resource-modal">
       <h2>${escapeHtml(item?.name || t("viewImage"))}</h2>
+      <p id="image-resource-meta" class="image-resource-meta"></p>
       <div class="image-resource-preview">
       </div>
       <div class="modal-actions">
@@ -3360,13 +3422,19 @@ function showImageModal(item) {
     </div>`;
   document.body.append(backdrop);
   const preview = backdrop.querySelector(".image-resource-preview");
+  const meta = backdrop.querySelector("#image-resource-meta");
+  const setMeta = (width, height, extra = "") => {
+    if (meta) meta.textContent = imageResourceMetaText(width, height, extra);
+  };
   const isBmp = imageMimeFromName(imagePath) === "image/bmp" || isBmpBytes(bytes);
   if (isBmp) {
     try {
       const canvas = document.createElement("canvas");
       canvas.className = "image-source-preview";
       canvas.setAttribute("aria-label", item?.name || "BMP preview");
-      renderBmpToCanvas(canvas, bytes);
+      const decoded = renderBmpToCanvas(canvas, bytes);
+      const formatNote = decoded.headerBpp && decoded.headerBpp !== decoded.bpp ? `${decoded.bpp} bpp detectado, cabecera ${decoded.headerBpp} bpp` : `${decoded.bpp} bpp`;
+      setMeta(decoded.width, decoded.height, formatNote);
       preview.append(canvas);
       setupImageCalculatorToggle(backdrop, canvas);
     } catch (error) {
@@ -3379,7 +3447,10 @@ function showImageModal(item) {
     img.className = "image-source-preview";
     img.alt = item?.name || "image";
     img.src = url;
-    img.addEventListener("load", () => setupImageCalculatorToggle(backdrop, img), { once: true });
+    img.addEventListener("load", () => {
+      setMeta(img.naturalWidth || img.width, img.naturalHeight || img.height);
+      setupImageCalculatorToggle(backdrop, img);
+    }, { once: true });
     img.addEventListener("error", () => {
       preview.innerHTML = `<div class="image-resource-error">ERROR: ${escapeHtml(t("viewImage"))}</div>`;
     }, { once: true });
@@ -9738,6 +9809,8 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   const mathTable = ensureLuaJsTable("math");
   const platformTable = ensureLuaJsTable("platform");
   const onTable = ensureLuaJsTable("on");
+  const timerTable = ensureLuaJsTable("timer");
+  const cursorTable = ensureLuaJsTable("cursor");
   const d2EditorTable = ensureLuaJsTable("D2Editor");
   const imageTable = ensureLuaJsTable("image");
   global.G.str.platform = platformTable;
@@ -9756,11 +9829,24 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     global.lua_tableset(previewWindow, "invalidated", true);
     return [];
   });
+  global.lua_tableset(previewWindow, "invalidateAll", () => {
+    global.lua_tableset(previewWindow, "invalidated", true);
+    return [];
+  });
+  global.lua_tableset(previewWindow, "setFocus", () => []);
   global.lua_tableset(previewWindow, "setBackgroundColor", (_self, color) => {
     global.lua_tableset(previewWindow, "backgroundColor", color);
     return [];
   });
   global.lua_tableset(platformTable, "window", previewWindow);
+  global.lua_tableset(platformTable, "gc", () => [previewGc]);
+  global.lua_tableset(platformTable, "hw", () => [5]);
+  global.lua_tableset(platformTable, "isTabletModeRendering", () => [false]);
+  global.lua_tableset(platformTable, "isDeviceModeRendering", () => [false]);
+  global.lua_tableset(platformTable, "withGC", (func, ...args) => {
+    if (func) global.lua_call(func, [...args, previewGc]);
+    return [];
+  });
 
   const store = { ...symbols.variables };
   const basicFunctions = { ...(symbols.basicFunctions || {}) };
@@ -9779,7 +9865,23 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.lua_tableset(stringTable, "gsub", luaJsStringGsub);
   global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global, basicFunctions));
   attachLuaJsD2Editor(d2EditorTable, nativeEditors);
-  global.lua_tableset(platformTable, "isTabletModeRendering", () => [false]);
+  if (!global.lua_tableget(timerTable, "getMilliSecCounter")) {
+    const startedAt = performance.now();
+    global.lua_tableset(timerTable, "getMilliSecCounter", () => [Math.round(performance.now() - startedAt)]);
+  }
+  if (!global.lua_tableget(timerTable, "start")) global.lua_tableset(timerTable, "start", () => {
+    global.lua_tableset(timerTable, "running", true);
+    return [];
+  });
+  if (!global.lua_tableget(timerTable, "stop")) global.lua_tableset(timerTable, "stop", () => {
+    global.lua_tableset(timerTable, "running", false);
+    return [];
+  });
+  if (!global.lua_tableget(varTable, "monitor")) global.lua_tableset(varTable, "monitor", () => []);
+  if (!global.lua_tableget(varTable, "unmonitor")) global.lua_tableset(varTable, "unmonitor", () => []);
+  if (!global.lua_tableget(cursorTable, "hide")) global.lua_tableset(cursorTable, "hide", () => []);
+  if (!global.lua_tableget(cursorTable, "show")) global.lua_tableset(cursorTable, "show", () => []);
+  if (!global.lua_tableget(cursorTable, "set")) global.lua_tableset(cursorTable, "set", () => []);
 
   const evalLuaJsSource = (source) => {
     const parsed = global.lua_parser.parse(source).split("\n").slice(19).join("\n");
