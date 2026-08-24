@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-expanded-stage-fix";
+const SOURCE_VERSION = "2026-08-23-love-compat-shims";
 
 const I18N = {
   es: {
@@ -3680,6 +3680,42 @@ const LUA_GUIDE_ITEMS = [
     },
   },
   {
+    name: "os.time() / os.clock()",
+    category: "bridge",
+    description: {
+      es: "Compatibilidad para scripts LÖVE que usan tiempo o math.randomseed(os.time()). En TI-Nspire se basa en timer.getMilliSecCounter cuando existe.",
+      en: "Compatibility for LÖVE scripts that use time or math.randomseed(os.time()). On TI-Nspire it uses timer.getMilliSecCounter when available.",
+      fr: "Compatibilite pour les scripts LÖVE utilisant le temps ou math.randomseed(os.time()). Sur TI-Nspire, utilise timer.getMilliSecCounter si disponible.",
+    },
+  },
+  {
+    name: "love.system.*",
+    category: "love",
+    description: {
+      es: "Shim seguro para getOS, getProcessorCount, clipboard, openURL y vibrate. En TI-Nspire no abre recursos externos reales.",
+      en: "Safe shim for getOS, getProcessorCount, clipboard, openURL, and vibrate. On TI-Nspire it does not open real external resources.",
+      fr: "Shim sur pour getOS, getProcessorCount, clipboard, openURL et vibrate. Sur TI-Nspire, n'ouvre pas de vraies ressources externes.",
+    },
+  },
+  {
+    name: "love.audio.*",
+    category: "love",
+    description: {
+      es: "Compatibilidad no-op para Source/play/stop/pause/volume. Evita errores, pero la calculadora no reproduce audio.",
+      en: "No-op compatibility for Source/play/stop/pause/volume. It avoids errors, but the calculator does not play audio.",
+      fr: "Compatibilite no-op pour Source/play/stop/pause/volume. Evite les erreurs, mais la calculatrice ne lit pas l'audio.",
+    },
+  },
+  {
+    name: "love.image/sound/data/touch/joystick/thread",
+    category: "love",
+    description: {
+      es: "Shims de compatibilidad para scripts comunes. Devuelven objetos seguros o tablas vacias; no implementan imagen/audio/hilos reales en TI-Nspire.",
+      en: "Compatibility shims for common scripts. They return safe objects or empty tables; they do not implement real image/audio/thread support on TI-Nspire.",
+      fr: "Shims de compatibilite pour scripts courants. Retourne objets surs ou tables vides; pas de vrai support image/audio/thread sur TI-Nspire.",
+    },
+  },
+  {
     name: "love.draw() -> on.paint(gc)",
     category: "bridge",
     description: {
@@ -3764,9 +3800,9 @@ const LUA_GUIDE_ITEMS = [
     name: "Limitaciones LÖVE -> TI-Nspire",
     category: "bridge",
     description: {
-      es: "Audio, imagenes, shaders, fisica nativa y filesystem real no son portables sin reescritura especifica.",
-      en: "Audio, images, shaders, native physics, and real filesystem access are not portable without specific rewrites.",
-      fr: "Audio, images, shaders, physique native et vrai filesystem ne sont pas portables sans reecriture specifique.",
+      es: "Shaders, fisica nativa, recursos binarios, audio real, imagenes reales y filesystem real no son portables sin reescritura especifica.",
+      en: "Shaders, native physics, binary assets, real audio, real images, and real filesystem access are not portable without specific rewrites.",
+      fr: "Shaders, physique native, ressources binaires, vrai audio, vraies images et vrai filesystem ne sont pas portables sans reecriture specifique.",
     },
   },
 ];
@@ -7205,13 +7241,14 @@ function convertLoveToNspireScriptApp(source = "") {
 --[[ TNS Tool LOVE compatibility layer: start
 This wrapper lets simple LÖVE-style scripts run as TI-Nspire ScriptApps.
 It supports basic love.load/update/draw/input/window/graphics and text-only
-love.filesystem calls. Images, audio, physics and shaders still need explicit
-TI-Nspire replacements.
+love.filesystem calls. Audio, images, threads, joystick, touch, data and system
+APIs are safe compatibility shims unless a TI-Nspire replacement exists.
 ]]
 
 local __love_gc = nil
 local __love_booted = false
 local __love_dt = 0.03
+local __love_start_ms = 0
 local __love_quit = false
 local __love_font_size = 12
 local __love_color = {255, 255, 255}
@@ -7226,6 +7263,7 @@ local __love_transform = {1, 0, 0, 1, 0, 0}
 local __love_transform_stack = {}
 local __love_files = {}
 
+os = os or {}
 love = love or {}
 love.graphics = love.graphics or {}
 love.window = love.window or {}
@@ -7235,6 +7273,44 @@ love.timer = love.timer or {}
 love.event = love.event or {}
 love.math = love.math or {}
 love.filesystem = love.filesystem or {}
+love.system = love.system or {}
+love.audio = love.audio or {}
+love.sound = love.sound or {}
+love.image = love.image or {}
+love.data = love.data or {}
+love.touch = love.touch or {}
+love.joystick = love.joystick or {}
+love.thread = love.thread or {}
+
+local function __love_now_ms()
+    if timer and timer.getMilliSecCounter then
+        local ok, value = pcall(timer.getMilliSecCounter)
+        if ok and value then return tonumber(value) or 0 end
+    end
+    return __love_start_ms
+end
+
+__love_start_ms = __love_now_ms()
+
+function os.time()
+    return math.floor(__love_now_ms() / 1000)
+end
+
+function os.clock()
+    return (__love_now_ms() - __love_start_ms) / 1000
+end
+
+function os.difftime(t2, t1)
+    return (tonumber(t2) or 0) - (tonumber(t1) or 0)
+end
+
+function os.date(format, time)
+    if format == "*t" then
+        local seconds = tonumber(time) or os.time()
+        return {year = 1970, month = 1, day = 1, hour = 0, min = 0, sec = seconds % 60, wday = 5, yday = 1, isdst = false}
+    end
+    return tostring(tonumber(time) or os.time())
+end
 
 local function __love_channel(value)
     value = tonumber(value) or 0
@@ -7702,6 +7778,10 @@ function love.event.quit()
     __love_quit = true
 end
 
+function os.exit()
+    __love_quit = true
+end
+
 function love.event.clear() end
 function love.event.pump() end
 function love.event.push() end
@@ -7778,6 +7858,144 @@ end
 
 function love.filesystem.getWorkingDirectory()
     return "TI-Nspire ScriptApp"
+end
+
+function love.system.getOS()
+    return "TI-Nspire"
+end
+
+function love.system.getProcessorCount()
+    return 1
+end
+
+function love.system.getPowerInfo()
+    return "unknown", nil
+end
+
+function love.system.getClipboardText()
+    return ""
+end
+
+function love.system.setClipboardText() end
+function love.system.openURL() return false end
+function love.system.vibrate() end
+
+local function __love_new_source()
+    local source = {volume = 1, pitch = 1, looping = false, playing = false}
+    function source:play() self.playing = true end
+    function source:stop() self.playing = false end
+    function source:pause() self.playing = false end
+    function source:resume() self.playing = true end
+    function source:isPlaying() return self.playing end
+    function source:setLooping(value) self.looping = value and true or false end
+    function source:isLooping() return self.looping end
+    function source:setVolume(value) self.volume = tonumber(value) or self.volume end
+    function source:getVolume() return self.volume end
+    function source:setPitch(value) self.pitch = tonumber(value) or self.pitch end
+    function source:getPitch() return self.pitch end
+    function source:seek() end
+    function source:tell() return 0 end
+    function source:getDuration() return 0 end
+    function source:clone() return __love_new_source() end
+    return source
+end
+
+function love.audio.newSource()
+    return __love_new_source()
+end
+
+function love.audio.play(...)
+    for _, source in ipairs({...}) do
+        if type(source) == "table" and source.play then source:play() end
+    end
+end
+
+function love.audio.stop(...)
+    for _, source in ipairs({...}) do
+        if type(source) == "table" and source.stop then source:stop() end
+    end
+end
+
+function love.audio.pause(...)
+    for _, source in ipairs({...}) do
+        if type(source) == "table" and source.pause then source:pause() end
+    end
+end
+
+function love.audio.resume(...)
+    for _, source in ipairs({...}) do
+        if type(source) == "table" and source.resume then source:resume() end
+    end
+end
+
+function love.audio.setVolume(value)
+    love.audio.volume = tonumber(value) or love.audio.volume or 1
+end
+
+function love.audio.getVolume()
+    return love.audio.volume or 1
+end
+
+function love.image.newImageData(width, height)
+    return {type = "ImageData", width = tonumber(width) or 0, height = tonumber(height) or 0, __love_unsupported = "image"}
+end
+
+function love.sound.newSoundData()
+    return {type = "SoundData", __love_unsupported = "sound"}
+end
+
+function love.data.encode(container, format, data)
+    return tostring(data or "")
+end
+
+function love.data.decode(container, format, data)
+    return tostring(data or "")
+end
+
+function love.data.compress(container, format, data)
+    return tostring(data or "")
+end
+
+function love.data.decompress(container, format, data)
+    return tostring(data or "")
+end
+
+function love.data.hash(algorithm, data)
+    return tostring(algorithm or "hash") .. ":" .. tostring(#tostring(data or ""))
+end
+
+function love.touch.getTouches()
+    return {}
+end
+
+function love.touch.getPosition()
+    return 0, 0
+end
+
+function love.joystick.getJoysticks()
+    return {}
+end
+
+function love.thread.newThread()
+    local thread = {running = false}
+    function thread:start() self.running = true end
+    function thread:wait() self.running = false end
+    function thread:isRunning() return self.running end
+    function thread:getError() return nil end
+    return thread
+end
+
+function love.thread.getChannel()
+    local channel = {queue = {}}
+    function channel:push(value) table.insert(self.queue, value) end
+    function channel:pop()
+        if #self.queue == 0 then return nil end
+        return table.remove(self.queue, 1)
+    end
+    function channel:peek() return self.queue[1] end
+    function channel:getCount() return #self.queue end
+    function channel:clear() self.queue = {} end
+    return channel
 end
 
 --[[ User LOVE source: start ]]
@@ -8712,6 +8930,15 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   const event = global.lua_newtable();
   const filesystem = global.lua_newtable();
   const loveMath = global.lua_newtable();
+  const osTable = global.lua_newtable();
+  const system = global.lua_newtable();
+  const audio = global.lua_newtable();
+  const sound = global.lua_newtable();
+  const image = global.lua_newtable();
+  const data = global.lua_newtable();
+  const touch = global.lua_newtable();
+  const joystick = global.lua_newtable();
+  const thread = global.lua_newtable();
   const pressedKeys = new Set();
   const mouseButtons = new Set();
   const virtualFiles = new Map();
@@ -8733,6 +8960,7 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   let mouseX = 0;
   let mouseY = 0;
   let windowTitle = "";
+  let masterVolume = 1;
   const startedAt = performance.now();
 
   const log = (message) => appendPreviewLog(logEl, message);
@@ -8795,6 +9023,96 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     const table = global.lua_newtable();
     for (const [key, value] of Object.entries(object)) global.lua_tableset(table, key, value);
     return table;
+  };
+  const emptyTable = () => global.lua_newtable();
+  const makeObjectTable = (kind, fields = {}) => tableFromObject({ type: kind, unsupported: true, ...fields });
+  const createAudioSource = () => {
+    let volume = 1;
+    let pitch = 1;
+    let looping = false;
+    let playing = false;
+    const source = tableFromObject({ type: "Source", unsupported: true });
+    global.lua_tableset(source, "play", () => {
+      playing = true;
+      return [];
+    });
+    global.lua_tableset(source, "stop", () => {
+      playing = false;
+      return [];
+    });
+    global.lua_tableset(source, "pause", () => {
+      playing = false;
+      return [];
+    });
+    global.lua_tableset(source, "resume", () => {
+      playing = true;
+      return [];
+    });
+    global.lua_tableset(source, "isPlaying", () => [playing]);
+    global.lua_tableset(source, "setLooping", (...rawArgs) => {
+      const [value] = stripSelf(rawArgs, source);
+      looping = Boolean(value);
+      return [];
+    });
+    global.lua_tableset(source, "isLooping", () => [looping]);
+    global.lua_tableset(source, "setVolume", (...rawArgs) => {
+      const [value] = stripSelf(rawArgs, source);
+      volume = toNumber(value, volume);
+      return [];
+    });
+    global.lua_tableset(source, "getVolume", () => [volume]);
+    global.lua_tableset(source, "setPitch", (...rawArgs) => {
+      const [value] = stripSelf(rawArgs, source);
+      pitch = toNumber(value, pitch);
+      return [];
+    });
+    global.lua_tableset(source, "getPitch", () => [pitch]);
+    global.lua_tableset(source, "seek", () => []);
+    global.lua_tableset(source, "tell", () => [0]);
+    global.lua_tableset(source, "getDuration", () => [0]);
+    global.lua_tableset(source, "clone", () => [createAudioSource()]);
+    return source;
+  };
+  const callOptionalLuaMethod = (object, name) => {
+    if (!object || typeof object !== "object") return;
+    try {
+      const method = global.lua_tableget(object, name);
+      if (typeof method === "function") method(object);
+    } catch (_error) {
+      // Ignore invalid non-Lua objects in compatibility-only calls.
+    }
+  };
+  const createThreadObject = () => {
+    let runningThread = false;
+    const object = tableFromObject({ type: "Thread", unsupported: true });
+    global.lua_tableset(object, "start", () => {
+      runningThread = true;
+      return [];
+    });
+    global.lua_tableset(object, "wait", () => {
+      runningThread = false;
+      return [];
+    });
+    global.lua_tableset(object, "isRunning", () => [runningThread]);
+    global.lua_tableset(object, "getError", () => [null]);
+    return object;
+  };
+  const createChannelObject = () => {
+    const queue = [];
+    const object = tableFromObject({ type: "Channel", unsupported: true });
+    global.lua_tableset(object, "push", (...rawArgs) => {
+      const [value] = stripSelf(rawArgs, object);
+      queue.push(value);
+      return [];
+    });
+    global.lua_tableset(object, "pop", () => [queue.length ? queue.shift() : null]);
+    global.lua_tableset(object, "peek", () => [queue.length ? queue[0] : null]);
+    global.lua_tableset(object, "getCount", () => [queue.length]);
+    global.lua_tableset(object, "clear", () => {
+      queue.length = 0;
+      return [];
+    });
+    return object;
   };
   const jsString = (value) => String(value ?? "");
   const loveFileKey = (filename) => jsString(filename).replace(/[^\w.-]/g, "_") || "unnamed";
@@ -8868,6 +9186,7 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   };
 
   global.G.str.love = love;
+  global.G.str.os = osTable;
   global.G.str.print = (...args) => {
     const line = args.map((value) => String(value ?? "nil")).join("\t");
     consoleText.push(line);
@@ -8883,6 +9202,14 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
   global.lua_tableset(love, "event", event);
   global.lua_tableset(love, "filesystem", filesystem);
   global.lua_tableset(love, "math", loveMath);
+  global.lua_tableset(love, "system", system);
+  global.lua_tableset(love, "audio", audio);
+  global.lua_tableset(love, "sound", sound);
+  global.lua_tableset(love, "image", image);
+  global.lua_tableset(love, "data", data);
+  global.lua_tableset(love, "touch", touch);
+  global.lua_tableset(love, "joystick", joystick);
+  global.lua_tableset(love, "thread", thread);
 
   global.lua_tableset(graphics, "print", (...rawArgs) => {
     const [text, x = 0, y = 0, rotation = 0, sx = 1, sy = sx, ox = 0, oy = 0] = stripSelf(rawArgs, graphics);
@@ -9214,6 +9541,112 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl) {
     return [];
   });
   global.lua_tableset(loveMath, "getRandomSeed", () => [0, 0]);
+
+  global.lua_tableset(osTable, "time", () => [Math.floor(Date.now() / 1000)]);
+  global.lua_tableset(osTable, "clock", () => [(performance.now() - startedAt) / 1000]);
+  global.lua_tableset(osTable, "difftime", (...rawArgs) => {
+    const [t2, t1] = stripSelf(rawArgs, osTable);
+    return [toNumber(t2) - toNumber(t1)];
+  });
+  global.lua_tableset(osTable, "date", (...rawArgs) => {
+    const [format, seconds] = stripSelf(rawArgs, osTable);
+    const date = new Date(seconds == null ? Date.now() : toNumber(seconds) * 1000);
+    if (String(format || "") === "*t") {
+      const start = new Date(date.getFullYear(), 0, 0);
+      const yday = Math.floor((date - start) / 86400000);
+      return [tableFromObject({
+        year: date.getFullYear(),
+        month: date.getMonth() + 1,
+        day: date.getDate(),
+        hour: date.getHours(),
+        min: date.getMinutes(),
+        sec: date.getSeconds(),
+        wday: date.getDay() + 1,
+        yday,
+        isdst: false,
+      })];
+    }
+    return [date.toString()];
+  });
+  global.lua_tableset(osTable, "exit", () => {
+    running = false;
+    return [];
+  });
+
+  global.lua_tableset(system, "getOS", () => ["Browser"]);
+  global.lua_tableset(system, "getProcessorCount", () => [navigator.hardwareConcurrency || 1]);
+  global.lua_tableset(system, "getPowerInfo", () => ["unknown", null]);
+  global.lua_tableset(system, "getClipboardText", () => [""]);
+  global.lua_tableset(system, "setClipboardText", (...rawArgs) => {
+    const [text] = stripSelf(rawArgs, system);
+    if (navigator.clipboard?.writeText) navigator.clipboard.writeText(jsString(text)).catch(() => {});
+    return [];
+  });
+  global.lua_tableset(system, "openURL", (...rawArgs) => {
+    const [url] = stripSelf(rawArgs, system);
+    const value = jsString(url);
+    if (!/^https?:\/\//i.test(value)) return [false];
+    window.open(value, "_blank", "noopener,noreferrer");
+    return [true];
+  });
+  global.lua_tableset(system, "vibrate", () => []);
+
+  global.lua_tableset(audio, "newSource", () => [createAudioSource()]);
+  global.lua_tableset(audio, "play", (...rawArgs) => {
+    for (const source of stripSelf(rawArgs, audio)) callOptionalLuaMethod(source, "play");
+    return [];
+  });
+  global.lua_tableset(audio, "stop", (...rawArgs) => {
+    for (const source of stripSelf(rawArgs, audio)) callOptionalLuaMethod(source, "stop");
+    return [];
+  });
+  global.lua_tableset(audio, "pause", (...rawArgs) => {
+    for (const source of stripSelf(rawArgs, audio)) callOptionalLuaMethod(source, "pause");
+    return [];
+  });
+  global.lua_tableset(audio, "resume", (...rawArgs) => {
+    for (const source of stripSelf(rawArgs, audio)) callOptionalLuaMethod(source, "resume");
+    return [];
+  });
+  global.lua_tableset(audio, "setVolume", (...rawArgs) => {
+    const [value] = stripSelf(rawArgs, audio);
+    masterVolume = toNumber(value, masterVolume);
+    return [];
+  });
+  global.lua_tableset(audio, "getVolume", () => [masterVolume]);
+
+  global.lua_tableset(image, "newImageData", (...rawArgs) => {
+    const [width = 0, height = 0] = stripSelf(rawArgs, image);
+    return [makeObjectTable("ImageData", { width: toNumber(width), height: toNumber(height) })];
+  });
+  global.lua_tableset(sound, "newSoundData", () => [makeObjectTable("SoundData")]);
+  global.lua_tableset(data, "encode", (...rawArgs) => {
+    const args = stripSelf(rawArgs, data);
+    return [jsString(args[2] ?? args[1] ?? "")];
+  });
+  global.lua_tableset(data, "decode", (...rawArgs) => {
+    const args = stripSelf(rawArgs, data);
+    return [jsString(args[2] ?? args[1] ?? "")];
+  });
+  global.lua_tableset(data, "compress", (...rawArgs) => {
+    const args = stripSelf(rawArgs, data);
+    return [jsString(args[2] ?? args[1] ?? "")];
+  });
+  global.lua_tableset(data, "decompress", (...rawArgs) => {
+    const args = stripSelf(rawArgs, data);
+    return [jsString(args[2] ?? args[1] ?? "")];
+  });
+  global.lua_tableset(data, "hash", (...rawArgs) => {
+    const args = stripSelf(rawArgs, data);
+    const algorithm = jsString(args[0] || "hash");
+    const value = jsString(args[1] || "");
+    return [`${algorithm}:${value.length}`];
+  });
+  global.lua_tableset(touch, "getTouches", () => [emptyTable()]);
+  global.lua_tableset(touch, "getPosition", () => [0, 0]);
+  global.lua_tableset(joystick, "getJoysticks", () => [emptyTable()]);
+  global.lua_tableset(thread, "newThread", () => [createThreadObject()]);
+  global.lua_tableset(thread, "getChannel", () => [createChannelObject()]);
 
   evalLuaJsSource(decodeXmlTextEntities(code));
 
