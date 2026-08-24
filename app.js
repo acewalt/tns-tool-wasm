@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-preview-complete";
+const SOURCE_VERSION = "2026-08-23-tns-resave-no-program";
 
 const I18N = {
   es: {
@@ -877,6 +877,7 @@ let pyodide;
 const xmlDoctor = {
   sourcePath: "/work/xml_doctor_input",
   stagePath: "/work/xml_doctor_stage",
+  sourceFileName: "",
   candidates: [],
   current: null,
   lastDiff: "",
@@ -1291,6 +1292,22 @@ function clearDir(path) {
   }
 }
 
+function copyDir(sourcePath, targetPath) {
+  pyodide.FS.mkdirTree(targetPath);
+  for (const name of pyodide.FS.readdir(sourcePath)) {
+    if (name === "." || name === "..") continue;
+    const sourceChild = `${sourcePath}/${name}`;
+    const targetChild = `${targetPath}/${name}`;
+    const stat = pyodide.FS.stat(sourceChild);
+    if (pyodide.FS.isDir(stat.mode)) {
+      copyDir(sourceChild, targetChild);
+    } else {
+      ensureParent(targetChild);
+      pyodide.FS.writeFile(targetChild, pyodide.FS.readFile(sourceChild));
+    }
+  }
+}
+
 function ensureParent(path) {
   const parts = path.split("/");
   parts.pop();
@@ -1548,6 +1565,9 @@ async function loadXmlDoctorFiles(files, mode) {
   if (!files.length) return;
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
+  xmlDoctor.sourceFileName = mode === "folder"
+    ? (folderRelativePath(files[0]).split(/[\\/]/)[0] || files[0].name || "documento")
+    : (files[0].name || "documento");
   for (const file of files) {
     const rel = mode === "folder" ? folderRelativePath(file) : file.name;
     await writeFileToFs(file, `${xmlDoctor.sourcePath}/${rel}`);
@@ -1565,6 +1585,7 @@ async function openTnsInXmlDoctor(file) {
   await ensureCryptoPackage();
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
+  xmlDoctor.sourceFileName = file.name || "documento.tns";
   await writeFileToFs(file, "/work/xml_doctor_input.tns");
   await pyodide.runPythonAsync(`
 from pathlib import Path
@@ -8235,6 +8256,7 @@ end
 async function createNewXmlProject() {
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
+  xmlDoctor.sourceFileName = "documento.tns";
   for (const name of ["Document.xml", "Problem1.xml"]) {
     const response = await fetch(`./templates/blank_tns_xml/${name}?v=${SOURCE_VERSION}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`No se pudo cargar plantilla ${name}: HTTP ${response.status}`);
@@ -8248,9 +8270,14 @@ async function createNewXmlProject() {
 }
 
 async function createTnsFromXmlDoctor() {
-  const nameError = tiDocumentNameError(xmlDoctor.current?.program_name || "");
-  if (nameError) throw new Error(nameError);
-  if (!xmlDoctor.embedded) await embedXmlCode();
+  if (xmlDoctor.current) {
+    const nameError = tiDocumentNameError(xmlDoctor.current.program_name || "");
+    if (nameError) throw new Error(nameError);
+    if (!xmlDoctor.embedded) await embedXmlCode();
+  } else if (!xmlDoctor.stagePrepared) {
+    copyDir(xmlDoctor.sourcePath, xmlDoctor.stagePath);
+    xmlDoctor.stagePrepared = true;
+  }
   await ensureCryptoPackage();
   const outputName = xmlDoctorTnsOutputName();
   pyodide.globals.set("wasm_xml_tns_output", `/work/${outputName}`);
@@ -8263,8 +8290,9 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_xml_tns_output))
 }
 
 function xmlDoctorTnsOutputName() {
-  const rawName = xmlDoctor.current?.program_name || "documento";
-  const safeName = rawName.normalize("NFD")
+  const rawName = xmlDoctor.current?.program_name || xmlDoctor.sourceFileName || "documento";
+  const baseName = rawName.replace(/\.tns$/i, "").replace(/\.xml$/i, "");
+  const safeName = baseName.normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^A-Za-z0-9_]+/g, "_")
     .replace(/^_+/, "")
