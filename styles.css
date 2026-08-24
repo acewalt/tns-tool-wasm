@@ -2439,6 +2439,9 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .image-resource-preview .image-source-preview {
   max-width: none;
   max-height: none;
+  width: auto !important;
+  height: auto !important;
+  aspect-ratio: auto;
 }
 
 .image-resource-preview.calculator-mode {

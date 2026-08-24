@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-tns-resave-no-program";
+const SOURCE_VERSION = "2026-08-24-ti-image-resource-fix";
 
 const I18N = {
   es: {
@@ -2714,7 +2714,7 @@ function encodeCanvasToTiRgb565Bmp(sourceCanvas) {
   if (!width || !height) throw new Error("Image has empty dimensions.");
   const ctx = sourceCanvas.getContext("2d", { willReadFrequently: true });
   const rgba = ctx.getImageData(0, 0, width, height).data;
-  const rowStride = Math.floor((width * 16 + 31) / 32) * 4;
+  const rowStride = width * 3;
   const imageSize = rowStride * height;
   const bytes = new Uint8Array(54 + imageSize);
   bytes[0] = 0x42;
@@ -2726,8 +2726,8 @@ function encodeCanvasToTiRgb565Bmp(sourceCanvas) {
   writeUint32Le(bytes, 22, height);
   writeUint16Le(bytes, 26, 1);
   writeUint16Le(bytes, 28, 16);
-  // TI-generated image resources use this BI_ALPHABITFIELDS-like marker while
-  // storing top-down RGB565 data. Matching it avoids calculator-side PNG/JPG issues.
+  // TI image resources seen in functional .tns files mark 16 bpp with this
+  // marker, but store top-down tightly packed 24-bit BGR pixel data.
   writeUint32Le(bytes, 30, 65543);
   writeUint32Le(bytes, 34, imageSize);
   let dst = 54;
@@ -2735,13 +2735,10 @@ function encodeCanvasToTiRgb565Bmp(sourceCanvas) {
     const rowStart = dst;
     for (let x = 0; x < width; x += 1) {
       const src = (y * width + x) * 4;
-      const r = rgba[src] >> 3;
-      const g = rgba[src + 1] >> 2;
-      const b = rgba[src + 2] >> 3;
-      const value = (r << 11) | (g << 5) | b;
-      bytes[dst] = value & 0xff;
-      bytes[dst + 1] = (value >>> 8) & 0xff;
-      dst += 2;
+      bytes[dst] = rgba[src + 2];
+      bytes[dst + 1] = rgba[src + 1];
+      bytes[dst + 2] = rgba[src];
+      dst += 3;
     }
     dst = rowStart + rowStride;
   }
@@ -2751,7 +2748,9 @@ function encodeCanvasToTiRgb565Bmp(sourceCanvas) {
 async function prepareTiImageResource(file) {
   const outputName = bmpResourceNameFromFileName(file.name);
   if (/\.bmp$/i.test(file.name)) {
-    return { name: outputName, bytes: new Uint8Array(await file.arrayBuffer()) };
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const canvas = await renderImageBytesToCanvas(bytes, file.name);
+    return { name: outputName, bytes: encodeCanvasToTiRgb565Bmp(canvas) };
   }
   const image = await loadHtmlImageFromFile(file);
   const sourceWidth = image.naturalWidth || image.width;
@@ -3167,6 +3166,7 @@ async function addImageWidgetToStage(file) {
   pyodide.globals.set("wasm_image_viewer_lua", buildImageViewerLua(imageName));
   const payload = await pyodide.runPythonAsync(`
 import json
+import re
 import uuid
 import xml.etree.ElementTree as ET
 from pathlib import Path
@@ -3237,8 +3237,13 @@ ET.SubElement(md, q(sc_ns, "mde"), {"name": "_RES", "prop": "67108864"}).text = 
 script = ET.SubElement(wdgt, q(sc_ns, "script"), {"version": "33817092", "id": "0"})
 script.text = wasm_image_viewer_lua
 root.append(card)
-body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
-xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+body_text = ET.tostring(root, encoding="unicode", short_empty_elements=False)
+body_text = re.sub(
+    r'<wdgt(?![^>]*\\bxmlns:sc=)([^>]*\\btype="TI\\.ScriptApp"[^>]*)>',
+    r'<wdgt xmlns:sc="urn:TI.ScriptApp"\\1>',
+    body_text,
+)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body_text.encode("UTF-8"))
 
 parent_map = {child: parent for parent in root.iter() for child in parent}
 def element_path(element):
@@ -3427,15 +3432,26 @@ function decodeBmpToRgba(bytes) {
   const payloadSize = data.length - pixelOffset;
   let bpp = headerBpp;
   let tightRows = false;
-  const usefulPixelSize = Math.floor((width * Math.max(1, headerBpp) + 31) / 32) * 4 * height;
   const tight24Size = width * height * 3;
   const padded24Size = Math.floor((width * 24 + 31) / 32) * 4 * height;
-  if (headerBpp !== 16 && (payloadSize === tight24Size || declaredImageSize === tight24Size)) {
-    // Some malformed non-RGB565 resources are tightly packed 24-bit BGR.
+  const tight16Size = width * height * 2;
+  const padded16Size = Math.floor((width * 16 + 31) / 32) * 4 * height;
+  if (payloadSize === tight24Size || declaredImageSize === tight24Size) {
+    // Some TI resources claim 16 bpp but carry tightly packed 24-bit BGR.
     bpp = 24;
     tightRows = true;
-  } else if (headerBpp !== 16 && (payloadSize === padded24Size || declaredImageSize === padded24Size)) {
+  } else if (payloadSize === padded24Size || declaredImageSize === padded24Size) {
+    // Functional TI image documents use this shape: header 16 bpp, payload 24-bit.
     bpp = 24;
+  } else if (
+    headerBpp === 16
+    || payloadSize === tight16Size
+    || payloadSize === padded16Size
+    || declaredImageSize === tight16Size
+    || declaredImageSize === padded16Size
+  ) {
+    bpp = 16;
+    tightRows = payloadSize === tight16Size || declaredImageSize === tight16Size;
   }
 
   if (![8, 16, 24, 32].includes(bpp)) {
@@ -3446,6 +3462,7 @@ function decodeBmpToRgba(bytes) {
   }
 
   const rowStride = tightRows ? width * 3 : Math.floor((width * bpp + 31) / 32) * 4;
+  const usefulPixelSize = rowStride * height;
   const topDown = compression === 65543 || signedHeight < 0;
   const rgba = new Uint8ClampedArray(width * height * 4);
   let palette = [];
@@ -8343,6 +8360,24 @@ function appendPreviewLog(logEl, message) {
   logEl.scrollTop = logEl.scrollHeight;
 }
 
+function logPreviewImageResources(logEl, resources = [], source = "") {
+  const list = Array.isArray(resources) ? resources : [];
+  const loaded = list.filter((resource) => resource?.canvas);
+  const failed = list.filter((resource) => resource?.error);
+  if (!list.length && /(?:_R\.IMG|image\.new|sourceName\s*=|["'][^"']+\.(?:bmp|png|jpe?g|gif)["'])/i.test(String(source || ""))) {
+    appendPreviewLog(logEl, "TI resources loaded: 0");
+  }
+  for (const resource of loaded) {
+    appendPreviewLog(
+      logEl,
+      `TI resource loaded: ${resource.group || "IMG"}.${resource.var || "img"} -> ${resource.name || resource.path} (${resource.width || "?"}x${resource.height || "?"})`,
+    );
+  }
+  for (const resource of failed) {
+    appendPreviewLog(logEl, `TI resource error: ${resource.name || resource.path || "unknown"}: ${resource.error}`);
+  }
+}
+
 function looksLikeLoveSource(source) {
   const text = String(source || "");
   return /\blove\./.test(text) || /\bfunction\s+love\./.test(text);
@@ -9710,7 +9745,11 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   } else if (isNspireSource) {
     appendPreviewLog(previewLog, t("lovePreviewNspireCompat"));
     try {
-      const symbols = options?.item ? await loadLuaPreviewSymbols(options.item).catch(() => ({})) : {};
+      const symbols = options?.item ? await loadLuaPreviewSymbols(options.item).catch((error) => {
+        appendPreviewLog(previewLog, `ERROR recursos Preview LÖVE: ${describeLuaJsError(error)}`);
+        return {};
+      }) : {};
+      logPreviewImageResources(previewLog, symbols.resources || [], code);
       runtime = await createLovePreviewNspireRuntime(code, ctx, canvas, previewLog, symbols);
       runtime.boot();
     } catch (error) {
@@ -9889,6 +9928,8 @@ async function loadLuaPreviewSymbols(item) {
   pyodide.globals.set("wasm_lua_symbol_file", item.file);
   pyodide.globals.set("wasm_lua_symbol_path", item.path || "");
   pyodide.globals.set("wasm_lua_symbol_content", item.content || "");
+  pyodide.globals.set("wasm_lua_symbol_stage_root", xmlDoctor.stagePath || "");
+  pyodide.globals.set("wasm_lua_symbol_source_root", xmlDoctor.sourcePath || "");
   const payload = await pyodide.runPythonAsync(`
 import json
 import re
@@ -9995,37 +10036,116 @@ def parse_res_descriptor(text):
         out.append((name, var_name or "img"))
     return out
 
-target_path = wasm_lua_symbol_path or ""
-target_content = wasm_lua_symbol_content or ""
-target_script = None
-for element in root.iter():
-    if local_name(element.tag) == "script":
-        if element_path(element) == target_path or (target_content and (element.text or "") == target_content):
-            target_script = element
-            break
-if target_script is not None:
-    parent = parent_map.get(target_script)
+def resource_roots():
+    roots = []
+    seen = set()
+    for candidate in [path.parent, *path.parents, Path(wasm_lua_symbol_stage_root or ""), Path(wasm_lua_symbol_source_root or "")]:
+        if not candidate:
+            continue
+        key = str(candidate)
+        if key and key not in seen:
+            seen.add(key)
+            roots.append(candidate)
+    return roots
+
+def add_resource(name, var_name="img", group="IMG"):
+    clean_name = (name or "").strip()
+    if not clean_name:
+        return
+    for root_candidate in resource_roots():
+        candidates = [root_candidate / clean_name, root_candidate / Path(clean_name).name]
+        for candidate in candidates:
+            if candidate.exists():
+                found = str(candidate)
+                if not any(item["path"] == found for item in resources):
+                    resources.append({"name": clean_name, "var": var_name or "img", "group": group or "IMG", "path": found})
+                return
+
+def image_candidates():
+    found = {}
+    for root_candidate in resource_roots():
+        if not root_candidate.exists():
+            continue
+        for ext in [".BMP", ".bmp", ".PNG", ".png", ".JPG", ".jpg", ".JPEG", ".jpeg", ".GIF", ".gif"]:
+            for candidate in root_candidate.glob("*" + ext):
+                if candidate.is_file():
+                    found.setdefault(candidate.name.lower(), candidate)
+    return list(found.values())
+
+def script_widget(script):
+    parent = parent_map.get(script)
     while parent is not None and not (local_name(parent.tag) == "wdgt" and parent.attrib.get("type") == "TI.ScriptApp"):
         parent = parent_map.get(parent)
-    if parent is not None:
-        image_names = []
-        resource_descriptor = ""
-        for child in parent.iter():
-            lname = local_name(child.tag)
-            if lname == "iname" and (child.text or "").strip():
-                image_names.append((child.text or "").strip())
-            elif lname == "mde" and child.attrib.get("name") == "_RES":
-                resource_descriptor = child.text or ""
-        entries = parse_res_descriptor(resource_descriptor)
-        if not entries:
-            entries = [(name, "img") for name in image_names]
-        used = set()
-        for name, var_name in entries:
-            candidates = [path.parent / name, path.parent.parent / name, path.parent / Path(name).name, path.parent.parent / Path(name).name]
-            found = next((candidate for candidate in candidates if candidate.exists()), None)
-            if found and str(found) not in used:
-                used.add(str(found))
-                resources.append({"name": name, "var": var_name or "img", "group": "IMG", "path": str(found)})
+    return parent
+
+def normalize_script_text(text):
+    return (text or "").replace("\\r\\n", "\\n").replace("\\r", "\\n").strip()
+
+def widget_image_names(widget):
+    if widget is None:
+        return []
+    names = []
+    for child in widget.iter():
+        if local_name(child.tag) == "iname" and (child.text or "").strip():
+            names.append((child.text or "").strip())
+    return names
+
+def collect_widget_resources(widget):
+    if widget is None:
+        return
+    image_names = []
+    resource_descriptor = ""
+    for child in widget.iter():
+        lname = local_name(child.tag)
+        if lname == "iname" and (child.text or "").strip():
+            image_names.append((child.text or "").strip())
+        elif lname == "mde" and child.attrib.get("name") == "_RES":
+            resource_descriptor = child.text or ""
+    entries = parse_res_descriptor(resource_descriptor)
+    if not entries:
+        entries = [(name, "img") for name in image_names]
+    for name, var_name in entries:
+        add_resource(name, var_name or "img", "IMG")
+
+target_path = wasm_lua_symbol_path or ""
+target_content = wasm_lua_symbol_content or ""
+target_norm = normalize_script_text(target_content)
+target_script = None
+scripts = [element for element in root.iter() if local_name(element.tag) == "script"]
+for element in scripts:
+    script_norm = normalize_script_text(element.text)
+    if (
+        element_path(element) == target_path
+        or (target_norm and script_norm == target_norm)
+        or (target_norm and script_norm and (target_norm in script_norm or script_norm in target_norm))
+    ):
+        target_script = element
+        break
+if target_script is None and target_norm:
+    for element in scripts:
+        names = widget_image_names(script_widget(element))
+        if any(name and name in target_norm for name in names):
+            target_script = element
+            break
+if target_script is None and len(scripts) == 1:
+    target_script = scripts[0]
+if target_script is not None:
+    collect_widget_resources(script_widget(target_script))
+script_text = target_content or ((target_script.text or "") if target_script is not None else "")
+if not resources:
+    for name in re.findall(r'\\bsourceName\\s*=\\s*["\\']([^"\\']+)["\\']', script_text):
+        add_resource(name, "img", "IMG")
+if not resources:
+    for name in re.findall(r'["\\']([^"\\']+\\.(?:bmp|png|jpe?g|gif))["\\']', script_text, flags=re.I):
+        add_resource(name, "img", "IMG")
+if not resources and "_R.IMG.img" in script_text:
+    images = image_candidates()
+    if len(images) == 1:
+        add_resource(images[0].name, "img", "IMG")
+if not resources:
+    script_widgets = [element for element in root.iter() if local_name(element.tag) == "wdgt" and element.attrib.get("type") == "TI.ScriptApp"]
+    if len(script_widgets) == 1:
+        collect_widget_resources(script_widgets[0])
 
 for element in root.iter():
     if local_name(element.tag) != "e":
@@ -13297,19 +13417,39 @@ function attachLuaJsImageApi(imageTable, resources = [], global = window) {
     }
     return groups.get(groupName);
   };
-  for (const resource of safeResources) {
-    const varName = String(resource.var || "img");
-    if (!varName) continue;
+  const setResourceToken = (resource, groupName, tokenName) => {
+    const resolvedVarName = String(tokenName || resource.var || "img");
+    if (!resolvedVarName) return;
     const token = global.lua_newtable();
     token.__tnsImage = resource;
-    token.__tnsResourceName = resource.name || varName;
-    global.lua_tableset(ensureGroup(resource.group || "IMG"), varName, token);
+    token.__tnsResourceName = resource.name || resolvedVarName;
+    global.lua_tableset(ensureGroup(groupName || resource.group || "IMG"), resolvedVarName, token);
+  };
+  const basename = (value = "") => String(value || "").split(/[\\/]/).pop();
+  for (const resource of safeResources) {
+    setResourceToken(resource, resource.group || "IMG", resource.var || "img");
+    const baseName = basename(resource.name || resource.path || "");
+    if (baseName) {
+      setResourceToken(resource, resource.group || "IMG", baseName);
+      setResourceToken(resource, "IMG", baseName);
+    }
+  }
+  if (safeResources.length === 1) {
+    setResourceToken({ ...safeResources[0], var: "img", group: "IMG" }, "IMG", "img");
   }
   global.G.str._R = resourceRoot;
   global.lua_tableset(imageTable, "new", (source) => {
     if (source?.__tnsImage) return [createLuaJsImageObject(source.__tnsImage, global)];
     const sourceName = String(source || "");
-    const resource = safeResources.find((item) => item.name === sourceName || item.var === sourceName);
+    const sourceLower = sourceName.toLowerCase();
+    const resource = safeResources.find((item) => (
+      item.name === sourceName
+      || item.var === sourceName
+      || basename(item.name || item.path || "") === sourceName
+      || String(item.name || "").toLowerCase() === sourceLower
+      || String(item.var || "").toLowerCase() === sourceLower
+      || basename(item.name || item.path || "").toLowerCase() === sourceLower
+    ));
     return [resource ? createLuaJsImageObject(resource, global) : null];
   });
   global.lua_tableset(imageTable, "copy", (source, width, height) => {
