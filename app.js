@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-image-preview-calculator";
+const SOURCE_VERSION = "2026-08-23-ti-image-rgb565";
 
 const I18N = {
   es: {
@@ -2632,6 +2632,94 @@ function sanitizeResourceFileName(name, fallback = "image.bmp") {
   return clean && clean.includes(".") ? clean : fallback;
 }
 
+function bmpResourceNameFromFileName(name) {
+  const clean = sanitizeResourceFileName(name || "image.BMP", "image.BMP");
+  const dot = clean.lastIndexOf(".");
+  const base = dot > 0 ? clean.slice(0, dot) : clean;
+  return `${base || "image"}.BMP`;
+}
+
+function writeUint16Le(bytes, offset, value) {
+  bytes[offset] = value & 0xff;
+  bytes[offset + 1] = (value >>> 8) & 0xff;
+}
+
+function writeUint32Le(bytes, offset, value) {
+  bytes[offset] = value & 0xff;
+  bytes[offset + 1] = (value >>> 8) & 0xff;
+  bytes[offset + 2] = (value >>> 16) & 0xff;
+  bytes[offset + 3] = (value >>> 24) & 0xff;
+}
+
+function loadHtmlImageFromFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(t("viewImage")));
+    };
+    image.src = url;
+  });
+}
+
+function encodeCanvasToTiRgb565Bmp(sourceCanvas) {
+  const width = sourceCanvas.width;
+  const height = sourceCanvas.height;
+  if (!width || !height) throw new Error("Image has empty dimensions.");
+  const ctx = sourceCanvas.getContext("2d", { willReadFrequently: true });
+  const rgba = ctx.getImageData(0, 0, width, height).data;
+  const rowStride = Math.floor((width * 16 + 31) / 32) * 4;
+  const imageSize = rowStride * height;
+  const bytes = new Uint8Array(54 + imageSize);
+  bytes[0] = 0x42;
+  bytes[1] = 0x4d;
+  writeUint32Le(bytes, 2, bytes.length);
+  writeUint32Le(bytes, 10, 54);
+  writeUint32Le(bytes, 14, 40);
+  writeUint32Le(bytes, 18, width);
+  writeUint32Le(bytes, 22, height);
+  writeUint16Le(bytes, 26, 1);
+  writeUint16Le(bytes, 28, 16);
+  // TI-generated image resources use this BI_ALPHABITFIELDS-like marker while
+  // storing top-down RGB565 data. Matching it avoids calculator-side PNG/JPG issues.
+  writeUint32Le(bytes, 30, 65543);
+  writeUint32Le(bytes, 34, imageSize);
+  let dst = 54;
+  for (let y = 0; y < height; y += 1) {
+    const rowStart = dst;
+    for (let x = 0; x < width; x += 1) {
+      const src = (y * width + x) * 4;
+      const r = rgba[src] >> 3;
+      const g = rgba[src + 1] >> 2;
+      const b = rgba[src + 2] >> 3;
+      const value = (r << 11) | (g << 5) | b;
+      bytes[dst] = value & 0xff;
+      bytes[dst + 1] = (value >>> 8) & 0xff;
+      dst += 2;
+    }
+    dst = rowStart + rowStride;
+  }
+  return bytes;
+}
+
+async function prepareTiImageResource(file) {
+  const outputName = bmpResourceNameFromFileName(file.name);
+  if (/\.bmp$/i.test(file.name)) {
+    return { name: outputName, bytes: new Uint8Array(await file.arrayBuffer()) };
+  }
+  const image = await loadHtmlImageFromFile(file);
+  const canvas = document.createElement("canvas");
+  canvas.width = image.naturalWidth || image.width;
+  canvas.height = image.naturalHeight || image.height;
+  canvas.getContext("2d").drawImage(image, 0, 0);
+  return { name: outputName, bytes: encodeCanvasToTiRgb565Bmp(canvas) };
+}
+
 function reserveStageResourceName(name) {
   const dot = name.lastIndexOf(".");
   const base = dot > 0 ? name.slice(0, dot) : name;
@@ -2650,7 +2738,43 @@ function buildImageViewerLua(imageName) {
 
 local sourceName = ${JSON.stringify(imageName)}
 local img = nil
+local shown = nil
 local loadError = nil
+local x0 = 0
+local y0 = 0
+local zoom = 1
+local iw = 0
+local ih = 0
+
+local function clampView()
+  local sw = platform.window:width()
+  local sh = platform.window:height()
+  local dw = math.floor(iw * zoom)
+  local dh = math.floor(ih * zoom)
+  if dw <= sw then
+    x0 = math.floor((sw - dw) / 2)
+  else
+    if x0 > 0 then x0 = 0 end
+    if x0 + dw < sw then x0 = sw - dw end
+  end
+  if dh <= sh then
+    y0 = math.floor((sh - dh) / 2)
+  else
+    if y0 > 0 then y0 = 0 end
+    if y0 + dh < sh then y0 = sh - dh end
+  end
+end
+
+local function rebuildShown()
+  shown = img
+  if img and image and image.copy and zoom ~= 1 and iw > 0 and ih > 0 then
+    local dw = math.max(1, math.floor(iw * zoom))
+    local dh = math.max(1, math.floor(ih * zoom))
+    local ok, copied = pcall(function() return image.copy(img, dw, dh) end)
+    if ok and copied then shown = copied end
+  end
+  clampView()
+end
 
 local function loadImage()
   if img ~= nil or loadError ~= nil then return end
@@ -2659,6 +2783,9 @@ local function loadImage()
   end)
   if ok then
     img = result
+    if img.width then iw = img:width() end
+    if img.height then ih = img:height() end
+    rebuildShown()
   else
     loadError = tostring(result)
   end
@@ -2671,35 +2798,66 @@ function on.paint(gc)
   gc:fillRect(0, 0, sw, sh)
   loadImage()
   if img then
-    local iw, ih = 0, 0
-    if img.width then iw = img:width() end
-    if img.height then ih = img:height() end
-    local draw = img
-    local dw, dh = iw, ih
-    if iw > 0 and ih > 0 then
-      local scale = math.min(sw / iw, sh / ih, 1)
-      dw = math.floor(iw * scale)
-      dh = math.floor(ih * scale)
-      if scale < 1 and image.copy then
-        local ok, copied = pcall(function() return image.copy(img, dw, dh) end)
-        if ok and copied then draw = copied end
-      end
-    end
-    gc:drawImage(draw, math.floor((sw - dw) / 2), math.floor((sh - dh) / 2))
+    gc:drawImage(shown or img, x0, y0)
   else
     gc:setColorRGB(0, 0, 0)
     gc:setFont("sansserif", "r", 10)
     gc:drawString("Imagen: " .. sourceName, 10, 20, "top")
     gc:drawString(loadError or "No se pudo cargar la imagen.", 10, 38, "top")
   end
+end
+
+function on.arrowKey(direction)
+  loadImage()
+  if not img then return end
+  local step = math.max(10, math.floor(28 / zoom))
+  if direction == "up" then
+    y0 = y0 + step
+  elseif direction == "down" then
+    y0 = y0 - step
+  elseif direction == "left" then
+    x0 = x0 + step
+  elseif direction == "right" then
+    x0 = x0 - step
+  end
+  clampView()
+  platform.window:invalidate()
+end
+
+function on.charIn(ch)
+  loadImage()
+  if not img then return end
+  if ch == "+" or ch == "*" then
+    zoom = math.min(4, zoom * 1.25)
+    rebuildShown()
+  elseif ch == "-" or ch == "/" then
+    zoom = math.max(0.2, zoom / 1.25)
+    rebuildShown()
+  elseif ch == "0" then
+    zoom = 1
+    x0 = 0
+    y0 = 0
+    rebuildShown()
+  end
+  platform.window:invalidate()
+end
+
+function on.escapeKey()
+  zoom = 1
+  x0 = 0
+  y0 = 0
+  rebuildShown()
+  platform.window:invalidate()
 end`;
 }
 
 async function addImageWidgetToStage(file) {
   if (!file) throw new Error(t("imageWidgetNoFile"));
   await ensureXmlStageCopy();
-  const imageName = reserveStageResourceName(sanitizeResourceFileName(file.name));
-  await writeFileToFs(file, `${xmlDoctor.stagePath}/${imageName}`);
+  const prepared = await prepareTiImageResource(file);
+  const imageName = reserveStageResourceName(sanitizeResourceFileName(prepared.name, "image.BMP"));
+  ensureParent(`${xmlDoctor.stagePath}/${imageName}`);
+  pyodide.FS.writeFile(`${xmlDoctor.stagePath}/${imageName}`, prepared.bytes);
   const currentFile = xmlDoctor.current?.file || "";
   pyodide.globals.set("wasm_image_current_file", currentFile);
   pyodide.globals.set("wasm_image_file_name", imageName);
@@ -2966,9 +3124,10 @@ function decodeBmpToRgba(bytes) {
   let bpp = headerBpp;
   let tightRows = false;
   const tight24Size = width * height * 3;
-  if (payloadSize === tight24Size || declaredImageSize === tight24Size) {
-    // Some TI-Nspire resources have a BMP header that reports 16 bpp, but the
-    // payload is packed 24-bit RGB/BGR. Browser <img> rejects that header.
+  if (headerBpp !== 16 && (payloadSize === tight24Size || declaredImageSize === tight24Size)) {
+    // Some malformed resources are packed 24-bit despite an incomplete header.
+    // Real TI-Nspire image cards can also have a 16-bit header with extra bytes,
+    // so never override an explicit 16 bpp RGB565 resource from size alone.
     bpp = 24;
     tightRows = true;
   }
@@ -2981,7 +3140,7 @@ function decodeBmpToRgba(bytes) {
   }
 
   const rowStride = tightRows ? width * 3 : Math.floor((width * bpp + 31) / 32) * 4;
-  const topDown = signedHeight < 0;
+  const topDown = compression === 65543 || signedHeight < 0;
   const rgba = new Uint8ClampedArray(width * height * 4);
   let palette = [];
   if (bpp === 8) {
@@ -9239,6 +9398,8 @@ function previewKeyboardEventToLua(event) {
 async function loadLuaPreviewSymbols(item) {
   if (!item?.file || !window.pyodide) return {};
   pyodide.globals.set("wasm_lua_symbol_file", item.file);
+  pyodide.globals.set("wasm_lua_symbol_path", item.path || "");
+  pyodide.globals.set("wasm_lua_symbol_content", item.content || "");
   const payload = await pyodide.runPythonAsync(`
 import json
 import re
@@ -9296,9 +9457,87 @@ def convert(value):
 path = Path(wasm_lua_symbol_file)
 tree = ET.parse(path)
 root = tree.getroot()
+parent_map = {child: parent for parent in root.iter() for child in parent}
 variables = {}
 functions = []
 basic_functions = {}
+resources = []
+
+def element_path(element):
+    parts = []
+    current = element
+    while current is not None:
+        parent = parent_map.get(current)
+        name = local_name(current.tag)
+        if parent is not None:
+            same = [child for child in parent if local_name(child.tag) == name]
+            if len(same) > 1:
+                name = f"{name}[{same.index(current)+1}]"
+        parts.append(name)
+        current = parent
+    return "/" + "/".join(reversed(parts))
+
+def decode_res_len(chunk):
+    if len(chunk) != 3:
+        return 0
+    value = 0
+    for ch in chunk:
+        value = value * 26 + max(0, ord(ch) - ord("A"))
+    return value
+
+def parse_res_descriptor(text):
+    out = []
+    text = text or ""
+    index = 3 if text.startswith("AAC") else 0
+    while index + 3 <= len(text):
+        name_len = decode_res_len(text[index:index + 3])
+        index += 3
+        if name_len <= 0 or index + name_len > len(text):
+            break
+        name = text[index:index + name_len]
+        index += name_len
+        if index + 3 > len(text):
+            out.append((name, "img"))
+            break
+        var_len = decode_res_len(text[index:index + 3])
+        index += 3
+        var_name = text[index:index + var_len] if var_len > 0 else "img"
+        index += max(0, var_len)
+        out.append((name, var_name or "img"))
+    return out
+
+target_path = wasm_lua_symbol_path or ""
+target_content = wasm_lua_symbol_content or ""
+target_script = None
+for element in root.iter():
+    if local_name(element.tag) == "script":
+        if element_path(element) == target_path or (target_content and (element.text or "") == target_content):
+            target_script = element
+            break
+if target_script is not None:
+    parent = parent_map.get(target_script)
+    while parent is not None and not (local_name(parent.tag) == "wdgt" and parent.attrib.get("type") == "TI.ScriptApp"):
+        parent = parent_map.get(parent)
+    if parent is not None:
+        image_names = []
+        resource_descriptor = ""
+        for child in parent.iter():
+            lname = local_name(child.tag)
+            if lname == "iname" and (child.text or "").strip():
+                image_names.append((child.text or "").strip())
+            elif lname == "mde" and child.attrib.get("name") == "_RES":
+                resource_descriptor = child.text or ""
+        entries = parse_res_descriptor(resource_descriptor)
+        if not entries:
+            entries = [(name, "img") for name in image_names]
+        used = set()
+        for name, var_name in entries:
+            candidates = [path.parent / name, path.parent.parent / name, path.parent / Path(name).name, path.parent.parent / Path(name).name]
+            found = next((candidate for candidate in candidates if candidate.exists()), None)
+            if found and str(found) not in used:
+                used.add(str(found))
+                resources.append({"name": name, "var": var_name or "img", "group": "IMG", "path": str(found)})
+
 for element in root.iter():
     if local_name(element.tag) != "e":
         continue
@@ -9323,18 +9562,63 @@ for element in root.iter():
         converted = convert(value)
         if converted is not None:
             variables[name] = converted
-json.dumps({"variables": variables, "functions": functions, "basicFunctions": basic_functions})
+json.dumps({"variables": variables, "functions": functions, "basicFunctions": basic_functions, "resources": resources})
 `);
   const raw = JSON.parse(payload);
   const convertValue = (value) => {
-    if (Array.isArray(value)) return window.lua_newtable(value.map(convertValue));
+    if (Array.isArray(value) && typeof window.lua_newtable === "function") return window.lua_newtable(value.map(convertValue));
     return value;
   };
+  const resources = await loadLuaPreviewImageResources(raw.resources || []);
   return {
     variables: Object.fromEntries(Object.entries(raw.variables || {}).map(([key, value]) => [key, convertValue(value)])),
     functions: raw.functions || [],
     basicFunctions: raw.basicFunctions || {},
+    resources,
   };
+}
+
+async function renderImageBytesToCanvas(bytes, name = "image") {
+  const canvas = document.createElement("canvas");
+  if (isBmpBytes(bytes)) {
+    renderBmpToCanvas(canvas, bytes);
+    return canvas;
+  }
+  const blob = new Blob([bytes], { type: imageMimeFromName(name) });
+  const url = URL.createObjectURL(blob);
+  try {
+    const image = await new Promise((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(t("viewImage")));
+      img.src = url;
+    });
+    canvas.width = image.naturalWidth || image.width;
+    canvas.height = image.naturalHeight || image.height;
+    canvas.getContext("2d").drawImage(image, 0, 0);
+    return canvas;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+async function loadLuaPreviewImageResources(resources = []) {
+  const output = [];
+  for (const resource of resources) {
+    try {
+      const bytes = pyodide.FS.readFile(resource.path);
+      const canvas = await renderImageBytesToCanvas(bytes, resource.name);
+      output.push({
+        ...resource,
+        canvas,
+        width: canvas.width,
+        height: canvas.height,
+      });
+    } catch (error) {
+      output.push({ ...resource, error: error.message });
+    }
+  }
+  return output;
 }
 
 const LUAJS_RUNTIME_FILES = [
@@ -9404,8 +9688,10 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   const platformTable = ensureLuaJsTable("platform");
   const onTable = ensureLuaJsTable("on");
   const d2EditorTable = ensureLuaJsTable("D2Editor");
+  const imageTable = ensureLuaJsTable("image");
   global.G.str.platform = platformTable;
   global.G.str.on = onTable;
+  attachLuaJsImageApi(imageTable, symbols.resources || [], global);
   global.lua_tableset(varTable, "store", (key, value) => {
     const cleanValue = normalizeLuaJsNumericValue(value);
     store[String(key)] = cleanValue;
@@ -11491,6 +11777,66 @@ function wrapLuaJsEditorText(ctx, text, width) {
   return output;
 }
 
+function createLuaJsImageObject(resource, global = window) {
+  const table = global.lua_newtable();
+  table.__tnsImage = resource;
+  global.lua_tableset(table, "width", (self) => [Number((self?.__tnsImage || resource)?.width) || 0]);
+  global.lua_tableset(table, "height", (self) => [Number((self?.__tnsImage || resource)?.height) || 0]);
+  return table;
+}
+
+function scaleLuaJsImageResource(resource, width, height) {
+  const source = resource?.canvas;
+  if (!source) return null;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(Number(width) || source.width || 1));
+  canvas.height = Math.max(1, Math.round(Number(height) || source.height || 1));
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+  return {
+    ...resource,
+    canvas,
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+function attachLuaJsImageApi(imageTable, resources = [], global = window) {
+  const safeResources = Array.isArray(resources) ? resources.filter((resource) => resource?.canvas) : [];
+  const resourceRoot = global.lua_newtable();
+  const groups = new Map();
+  const ensureGroup = (name) => {
+    const groupName = String(name || "IMG");
+    if (!groups.has(groupName)) {
+      const table = global.lua_newtable();
+      groups.set(groupName, table);
+      global.lua_tableset(resourceRoot, groupName, table);
+    }
+    return groups.get(groupName);
+  };
+  for (const resource of safeResources) {
+    const varName = String(resource.var || "img");
+    if (!varName) continue;
+    const token = global.lua_newtable();
+    token.__tnsImage = resource;
+    token.__tnsResourceName = resource.name || varName;
+    global.lua_tableset(ensureGroup(resource.group || "IMG"), varName, token);
+  }
+  global.G.str._R = resourceRoot;
+  global.lua_tableset(imageTable, "new", (source) => {
+    if (source?.__tnsImage) return [createLuaJsImageObject(source.__tnsImage, global)];
+    const sourceName = String(source || "");
+    const resource = safeResources.find((item) => item.name === sourceName || item.var === sourceName);
+    return [resource ? createLuaJsImageObject(resource, global) : null];
+  });
+  global.lua_tableset(imageTable, "copy", (source, width, height) => {
+    const resource = source?.__tnsImage;
+    const scaled = scaleLuaJsImageResource(resource, width, height);
+    return [scaled ? createLuaJsImageObject(scaled, global) : null];
+  });
+}
+
 function attachLuaJsGc(gcTable, ctx, canvas, screenText = null) {
   let fontSize = 12;
   const clipStack = [];
@@ -11589,7 +11935,13 @@ function attachLuaJsGc(gcTable, ctx, canvas, screenText = null) {
     }
     return [];
   });
-  window.lua_tableset(gcTable, "drawImage", () => []);
+  window.lua_tableset(gcTable, "drawImage", (_self, image, x, y) => {
+    const resource = image?.__tnsImage;
+    if (resource?.canvas) {
+      ctx.drawImage(resource.canvas, Number(x) || 0, Number(y) || 0);
+    }
+    return [];
+  });
   window.lua_tableset(gcTable, "begin", () => []);
   window.lua_tableset(gcTable, "finish", () => []);
 }
