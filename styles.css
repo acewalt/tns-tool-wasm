@@ -2431,7 +2431,8 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .image-calculator-canvas {
-  width: min(100%, 640px);
+  width: 320px;
+  max-width: 100%;
   height: auto;
   border: 1px solid rgba(226, 232, 240, 0.38);
   border-radius: 4px;

@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-love-nspire-resources";
+const SOURCE_VERSION = "2026-08-23-love-nspire-platform-window";
 
 const I18N = {
   es: {
@@ -3220,9 +3220,13 @@ function drawImageCalculatorFrame(targetCanvas, source, viewState = null) {
   const contentHeight = frameHeight - chromeHeight;
   const sourceWidth = source.naturalWidth || source.videoWidth || source.width || 0;
   const sourceHeight = source.naturalHeight || source.videoHeight || source.height || 0;
-  targetCanvas.width = frameWidth;
-  targetCanvas.height = frameHeight;
+  const dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+  targetCanvas.width = Math.round(frameWidth * dpr);
+  targetCanvas.height = Math.round(frameHeight * dpr);
+  targetCanvas.style.width = `${frameWidth}px`;
+  targetCanvas.style.height = `${frameHeight}px`;
   const ctx = targetCanvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   ctx.clearRect(0, 0, frameWidth, frameHeight);
   ctx.fillStyle = "#ffffff";
   ctx.fillRect(0, 0, frameWidth, frameHeight);
@@ -3289,8 +3293,8 @@ function setupImageCalculatorToggle(backdrop, source) {
       y: event.clientY,
       viewX: viewState.x,
       viewY: viewState.y,
-      scaleX: calculatorCanvas.width / rect.width,
-      scaleY: calculatorCanvas.height / rect.height,
+      scaleX: 320 / rect.width,
+      scaleY: 240 / rect.height,
     };
     calculatorCanvas.setPointerCapture?.(event.pointerId);
     calculatorCanvas.classList.add("dragging");
@@ -9729,7 +9733,15 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.SCALE = 1;
   global._WIDTH = canvas.width;
   global._HEIGHT = canvas.height;
-  global.G.str.on = global.lua_newtable();
+  const varTable = ensureLuaJsTable("var");
+  const stringTable = ensureLuaJsTable("string");
+  const mathTable = ensureLuaJsTable("math");
+  const platformTable = ensureLuaJsTable("platform");
+  const onTable = ensureLuaJsTable("on");
+  const d2EditorTable = ensureLuaJsTable("D2Editor");
+  const imageTable = ensureLuaJsTable("image");
+  global.G.str.platform = platformTable;
+  global.G.str.on = onTable;
   const previewGc = global.lua_newtable();
   const previewWindow = global.lua_newtable();
   const screenText = [];
@@ -9748,20 +9760,11 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     global.lua_tableset(previewWindow, "backgroundColor", color);
     return [];
   });
-  global.lua_tableset(global.G.str.platform, "window", previewWindow);
+  global.lua_tableset(platformTable, "window", previewWindow);
 
   const store = { ...symbols.variables };
   const basicFunctions = { ...(symbols.basicFunctions || {}) };
   const nativeEditors = [];
-  const varTable = ensureLuaJsTable("var");
-  const stringTable = ensureLuaJsTable("string");
-  const mathTable = ensureLuaJsTable("math");
-  const platformTable = ensureLuaJsTable("platform");
-  const onTable = ensureLuaJsTable("on");
-  const d2EditorTable = ensureLuaJsTable("D2Editor");
-  const imageTable = ensureLuaJsTable("image");
-  global.G.str.platform = platformTable;
-  global.G.str.on = onTable;
   attachLuaJsImageApi(imageTable, symbols.resources || [], global);
   global.lua_tableset(varTable, "store", (key, value) => {
     const cleanValue = normalizeLuaJsNumericValue(value);
