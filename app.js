@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-image-rgb565-extra";
+const SOURCE_VERSION = "2026-08-23-love-preview-complete";
 
 const I18N = {
   es: {
@@ -2763,117 +2763,374 @@ function buildImageViewerLua(imageName) {
   return `platform.apilevel = '2.0'
 
 local sourceName = ${JSON.stringify(imageName)}
-local img = nil
-local shown = nil
+local origImage = nil
+local curimage = nil
 local loadError = nil
+local redalert_var = "redalert"
+local inited = false
+local infos = false
+local fullScreen = false
+local hideScrollbars = false
+local isGrabbing = false
+local mouseX, mouseY = 0, 0
 local x0 = 0
 local y0 = 0
-local zoom = 1
-local iw = 0
-local ih = 0
+local x0old, y0old = 0, 0
+local w, h = 0, 0
+local sw, sh = 0, 0
+local zfactor = 1.2
+local z, zold = 1, 1
+local dx, dy = 1, 1
+local hw = 220
+local fontsize = 9
 
-local function clampView()
-  local sw = platform.window:width()
-  local sh = platform.window:height()
-  local dw = math.floor(iw * zoom)
-  local dh = math.floor(ih * zoom)
-  if dw <= sw then
-    x0 = math.floor((sw - dw) / 2)
-  else
-    if x0 > 0 then x0 = 0 end
-    if x0 + dw < sw then x0 = sw - dw end
-  end
-  if dh <= sh then
-    y0 = math.floor((sh - dh) / 2)
-  else
-    if y0 > 0 then y0 = 0 end
-    if y0 + dh < sh then y0 = sh - dh end
+if cursor and cursor.set then cursor.set("default") end
+if cursor and cursor.hide then cursor.hide() end
+
+local okMeta, pwmeta = pcall(function() return getmetatable(platform.window) end)
+if okMeta and pwmeta and not pwmeta.invalidateAll then
+  function pwmeta:invalidateAll()
+    if self.setFocus then
+      self:setFocus(false)
+      self:setFocus(true)
+    else
+      platform.window:invalidate()
+    end
   end
 end
 
-local function rebuildShown()
-  shown = img
-  if img and image and image.copy and zoom ~= 1 and iw > 0 and ih > 0 then
-    local dw = math.max(1, math.floor(iw * zoom))
-    local dh = math.max(1, math.floor(ih * zoom))
-    local ok, copied = pcall(function() return image.copy(img, dw, dh) end)
-    if ok and copied then shown = copied end
+local function screenRefresh()
+  if platform.window.invalidateAll then
+    platform.window:invalidateAll()
+  else
+    platform.window:invalidate()
   end
-  clampView()
+end
+
+local function bound(val, minVal, maxVal)
+  return math.min(math.max(val, minVal), maxVal)
+end
+
+local function destroy()
+  origImage = nil
+  curimage = nil
+  screenRefresh()
+end
+
+local function repos()
+  if w > 0 and h > 0 and sw > 0 and sh > 0 then
+    x0 = bound(sw - w * z, x0, 0)
+    y0 = bound(sh - h * z, y0, 0)
+  end
+  hideScrollbars = false
+  if x0 ~= x0old or y0 ~= y0old or z ~= zold then screenRefresh() end
+end
+
+local function fullrefresh()
+  if not origImage then return end
+  if z ~= zold then
+    curimage = origImage
+    if z ~= 1 and image and image.copy then
+      local ok, copied = pcall(function()
+        return image.copy(origImage, math.max(1, math.floor(w * z)), math.max(1, math.floor(h * z)))
+      end)
+      if ok and copied then curimage = copied end
+    end
+    repos()
+  end
 end
 
 local function loadImage()
-  if img ~= nil or loadError ~= nil then return end
+  if origImage ~= nil or loadError ~= nil then return end
   local ok, result = pcall(function()
     return image.new(_R.IMG.img)
   end)
-  if ok then
-    img = result
-    if img.width then iw = img:width() end
-    if img.height then ih = img:height() end
-    rebuildShown()
+  if ok and result and type(result) ~= "string" then
+    origImage = result
+    curimage = origImage
+    local okSize, rw, rh = pcall(function() return origImage:width(), origImage:height() end)
+    if okSize then
+      w, h = rw or 0, rh or 0
+    end
   else
-    loadError = tostring(result)
+    loadError = tostring(result or "No se pudo cargar la imagen.")
   end
 end
 
-function on.paint(gc)
-  local sw = platform.window:width()
-  local sh = platform.window:height()
-  gc:setColorRGB(255, 255, 255)
-  gc:fillRect(0, 0, sw, sh)
-  loadImage()
-  if img then
-    gc:drawImage(shown or img, x0, y0)
-  else
-    gc:setColorRGB(0, 0, 0)
-    gc:setFont("sansserif", "r", 10)
-    gc:drawString("Imagen: " .. sourceName, 10, 20, "top")
-    gc:drawString(loadError or "No se pudo cargar la imagen.", 10, 38, "top")
-  end
+function on.construction()
+  if var and var.store then var.store(redalert_var, 0) end
 end
 
-function on.arrowKey(direction)
-  loadImage()
-  if not img then return end
-  local step = math.max(10, math.floor(28 / zoom))
-  if direction == "up" then
-    y0 = y0 + step
-  elseif direction == "down" then
-    y0 = y0 - step
-  elseif direction == "left" then
-    x0 = x0 + step
-  elseif direction == "right" then
-    x0 = x0 - step
+function on.backspaceKey()
+  destroy()
+  if var and var.store then var.store(redalert_var, 1) end
+end
+
+function on.resize(ww, wh)
+  sw, sh = ww, wh
+  x1 = sw - 7 - hw
+  x2 = ((sw - x1) * 6 / 9 + x1)
+  x12 = x1 + (x2 - x1) / 3
+  x22 = x2 + (sw - x2) / 4
+end
+
+function on.timer()
+  dx, dy = 1, 1
+  hideScrollbars = true
+  screenRefresh()
+end
+
+function on.tabKey()
+  if fullScreen then
+    fullScreen = false
+    sw, sh = 318, 212
+  else
+    fullScreen = true
+    sw, sh = 320, 240
   end
-  clampView()
-  platform.window:invalidate()
+  repos()
+end
+
+function on.escapeKey()
+  zold = z
+  z = 1
+  fullrefresh()
 end
 
 function on.charIn(ch)
   loadImage()
-  if not img then return end
-  if ch == "+" or ch == "*" then
-    zoom = math.min(4, zoom * 1.25)
-    rebuildShown()
-  elseif ch == "-" or ch == "/" then
-    zoom = math.max(0.2, zoom / 1.25)
-    rebuildShown()
+  if not origImage then return end
+  if ch == "-" or ch == "/" then
+    zold = z
+    z = z / zfactor
+    if z < 1 and zold > 1 then z = 1 end
+    z = math.max(z, math.min(1, math.min(sw / w, sh / h)))
+    x0 = x0 + w * (zold - z) / 2
+    y0 = y0 + h * (zold - z) / 2
+    fullrefresh()
+  elseif ch == "+" or ch == "*" then
+    zold = z
+    z = (z * zfactor < 4) and z * zfactor or z
+    if z > 1 and zold < 1 then z = 1 end
+    z = math.min(z, math.max(1, math.min(sw / 2, sh / 2)))
+    x0 = x0 - w * (z - zold) / 2
+    y0 = y0 - h * (z - zold) / 2
+    fullrefresh()
+  elseif string.find("12346789", ch, 1, true) then
+    if ch == "1" or ch == "2" or ch == "3" then y0 = y0 - sh end
+    if ch == "7" or ch == "8" or ch == "9" then y0 = y0 + sh end
+    if ch == "1" or ch == "4" or ch == "7" then x0 = x0 + sw end
+    if ch == "3" or ch == "6" or ch == "9" then x0 = x0 - sw end
+    repos()
+  elseif ch == "?" then
+    infos = not infos
+    screenRefresh()
   elseif ch == "0" then
-    zoom = 1
-    x0 = 0
-    y0 = 0
-    rebuildShown()
+    zold = z
+    z = math.min(sw / w, sh / h)
+    fullrefresh()
+  elseif ch == "5" then
+    x0 = sw / 2 - w / 2 * z
+    y0 = sh / 2 - h / 2 * z
+    repos()
   end
-  platform.window:invalidate()
 end
 
-function on.escapeKey()
-  zoom = 1
-  x0 = 0
-  y0 = 0
-  rebuildShown()
-  platform.window:invalidate()
+function on.help()
+  infos = not infos
+  screenRefresh()
+end
+
+function on.arrowUp()
+  y0 = y0 + dy * math.max(1, z) / 2
+  dy = dy + 1
+  repos()
+end
+
+function on.arrowDown()
+  y0 = y0 - dy * math.max(1, z) / 2
+  dy = dy + 1
+  repos()
+end
+
+function on.arrowRight()
+  x0 = x0 - dx * math.max(1, z) / 2
+  dx = dx + 1
+  repos()
+end
+
+function on.arrowLeft()
+  x0 = x0 + dx * math.max(1, z) / 2
+  dx = dx + 1
+  repos()
+end
+
+function on.arrowKey(direction)
+  if direction == "up" then
+    on.arrowUp()
+  elseif direction == "down" then
+    on.arrowDown()
+  elseif direction == "left" then
+    on.arrowLeft()
+  elseif direction == "right" then
+    on.arrowRight()
+  end
+end
+
+function on.mouseUp(x, y)
+  mouseX, mouseY = x, y
+  isGrabbing = not isGrabbing
+  if not isGrabbing then
+    if cursor and cursor.set then cursor.set("default") end
+    if cursor and cursor.hide then cursor.hide() end
+  else
+    if cursor and cursor.set then cursor.set("translation") end
+  end
+  screenRefresh()
+end
+
+function on.mouseMove(x, y)
+  if isGrabbing then
+    x0, y0 = x0 + (x - mouseX), y0 + (y - mouseY)
+    mouseX, mouseY = x, y
+    repos()
+  end
+end
+
+if not platform.withGC then
+  function platform.withGC(func, ...)
+    local gc = platform.gc()
+    gc:begin()
+    func(..., gc)
+    gc:finish()
+  end
+end
+
+function on.paint(gc)
+  if platform.hw and platform.hw() < 4 and fullScreen then
+    platform.withGC(paint)
+  else
+    paint(gc)
+  end
+end
+
+function on.varChange(list)
+  if not var or not var.recall then return 0 end
+  for k, v in pairs(list) do
+    if v == redalert_var then
+      local val = var.recall(v)
+      if val and val ~= 0 then destroy() end
+    end
+  end
+  return 0
+end
+
+function paint(gc)
+  if sw <= 0 or sh <= 0 then
+    local okSize, ww, wh = pcall(function()
+      return platform.window:width(), platform.window:height()
+    end)
+    if okSize then on.resize(ww, wh) end
+  end
+  loadImage()
+  gc:setColorRGB(255, 255, 255)
+  gc:fillRect(0, 0, sw, sh)
+  if loadError then
+    gc:setColorRGB(0, 0, 0)
+    gc:setFont("sansserif", "r", 10)
+    gc:drawString("Imagen: " .. sourceName, 10, 20, "top")
+    gc:drawString(loadError or "No se pudo cargar la imagen.", 10, 38, "top")
+    return
+  end
+  if origImage and not inited then
+    on.resize(platform.window:width(), platform.window:height())
+    if sw > 0 and sh > 0 then
+      inited = true
+      if var and var.monitor then var.monitor(redalert_var) end
+    end
+    local okArrowUp, arrowUpValue = pcall(function() return math.eval("char(8593)") end)
+    local okArrowLR, arrowLRValue = pcall(function() return math.eval("char(8596)") end)
+    local okArrowUD, arrowUDValue = pcall(function() return math.eval("char(8597)") end)
+    arrowup = okArrowUp and arrowUpValue or "^"
+    arrowlr = okArrowLR and arrowLRValue or "<>"
+    arrowud = okArrowUD and arrowUDValue or "^v"
+  end
+  if inited then
+    if timer and timer.stop then timer.stop() end
+    if curimage then gc:drawImage(curimage, x0, y0) end
+    if not hideScrollbars then
+      if h * z > sh then
+        local b = (w * z > sw) and 5 or 0
+        gc:setColorRGB(0, 0, 0)
+        gc:fillRect(sw - 5, 0, 5, sh - b)
+        gc:setColorRGB(255, 255, 255)
+        gc:fillRect(sw - 4, 1, 3, sh - b - 2)
+        gc:setColorRGB(0, 0, 0)
+        local pw = sh * (sh - b - 4) / (h * z)
+        local pp = -y0 * (sh - b - 4 - pw) / (h * z - sh)
+        gc:fillRect(sw - 3, 2 + pp, 1, pw)
+      end
+      if w * z > sw then
+        local b = (h * z > sh) and 5 or 0
+        gc:setColorRGB(0, 0, 0)
+        gc:fillRect(0, sh - 5, sw - b, 5)
+        gc:setColorRGB(255, 255, 255)
+        gc:fillRect(1, sh - 4, sw - b - 2, 3)
+        gc:setColorRGB(0, 0, 0)
+        local pw = sw * (sw - b - 4) / (w * z)
+        local pp = -x0 * (sw - b - 4 - pw) / (w * z - sw)
+        gc:fillRect(2 + pp, sh - 3, pw, 1)
+      end
+    end
+    x0old = x0
+    y0old = y0
+    if infos then
+      gc:setFont("serif", "r", fontsize)
+      local strhs = gc:getStringHeight("H")
+      gc:setFont("serif", "b", fontsize + 1)
+      local strh = gc:getStringHeight("H")
+      local hh = 0
+      gc:setColorRGB(255, 255, 255)
+      gc:fillRect(x1, 2, hw, strh * 2 + strhs * 5)
+      gc:setColorRGB(0, 0, 0)
+      gc:drawRect(x1 - 1, 1, hw + 1, strh * 2 + strhs * 5)
+      gc:drawString("mViewer GX 1.4", x1 + 2, hh, "top")
+      gc:setFont("serif", "r", fontsize + 1)
+      gc:drawString("(TI-Planet.org)", x1 + (sw - x1) / 2, hh, "top")
+      hh = hh + strh
+      gc:setColorRGB(0, 0, 255)
+      gc:drawString("http://tiplanet.org/gxnspire", x1 + 2, hh, "top")
+      hh = hh + strh
+      gc:setColorRGB(0, 0, 0)
+      gc:setFont("serif", "r", fontsize)
+      gc:drawRect(x1, 1, hw - 1, hh)
+      gc:drawString("* /", x1 + 2, hh, "top")
+      gc:drawString("zoom in/out", x12, hh, "top")
+      gc:drawString("esc", x2, hh, "top")
+      gc:drawString("zoom 1:1", x22, hh, "top")
+      hh = hh + strhs
+      gc:drawString("ctrl" .. arrowlr, x1 + 2, hh, "top")
+      gc:drawString("next/prev page", x12, hh, "top")
+      gc:drawString("0", x2, hh, "top")
+      gc:drawString("zoom fit", x22, hh, "top")
+      hh = hh + strhs
+      gc:drawString(arrowud .. arrowlr, x1 + 2, hh, "top")
+      gc:drawString("progressive scroll", x12, hh, "top")
+      gc:drawString("5", x2, hh, "top")
+      gc:drawString("center", x22, hh, "top")
+      hh = hh + strhs
+      gc:drawString("1-4 6-9", x1 + 2, hh, "top")
+      gc:drawString("screen scroll", x12, hh, "top")
+      gc:drawString("del", x2, hh, "top")
+      gc:drawString("emergency", x22, hh, "top")
+      hh = hh + strhs
+      gc:drawString("ctrl" .. arrowup, x1 + 2, hh, "top")
+      gc:drawString("preview all pages", x12, hh, "top")
+      gc:drawString("?", x2, hh, "top")
+      gc:drawString("hide box", x22, hh, "top")
+    end
+    if timer and timer.start then timer.start(1) end
+  end
 end`;
 }
 
@@ -2953,10 +3210,11 @@ ET.SubElement(wdgt, q(sc_ns, "guid")).text = uuid.uuid4().hex.upper()
 img_info = ET.SubElement(wdgt, q(sc_ns, "img_info"))
 ET.SubElement(img_info, q(sc_ns, "iname")).text = image_name
 md = ET.SubElement(wdgt, q(sc_ns, "md"))
-ET.SubElement(md, q(sc_ns, "mde"), {"name": "TITLE", "prop": "2147549184"}).text = "image-viewer"
+ET.SubElement(md, q(sc_ns, "mde"), {"name": "TITLE", "prop": "2147549184"}).text = "mviewer-lua"
 ET.SubElement(md, q(sc_ns, "mde"), {"name": "PERM", "prop": "134217728"}).text = "12"
+ET.SubElement(md, q(sc_ns, "mde"), {"name": "PASSW", "prop": "536871168"}).text = "VTVNa3oxNFEwN2lXdnVvdkZ3MGZ3STFBVjZNPQA="
 ET.SubElement(md, q(sc_ns, "mde"), {"name": "_RES", "prop": "67108864"}).text = resource_descriptor
-script = ET.SubElement(wdgt, q(sc_ns, "script"), {"version": "512", "id": "0"})
+script = ET.SubElement(wdgt, q(sc_ns, "script"), {"version": "33817092", "id": "0"})
 script.text = wasm_image_viewer_lua
 root.append(card)
 body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
@@ -10164,6 +10422,10 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
   const touch = global.lua_newtable();
   const joystick = global.lua_newtable();
   const thread = global.lua_newtable();
+  const fontModule = global.lua_newtable();
+  const physics = global.lua_newtable();
+  const video = global.lua_newtable();
+  const sensor = global.lua_newtable();
   const ioTable = global.lua_newtable();
   const packageTable = global.lua_newtable();
   const packageLoaded = global.lua_newtable();
@@ -10182,17 +10444,34 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
   let backgroundColor = [0, 0, 0, 1];
   let pointSize = 1;
   let lineStyle = "smooth";
+  let lineJoin = "miter";
   let blendMode = "alpha";
+  let defaultFilter = ["linear", "linear", 1];
   let keyRepeat = false;
   let mouseVisible = true;
   let fullscreen = false;
+  let vsync = 1;
+  let windowX = 0;
+  let windowY = 0;
   let mouseX = 0;
   let mouseY = 0;
+  let mouseGrabbed = false;
+  let mouseRelativeMode = false;
   let windowTitle = "";
   let masterVolume = 1;
+  let activeCanvasState = null;
+  let activeShader = null;
+  let activeColorMask = [true, true, true, true];
+  let stencilMode = null;
+  let seededRandomState = 0x12345678;
+  let lastDelta = 1 / 60;
   const startedAt = performance.now();
+  const drawableStates = new WeakMap();
+  const objectUrls = [];
 
   const log = (message) => appendPreviewLog(logEl, message);
+  const currentCanvas = () => activeCanvasState?.canvas || canvas;
+  const currentContext = () => activeCanvasState?.ctx || ctx;
   const captureLoveText = (text, x = 0, y = 0, lineHeight = fontSize || 12) => {
     recordLuaPreviewText(screenText, text, x, y, lineHeight);
   };
@@ -10220,19 +10499,32 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     ];
   };
   const applyColor = () => {
-    ctx.fillStyle = cssColor(currentColor);
-    ctx.strokeStyle = cssColor(currentColor);
+    const target = currentContext();
+    target.fillStyle = cssColor(currentColor);
+    target.strokeStyle = cssColor(currentColor);
+  };
+  const applyContextDefaults = (target = currentContext()) => {
+    target.imageSmoothingEnabled = true;
+    target.font = `${fontSize}px sans-serif`;
+    target.textBaseline = "top";
+    target.lineWidth = Math.max(1, target.lineWidth || 1);
+    target.lineCap = lineStyle === "rough" ? "butt" : "round";
+    target.lineJoin = lineJoin || (lineStyle === "rough" ? "miter" : "round");
+    target.globalCompositeOperation = blendMode === "add" ? "lighter" : "source-over";
+    target.fillStyle = cssColor(currentColor);
+    target.strokeStyle = cssColor(currentColor);
   };
   const clearCanvas = (...args) => {
     const color = args.length ? normalizeColor(args, backgroundColor) : backgroundColor;
-    screenText.length = 0;
-    ctx.save();
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.fillStyle = cssColor(color);
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.restore();
-    ctx.font = `${fontSize}px sans-serif`;
-    ctx.textBaseline = "top";
+    if (!activeCanvasState) screenText.length = 0;
+    const targetCanvas = currentCanvas();
+    const target = currentContext();
+    target.save();
+    target.setTransform(1, 0, 0, 1, 0, 0);
+    target.fillStyle = cssColor(color);
+    target.fillRect(0, 0, targetCanvas.width, targetCanvas.height);
+    target.restore();
+    applyContextDefaults(target);
     applyColor();
   };
   const luaArrayToJs = (value) => {
@@ -10255,6 +10547,265 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
   };
   const emptyTable = () => global.lua_newtable();
   const makeObjectTable = (kind, fields = {}) => tableFromObject({ type: kind, unsupported: true, ...fields });
+  const tableToArray = (value) => {
+    if (!value || typeof value !== "object") return [];
+    const length = Math.max(0, global.lua_len(value) || 0);
+    const out = [];
+    for (let index = 1; index <= length; index += 1) out.push(global.lua_tableget(value, index));
+    return out;
+  };
+  const makeDrawableTable = (kind, state = {}) => {
+    const table = tableFromObject({ type: kind });
+    drawableStates.set(table, { kind, ...state, table });
+    return table;
+  };
+  const setMethod = (table, name, fn) => global.lua_tableset(table, name, fn);
+  const getDrawableState = (value) => (value && typeof value === "object" ? drawableStates.get(value) : null);
+  const getDrawableDimensions = (state) => {
+    if (!state) return [0, 0];
+    if (state.kind === "Image" && state.sourceState?.canvas) return [state.sourceState.canvas.width, state.sourceState.canvas.height];
+    if (state.kind === "Image" && state.element) return [state.width || state.element.naturalWidth || state.element.width || 0, state.height || state.element.naturalHeight || state.element.height || 0];
+    if (state.kind === "Canvas" && state.canvas) return [state.canvas.width, state.canvas.height];
+    if (state.kind === "ImageData" && state.canvas) return [state.canvas.width, state.canvas.height];
+    if (state.kind === "Text") return [state.width || 0, state.height || fontSize];
+    if (Number.isFinite(state.width) || Number.isFinite(state.height)) return [state.width || 0, state.height || 0];
+    return [0, 0];
+  };
+  const attachDimensionMethods = (table, state) => {
+    setMethod(table, "getWidth", (...rawArgs) => {
+      stripSelf(rawArgs, table);
+      return [getDrawableDimensions(state)[0]];
+    });
+    setMethod(table, "getHeight", (...rawArgs) => {
+      stripSelf(rawArgs, table);
+      return [getDrawableDimensions(state)[1]];
+    });
+    setMethod(table, "getDimensions", (...rawArgs) => {
+      stripSelf(rawArgs, table);
+      return getDrawableDimensions(state);
+    });
+    return table;
+  };
+  const makeCanvasDrawable = (width = canvas.width, height = canvas.height) => {
+    const offscreen = document.createElement("canvas");
+    offscreen.width = Math.max(1, Math.round(toNumber(width, canvas.width)));
+    offscreen.height = Math.max(1, Math.round(toNumber(height, canvas.height)));
+    const offscreenCtx = offscreen.getContext("2d");
+    applyContextDefaults(offscreenCtx);
+    const state = { canvas: offscreen, ctx: offscreenCtx, width: offscreen.width, height: offscreen.height };
+    const table = makeDrawableTable("Canvas", state);
+    attachDimensionMethods(table, state);
+    setMethod(table, "newImageData", (...rawArgs) => {
+      stripSelf(rawArgs, table);
+      return [makeImageDataDrawable(offscreen.width, offscreen.height, offscreenCtx.getImageData(0, 0, offscreen.width, offscreen.height))];
+    });
+    setMethod(table, "release", () => {
+      state.released = true;
+      state.canvas.width = 1;
+      state.canvas.height = 1;
+      return [];
+    });
+    return table;
+  };
+  const makeImageDataDrawable = (width = 1, height = 1, sourceImageData = null) => {
+    const dataCanvas = document.createElement("canvas");
+    dataCanvas.width = Math.max(1, Math.round(toNumber(width, 1)));
+    dataCanvas.height = Math.max(1, Math.round(toNumber(height, 1)));
+    const dataCtx = dataCanvas.getContext("2d");
+    let imageData = sourceImageData || dataCtx.createImageData(dataCanvas.width, dataCanvas.height);
+    if (sourceImageData) dataCtx.putImageData(sourceImageData, 0, 0);
+    const state = { canvas: dataCanvas, ctx: dataCtx, width: dataCanvas.width, height: dataCanvas.height, imageData };
+    const table = makeDrawableTable("ImageData", state);
+    attachDimensionMethods(table, state);
+    setMethod(table, "getPixel", (...rawArgs) => {
+      const [x = 0, y = 0] = stripSelf(rawArgs, table);
+      const px = Math.max(0, Math.min(state.width - 1, Math.floor(toNumber(x))));
+      const py = Math.max(0, Math.min(state.height - 1, Math.floor(toNumber(y))));
+      imageData = dataCtx.getImageData(0, 0, state.width, state.height);
+      const offset = (py * state.width + px) * 4;
+      return [imageData.data[offset] / 255, imageData.data[offset + 1] / 255, imageData.data[offset + 2] / 255, imageData.data[offset + 3] / 255];
+    });
+    setMethod(table, "setPixel", (...rawArgs) => {
+      const [x = 0, y = 0, r = 0, g = r, b = g, a = 1] = stripSelf(rawArgs, table);
+      const px = Math.max(0, Math.min(state.width - 1, Math.floor(toNumber(x))));
+      const py = Math.max(0, Math.min(state.height - 1, Math.floor(toNumber(y))));
+      imageData = dataCtx.getImageData(0, 0, state.width, state.height);
+      const color = normalizeColor([r, g, b, a], [0, 0, 0, 1]);
+      const offset = (py * state.width + px) * 4;
+      imageData.data[offset] = color[0];
+      imageData.data[offset + 1] = color[1];
+      imageData.data[offset + 2] = color[2];
+      imageData.data[offset + 3] = Math.round(color[3] * 255);
+      dataCtx.putImageData(imageData, 0, 0);
+      state.imageData = imageData;
+      return [];
+    });
+    return table;
+  };
+  const makeFontTable = (size = fontSize) => {
+    const numericSize = Math.max(1, toNumber(size, fontSize));
+    const font = tableFromObject({ type: "Font", size: numericSize });
+    setMethod(font, "getWidth", (...rawArgs) => {
+      const [text = ""] = stripSelf(rawArgs, font);
+      const target = currentContext();
+      const previous = target.font;
+      target.font = `${numericSize}px sans-serif`;
+      const width = target.measureText(jsString(text)).width;
+      target.font = previous;
+      return [width];
+    });
+    setMethod(font, "getHeight", () => [numericSize]);
+    setMethod(font, "getWrap", (...rawArgs) => {
+      const [text = "", limit = canvas.width] = stripSelf(rawArgs, font);
+      const words = jsString(text).split(/\s+/);
+      const lines = [];
+      let line = "";
+      const widthLimit = Math.max(1, toNumber(limit, canvas.width));
+      for (const word of words) {
+        const next = line ? `${line} ${word}` : word;
+        const target = currentContext();
+        const previous = target.font;
+        target.font = `${numericSize}px sans-serif`;
+        const tooWide = target.measureText(next).width > widthLimit;
+        target.font = previous;
+        if (tooWide && line) {
+          lines.push(line);
+          line = word;
+        } else {
+          line = next;
+        }
+      }
+      if (line) lines.push(line);
+      const table = global.lua_newtable();
+      lines.forEach((entry, index) => global.lua_tableset(table, index + 1, entry));
+      return [widthLimit, table];
+    });
+    return font;
+  };
+  const mimeForLovePath = (path) => {
+    const ext = jsString(path).split(".").pop().toLowerCase();
+    if (ext === "jpg" || ext === "jpeg") return "image/jpeg";
+    if (ext === "gif") return "image/gif";
+    if (ext === "webp") return "image/webp";
+    if (ext === "bmp") return "image/bmp";
+    if (ext === "svg") return "image/svg+xml";
+    return "image/png";
+  };
+  const makeImageDrawableFromSource = (source) => {
+    const existingState = getDrawableState(source);
+    if (existingState?.kind === "ImageData" || existingState?.kind === "Canvas") {
+      const state = { element: existingState.canvas, sourceState: existingState, width: existingState.canvas.width, height: existingState.canvas.height, loaded: true };
+      const table = makeDrawableTable("Image", state);
+      attachDimensionMethods(table, state);
+      setMethod(table, "setFilter", () => []);
+      setMethod(table, "setWrap", () => []);
+      setMethod(table, "replacePixels", (...rawArgs) => {
+        const [imageData] = stripSelf(rawArgs, table);
+        const next = getDrawableState(imageData);
+        if (next?.canvas) {
+          state.element = next.canvas;
+          state.sourceState = next;
+          state.width = next.canvas.width;
+          state.height = next.canvas.height;
+        }
+        return [];
+      });
+      return table;
+    }
+    const path = jsString(source);
+    const state = { path, element: null, width: 0, height: 0, loaded: false, error: null };
+    const table = makeDrawableTable("Image", state);
+    attachDimensionMethods(table, state);
+    setMethod(table, "setFilter", () => []);
+    setMethod(table, "setWrap", () => []);
+    setMethod(table, "getData", () => [makeImageDataDrawable(state.width || 1, state.height || 1)]);
+    const file = findLoveProjectFile(projectFiles, path);
+    let url = "";
+    if (file?.bytes?.length) {
+      url = URL.createObjectURL(new Blob([file.bytes], { type: mimeForLovePath(path) }));
+      objectUrls.push(url);
+    } else if (/^(data:|blob:|https?:\/\/)/i.test(path)) {
+      url = path;
+    }
+    if (!url) {
+      state.error = `image not found: ${path}`;
+      log(`love.graphics.newImage: ${state.error}`);
+      return table;
+    }
+    const element = new Image();
+    element.onload = () => {
+      state.loaded = true;
+      state.width = element.naturalWidth || element.width || 0;
+      state.height = element.naturalHeight || element.height || 0;
+      if (running) redraw();
+    };
+    element.onerror = () => {
+      state.error = `could not load image: ${path}`;
+      log(`love.graphics.newImage: ${state.error}`);
+    };
+    element.src = url;
+    state.element = element;
+    return table;
+  };
+  const makeImageDataFromSource = (source) => {
+    const state = { canvas: document.createElement("canvas"), ctx: null, width: 1, height: 1, imageData: null, loaded: false, path: jsString(source) };
+    state.canvas.width = 1;
+    state.canvas.height = 1;
+    state.ctx = state.canvas.getContext("2d");
+    state.imageData = state.ctx.createImageData(1, 1);
+    const table = makeDrawableTable("ImageData", state);
+    attachDimensionMethods(table, state);
+    setMethod(table, "getPixel", (...rawArgs) => {
+      const [x = 0, y = 0] = stripSelf(rawArgs, table);
+      const px = Math.max(0, Math.min(state.width - 1, Math.floor(toNumber(x))));
+      const py = Math.max(0, Math.min(state.height - 1, Math.floor(toNumber(y))));
+      const imageData = state.ctx.getImageData(0, 0, state.width, state.height);
+      const offset = (py * state.width + px) * 4;
+      return [imageData.data[offset] / 255, imageData.data[offset + 1] / 255, imageData.data[offset + 2] / 255, imageData.data[offset + 3] / 255];
+    });
+    setMethod(table, "setPixel", (...rawArgs) => {
+      const [x = 0, y = 0, r = 0, g = r, b = g, a = 1] = stripSelf(rawArgs, table);
+      const px = Math.max(0, Math.min(state.width - 1, Math.floor(toNumber(x))));
+      const py = Math.max(0, Math.min(state.height - 1, Math.floor(toNumber(y))));
+      const imageData = state.ctx.getImageData(0, 0, state.width, state.height);
+      const color = normalizeColor([r, g, b, a], [0, 0, 0, 1]);
+      const offset = (py * state.width + px) * 4;
+      imageData.data[offset] = color[0];
+      imageData.data[offset + 1] = color[1];
+      imageData.data[offset + 2] = color[2];
+      imageData.data[offset + 3] = Math.round(color[3] * 255);
+      state.ctx.putImageData(imageData, 0, 0);
+      state.imageData = imageData;
+      return [];
+    });
+    const file = findLoveProjectFile(projectFiles, state.path);
+    let url = "";
+    if (file?.bytes?.length) {
+      url = URL.createObjectURL(new Blob([file.bytes], { type: mimeForLovePath(state.path) }));
+      objectUrls.push(url);
+    } else if (/^(data:|blob:|https?:\/\/)/i.test(state.path)) {
+      url = state.path;
+    }
+    if (!url) {
+      log(`love.image.newImageData: image not found: ${state.path}`);
+      return table;
+    }
+    const element = new Image();
+    element.onload = () => {
+      state.width = element.naturalWidth || element.width || 1;
+      state.height = element.naturalHeight || element.height || 1;
+      state.canvas.width = state.width;
+      state.canvas.height = state.height;
+      state.ctx = state.canvas.getContext("2d");
+      state.ctx.drawImage(element, 0, 0);
+      state.imageData = state.ctx.getImageData(0, 0, state.width, state.height);
+      state.loaded = true;
+      if (running) redraw();
+    };
+    element.onerror = () => log(`love.image.newImageData: could not load image: ${state.path}`);
+    element.src = url;
+    return table;
+  };
   const createAudioSource = () => {
     let volume = 1;
     let pitch = 1;
@@ -10455,19 +11006,16 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     try {
       return fn();
     } finally {
-      ctx.font = `${fontSize}px sans-serif`;
-      ctx.textBaseline = "top";
-      applyColor();
+      applyContextDefaults();
     }
   };
   const resetScissor = () => {
+    const target = currentContext();
     while (scissorStack.length) {
-      ctx.restore();
-      scissorStack.pop();
+      const entry = scissorStack.pop();
+      (entry?.ctx || target).restore();
     }
-    ctx.font = `${fontSize}px sans-serif`;
-    ctx.textBaseline = "top";
-    applyColor();
+    applyContextDefaults(target);
   };
   const callLove = (table, name, args = []) => {
     const fn = global.lua_tableget(table, name);
@@ -10535,32 +11083,138 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
   global.lua_tableset(love, "touch", touch);
   global.lua_tableset(love, "joystick", joystick);
   global.lua_tableset(love, "thread", thread);
+  global.lua_tableset(love, "font", fontModule);
+  global.lua_tableset(love, "physics", physics);
+  global.lua_tableset(love, "video", video);
+  global.lua_tableset(love, "sensor", sensor);
   global.lua_tableset(packageTable, "loaded", packageLoaded);
   global.lua_tableset(packageTable, "path", "?.lua;?/init.lua");
 
+  const drawImageLike = (state, drawArgs, quadState = null) => {
+    const source = state?.sourceState?.canvas || state?.element || state?.canvas;
+    if (!source) return false;
+    if (state.loaded === false) return false;
+    const [sourceWidth, sourceHeight] = getDrawableDimensions(state);
+    const [x = 0, y = 0, r = 0, sx = 1, sy = sx, ox = 0, oy = 0, kx = 0, ky = 0] = drawArgs;
+    const viewport = quadState || { x: 0, y: 0, w: sourceWidth, h: sourceHeight };
+    const g = currentContext();
+    g.save();
+    g.translate(toNumber(x), toNumber(y));
+    g.rotate(toNumber(r));
+    if (kx || ky) g.transform(1, toNumber(ky), toNumber(kx), 1, 0, 0);
+    g.scale(toNumber(sx, 1), toNumber(sy, 1));
+    try {
+      g.drawImage(
+        source,
+        toNumber(viewport.x), toNumber(viewport.y), Math.max(1, toNumber(viewport.w, sourceWidth)), Math.max(1, toNumber(viewport.h, sourceHeight)),
+        -toNumber(ox), -toNumber(oy), Math.max(1, toNumber(viewport.w, sourceWidth)), Math.max(1, toNumber(viewport.h, sourceHeight)),
+      );
+    } catch (error) {
+      log(`love.graphics.draw: ${describeLuaJsError(error)}`);
+    }
+    g.restore();
+    return true;
+  };
+  const drawTextState = (state, drawArgs) => {
+    const [x = 0, y = 0, r = 0, sx = 1, sy = sx, ox = 0, oy = 0] = drawArgs;
+    const g = currentContext();
+    g.save();
+    g.translate(toNumber(x), toNumber(y));
+    g.rotate(toNumber(r));
+    g.scale(toNumber(sx, 1), toNumber(sy, 1));
+    applyColor();
+    g.font = `${state.fontSize || fontSize}px sans-serif`;
+    g.fillText(jsString(state.text), -toNumber(ox), -toNumber(oy));
+    g.restore();
+    if (!activeCanvasState) captureLoveText(state.text, toNumber(x), toNumber(y), state.fontSize || fontSize);
+  };
+  const drawMeshState = (state, drawArgs) => {
+    const vertices = Array.isArray(state.vertices) ? state.vertices : [];
+    if (vertices.length < 2) return;
+    const [x = 0, y = 0, r = 0, sx = 1, sy = sx] = drawArgs;
+    const g = currentContext();
+    g.save();
+    g.translate(toNumber(x), toNumber(y));
+    g.rotate(toNumber(r));
+    g.scale(toNumber(sx, 1), toNumber(sy, 1));
+    g.beginPath();
+    g.moveTo(toNumber(vertices[0][0]), toNumber(vertices[0][1]));
+    for (let index = 1; index < vertices.length; index += 1) g.lineTo(toNumber(vertices[index][0]), toNumber(vertices[index][1]));
+    if (state.drawMode !== "strip") g.closePath();
+    if (state.drawMode === "points") {
+      for (const vertex of vertices) g.fillRect(toNumber(vertex[0]), toNumber(vertex[1]), pointSize, pointSize);
+    } else if (state.drawMode === "fan" || state.drawMode === "triangles") {
+      g.fill();
+    } else {
+      g.stroke();
+    }
+    g.restore();
+  };
+  const drawDrawable = (drawable, drawArgs, quad = null) => {
+    const state = getDrawableState(drawable);
+    const quadState = quad ? getDrawableState(quad) : null;
+    if (!state) return false;
+    if (state.kind === "Image" || state.kind === "Canvas" || state.kind === "ImageData") return drawImageLike(state, drawArgs, quadState);
+    if (state.kind === "Text") {
+      drawTextState(state, drawArgs);
+      return true;
+    }
+    if (state.kind === "SpriteBatch") {
+      for (const item of state.items) drawDrawable(state.image, item.args || [], item.quad || null);
+      return true;
+    }
+    if (state.kind === "ParticleSystem") {
+      const g = currentContext();
+      const [x = 0, y = 0] = drawArgs;
+      g.save();
+      g.translate(toNumber(x), toNumber(y));
+      for (const particle of state.particles) {
+        g.globalAlpha = Math.max(0, Math.min(1, particle.life / Math.max(0.001, particle.maxLife)));
+        g.fillRect(particle.x, particle.y, state.size || 2, state.size || 2);
+      }
+      g.globalAlpha = 1;
+      g.restore();
+      return true;
+    }
+    if (state.kind === "Mesh") {
+      drawMeshState(state, drawArgs);
+      return true;
+    }
+    return false;
+  };
+  const luaVertexTableToJs = (vertices) => {
+    const rows = tableToArray(vertices);
+    return rows.map((row) => {
+      if (row && typeof row === "object") return tableToArray(row).map((value) => toNumber(value));
+      return [];
+    }).filter((row) => row.length >= 2);
+  };
+
   global.lua_tableset(graphics, "print", (...rawArgs) => {
     const [text, x = 0, y = 0, rotation = 0, sx = 1, sy = sx, ox = 0, oy = 0] = stripSelf(rawArgs, graphics);
+    const g = currentContext();
     const drawX = -toNumber(ox);
     const drawY = -toNumber(oy);
-    ctx.save();
-    ctx.translate(toNumber(x), toNumber(y));
-    ctx.rotate(toNumber(rotation));
-    ctx.scale(toNumber(sx, 1), toNumber(sy, 1));
+    g.save();
+    g.translate(toNumber(x), toNumber(y));
+    g.rotate(toNumber(rotation));
+    g.scale(toNumber(sx, 1), toNumber(sy, 1));
     applyColor();
-    ctx.fillText(String(text ?? ""), drawX, drawY);
-    ctx.restore();
-    captureLoveText(text, toNumber(x) + drawX, toNumber(y) + drawY);
+    g.fillText(String(text ?? ""), drawX, drawY);
+    g.restore();
+    if (!activeCanvasState) captureLoveText(text, toNumber(x) + drawX, toNumber(y) + drawY);
     return [];
   });
   global.lua_tableset(graphics, "printf", (...rawArgs) => {
     const [text, x = 0, y = 0, limit = canvas.width, align = "left"] = stripSelf(rawArgs, graphics);
-    const previousAlign = ctx.textAlign;
-    ctx.textAlign = String(align || "left");
+    const g = currentContext();
+    const previousAlign = g.textAlign;
+    g.textAlign = String(align || "left");
     const drawX = String(align) === "center" ? toNumber(x) + toNumber(limit) / 2 : String(align) === "right" ? toNumber(x) + toNumber(limit) : toNumber(x);
     applyColor();
-    ctx.fillText(String(text ?? ""), drawX, toNumber(y));
-    ctx.textAlign = previousAlign;
-    captureLoveText(text, drawX, toNumber(y));
+    g.fillText(String(text ?? ""), drawX, toNumber(y));
+    g.textAlign = previousAlign;
+    if (!activeCanvasState) captureLoveText(text, drawX, toNumber(y));
     return [];
   });
   global.lua_tableset(graphics, "setColor", (...rawArgs) => {
@@ -10580,24 +11234,27 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
   });
   global.lua_tableset(graphics, "rectangle", (...rawArgs) => {
     const [mode, x, y, w, h] = stripSelf(rawArgs, graphics);
-    if (String(mode) === "fill") ctx.fillRect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
-    else ctx.strokeRect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
+    const g = currentContext();
+    if (String(mode) === "fill") g.fillRect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
+    else g.strokeRect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
     return [];
   });
   global.lua_tableset(graphics, "circle", (...rawArgs) => {
     const [mode, x, y, radius] = stripSelf(rawArgs, graphics);
-    ctx.beginPath();
-    ctx.arc(toNumber(x), toNumber(y), Math.max(0, toNumber(radius)), 0, Math.PI * 2);
-    if (String(mode) === "fill") ctx.fill();
-    else ctx.stroke();
+    const g = currentContext();
+    g.beginPath();
+    g.arc(toNumber(x), toNumber(y), Math.max(0, toNumber(radius)), 0, Math.PI * 2);
+    if (String(mode) === "fill") g.fill();
+    else g.stroke();
     return [];
   });
   global.lua_tableset(graphics, "ellipse", (...rawArgs) => {
     const [mode, x, y, rx, ry = rx] = stripSelf(rawArgs, graphics);
-    ctx.beginPath();
-    ctx.ellipse(toNumber(x), toNumber(y), Math.max(0, toNumber(rx)), Math.max(0, toNumber(ry)), 0, 0, Math.PI * 2);
-    if (String(mode) === "fill") ctx.fill();
-    else ctx.stroke();
+    const g = currentContext();
+    g.beginPath();
+    g.ellipse(toNumber(x), toNumber(y), Math.max(0, toNumber(rx)), Math.max(0, toNumber(ry)), 0, 0, Math.PI * 2);
+    if (String(mode) === "fill") g.fill();
+    else g.stroke();
     return [];
   });
   global.lua_tableset(graphics, "arc", (...rawArgs) => {
@@ -10605,24 +11262,27 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     const mode = args[0];
     const offset = typeof args[1] === "string" ? 2 : 1;
     const [x, y, radius, angle1 = 0, angle2 = Math.PI * 2] = args.slice(offset);
-    ctx.beginPath();
-    ctx.arc(toNumber(x), toNumber(y), Math.max(0, toNumber(radius)), toNumber(angle1), toNumber(angle2));
-    if (String(mode) === "fill") ctx.fill();
-    else ctx.stroke();
+    const g = currentContext();
+    g.beginPath();
+    g.arc(toNumber(x), toNumber(y), Math.max(0, toNumber(radius)), toNumber(angle1), toNumber(angle2));
+    if (String(mode) === "fill") g.fill();
+    else g.stroke();
     return [];
   });
   global.lua_tableset(graphics, "line", (...rawArgs) => {
     const points = numberList(stripSelf(rawArgs, graphics));
     if (points.length < 4) return [];
-    ctx.beginPath();
-    ctx.moveTo(points[0], points[1]);
-    for (let index = 2; index + 1 < points.length; index += 2) ctx.lineTo(points[index], points[index + 1]);
-    ctx.stroke();
+    const g = currentContext();
+    g.beginPath();
+    g.moveTo(points[0], points[1]);
+    for (let index = 2; index + 1 < points.length; index += 2) g.lineTo(points[index], points[index + 1]);
+    g.stroke();
     return [];
   });
   global.lua_tableset(graphics, "points", (...rawArgs) => {
     const points = numberList(stripSelf(rawArgs, graphics));
-    for (let index = 0; index + 1 < points.length; index += 2) ctx.fillRect(points[index], points[index + 1], pointSize, pointSize);
+    const g = currentContext();
+    for (let index = 0; index + 1 < points.length; index += 2) g.fillRect(points[index], points[index + 1], pointSize, pointSize);
     return [];
   });
   global.lua_tableset(graphics, "polygon", (...rawArgs) => {
@@ -10630,49 +11290,56 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     const mode = args[0];
     const points = numberList(args.slice(1));
     if (points.length < 6) return [];
-    ctx.beginPath();
-    ctx.moveTo(points[0], points[1]);
-    for (let index = 2; index + 1 < points.length; index += 2) ctx.lineTo(points[index], points[index + 1]);
-    ctx.closePath();
-    if (String(mode) === "fill") ctx.fill();
-    else ctx.stroke();
+    const g = currentContext();
+    g.beginPath();
+    g.moveTo(points[0], points[1]);
+    for (let index = 2; index + 1 < points.length; index += 2) g.lineTo(points[index], points[index + 1]);
+    g.closePath();
+    if (String(mode) === "fill") g.fill();
+    else g.stroke();
     return [];
   });
   global.lua_tableset(graphics, "setLineWidth", (...rawArgs) => {
     const [width] = stripSelf(rawArgs, graphics);
-    ctx.lineWidth = Math.max(1, toNumber(width, 1));
+    currentContext().lineWidth = Math.max(1, toNumber(width, 1));
     return [];
   });
-  global.lua_tableset(graphics, "getLineWidth", () => [ctx.lineWidth]);
+  global.lua_tableset(graphics, "getLineWidth", () => [currentContext().lineWidth]);
   global.lua_tableset(graphics, "setLineStyle", (...rawArgs) => {
     const [style] = stripSelf(rawArgs, graphics);
     lineStyle = String(style || "smooth");
-    ctx.lineCap = lineStyle === "rough" ? "butt" : "round";
-    ctx.lineJoin = lineStyle === "rough" ? "miter" : "round";
+    const g = currentContext();
+    g.lineCap = lineStyle === "rough" ? "butt" : "round";
+    g.lineJoin = lineJoin || (lineStyle === "rough" ? "miter" : "round");
     return [];
   });
   global.lua_tableset(graphics, "getLineStyle", () => [lineStyle]);
+  global.lua_tableset(graphics, "setLineJoin", (...rawArgs) => {
+    const [join] = stripSelf(rawArgs, graphics);
+    lineJoin = jsString(join || "miter");
+    currentContext().lineJoin = lineJoin;
+    return [];
+  });
+  global.lua_tableset(graphics, "getLineJoin", () => [lineJoin]);
   global.lua_tableset(graphics, "setPointSize", (...rawArgs) => {
     const [size] = stripSelf(rawArgs, graphics);
     pointSize = Math.max(1, toNumber(size, 1));
     return [];
   });
   global.lua_tableset(graphics, "getPointSize", () => [pointSize]);
-  global.lua_tableset(graphics, "getWidth", () => [canvas.width]);
-  global.lua_tableset(graphics, "getHeight", () => [canvas.height]);
-  global.lua_tableset(graphics, "getDimensions", () => [canvas.width, canvas.height]);
+  global.lua_tableset(graphics, "getWidth", () => [currentCanvas().width]);
+  global.lua_tableset(graphics, "getHeight", () => [currentCanvas().height]);
+  global.lua_tableset(graphics, "getDimensions", () => [currentCanvas().width, currentCanvas().height]);
   global.lua_tableset(graphics, "newFont", (...rawArgs) => {
     const args = stripSelf(rawArgs, graphics);
     const size = toNumber(args.find((value) => Number.isFinite(Number(value))), fontSize);
-    const font = global.lua_newtable();
-    global.lua_tableset(font, "size", Math.max(1, size));
-    return [font];
+    return [makeFontTable(size)];
   });
   global.lua_tableset(graphics, "setFont", (...rawArgs) => {
     const [font] = stripSelf(rawArgs, graphics);
     const size = font && typeof font === "object" ? global.lua_tableget(font, "size") : font;
     fontSize = Math.max(1, toNumber(size, fontSize));
-    ctx.font = `${fontSize}px sans-serif`;
+    currentContext().font = `${fontSize}px sans-serif`;
     return [];
   });
   global.lua_tableset(graphics, "setNewFont", (...rawArgs) => {
@@ -10680,46 +11347,81 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     global.lua_tableget(graphics, "setFont")(graphics, font);
     return [font];
   });
-  global.lua_tableset(graphics, "getFont", () => {
-    const font = global.lua_newtable();
-    global.lua_tableset(font, "size", fontSize);
-    return [font];
-  });
+  global.lua_tableset(graphics, "getFont", () => [makeFontTable(fontSize)]);
   global.lua_tableset(graphics, "push", () => {
-    ctx.save();
+    currentContext().save();
     return [];
   });
   global.lua_tableset(graphics, "pop", () => {
-    ctx.restore();
-    ctx.font = `${fontSize}px sans-serif`;
-    ctx.textBaseline = "top";
-    applyColor();
+    currentContext().restore();
+    applyContextDefaults();
     return [];
   });
   global.lua_tableset(graphics, "origin", () => {
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    currentContext().setTransform(1, 0, 0, 1, 0, 0);
     return [];
   });
   global.lua_tableset(graphics, "translate", (...rawArgs) => {
     const [x, y] = stripSelf(rawArgs, graphics);
-    ctx.translate(toNumber(x), toNumber(y));
+    currentContext().translate(toNumber(x), toNumber(y));
     return [];
   });
   global.lua_tableset(graphics, "scale", (...rawArgs) => {
     const [x, y = x] = stripSelf(rawArgs, graphics);
-    ctx.scale(toNumber(x, 1), toNumber(y, 1));
+    currentContext().scale(toNumber(x, 1), toNumber(y, 1));
     return [];
   });
   global.lua_tableset(graphics, "rotate", (...rawArgs) => {
     const [angle] = stripSelf(rawArgs, graphics);
-    ctx.rotate(toNumber(angle));
+    currentContext().rotate(toNumber(angle));
     return [];
   });
-  global.lua_tableset(graphics, "setDefaultFilter", () => []);
+  global.lua_tableset(graphics, "shear", (...rawArgs) => {
+    const [kx = 0, ky = 0] = stripSelf(rawArgs, graphics);
+    currentContext().transform(1, toNumber(ky), toNumber(kx), 1, 0, 0);
+    return [];
+  });
+  global.lua_tableset(graphics, "applyTransform", (...rawArgs) => {
+    const [transform] = stripSelf(rawArgs, graphics);
+    const state = getDrawableState(transform);
+    const matrix = state?.kind === "Transform" ? state.state?.matrix : null;
+    if (matrix) currentContext().transform(...matrix);
+    return [];
+  });
+  global.lua_tableset(graphics, "replaceTransform", (...rawArgs) => {
+    const [transform] = stripSelf(rawArgs, graphics);
+    const state = getDrawableState(transform);
+    const matrix = state?.kind === "Transform" ? state.state?.matrix : null;
+    if (matrix) currentContext().setTransform(...matrix);
+    else currentContext().setTransform(1, 0, 0, 1, 0, 0);
+    return [];
+  });
+  global.lua_tableset(graphics, "getStackDepth", () => [0]);
+  global.lua_tableset(graphics, "setDefaultFilter", (...rawArgs) => {
+    const [min = "linear", mag = min, anisotropy = 1] = stripSelf(rawArgs, graphics);
+    defaultFilter = [jsString(min), jsString(mag), toNumber(anisotropy, 1)];
+    return [];
+  });
+  global.lua_tableset(graphics, "getDefaultFilter", () => defaultFilter);
+  global.lua_tableset(graphics, "reset", () => {
+    resetScissor();
+    currentContext().setTransform(1, 0, 0, 1, 0, 0);
+    currentColor = [255, 255, 255, 1];
+    lineStyle = "smooth";
+    lineJoin = "miter";
+    pointSize = 1;
+    blendMode = "alpha";
+    activeShader = null;
+    applyContextDefaults();
+    return [];
+  });
+  global.lua_tableset(graphics, "discard", () => []);
+  global.lua_tableset(graphics, "present", () => []);
+  global.lua_tableset(graphics, "isActive", () => [true]);
   global.lua_tableset(graphics, "setBlendMode", (...rawArgs) => {
     const [mode] = stripSelf(rawArgs, graphics);
     blendMode = String(mode || "alpha");
-    ctx.globalCompositeOperation = blendMode === "add" ? "lighter" : "source-over";
+    currentContext().globalCompositeOperation = blendMode === "add" ? "lighter" : "source-over";
     return [];
   });
   global.lua_tableset(graphics, "getBlendMode", () => [blendMode]);
@@ -10727,41 +11429,244 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     const [x, y, w, h] = stripSelf(rawArgs, graphics);
     resetScissor();
     if (x == null) return [];
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
-    ctx.clip();
-    scissorStack.push(true);
+    const g = currentContext();
+    g.save();
+    g.beginPath();
+    g.rect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
+    g.clip();
+    scissorStack.push({ ctx: g, x: toNumber(x), y: toNumber(y), w: toNumber(w), h: toNumber(h) });
     return [];
+  });
+  global.lua_tableset(graphics, "getScissor", () => {
+    const entry = scissorStack[scissorStack.length - 1];
+    return entry ? [entry.x, entry.y, entry.w, entry.h] : [null];
   });
   global.lua_tableset(graphics, "intersectScissor", (...rawArgs) => {
     const [x, y, w, h] = stripSelf(rawArgs, graphics);
     if (x == null) return [];
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
-    ctx.clip();
-    scissorStack.push(true);
+    const g = currentContext();
+    g.save();
+    g.beginPath();
+    g.rect(toNumber(x), toNumber(y), toNumber(w), toNumber(h));
+    g.clip();
+    scissorStack.push({ ctx: g, x: toNumber(x), y: toNumber(y), w: toNumber(w), h: toNumber(h) });
     return [];
   });
+  global.lua_tableset(graphics, "setStencilTest", (...rawArgs) => {
+    stencilMode = stripSelf(rawArgs, graphics).map(jsString).join(" ") || null;
+    return [];
+  });
+  global.lua_tableset(graphics, "stencil", (...rawArgs) => {
+    const [fn] = stripSelf(rawArgs, graphics);
+    if (typeof fn === "function") global.lua_call(fn, []);
+    return [];
+  });
+  global.lua_tableset(graphics, "setColorMask", (...rawArgs) => {
+    const args = stripSelf(rawArgs, graphics);
+    activeColorMask = args.length ? args.map(Boolean).slice(0, 4) : [true, true, true, true];
+    return [];
+  });
+  global.lua_tableset(graphics, "getColorMask", () => activeColorMask);
+  global.lua_tableset(graphics, "getDPIScale", () => [window.devicePixelRatio || 1]);
+  global.lua_tableset(graphics, "getRendererInfo", () => ["TNS Tool LÖVE preview", "Canvas2D", navigator.userAgent, ""]);
+  global.lua_tableset(graphics, "getSystemLimits", () => [tableFromObject({ texturesize: 4096, canvases: 16, drawcalls: 10000 })]);
   global.lua_tableset(graphics, "newImage", (...rawArgs) => {
-    const [path] = stripSelf(rawArgs, graphics);
-    const image = tableFromObject({ type: "image", path: jsString(path), width: 0, height: 0, unsupported: true });
-    global.lua_tableset(image, "getWidth", () => [0]);
-    global.lua_tableset(image, "getHeight", () => [0]);
-    global.lua_tableset(image, "getDimensions", () => [0, 0]);
-    return [image];
+    const [source] = stripSelf(rawArgs, graphics);
+    return [makeImageDrawableFromSource(source)];
+  });
+  global.lua_tableset(graphics, "newQuad", (...rawArgs) => {
+    const [x = 0, y = 0, w = 0, h = 0, sw = w, sh = h] = stripSelf(rawArgs, graphics);
+    const state = { x: toNumber(x), y: toNumber(y), w: toNumber(w), h: toNumber(h), sw: toNumber(sw), sh: toNumber(sh) };
+    const quad = makeDrawableTable("Quad", state);
+    setMethod(quad, "setViewport", (...argsRaw) => {
+      const [nx = 0, ny = 0, nw = state.w, nh = state.h, nsw = state.sw, nsh = state.sh] = stripSelf(argsRaw, quad);
+      Object.assign(state, { x: toNumber(nx), y: toNumber(ny), w: toNumber(nw), h: toNumber(nh), sw: toNumber(nsw), sh: toNumber(nsh) });
+      return [];
+    });
+    setMethod(quad, "getViewport", () => [state.x, state.y, state.w, state.h, state.sw, state.sh]);
+    return [quad];
   });
   global.lua_tableset(graphics, "newCanvas", (...rawArgs) => {
     const [width = canvas.width, height = canvas.height] = stripSelf(rawArgs, graphics);
-    return [tableFromObject({ type: "canvas", width: toNumber(width, canvas.width), height: toNumber(height, canvas.height), unsupported: true })];
+    return [makeCanvasDrawable(width, height)];
   });
-  global.lua_tableset(graphics, "setCanvas", () => []);
-  global.lua_tableset(graphics, "draw", () => []);
-  let activeShader = null;
+  global.lua_tableset(graphics, "setCanvas", (...rawArgs) => {
+    const [target = null] = stripSelf(rawArgs, graphics);
+    resetScissor();
+    activeCanvasState = target ? getDrawableState(target) : null;
+    if (activeCanvasState?.kind !== "Canvas") activeCanvasState = null;
+    applyContextDefaults();
+    return [];
+  });
+  global.lua_tableset(graphics, "getCanvas", () => [activeCanvasState?.table || null]);
+  global.lua_tableset(graphics, "draw", (...rawArgs) => {
+    const args = stripSelf(rawArgs, graphics);
+    const drawable = args[0];
+    const secondState = getDrawableState(args[1]);
+    if (secondState?.kind === "Quad") drawDrawable(drawable, args.slice(2), args[1]);
+    else drawDrawable(drawable, args.slice(1));
+    return [];
+  });
+  global.lua_tableset(graphics, "newText", (...rawArgs) => {
+    const args = stripSelf(rawArgs, graphics);
+    const maybeFont = args[0] && typeof args[0] === "object" ? args[0] : null;
+    const text = maybeFont ? args[1] : args[0];
+    const size = maybeFont ? toNumber(global.lua_tableget(maybeFont, "size"), fontSize) : fontSize;
+    const state = { text: jsString(text), fontSize: size, width: currentContext().measureText(jsString(text)).width, height: size };
+    const textObj = makeDrawableTable("Text", state);
+    attachDimensionMethods(textObj, state);
+    setMethod(textObj, "set", (...argsRaw) => {
+      const [nextText = ""] = stripSelf(argsRaw, textObj);
+      state.text = jsString(nextText);
+      state.width = currentContext().measureText(state.text).width;
+      return [];
+    });
+    setMethod(textObj, "add", (...argsRaw) => {
+      const [nextText = ""] = stripSelf(argsRaw, textObj);
+      state.text += jsString(nextText);
+      state.width = currentContext().measureText(state.text).width;
+      return [state.text.length];
+    });
+    return [textObj];
+  });
+  global.lua_tableset(graphics, "newSpriteBatch", (...rawArgs) => {
+    const [imageDrawable, size = 100] = stripSelf(rawArgs, graphics);
+    const state = { image: imageDrawable, max: Math.max(1, toNumber(size, 100)), items: [] };
+    const batch = makeDrawableTable("SpriteBatch", state);
+    setMethod(batch, "add", (...argsRaw) => {
+      const args = stripSelf(argsRaw, batch);
+      const second = getDrawableState(args[0]);
+      const entry = second?.kind === "Quad" ? { quad: args[0], args: args.slice(1) } : { quad: null, args };
+      state.items.push(entry);
+      return [state.items.length];
+    });
+    setMethod(batch, "set", (...argsRaw) => {
+      const [id, ...rest] = stripSelf(argsRaw, batch);
+      const index = Math.max(1, Math.floor(toNumber(id, 1))) - 1;
+      const second = getDrawableState(rest[0]);
+      state.items[index] = second?.kind === "Quad" ? { quad: rest[0], args: rest.slice(1) } : { quad: null, args: rest };
+      return [];
+    });
+    setMethod(batch, "clear", () => {
+      state.items.length = 0;
+      return [];
+    });
+    setMethod(batch, "flush", () => []);
+    return [batch];
+  });
+  global.lua_tableset(graphics, "newMesh", (...rawArgs) => {
+    const args = stripSelf(rawArgs, graphics);
+    const vertices = luaVertexTableToJs(args[0]);
+    const state = { vertices, drawMode: jsString(args[1] || "fan"), texture: null, drawRange: null };
+    const mesh = makeDrawableTable("Mesh", state);
+    setMethod(mesh, "setVertices", (...argsRaw) => {
+      const [nextVertices] = stripSelf(argsRaw, mesh);
+      state.vertices = luaVertexTableToJs(nextVertices);
+      return [];
+    });
+    setMethod(mesh, "setVertex", (...argsRaw) => {
+      const [index, vertex, ...coords] = stripSelf(argsRaw, mesh);
+      const idx = Math.max(1, Math.floor(toNumber(index, 1))) - 1;
+      state.vertices[idx] = vertex && typeof vertex === "object" ? tableToArray(vertex).map((value) => toNumber(value)) : [vertex, ...coords].map((value) => toNumber(value));
+      return [];
+    });
+    setMethod(mesh, "getVertex", (...argsRaw) => {
+      const [index] = stripSelf(argsRaw, mesh);
+      const vertex = state.vertices[Math.max(1, Math.floor(toNumber(index, 1))) - 1] || [];
+      return vertex;
+    });
+    setMethod(mesh, "setTexture", (...argsRaw) => {
+      const [texture] = stripSelf(argsRaw, mesh);
+      state.texture = texture;
+      return [];
+    });
+    setMethod(mesh, "setDrawMode", (...argsRaw) => {
+      const [mode] = stripSelf(argsRaw, mesh);
+      state.drawMode = jsString(mode || state.drawMode);
+      return [];
+    });
+    setMethod(mesh, "setDrawRange", (...argsRaw) => {
+      const [start, count] = stripSelf(argsRaw, mesh);
+      state.drawRange = start == null ? null : [toNumber(start), toNumber(count)];
+      return [];
+    });
+    return [mesh];
+  });
+  global.lua_tableset(graphics, "newParticleSystem", (...rawArgs) => {
+    const [imageDrawable, buffer = 100] = stripSelf(rawArgs, graphics);
+    const state = { image: imageDrawable, max: Math.max(1, toNumber(buffer, 100)), particles: [], emitting: false, rate: 10, lifetime: [1, 2], speed: [20, 60], size: 2, accumulator: 0 };
+    const ps = makeDrawableTable("ParticleSystem", state);
+    setMethod(ps, "start", () => {
+      state.emitting = true;
+      return [];
+    });
+    setMethod(ps, "stop", () => {
+      state.emitting = false;
+      return [];
+    });
+    setMethod(ps, "update", (...argsRaw) => {
+      const [dt = 1 / 60] = stripSelf(argsRaw, ps);
+      const delta = Math.max(0, toNumber(dt, 1 / 60));
+      state.accumulator += delta * state.rate;
+      while (state.emitting && state.accumulator >= 1 && state.particles.length < state.max) {
+        state.accumulator -= 1;
+        const life = state.lifetime[0] + Math.random() * Math.max(0, state.lifetime[1] - state.lifetime[0]);
+        const speed = state.speed[0] + Math.random() * Math.max(0, state.speed[1] - state.speed[0]);
+        const angle = Math.random() * Math.PI * 2;
+        state.particles.push({ x: 0, y: 0, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, life, maxLife: life });
+      }
+      for (const particle of state.particles) {
+        particle.life -= delta;
+        particle.x += particle.vx * delta;
+        particle.y += particle.vy * delta;
+      }
+      state.particles = state.particles.filter((particle) => particle.life > 0);
+      return [];
+    });
+    setMethod(ps, "setEmissionRate", (...argsRaw) => {
+      const [rate] = stripSelf(argsRaw, ps);
+      state.rate = Math.max(0, toNumber(rate, state.rate));
+      return [];
+    });
+    setMethod(ps, "setParticleLifetime", (...argsRaw) => {
+      const [min = 1, max = min] = stripSelf(argsRaw, ps);
+      state.lifetime = [Math.max(0.01, toNumber(min, 1)), Math.max(0.01, toNumber(max, min))];
+      return [];
+    });
+    setMethod(ps, "setSpeed", (...argsRaw) => {
+      const [min = 0, max = min] = stripSelf(argsRaw, ps);
+      state.speed = [toNumber(min), toNumber(max, min)];
+      return [];
+    });
+    setMethod(ps, "setColors", () => []);
+    setMethod(ps, "setSizes", (...argsRaw) => {
+      const [size = 2] = stripSelf(argsRaw, ps);
+      state.size = Math.max(1, toNumber(size, 2));
+      return [];
+    });
+    return [ps];
+  });
   global.lua_tableset(graphics, "newShader", (...rawArgs) => {
     const args = stripSelf(rawArgs, graphics);
-    return [makeObjectTable("Shader", { source: jsString(args[0] || ""), supported: false })];
+    const state = { source: jsString(args[0] || ""), uniforms: new Map(), supported: false };
+    const shader = tableFromObject({ type: "Shader", supported: false });
+    setMethod(shader, "send", (...argsRaw) => {
+      const [name, value] = stripSelf(argsRaw, shader);
+      state.uniforms.set(jsString(name), value);
+      return [];
+    });
+    setMethod(shader, "sendColor", (...argsRaw) => {
+      const [name, ...values] = stripSelf(argsRaw, shader);
+      state.uniforms.set(jsString(name), colorArgs(values));
+      return [];
+    });
+    setMethod(shader, "hasUniform", (...argsRaw) => {
+      const [name] = stripSelf(argsRaw, shader);
+      const key = jsString(name);
+      return [state.source.includes(key) || state.uniforms.has(key)];
+    });
+    drawableStates.set(shader, { kind: "Shader", ...state, table: shader });
+    return [shader];
   });
   global.lua_tableset(graphics, "setShader", (...rawArgs) => {
     const [shader = null] = stripSelf(rawArgs, graphics);
@@ -10770,6 +11675,7 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     return [];
   });
   global.lua_tableset(graphics, "getShader", () => [activeShader]);
+  global.lua_tableset(graphics, "validateShader", () => [true, "Canvas preview accepts shader objects but does not render GPU shader effects."]);
 
   global.lua_tableset(windowTable, "setMode", (...rawArgs) => {
     const [width, height] = stripSelf(rawArgs, windowTable);
@@ -10793,6 +11699,19 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     return [false];
   });
   global.lua_tableset(windowTable, "getFullscreen", () => [fullscreen, "desktop"]);
+  global.lua_tableset(windowTable, "setVSync", (...rawArgs) => {
+    const [value] = stripSelf(rawArgs, windowTable);
+    vsync = toNumber(value, vsync);
+    return [true];
+  });
+  global.lua_tableset(windowTable, "getVSync", () => [vsync]);
+  global.lua_tableset(windowTable, "setPosition", (...rawArgs) => {
+    const [x = 0, y = 0] = stripSelf(rawArgs, windowTable);
+    windowX = toNumber(x);
+    windowY = toNumber(y);
+    return [];
+  });
+  global.lua_tableset(windowTable, "getPosition", () => [windowX, windowY, 1]);
   global.lua_tableset(windowTable, "hasFocus", () => [true]);
   global.lua_tableset(windowTable, "isVisible", () => [true]);
 
@@ -10806,9 +11725,37 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     return [];
   });
   global.lua_tableset(keyboard, "hasKeyRepeat", () => [keyRepeat]);
+  global.lua_tableset(keyboard, "getKeyFromScancode", (...rawArgs) => {
+    const [scancode] = stripSelf(rawArgs, keyboard);
+    return [jsString(scancode)];
+  });
+  global.lua_tableset(keyboard, "getScancodeFromKey", (...rawArgs) => {
+    const [key] = stripSelf(rawArgs, keyboard);
+    return [jsString(key)];
+  });
+  global.lua_tableset(keyboard, "isScancodeDown", (...rawArgs) => {
+    const keys = stripSelf(rawArgs, keyboard).map((key) => String(key));
+    return [keys.some((key) => pressedKeys.has(key))];
+  });
   global.lua_tableset(mouse, "getPosition", () => [mouseX, mouseY]);
   global.lua_tableset(mouse, "getX", () => [mouseX]);
   global.lua_tableset(mouse, "getY", () => [mouseY]);
+  global.lua_tableset(mouse, "setPosition", (...rawArgs) => {
+    const [x = 0, y = 0] = stripSelf(rawArgs, mouse);
+    mouseX = toNumber(x);
+    mouseY = toNumber(y);
+    return [];
+  });
+  global.lua_tableset(mouse, "setX", (...rawArgs) => {
+    const [x = 0] = stripSelf(rawArgs, mouse);
+    mouseX = toNumber(x);
+    return [];
+  });
+  global.lua_tableset(mouse, "setY", (...rawArgs) => {
+    const [y = 0] = stripSelf(rawArgs, mouse);
+    mouseY = toNumber(y);
+    return [];
+  });
   global.lua_tableset(mouse, "isDown", (...rawArgs) => {
     const buttons = stripSelf(rawArgs, mouse).map((button) => Number(button));
     return [buttons.some((button) => mouseButtons.has(button))];
@@ -10819,14 +11766,32 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     return [];
   });
   global.lua_tableset(mouse, "isVisible", () => [mouseVisible]);
-  global.lua_tableset(timer, "getDelta", () => [(performance.now() - lastFrame) / 1000]);
+  global.lua_tableset(mouse, "setGrabbed", (...rawArgs) => {
+    const [grabbed] = stripSelf(rawArgs, mouse);
+    mouseGrabbed = Boolean(grabbed);
+    return [];
+  });
+  global.lua_tableset(mouse, "isGrabbed", () => [mouseGrabbed]);
+  global.lua_tableset(mouse, "setRelativeMode", (...rawArgs) => {
+    const [enabled] = stripSelf(rawArgs, mouse);
+    mouseRelativeMode = Boolean(enabled);
+    return [];
+  });
+  global.lua_tableset(mouse, "getRelativeMode", () => [mouseRelativeMode]);
+  global.lua_tableset(timer, "getDelta", () => [lastDelta]);
   global.lua_tableset(timer, "getTime", () => [(performance.now() - startedAt) / 1000]);
   global.lua_tableset(timer, "getFPS", () => {
     const delta = (performance.now() - lastFrame) / 1000;
     return [delta > 0 ? Math.round(1 / delta) : 0];
   });
   global.lua_tableset(timer, "sleep", () => []);
-  global.lua_tableset(timer, "step", () => [(performance.now() - lastFrame) / 1000]);
+  global.lua_tableset(timer, "step", () => {
+    const now = performance.now();
+    lastDelta = Math.max(0, (now - lastFrame) / 1000);
+    lastFrame = now;
+    return [lastDelta];
+  });
+  global.lua_tableset(timer, "getAverageDelta", () => [lastDelta]);
   global.lua_tableset(event, "quit", () => {
     running = false;
     return [];
@@ -10879,6 +11844,17 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     const [filename, mode = "r"] = stripSelf(rawArgs, filesystem);
     const writable = /[wa]/.test(jsString(mode));
     return [createLuaFileObject(filename, writable ? readVirtualFile(filename) || "" : readVirtualFile(filename) || "", writable)];
+  });
+  global.lua_tableset(filesystem, "newFileData", (...rawArgs) => {
+    const args = stripSelf(rawArgs, filesystem);
+    const dataText = args.length > 1 ? jsString(args[0]) : jsString(readVirtualFile(args[0]) ?? "");
+    const name = args.length > 1 ? jsString(args[1]) : jsString(args[0] || "FileData");
+    const fileData = tableFromObject({ type: "FileData", name, size: dataText.length });
+    setMethod(fileData, "getString", () => [dataText]);
+    setMethod(fileData, "getSize", () => [dataText.length]);
+    setMethod(fileData, "getFilename", () => [name]);
+    setMethod(fileData, "getExtension", () => [name.includes(".") ? name.split(".").pop() : ""]);
+    return [fileData];
   });
   global.lua_tableset(filesystem, "exists", (...rawArgs) => {
     const [filename] = stripSelf(rawArgs, filesystem);
@@ -10935,18 +11911,135 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     log(stripSelf(rawArgs, ioTable).map(jsString).join(""));
     return [];
   });
-  global.lua_tableset(loveMath, "random", (...rawArgs) => {
-    const args = stripSelf(rawArgs, loveMath).map((value) => Number(value));
-    if (!args.length) return [Math.random()];
-    if (args.length === 1) return [Math.floor(Math.random() * args[0]) + 1];
-    return [Math.floor(Math.random() * (args[1] - args[0] + 1)) + args[0]];
-  });
+  const nextSeededRandom = (stateObj) => {
+    stateObj.seed = (Math.imul(1664525, stateObj.seed >>> 0) + 1013904223) >>> 0;
+    return stateObj.seed / 0x100000000;
+  };
+  const randomFromState = (stateObj, args) => {
+    const values = args.map((value) => Number(value));
+    const value = nextSeededRandom(stateObj);
+    if (!values.length) return value;
+    if (values.length === 1) return Math.floor(value * values[0]) + 1;
+    return Math.floor(value * (values[1] - values[0] + 1)) + values[0];
+  };
+  const makeRandomGenerator = (seed = Date.now()) => {
+    const state = { seed: (Number(seed) || 1) >>> 0 };
+    const generator = tableFromObject({ type: "RandomGenerator" });
+    setMethod(generator, "random", (...argsRaw) => [randomFromState(state, stripSelf(argsRaw, generator))]);
+    setMethod(generator, "setSeed", (...argsRaw) => {
+      const [nextSeed = 1] = stripSelf(argsRaw, generator);
+      state.seed = (Number(nextSeed) || 1) >>> 0;
+      return [];
+    });
+    setMethod(generator, "getSeed", () => [state.seed, 0]);
+    return generator;
+  };
+  const makeTransform = (a = 1, b = 0, c = 0, d = 1, e = 0, f = 0) => {
+    const state = { matrix: [a, b, c, d, e, f] };
+    const transform = tableFromObject({ type: "Transform" });
+    const multiply = (ma, mb) => [
+      ma[0] * mb[0] + ma[2] * mb[1],
+      ma[1] * mb[0] + ma[3] * mb[1],
+      ma[0] * mb[2] + ma[2] * mb[3],
+      ma[1] * mb[2] + ma[3] * mb[3],
+      ma[0] * mb[4] + ma[2] * mb[5] + ma[4],
+      ma[1] * mb[4] + ma[3] * mb[5] + ma[5],
+    ];
+    const apply = (matrix) => {
+      state.matrix = multiply(state.matrix, matrix);
+      return [];
+    };
+    setMethod(transform, "translate", (...argsRaw) => {
+      const [x = 0, y = 0] = stripSelf(argsRaw, transform);
+      return apply([1, 0, 0, 1, toNumber(x), toNumber(y)]);
+    });
+    setMethod(transform, "rotate", (...argsRaw) => {
+      const [angle = 0] = stripSelf(argsRaw, transform);
+      const s = Math.sin(toNumber(angle));
+      const c = Math.cos(toNumber(angle));
+      return apply([c, s, -s, c, 0, 0]);
+    });
+    setMethod(transform, "scale", (...argsRaw) => {
+      const [x = 1, y = x] = stripSelf(argsRaw, transform);
+      return apply([toNumber(x, 1), 0, 0, toNumber(y, 1), 0, 0]);
+    });
+    setMethod(transform, "shear", (...argsRaw) => {
+      const [kx = 0, ky = 0] = stripSelf(argsRaw, transform);
+      return apply([1, toNumber(ky), toNumber(kx), 1, 0, 0]);
+    });
+    setMethod(transform, "reset", () => {
+      state.matrix = [1, 0, 0, 1, 0, 0];
+      return [];
+    });
+    setMethod(transform, "inverse", () => {
+      const [ma, mb, mc, md, me, mf] = state.matrix;
+      const det = ma * md - mb * mc || 1;
+      return [makeTransform(md / det, -mb / det, -mc / det, ma / det, (mc * mf - md * me) / det, (mb * me - ma * mf) / det)];
+    });
+    setMethod(transform, "transformPoint", (...argsRaw) => {
+      const [x = 0, y = 0] = stripSelf(argsRaw, transform);
+      const [ma, mb, mc, md, me, mf] = state.matrix;
+      return [ma * toNumber(x) + mc * toNumber(y) + me, mb * toNumber(x) + md * toNumber(y) + mf];
+    });
+    setMethod(transform, "inverseTransformPoint", (...argsRaw) => {
+      const inverse = global.lua_tableget(transform, "inverse")(transform)[0];
+      return global.lua_tableget(inverse, "transformPoint")(inverse, ...stripSelf(argsRaw, transform));
+    });
+    drawableStates.set(transform, { kind: "Transform", state, table: transform });
+    return transform;
+  };
+  global.lua_tableset(loveMath, "random", (...rawArgs) => [randomFromState({ get seed() { return seededRandomState; }, set seed(value) { seededRandomState = value; } }, stripSelf(rawArgs, loveMath))]);
   global.lua_tableset(loveMath, "setRandomSeed", (...rawArgs) => {
-    const [seed] = stripSelf(rawArgs, loveMath);
-    log(`love.math.setRandomSeed: ${String(seed ?? 0)}`);
+    const [seed = 1] = stripSelf(rawArgs, loveMath);
+    seededRandomState = (Number(seed) || 1) >>> 0;
     return [];
   });
-  global.lua_tableset(loveMath, "getRandomSeed", () => [0, 0]);
+  global.lua_tableset(loveMath, "getRandomSeed", () => [seededRandomState, 0]);
+  global.lua_tableset(loveMath, "newRandomGenerator", (...rawArgs) => {
+    const [seed = Date.now()] = stripSelf(rawArgs, loveMath);
+    return [makeRandomGenerator(seed)];
+  });
+  global.lua_tableset(loveMath, "noise", (...rawArgs) => {
+    const key = stripSelf(rawArgs, loveMath).map((value) => Math.floor(toNumber(value) * 10000)).join(":");
+    let hash = 2166136261;
+    for (let index = 0; index < key.length; index += 1) hash = Math.imul(hash ^ key.charCodeAt(index), 16777619);
+    return [((hash >>> 0) % 1000000) / 1000000];
+  });
+  global.lua_tableset(loveMath, "isConvex", (...rawArgs) => {
+    const points = numberList(stripSelf(rawArgs, loveMath));
+    if (points.length < 6) return [false];
+    let sign = 0;
+    for (let index = 0; index < points.length; index += 2) {
+      const x1 = points[index], y1 = points[index + 1];
+      const x2 = points[(index + 2) % points.length], y2 = points[(index + 3) % points.length];
+      const x3 = points[(index + 4) % points.length], y3 = points[(index + 5) % points.length];
+      const cross = (x2 - x1) * (y3 - y2) - (y2 - y1) * (x3 - x2);
+      if (cross !== 0) {
+        const nextSign = Math.sign(cross);
+        if (sign && sign !== nextSign) return [false];
+        sign = nextSign;
+      }
+    }
+    return [true];
+  });
+  global.lua_tableset(loveMath, "triangulate", (...rawArgs) => {
+    const points = numberList(stripSelf(rawArgs, loveMath));
+    const out = global.lua_newtable();
+    let triangleIndex = 1;
+    for (let index = 2; index + 3 < points.length; index += 2) {
+      const triangle = global.lua_newtable();
+      [points[0], points[1], points[index], points[index + 1], points[index + 2], points[index + 3]].forEach((value, itemIndex) => global.lua_tableset(triangle, itemIndex + 1, value));
+      global.lua_tableset(out, triangleIndex, triangle);
+      triangleIndex += 1;
+    }
+    return [out];
+  });
+  global.lua_tableset(loveMath, "gammaToLinear", (...rawArgs) => stripSelf(rawArgs, loveMath).map((value) => Math.pow(toNumber(value), 2.2)));
+  global.lua_tableset(loveMath, "linearToGamma", (...rawArgs) => stripSelf(rawArgs, loveMath).map((value) => Math.pow(toNumber(value), 1 / 2.2)));
+  global.lua_tableset(loveMath, "newTransform", (...rawArgs) => {
+    const args = stripSelf(rawArgs, loveMath).map((value) => toNumber(value));
+    return [makeTransform(...args)];
+  });
 
   global.lua_tableset(osTable, "time", () => [Math.floor(Date.now() / 1000)]);
   global.lua_tableset(osTable, "clock", () => [(performance.now() - startedAt) / 1000]);
@@ -11022,9 +12115,13 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
   global.lua_tableset(audio, "getVolume", () => [masterVolume]);
 
   global.lua_tableset(image, "newImageData", (...rawArgs) => {
-    const [width = 0, height = 0] = stripSelf(rawArgs, image);
-    return [makeObjectTable("ImageData", { width: toNumber(width), height: toNumber(height) })];
+    const args = stripSelf(rawArgs, image);
+    if (typeof args[0] === "string") return [makeImageDataFromSource(args[0])];
+    const [width = 1, height = 1] = args;
+    return [makeImageDataDrawable(width, height)];
   });
+  global.lua_tableset(image, "isCompressed", () => [false]);
+  global.lua_tableset(image, "newCompressedData", () => [makeObjectTable("CompressedImageData")]);
   global.lua_tableset(sound, "newSoundData", () => [makeObjectTable("SoundData")]);
   global.lua_tableset(data, "encode", (...rawArgs) => {
     const args = stripSelf(rawArgs, data);
@@ -11053,6 +12150,128 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
   global.lua_tableset(joystick, "getJoysticks", () => [emptyTable()]);
   global.lua_tableset(thread, "newThread", () => [createThreadObject()]);
   global.lua_tableset(thread, "getChannel", () => [createChannelObject()]);
+  global.lua_tableset(fontModule, "newRasterizer", (...rawArgs) => {
+    const args = stripSelf(rawArgs, fontModule);
+    const size = toNumber(args.find((value) => Number.isFinite(Number(value))), fontSize);
+    return [makeObjectTable("Rasterizer", { size })];
+  });
+  global.lua_tableset(video, "newVideoStream", () => {
+    const object = makeObjectTable("VideoStream");
+    setMethod(object, "play", () => []);
+    setMethod(object, "pause", () => []);
+    setMethod(object, "rewind", () => []);
+    setMethod(object, "isPlaying", () => [false]);
+    return [object];
+  });
+  global.lua_tableset(sensor, "isEnabled", () => [false]);
+  global.lua_tableset(sensor, "setEnabled", () => []);
+  global.lua_tableset(sensor, "getData", () => [0, 0, 0]);
+  const makePhysicsBody = (x = 0, y = 0, type = "dynamic") => {
+    const body = makeObjectTable("Body", { unsupported: false });
+    let bx = toNumber(x);
+    let by = toNumber(y);
+    let angle = 0;
+    let active = true;
+    setMethod(body, "getX", () => [bx]);
+    setMethod(body, "getY", () => [by]);
+    setMethod(body, "getPosition", () => [bx, by]);
+    setMethod(body, "setPosition", (...argsRaw) => {
+      const [nx = bx, ny = by] = stripSelf(argsRaw, body);
+      bx = toNumber(nx, bx);
+      by = toNumber(ny, by);
+      return [];
+    });
+    setMethod(body, "getAngle", () => [angle]);
+    setMethod(body, "setAngle", (...argsRaw) => {
+      const [nextAngle = 0] = stripSelf(argsRaw, body);
+      angle = toNumber(nextAngle);
+      return [];
+    });
+    setMethod(body, "getType", () => [jsString(type)]);
+    setMethod(body, "setType", () => []);
+    setMethod(body, "isActive", () => [active]);
+    setMethod(body, "setActive", (...argsRaw) => {
+      const [value] = stripSelf(argsRaw, body);
+      active = Boolean(value);
+      return [];
+    });
+    setMethod(body, "applyForce", () => []);
+    setMethod(body, "applyLinearImpulse", () => []);
+    setMethod(body, "applyTorque", () => []);
+    setMethod(body, "setLinearVelocity", () => []);
+    setMethod(body, "getLinearVelocity", () => [0, 0]);
+    setMethod(body, "destroy", () => []);
+    return body;
+  };
+  const makePhysicsShape = (kind, fields = {}) => {
+    const shape = makeObjectTable(kind, { unsupported: false, ...fields });
+    setMethod(shape, "getType", () => [kind.toLowerCase().replace("shape", "")]);
+    setMethod(shape, "computeAABB", () => [0, 0, fields.width || fields.radius || 0, fields.height || fields.radius || 0]);
+    setMethod(shape, "testPoint", () => [false]);
+    return shape;
+  };
+  const makePhysicsFixture = (body, shape, density = 1) => {
+    const fixture = makeObjectTable("Fixture", { unsupported: false });
+    setMethod(fixture, "getBody", () => [body]);
+    setMethod(fixture, "getShape", () => [shape]);
+    setMethod(fixture, "getDensity", () => [toNumber(density, 1)]);
+    setMethod(fixture, "setDensity", () => []);
+    setMethod(fixture, "setFriction", () => []);
+    setMethod(fixture, "getFriction", () => [0]);
+    setMethod(fixture, "setRestitution", () => []);
+    setMethod(fixture, "getRestitution", () => [0]);
+    setMethod(fixture, "destroy", () => []);
+    return fixture;
+  };
+  global.lua_tableset(physics, "setMeter", () => []);
+  global.lua_tableset(physics, "getMeter", () => [30]);
+  global.lua_tableset(physics, "newWorld", (...rawArgs) => {
+    const [gx = 0, gy = 0] = stripSelf(rawArgs, physics);
+    const bodies = [];
+    const world = makeObjectTable("World", { unsupported: false });
+    setMethod(world, "update", () => []);
+    setMethod(world, "setCallbacks", () => []);
+    setMethod(world, "getGravity", () => [toNumber(gx), toNumber(gy)]);
+    setMethod(world, "setGravity", () => []);
+    setMethod(world, "getBodies", () => {
+      const table = global.lua_newtable();
+      bodies.forEach((body, index) => global.lua_tableset(table, index + 1, body));
+      return [table];
+    });
+    setMethod(world, "destroy", () => []);
+    setMethod(world, "__addBody", (body) => {
+      bodies.push(body);
+      return [];
+    });
+    return [world];
+  });
+  global.lua_tableset(physics, "newBody", (...rawArgs) => {
+    const [world = null, x = 0, y = 0, type = "dynamic"] = stripSelf(rawArgs, physics);
+    const body = makePhysicsBody(x, y, type);
+    try {
+      const addBody = world && global.lua_tableget(world, "__addBody");
+      if (typeof addBody === "function") addBody(world, body);
+    } catch (_error) {}
+    return [body];
+  });
+  global.lua_tableset(physics, "newCircleShape", (...rawArgs) => {
+    const args = stripSelf(rawArgs, physics);
+    const radius = args.length >= 3 ? args[2] : args[0];
+    return [makePhysicsShape("CircleShape", { radius: toNumber(radius, 1) })];
+  });
+  global.lua_tableset(physics, "newRectangleShape", (...rawArgs) => {
+    const args = stripSelf(rawArgs, physics);
+    const width = args.length >= 4 ? args[2] : args[0];
+    const height = args.length >= 4 ? args[3] : args[1];
+    return [makePhysicsShape("PolygonShape", { width: toNumber(width, 1), height: toNumber(height, 1) })];
+  });
+  global.lua_tableset(physics, "newPolygonShape", (...rawArgs) => [makePhysicsShape("PolygonShape", { points: numberList(stripSelf(rawArgs, physics)) })]);
+  global.lua_tableset(physics, "newEdgeShape", (...rawArgs) => [makePhysicsShape("EdgeShape", { points: numberList(stripSelf(rawArgs, physics)) })]);
+  global.lua_tableset(physics, "newChainShape", (...rawArgs) => [makePhysicsShape("ChainShape", { points: numberList(stripSelf(rawArgs, physics)) })]);
+  global.lua_tableset(physics, "newFixture", (...rawArgs) => {
+    const [body, shape, density = 1] = stripSelf(rawArgs, physics);
+    return [makePhysicsFixture(body, shape, density)];
+  });
 
   evalLuaJsSource(decodeXmlTextEntities(code), options.project?.entryPath || "main.lua");
 
@@ -11061,6 +12280,7 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     const now = performance.now();
     const dt = Math.max(0, (now - lastFrame) / 1000);
     lastFrame = now;
+    lastDelta = dt;
     try {
       callLove(love, "update", [dt]);
       redraw();
@@ -11149,6 +12369,7 @@ async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) 
     running = false;
     if (rafId) window.cancelAnimationFrame(rafId);
     resetScissor();
+    for (const url of objectUrls.splice(0)) URL.revokeObjectURL(url);
   }
   function getScreenText() {
     const visibleText = formatLuaPreviewScreenText(screenText);
