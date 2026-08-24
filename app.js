@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-image-aspect-resource";
+const SOURCE_VERSION = "2026-08-23-image-rgb565-extra";
 
 const I18N = {
   es: {
@@ -44,6 +44,7 @@ const I18N = {
     imageWidgetAdded: "Imagen agregada como nueva card.",
     imageWidgetNoFile: "Selecciona una imagen BMP, PNG o JPG.",
     imageResourceInfo: "Recurso",
+    imageExtraBytesIgnored: "bytes extra ignorados",
     runLuaSyntax: "Ejecutar sintaxis Lua",
     saveLuaXml: "Guardar Lua en XML",
     previewLua: "Preview Lua",
@@ -275,6 +276,7 @@ const I18N = {
     imageWidgetAdded: "Image added as a new card.",
     imageWidgetNoFile: "Select a BMP, PNG, or JPG image.",
     imageResourceInfo: "Resource",
+    imageExtraBytesIgnored: "extra bytes ignored",
     runLuaSyntax: "Run Lua syntax",
     saveLuaXml: "Save Lua to XML",
     previewLua: "Preview Lua",
@@ -506,6 +508,7 @@ const I18N = {
     imageWidgetAdded: "Image ajoutee comme nouvelle carte.",
     imageWidgetNoFile: "Selectionnez une image BMP, PNG ou JPG.",
     imageResourceInfo: "Ressource",
+    imageExtraBytesIgnored: "octets extra ignores",
     runLuaSyntax: "Analyser syntaxe Lua",
     saveLuaXml: "Enregistrer Lua dans XML",
     previewLua: "Apercu Lua",
@@ -3146,14 +3149,14 @@ function decodeBmpToRgba(bytes) {
   const payloadSize = data.length - pixelOffset;
   let bpp = headerBpp;
   let tightRows = false;
+  const usefulPixelSize = Math.floor((width * Math.max(1, headerBpp) + 31) / 32) * 4 * height;
   const tight24Size = width * height * 3;
   const padded24Size = Math.floor((width * 24 + 31) / 32) * 4 * height;
-  if (payloadSize === tight24Size || declaredImageSize === tight24Size) {
-    // Some TI image resources declare 16 bpp but store tightly packed 24-bit BGR.
-    // Payload size is stronger evidence than that broken header bit-depth flag.
+  if (headerBpp !== 16 && (payloadSize === tight24Size || declaredImageSize === tight24Size)) {
+    // Some malformed non-RGB565 resources are tightly packed 24-bit BGR.
     bpp = 24;
     tightRows = true;
-  } else if (payloadSize === padded24Size || declaredImageSize === padded24Size) {
+  } else if (headerBpp !== 16 && (payloadSize === padded24Size || declaredImageSize === padded24Size)) {
     bpp = 24;
   }
 
@@ -3225,7 +3228,7 @@ function decodeBmpToRgba(bytes) {
     }
   }
 
-  return { width, height, rgba, bpp, headerBpp, compression };
+  return { width, height, rgba, bpp, headerBpp, compression, payloadSize, usefulPixelSize };
 }
 
 function renderBmpToCanvas(canvas, bytes) {
@@ -3433,8 +3436,14 @@ function showImageModal(item) {
       canvas.className = "image-source-preview";
       canvas.setAttribute("aria-label", item?.name || "BMP preview");
       const decoded = renderBmpToCanvas(canvas, bytes);
-      const formatNote = decoded.headerBpp && decoded.headerBpp !== decoded.bpp ? `${decoded.bpp} bpp detectado, cabecera ${decoded.headerBpp} bpp` : `${decoded.bpp} bpp`;
-      setMeta(decoded.width, decoded.height, formatNote);
+      const formatNotes = [`${decoded.bpp} bpp`];
+      if (decoded.headerBpp && decoded.headerBpp !== decoded.bpp) {
+        formatNotes.push(`${decoded.headerBpp} bpp header`);
+      }
+      if (decoded.payloadSize > decoded.usefulPixelSize) {
+        formatNotes.push(t("imageExtraBytesIgnored"));
+      }
+      setMeta(decoded.width, decoded.height, formatNotes.join(" · "));
       preview.append(canvas);
       setupImageCalculatorToggle(backdrop, canvas);
     } catch (error) {
