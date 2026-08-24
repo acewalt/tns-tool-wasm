@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-ti-rgb565-aux-resource-final";
+const SOURCE_VERSION = "2026-08-24-ti-image-fixed-page0-res";
 
 const I18N = {
   es: {
@@ -2782,11 +2782,10 @@ async function prepareTiImageResource(file) {
 }
 
 function reserveStagePageImageName() {
-  let index = 0;
-  while (pyodide.FS.analyzePath(`${xmlDoctor.stagePath}/page${index}.BMP`).exists) {
-    index += 1;
-  }
-  return `page${index}.BMP`;
+  // Modo de compatibilidad confirmado contra user_3183291446.tns.
+  // Por ahora usamos exactamente el recurso que sabemos que TI-Nspire
+  // registra como _R.IMG.img. Esto puede reemplazar page0.BMP si ya existe.
+  return "page0.BMP";
 }
 
 function buildImageViewerLua(imageName) {
@@ -3172,7 +3171,7 @@ async function addImageWidgetToStage(file) {
   if (!file) throw new Error(t("imageWidgetNoFile"));
   await ensureXmlStageCopy();
   const prepared = await prepareTiImageResource(file);
-  const imageName = reserveStagePageImageName();
+  const imageName = reserveStagePageImageName(); // page0.BMP: mapping confirmado
   ensureParent(`${xmlDoctor.stagePath}/${imageName}`);
   pyodide.FS.writeFile(`${xmlDoctor.stagePath}/${imageName}`, prepared.bytes);
   const currentFile = xmlDoctor.current?.file || "";
@@ -3220,17 +3219,11 @@ ET.register_namespace("sc", sc_ns)
 def q(ns, name):
     return f"{{{ns}}}{name}" if ns else name
 
-def res_len(n):
-    if n < 0 or n >= 26 ** 3:
-        raise RuntimeError("Resource name too long for TI metadata")
-    a = n // (26 * 26)
-    b = (n // 26) % 26
-    c = n % 26
-    return "".join(chr(ord("A") + part) for part in (a, b, c))
-
-image_name = wasm_image_file_name
+# Descriptor exacto observado en el TNS funcional de referencia.
+# No generalizar todavía: primero verificamos la ruta conocida page0.BMP -> _R.IMG.img.
+image_name = "page0.BMP"
 resource_var = "img"
-resource_descriptor = "AAC" + res_len(len(image_name)) + image_name + res_len(len(resource_var)) + resource_var
+resource_descriptor = "AACAAJpage0.BMPAADimg"
 
 card = ET.Element(q(prob_ns, "card"), {"clay": "0", "h1": "10000", "h2": "10000", "w1": "10000", "w2": "10000"})
 ET.SubElement(card, q(prob_ns, "isDummyCard")).text = "0"
