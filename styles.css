@@ -2430,7 +2430,15 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .image-resource-preview canvas {
   max-width: 100%;
   max-height: 66vh;
+  width: auto;
+  height: auto;
+  object-fit: contain;
   image-rendering: auto;
+}
+
+.image-resource-preview .image-source-preview {
+  max-width: none;
+  max-height: none;
 }
 
 .image-resource-preview.calculator-mode {

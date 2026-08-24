@@ -3514,11 +3514,23 @@ function renderBmpToCanvas(canvas, bytes) {
   const decoded = decodeBmpToRgba(bytes);
   canvas.width = decoded.width;
   canvas.height = decoded.height;
+  configureImagePreviewElement(canvas, decoded.width, decoded.height);
   const ctx = canvas.getContext("2d");
   const imageData = ctx.createImageData(decoded.width, decoded.height);
   imageData.data.set(decoded.rgba);
   ctx.putImageData(imageData, 0, 0);
   return decoded;
+}
+
+function configureImagePreviewElement(element, width, height) {
+  const safeWidth = Math.max(1, Math.round(Number(width) || element?.width || element?.naturalWidth || 1));
+  const safeHeight = Math.max(1, Math.round(Number(height) || element?.height || element?.naturalHeight || 1));
+  if (!element) return;
+  element.style.width = `${safeWidth}px`;
+  element.style.height = "auto";
+  element.style.aspectRatio = `${safeWidth} / ${safeHeight}`;
+  element.dataset.imageWidth = String(safeWidth);
+  element.dataset.imageHeight = String(safeHeight);
 }
 
 function calculatorImageViewGeometry(sourceWidth, sourceHeight) {
@@ -3737,6 +3749,7 @@ function showImageModal(item) {
     img.src = url;
     img.addEventListener("load", () => {
       setMeta(img.naturalWidth || img.width, img.naturalHeight || img.height);
+      configureImagePreviewElement(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
       setupImageCalculatorToggle(backdrop, img);
     }, { once: true });
     img.addEventListener("error", () => {
@@ -9767,7 +9780,26 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
 }
 
 async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl, symbols = {}) {
-  const luaRuntime = await createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols);
+  const internalCanvas = document.createElement("canvas");
+  internalCanvas.width = Math.max(1, canvas.width || 320);
+  internalCanvas.height = Math.max(1, canvas.height || 214);
+  const internalCtx = internalCanvas.getContext("2d");
+  const luaRuntime = await createLuaJsPreviewRuntime(code, internalCtx, internalCanvas, logEl, symbols);
+  let blitTimer = null;
+  const blit = () => {
+    if (!canvas.isConnected) return;
+    const targetCtx = canvas.getContext("2d");
+    targetCtx.setTransform(1, 0, 0, 1, 0, 0);
+    targetCtx.clearRect(0, 0, canvas.width, canvas.height);
+    targetCtx.drawImage(internalCanvas, 0, 0, canvas.width, canvas.height);
+  };
+  const syncSize = (width, height) => {
+    const nextWidth = Math.max(1, Math.round(Number(width) || canvas.width || internalCanvas.width || 320));
+    const nextHeight = Math.max(1, Math.round(Number(height) || canvas.height || internalCanvas.height || 214));
+    internalCanvas.width = nextWidth;
+    internalCanvas.height = nextHeight;
+    return { width: nextWidth, height: nextHeight };
+  };
   const keyToEvent = (key) => {
     const map = {
       up: "on.arrowUp",
@@ -9786,18 +9818,35 @@ async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl, symbols 
     const eventName = keyToEvent(normalized);
     if (eventName) {
       luaRuntime.callEvent(eventName);
+      blit();
       return;
     }
     luaRuntime.charIn(normalized === "space" ? " " : normalized);
+    blit();
   };
   return {
-    boot: () => luaRuntime.boot(),
+    boot: () => {
+      syncSize(canvas.width, canvas.height);
+      luaRuntime.boot();
+      blit();
+      blitTimer = window.setInterval(blit, 120);
+    },
     keydown: dispatchKey,
     keyup: () => {},
     keypressed: dispatchKey,
-    mousepressed: (x, y) => luaRuntime.mouseClick(x, y),
-    resize: (width, height) => luaRuntime.resize?.(width, height),
-    close: () => luaRuntime.close?.(),
+    mousepressed: (x, y) => {
+      luaRuntime.mouseClick(x, y);
+      blit();
+    },
+    resize: (width, height) => {
+      const size = syncSize(width, height);
+      luaRuntime.resize?.(size.width, size.height);
+      blit();
+    },
+    close: () => {
+      if (blitTimer) window.clearInterval(blitTimer);
+      luaRuntime.close?.();
+    },
     getScreenText: () => luaRuntime.getScreenText?.() || "",
   };
 }
@@ -13369,10 +13418,20 @@ function attachLuaJsGc(gcTable, ctx, canvas, screenText = null) {
     }
     return [];
   });
-  window.lua_tableset(gcTable, "drawImage", (_self, image, x, y) => {
+  window.lua_tableset(gcTable, "drawImage", (_self, image, x, y, w, h) => {
     const resource = image?.__tnsImage;
     if (resource?.canvas) {
-      ctx.drawImage(resource.canvas, Number(x) || 0, Number(y) || 0);
+      const px = Number(x) || 0;
+      const py = Number(y) || 0;
+      const dw = Number(w);
+      const dh = Number(h);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      if (Number.isFinite(dw) && Number.isFinite(dh) && dw > 0 && dh > 0) {
+        ctx.drawImage(resource.canvas, px, py, dw, dh);
+      } else {
+        ctx.drawImage(resource.canvas, px, py);
+      }
     }
     return [];
   });
