@@ -1,6 +1,6 @@
 ﻿const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-23-ti-image-viewport";
+const SOURCE_VERSION = "2026-08-23-love-nspire-resources";
 
 const I18N = {
   es: {
@@ -7836,7 +7836,7 @@ function showLuaEditor(item) {
     editor.setSelectionRange(caret, caret);
     editor.blur();
     window.getSelection?.()?.removeAllRanges?.();
-    showLovePreview(editor.value, editor, log).catch((error) => {
+    showLovePreview(editor.value, editor, log, { item }).catch((error) => {
       log.textContent += `\n[ERROR] Preview LÖVE: ${error.message}`;
     });
   });
@@ -9328,7 +9328,8 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   } else if (isNspireSource) {
     appendPreviewLog(previewLog, t("lovePreviewNspireCompat"));
     try {
-      runtime = await createLovePreviewNspireRuntime(code, ctx, canvas, previewLog);
+      const symbols = options?.item ? await loadLuaPreviewSymbols(options.item).catch(() => ({})) : {};
+      runtime = await createLovePreviewNspireRuntime(code, ctx, canvas, previewLog, symbols);
       runtime.boot();
     } catch (error) {
       appendPreviewLog(previewLog, `ERROR Preview LÖVE/TI-Nspire: ${describeLuaJsError(error)}\n${compactStack(error)}`);
@@ -9395,8 +9396,8 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   backdrop.querySelector("#love-preview-close").addEventListener("click", closeLovePreview);
 }
 
-async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl) {
-  const luaRuntime = await createLuaJsPreviewRuntime(code, ctx, canvas, logEl);
+async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl, symbols = {}) {
+  const luaRuntime = await createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols);
   const keyToEvent = (key) => {
     const map = {
       up: "on.arrowUp",
