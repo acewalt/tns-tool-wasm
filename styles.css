@@ -1198,6 +1198,8 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 .inspector-modal {
   width: min(1100px, calc(100vw - 28px));
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .py-doctor-modal {
@@ -2273,6 +2275,9 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .inspector-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
   max-height: 430px;
   overflow: auto;
   border: 1px solid var(--line);
@@ -3062,14 +3067,21 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 
 /* Document Inspector: +Page menu */
 .inspector-modal-actions {
+  position: relative;
   align-items: center;
+}
+
+.inspector-page-menu {
+  position: relative;
 }
 
 .inspector-page-menu .menu-panel {
   top: auto;
   bottom: calc(100% + 10px);
+  left: auto;
+  right: 0;
   transform: translateY(16px) scale(0.9);
-  transform-origin: bottom left;
+  transform-origin: bottom right;
 }
 
 .inspector-page-menu.open > .menu-panel {
@@ -3293,4 +3305,14 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     padding: 14px;
     justify-content: start;
   }
+}
+
+
+/* File > +Page: available even with no document loaded. */
+.file-page-menu > .nested-trigger {
+  color: #d9f99d;
+}
+
+[data-theme="dark"] .file-page-menu > .nested-trigger {
+  color: #d9f99d;
 }

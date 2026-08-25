@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-page-menu-spreadsheet-preview";
+const SOURCE_VERSION = "2026-08-24-page-menu-layout-autocreate";
 
 const I18N = {
   es: {
@@ -1565,7 +1565,7 @@ function xmlLog(message) {
 }
 
 function setXmlDoctorEnabled(enabled) {
-  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-add-image-btn", "xml-add-python-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
+  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn"]) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#xml-programs").disabled = !enabled;
@@ -1574,7 +1574,7 @@ function setXmlDoctorEnabled(enabled) {
 }
 
 function setXmlDoctorDocumentActionsEnabled(enabled) {
-  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-add-image-btn", "xml-add-python-btn", "xml-document-btn"]) {
+  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn"]) {
     const el = document.querySelector(`#${id}`);
     if (el) el.disabled = !enabled;
   }
@@ -8435,6 +8435,52 @@ end
   return normalized;
 }
 
+function xmlDoctorHasProjectFiles() {
+  if (!pyodide) return false;
+  for (const root of [xmlDoctor.stagePrepared ? xmlDoctor.stagePath : "", xmlDoctor.sourcePath]) {
+    if (!root) continue;
+    try {
+      if (!pyodide.FS.analyzePath(root).exists) continue;
+      const names = pyodide.FS.readdir(root).filter((name) => name !== "." && name !== "..");
+      if (names.some((name) => /\.xml$/i.test(name))) return true;
+    } catch (_error) {
+      // No project is loaded yet.
+    }
+  }
+  return false;
+}
+
+async function ensureXmlProjectForPageCreation() {
+  if (xmlDoctorHasProjectFiles()) return;
+  await createNewXmlProject();
+  xmlLog("Documento nuevo creado automáticamente para +Page.");
+}
+
+async function addPageFromFileMenu(kind) {
+  await ensureXmlProjectForPageCreation();
+
+  if (kind === "image") {
+    await openAddImageWidgetFlow();
+    return;
+  }
+  if (kind === "python") {
+    const item = await addPythonEditorToStage();
+    showPythonEditor(item);
+    return;
+  }
+  if (kind === "lua") {
+    const item = await addLuaScriptAppToStage();
+    showLuaEditor(item);
+    return;
+  }
+  if (kind === "spreadsheet") {
+    const item = await addSpreadsheetWidgetToStage();
+    showSpreadsheetModal(item);
+    return;
+  }
+  throw new Error(`Tipo de página no soportado: ${kind}`);
+}
+
 async function createNewXmlProject() {
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
@@ -14442,7 +14488,7 @@ function showSpreadsheetModal(item) {
         <div class="spreadsheet-header-actions">
           <button type="button" id="spreadsheet-import">${escapeHtml(t("spreadsheetImport"))}</button>
           <button type="button" id="spreadsheet-save" class="green-tool-button">${escapeHtml(t("spreadsheetSave"))}</button>
-          <button type="button" id="spreadsheet-close">${escapeHtml(t("close"))}</button>
+          <button type="button" id="spreadsheet-cancel">${escapeHtml(t("cancel"))}</button>
         </div>
       </div>
       <input id="spreadsheet-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
@@ -14539,8 +14585,14 @@ function showSpreadsheetModal(item) {
       sourceName: state.sourceName,
     });
     xmlLog(`${t("spreadsheetSave")}: ${state.sourceName || "tabulator"}`);
+    closeModal(backdrop);
   });
-  backdrop.querySelector("#spreadsheet-close").addEventListener("click", () => closeModal(backdrop));
+
+  // Cancel descarta todos los cambios hechos desde que se abrió esta ventana.
+  // El estado persistido en spreadsheetPreviewSessions no se toca hasta pulsar Save.
+  backdrop.querySelector("#spreadsheet-cancel").addEventListener("click", () => {
+    closeModal(backdrop);
+  });
   render();
 }
 
@@ -14596,7 +14648,7 @@ async function openDocumentInspector() {
       </div>
       <div class="modal-actions inspector-modal-actions">
         <div class="tool-menu inspector-page-menu">
-          <button type="button" id="inspector-page-trigger" class="menu-trigger green-menu-trigger"><span class="menu-icon">＋</span><span>${escapeHtml(t("addPage"))}</span></button>
+          <button type="button" id="inspector-page-trigger" class="menu-trigger green-menu-trigger"><span>${escapeHtml(t("addPage"))}</span></button>
           <div class="menu-panel">
             <button type="button" id="add-image-widget" class="menu-action">${escapeHtml(t("addImageWidget"))}</button>
             <button type="button" id="add-python-widget" class="menu-action">${escapeHtml(t("addPythonWidget"))}</button>
@@ -15853,6 +15905,10 @@ function wireEvents() {
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-folder").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "folder").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-new-btn").addEventListener("click", () => createNewXmlProject().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#file-page-add-image").addEventListener("click", () => addPageFromFileMenu("image").catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#file-page-add-python").addEventListener("click", () => addPageFromFileMenu("python").catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#file-page-add-lua").addEventListener("click", () => addPageFromFileMenu("lua").catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#file-page-add-spreadsheet").addEventListener("click", () => addPageFromFileMenu("spreadsheet").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-programs").addEventListener("change", (event) => selectXmlProgram(event.target.value));
   document.querySelector("#xml-code").addEventListener("input", () => {
     xmlDoctor.embedded = false;
@@ -15870,8 +15926,6 @@ function wireEvents() {
   document.querySelector("#xml-format-btn").addEventListener("click", () => formatXmlCode().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-inspector-btn").addEventListener("click", () => openDocumentInspector().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-add-func-btn").addEventListener("click", () => addBasicFuncToStage().catch((err) => xmlLog(`ERROR: ${err.message}`)));
-  document.querySelector("#xml-add-image-btn").addEventListener("click", () => openAddImageWidgetFlow().catch((err) => xmlLog(`ERROR: ${err.message}`)));
-  document.querySelector("#xml-add-python-btn").addEventListener("click", () => addPythonEditorToStage().then(showPythonEditor).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-document-btn").addEventListener("click", openXmlDocumentSettings);
   document.querySelector("#xml-resolve-btn").addEventListener("click", () => resolveXmlProblems().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-changes-btn").addEventListener("click", showXmlChanges);
