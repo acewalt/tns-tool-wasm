@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-sheet-save-menu-fix";
+const SOURCE_VERSION = "2026-08-24-ti-sheet-cells-roundtrip";
 
 const I18N = {
   es: {
@@ -48,7 +48,7 @@ const I18N = {
     spreadsheetImport: "Importar XLSX",
     spreadsheetSave: "Save",
     spreadsheetImportLoaded: "XLSX cargado en la previsualización.",
-    spreadsheetPreviewOnly: "La importación XLSX se conserva en la previsualización de esta sesión; la serialización de celdas TI se integrará cuando tengamos una muestra con datos.",
+    spreadsheetPreviewOnly: "Save escribe las celdas directamente en el XML TI-Nspire. Las fórmulas simples conservan formula y data.",
     viewImage: "Ver imagen",
     imageCalculatorView: "Vista calculadora",
     imageOriginalView: "Vista original",
@@ -291,7 +291,7 @@ const I18N = {
     spreadsheetImport: "Import XLSX",
     spreadsheetSave: "Save",
     spreadsheetImportLoaded: "XLSX loaded in the preview.",
-    spreadsheetPreviewOnly: "XLSX import is retained in this session preview; TI cell serialization will be integrated once a populated sample is available.",
+    spreadsheetPreviewOnly: "Save writes cells directly into the TI-Nspire XML. Simple formulas preserve formula and data.",
     viewImage: "View image",
     imageCalculatorView: "Calculator view",
     imageOriginalView: "Original view",
@@ -534,7 +534,7 @@ const I18N = {
     spreadsheetImport: "Importer XLSX",
     spreadsheetSave: "Save",
     spreadsheetImportLoaded: "XLSX chargé dans l’aperçu.",
-    spreadsheetPreviewOnly: "L’import XLSX reste dans l’aperçu de cette session ; la sérialisation des cellules TI sera intégrée avec un exemple contenant des données.",
+    spreadsheetPreviewOnly: "Save écrit les cellules directement dans le XML TI-Nspire. Les formules simples conservent formula et data.",
     viewImage: "Voir image",
     imageCalculatorView: "Vue calculatrice",
     imageOriginalView: "Vue originale",
@@ -14478,6 +14478,95 @@ function spreadsheetCellRefToCoords(ref) {
   return { row: Math.max(0, Number(match[2]) - 1), col: Math.max(0, col - 1) };
 }
 
+function spreadsheetCellDisplay(cell) {
+  if (!cell) return "";
+  const formula = String(cell.formula ?? "");
+  const data = String(cell.data ?? "");
+  if (formula.startsWith("=") && data !== "") return data;
+  return data !== "" ? data : formula;
+}
+
+function spreadsheetCellFormula(cell) {
+  if (!cell) return "";
+  return String(cell.formula ?? cell.data ?? "");
+}
+
+function spreadsheetNumericValue(cell) {
+  const raw = spreadsheetCellDisplay(cell).trim();
+  if (!raw) return 0;
+  const value = Number(raw.replace(",", "."));
+  return Number.isFinite(value) ? value : 0;
+}
+
+function evaluateSpreadsheetFormula(formula, cells) {
+  const raw = String(formula || "").trim();
+  if (!raw.startsWith("=")) return raw;
+  let expression = raw.slice(1);
+  expression = expression.replace(/\b([A-Za-z]+)(\d+)\b/g, (match) => {
+    const coords = spreadsheetCellRefToCoords(match);
+    if (!coords) return "0";
+    return String(spreadsheetNumericValue(cells[`${coords.row}:${coords.col}`]));
+  });
+  expression = expression.replace(/\^/g, "**");
+  if (!/^[0-9+\-*/().\s*]+$/.test(expression)) return "";
+  try {
+    const result = Function(`"use strict"; return (${expression});`)();
+    if (typeof result !== "number" || !Number.isFinite(result)) return "";
+    return String(Number.isInteger(result) ? result : Number(result.toPrecision(12)));
+  } catch (_) {
+    return "";
+  }
+}
+
+function recalculateSpreadsheetCells(cells) {
+  // A few passes are enough for simple dependency chains such as A3=B2+C2.
+  for (let pass = 0; pass < 6; pass += 1) {
+    let changed = false;
+    for (const cell of Object.values(cells || {})) {
+      if (!cell || !String(cell.formula || "").trim().startsWith("=")) continue;
+      const next = evaluateSpreadsheetFormula(cell.formula, cells);
+      if (next !== "" && next !== String(cell.data ?? "")) {
+        cell.data = next;
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+}
+
+function extractSpreadsheetStateFromRawXml(rawXml) {
+  const result = { cells: {}, rows: 20, cols: 12, sourceName: "" };
+  const text = String(rawXml || "").trim();
+  if (!text) return result;
+  try {
+    const doc = new DOMParser().parseFromString(text, "application/xml");
+    if (doc.querySelector("parsererror")) return result;
+    const columns = Array.from(doc.getElementsByTagNameNS("urn:tabulator", "column"))
+      .filter((node) => node.getAttribute("type") === "cell-column");
+    let maxRow = 0;
+    let maxCol = 0;
+    columns.forEach((column, col) => {
+      const cellsNode = Array.from(column.children).find((node) => node.localName === "cells");
+      if (!cellsNode) return;
+      for (const cellNode of Array.from(cellsNode.children).filter((node) => node.localName === "cell")) {
+        const childText = (name) => Array.from(cellNode.children).find((node) => node.localName === name)?.textContent ?? "";
+        const rowId = Number(childText("rowId"));
+        if (!Number.isFinite(rowId) || rowId < 1) continue;
+        const formula = childText("formula");
+        const data = childText("data");
+        result.cells[`${rowId - 1}:${col}`] = { formula, data };
+        maxRow = Math.max(maxRow, rowId);
+        maxCol = Math.max(maxCol, col + 1);
+      }
+    });
+    result.rows = Math.max(20, maxRow);
+    result.cols = Math.min(26, Math.max(12, maxCol));
+  } catch (_) {
+    // Leave an empty sheet when a malformed raw_xml snapshot is received.
+  }
+  return result;
+}
+
 async function parseXlsxFirstSheet(file) {
   if (!window.JSZip) throw new Error("JSZip no está disponible para abrir XLSX.");
   const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
@@ -14511,24 +14600,164 @@ async function parseXlsxFirstSheet(file) {
 
   const sheet = await readXml(sheetPath);
   if (!sheet) throw new Error("No se encontró la primera hoja dentro del XLSX.");
-  const values = {};
+  const cells = {};
   let maxRow = 0;
   let maxCol = 0;
   for (const cell of sheet.getElementsByTagNameNS("*", "c")) {
     const ref = cell.getAttribute("r") || "";
     const coords = spreadsheetCellRefToCoords(ref);
-    if (!coords) continue;
+    if (!coords || coords.col >= 26) continue;
     const type = cell.getAttribute("t") || "n";
     const vNode = cell.getElementsByTagNameNS("*", "v")[0];
-    let value = vNode?.textContent ?? "";
-    if (type === "s") value = sharedStrings[Number(value)] ?? value;
-    else if (type === "inlineStr") value = Array.from(cell.getElementsByTagNameNS("*", "t")).map((node) => node.textContent || "").join("");
-    else if (type === "b") value = value === "1" ? "TRUE" : "FALSE";
-    values[`${coords.row}:${coords.col}`] = value;
+    const fNode = cell.getElementsByTagNameNS("*", "f")[0];
+    let data = vNode?.textContent ?? "";
+    if (type === "s") data = sharedStrings[Number(data)] ?? data;
+    else if (type === "inlineStr") data = Array.from(cell.getElementsByTagNameNS("*", "t")).map((node) => node.textContent || "").join("");
+    else if (type === "b") data = data === "1" ? "TRUE" : "FALSE";
+    const formula = fNode?.textContent ? `=${fNode.textContent}` : data;
+    cells[`${coords.row}:${coords.col}`] = { formula, data };
     maxRow = Math.max(maxRow, coords.row);
     maxCol = Math.max(maxCol, coords.col);
   }
-  return { values, rows: Math.max(12, maxRow + 1), cols: Math.max(8, maxCol + 1), sourceName: file.name };
+  recalculateSpreadsheetCells(cells);
+  return { cells, rows: Math.max(20, maxRow + 1), cols: Math.min(26, Math.max(12, maxCol + 1)), sourceName: file.name };
+}
+
+async function saveSpreadsheetWidgetToStage(item, state) {
+  await ensureXmlStageCopy();
+  pyodide.globals.set("wasm_sheet_save_file", item?.file || "");
+  pyodide.globals.set("wasm_sheet_save_path", item?.path || "");
+  pyodide.globals.set("wasm_sheet_save_cells_json", JSON.stringify(state.cells || {}));
+
+  const payload = await pyodide.runPythonAsync(`
+import json
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+source_file = Path(wasm_sheet_save_file) if wasm_sheet_save_file else None
+xml_file = None
+if source_file:
+    try:
+        rel = source_file.relative_to(stage_root)
+    except ValueError:
+        try:
+            rel = source_file.relative_to(source_root)
+        except ValueError:
+            rel = Path(source_file.name)
+    candidate = stage_root / rel
+    if candidate.exists():
+        xml_file = candidate
+if xml_file is None:
+    problem_files = sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p: p.name.lower())
+    xml_files = problem_files or sorted(stage_root.rglob("*.xml"))
+    if xml_files:
+        xml_file = xml_files[0]
+if xml_file is None:
+    raise RuntimeError("No XML file available for spreadsheet save")
+
+tree = ET.parse(xml_file)
+root = tree.getroot()
+tb_ns = "urn:tabulator"
+ET.register_namespace("tb", tb_ns)
+
+def q(ns, name):
+    return f"{{{ns}}}{name}"
+
+def parse_part(part):
+    match = re.fullmatch(r"([^\[]+)(?:\[(\d+)\])?", part)
+    if not match:
+        return part, 1
+    return match.group(1), int(match.group(2) or 1)
+
+def resolve_path(root, path):
+    parts = [part for part in str(path or "").split("/") if part]
+    if parts and local_name(root.tag) == parse_part(parts[0])[0]:
+        parts = parts[1:]
+    current = root
+    for part in parts:
+        name, wanted = parse_part(part)
+        matches = [child for child in current if local_name(child.tag) == name]
+        if wanted < 1 or wanted > len(matches):
+            return None
+        current = matches[wanted - 1]
+    return current
+
+wdgt = resolve_path(root, wasm_sheet_save_path)
+if wdgt is None or local_name(wdgt.tag) != "wdgt" or wdgt.attrib.get("type") != "tabulator":
+    # Fallback: only safe when there is exactly one spreadsheet widget.
+    matches = [node for node in root.iter() if local_name(node.tag) == "wdgt" and node.attrib.get("type") == "tabulator"]
+    if len(matches) == 1:
+        wdgt = matches[0]
+    else:
+        raise RuntimeError("No se pudo identificar la hoja de cálculo seleccionada")
+
+# Get the tabulator table (not the FunctionTable table).
+table = next((child for child in wdgt if child.tag == q(tb_ns, "table")), None)
+if table is None:
+    raise RuntimeError("La hoja TI no contiene tb:table")
+columns_node = next((child for child in table if child.tag == q(tb_ns, "columns")), None)
+if columns_node is None:
+    columns_node = ET.SubElement(table, q(tb_ns, "columns"))
+
+columns = [child for child in columns_node if child.tag == q(tb_ns, "column") and child.attrib.get("type") == "cell-column"]
+while len(columns) < 26:
+    column = ET.SubElement(columns_node, q(tb_ns, "column"), {"type": "cell-column"})
+    ET.SubElement(column, q(tb_ns, "columnWidthNative")).text = "70"
+    ET.SubElement(column, q(tb_ns, "columnWidth")).text = "70"
+    ET.SubElement(column, q(tb_ns, "columnFlags")).text = "0"
+    ET.SubElement(column, q(tb_ns, "cells"))
+    columns.append(column)
+
+# Clear and rebuild only the cell payload. Preserve all other column metadata.
+for column in columns:
+    cells_node = next((child for child in column if child.tag == q(tb_ns, "cells")), None)
+    if cells_node is None:
+        cells_node = ET.SubElement(column, q(tb_ns, "cells"))
+    for child in list(cells_node):
+        cells_node.remove(child)
+
+cells = json.loads(wasm_sheet_save_cells_json or "{}")
+by_col = {}
+for key, value in cells.items():
+    try:
+        row_s, col_s = key.split(":", 1)
+        row = int(row_s)
+        col = int(col_s)
+    except Exception:
+        continue
+    if row < 0 or col < 0 or col >= len(columns):
+        continue
+    formula = str((value or {}).get("formula", ""))
+    data = str((value or {}).get("data", ""))
+    if not formula and not data:
+        continue
+    by_col.setdefault(col, []).append((row, formula, data))
+
+for col, entries in by_col.items():
+    column = columns[col]
+    cells_node = next(child for child in column if child.tag == q(tb_ns, "cells"))
+    for row, formula, data in sorted(entries, key=lambda item: item[0]):
+        cell = ET.SubElement(cells_node, q(tb_ns, "cell"))
+        ET.SubElement(cell, q(tb_ns, "rowId")).text = str(row + 1)
+        ET.SubElement(cell, q(tb_ns, "formula")).text = formula
+        ET.SubElement(cell, q(tb_ns, "data")).text = data
+
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+
+json.dumps({
+    "file": str(xml_file),
+    "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False),
+    "saved_cells": sum(len(v) for v in by_col.values()),
+})
+`);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  return JSON.parse(payload);
 }
 
 async function addSpreadsheetWidgetToStage() {
@@ -14658,15 +14887,18 @@ json.dumps({
 
 function showSpreadsheetModal(item) {
   const key = spreadsheetSessionKey(item);
-  const saved = spreadsheetPreviewSessions.get(key) || { values: {}, rows: 20, cols: 12, sourceName: "" };
+  const xmlState = extractSpreadsheetStateFromRawXml(item?.raw_xml || "");
+  const saved = spreadsheetPreviewSessions.get(key);
+  const baseState = saved && saved.rawXml === String(item?.raw_xml || "") ? saved : xmlState;
   const state = {
-    values: { ...(saved.values || {}) },
-    rows: Math.max(20, saved.rows || 20),
-    cols: Math.max(12, saved.cols || 12),
-    sourceName: saved.sourceName || "",
+    cells: Object.fromEntries(Object.entries(baseState.cells || {}).map(([cellKey, cell]) => [cellKey, { formula: String(cell?.formula ?? ""), data: String(cell?.data ?? "") }])),
+    rows: Math.max(20, baseState.rows || 20),
+    cols: Math.min(26, Math.max(12, baseState.cols || 12)),
+    sourceName: baseState.sourceName || "",
     activeRow: 0,
     activeCol: 0,
   };
+  recalculateSpreadsheetCells(state.cells);
 
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
@@ -14707,23 +14939,29 @@ function showSpreadsheetModal(item) {
   const sourceNameEl = backdrop.querySelector(".spreadsheet-source-name");
   const docTitle = backdrop.querySelector(".spreadsheet-doc-title");
 
+  const activeKey = () => `${state.activeRow}:${state.activeCol}`;
+  const updateFormulaBar = () => {
+    cellName.textContent = `${spreadsheetColumnName(state.activeCol)}${state.activeRow + 1}`;
+    formulaValue.textContent = spreadsheetCellFormula(state.cells[activeKey()]);
+  };
+
   const render = () => {
     const visibleRows = Math.min(100, Math.max(20, state.rows));
-    const visibleCols = Math.min(30, Math.max(12, state.cols));
+    const visibleCols = Math.min(26, Math.max(12, state.cols));
     let html = `<div class="sheet-corner"></div>`;
     for (let col = 0; col < visibleCols; col += 1) html += `<div class="sheet-col-header">${spreadsheetColumnName(col)}</div>`;
     for (let row = 0; row < visibleRows; row += 1) {
       html += `<div class="sheet-row-header">${row + 1}</div>`;
       for (let col = 0; col < visibleCols; col += 1) {
-        const value = state.values[`${row}:${col}`] ?? "";
+        const cell = state.cells[`${row}:${col}`];
+        const value = spreadsheetCellDisplay(cell);
         const active = row === state.activeRow && col === state.activeCol ? " active" : "";
         html += `<div class="sheet-cell${active}" contenteditable="true" spellcheck="false" data-row="${row}" data-col="${col}">${escapeHtml(String(value))}</div>`;
       }
     }
     grid.style.setProperty("--sheet-cols", String(visibleCols));
     grid.innerHTML = html;
-    cellName.textContent = `${spreadsheetColumnName(state.activeCol)}${state.activeRow + 1}`;
-    formulaValue.textContent = String(state.values[`${state.activeRow}:${state.activeCol}`] ?? "");
+    updateFormulaBar();
   };
 
   grid.addEventListener("focusin", (event) => {
@@ -14733,16 +14971,48 @@ function showSpreadsheetModal(item) {
     state.activeCol = Number(cell.dataset.col) || 0;
     grid.querySelector(".sheet-cell.active")?.classList.remove("active");
     cell.classList.add("active");
-    cellName.textContent = `${spreadsheetColumnName(state.activeCol)}${state.activeRow + 1}`;
-    formulaValue.textContent = String(state.values[`${state.activeRow}:${state.activeCol}`] ?? cell.textContent ?? "");
+    updateFormulaBar();
   });
+
   grid.addEventListener("input", (event) => {
-    const cell = event.target.closest(".sheet-cell");
-    if (!cell) return;
-    const row = Number(cell.dataset.row) || 0;
-    const col = Number(cell.dataset.col) || 0;
-    state.values[`${row}:${col}`] = cell.textContent || "";
-    formulaValue.textContent = cell.textContent || "";
+    const cellEl = event.target.closest(".sheet-cell");
+    if (!cellEl) return;
+    const row = Number(cellEl.dataset.row) || 0;
+    const col = Number(cellEl.dataset.col) || 0;
+    const raw = cellEl.textContent || "";
+    const keyName = `${row}:${col}`;
+    if (!raw) {
+      delete state.cells[keyName];
+    } else {
+      const record = state.cells[keyName] || { formula: "", data: "" };
+      record.formula = raw;
+      record.data = raw.startsWith("=") ? evaluateSpreadsheetFormula(raw, state.cells) : raw;
+      state.cells[keyName] = record;
+    }
+    recalculateSpreadsheetCells(state.cells);
+    for (const formulaCell of grid.querySelectorAll(".sheet-cell")) {
+      const formulaRow = Number(formulaCell.dataset.row) || 0;
+      const formulaCol = Number(formulaCell.dataset.col) || 0;
+      const formulaRecord = state.cells[`${formulaRow}:${formulaCol}`];
+      if (formulaRecord && String(formulaRecord.formula || "").startsWith("=") && formulaCell !== cellEl) {
+        formulaCell.textContent = spreadsheetCellDisplay(formulaRecord);
+      }
+    }
+    state.rows = Math.max(state.rows, row + 1);
+    state.cols = Math.min(26, Math.max(state.cols, col + 1));
+    updateFormulaBar();
+  });
+
+  grid.addEventListener("focusout", (event) => {
+    const cellEl = event.target.closest(".sheet-cell");
+    if (!cellEl) return;
+    const row = Number(cellEl.dataset.row) || 0;
+    const col = Number(cellEl.dataset.col) || 0;
+    const record = state.cells[`${row}:${col}`];
+    if (record && String(record.formula || "").startsWith("=")) {
+      recalculateSpreadsheetCells(state.cells);
+      cellEl.textContent = spreadsheetCellDisplay(record);
+    }
   });
 
   const fileInput = backdrop.querySelector("#spreadsheet-file-input");
@@ -14752,7 +15022,7 @@ function showSpreadsheetModal(item) {
     if (!file) return;
     try {
       const imported = await parseXlsxFirstSheet(file);
-      state.values = imported.values;
+      state.cells = imported.cells;
       state.rows = imported.rows;
       state.cols = imported.cols;
       state.sourceName = imported.sourceName;
@@ -14769,22 +15039,31 @@ function showSpreadsheetModal(item) {
     }
   });
 
-  backdrop.querySelector("#spreadsheet-save").addEventListener("click", () => {
-    spreadsheetPreviewSessions.set(key, {
-      values: { ...state.values },
-      rows: state.rows,
-      cols: state.cols,
-      sourceName: state.sourceName,
-    });
-    xmlLog(`${t("spreadsheetSave")}: ${state.sourceName || "tabulator"}`);
-    closeModal(backdrop);
+  backdrop.querySelector("#spreadsheet-save").addEventListener("click", async () => {
+    const saveButton = backdrop.querySelector("#spreadsheet-save");
+    saveButton.disabled = true;
+    try {
+      recalculateSpreadsheetCells(state.cells);
+      const result = await saveSpreadsheetWidgetToStage(item, state);
+      item.raw_xml = result.raw_xml || item.raw_xml;
+      item.file = result.file || item.file;
+      spreadsheetPreviewSessions.set(key, {
+        cells: Object.fromEntries(Object.entries(state.cells).map(([cellKey, cell]) => [cellKey, { ...cell }])),
+        rows: state.rows,
+        cols: state.cols,
+        sourceName: state.sourceName,
+        rawXml: item.raw_xml || "",
+      });
+      xmlLog(`${t("spreadsheetSave")}: ${result.saved_cells} celdas guardadas en XML TI-Nspire`);
+      closeModal(backdrop);
+    } catch (error) {
+      saveButton.disabled = false;
+      xmlLog(`ERROR Spreadsheet Save: ${error.message}`);
+    }
   });
 
   // Cancel descarta todos los cambios hechos desde que se abrió esta ventana.
-  // El estado persistido en spreadsheetPreviewSessions no se toca hasta pulsar Save.
-  backdrop.querySelector("#spreadsheet-cancel").addEventListener("click", () => {
-    closeModal(backdrop);
-  });
+  backdrop.querySelector("#spreadsheet-cancel").addEventListener("click", () => closeModal(backdrop));
   render();
 }
 
