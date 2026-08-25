@@ -250,6 +250,8 @@ The inspector and `+Page` menu were also adjusted for smaller/mobile layouts.
 
 ### Image resources and Add Image
 
+![Syntax](docs/images/image.gif)
+
 `Add Image` can currently import:
 
 - PNG
@@ -309,9 +311,13 @@ The initial image view is handled at approximately 1:1 scale, matching the behav
 
 ### Preview LÖVE
 
+![love](docs/images/test1.gif)
+
 `Preview LÖVE` has been expanded into a compatibility environment for both LÖVE-style Lua and TI-Nspire ScriptApps.
 
 The goal is not to reproduce the full desktop LÖVE runtime. Instead, it provides enough compatibility to preview and test a growing subset of scripts directly in the browser.
+
+![love](docs/images/test2.gif)
 
 Implemented or partially implemented areas include:
 
@@ -351,6 +357,8 @@ Examples include:
 
 ### Experimental LÖVE → TI-Nspire conversion
 
+  ![Convert](docs/images/lov.gif)
+
 The project also includes an experimental conversion layer for turning some LÖVE-style Lua programs into TI-Nspire ScriptApps.
 
 The generated compatibility layer maps supported LÖVE behavior to TI-Nspire-oriented APIs such as:
@@ -381,6 +389,8 @@ This is not a universal converter.
 Programs that depend heavily on desktop-only features, external native libraries, advanced shaders, audio engines, physics, threads, or complex filesystem behavior may require manual changes or may not be compatible.
 
 ### Lists & Spreadsheet
+
+![Syntax](docs/images/Spreadsheet.gif)
 
 Experimental `Lists & Spreadsheet` support has been added using the native `tabulator` widget structure.
 
@@ -416,6 +426,7 @@ Current XLSX support is focused on basic cell data and simple formulas. Full Exc
 The Notes editor is intended to provide a lightweight calculator-style editing experience while preserving the native Notepad widget inside the document.
 
 ### Graphs
+![Syntax](docs/images/graf.gif)
 
 Experimental `TI.GeoGrapher` support has been added.
 
