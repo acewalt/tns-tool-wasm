@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-graph-pi-save-fix";
+const SOURCE_VERSION = "2026-08-24-graph-formula-input-focus-fix";
 
 const I18N = {
   es: {
@@ -10791,8 +10791,18 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     runtime?.mousepressed(x, y, 1);
     canvas.focus();
   });
+  const isEditablePreviewTarget = (target) => {
+    if (!(target instanceof Element)) return false;
+    return Boolean(
+      target.closest(
+        'input, textarea, select, [contenteditable=""], [contenteditable="true"], [contenteditable="plaintext-only"]'
+      )
+    );
+  };
+
   const keyDownHandler = (event) => {
     if (!backdrop.isConnected || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (isEditablePreviewTarget(event.target)) return;
     const key = lovePreviewKeyboardName(event);
     if (!key) return;
     event.preventDefault();
@@ -10800,6 +10810,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   };
   const keyUpHandler = (event) => {
     if (!backdrop.isConnected || event.ctrlKey || event.altKey || event.metaKey) return;
+    if (isEditablePreviewTarget(event.target)) return;
     const key = lovePreviewKeyboardName(event);
     if (!key) return;
     event.preventDefault();
@@ -10845,11 +10856,13 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       if (!finiteSamples) {
         appendPreviewLog(previewLog, `Graph formula could not be evaluated: ${formula}`);
       }
-      canvas.focus();
+      // Mantener el foco en el campo de fórmula durante el auto-preview.
     };
 
     graphApply?.addEventListener("click", () => {
-      refreshGraphPreview().catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
+      refreshGraphPreview()
+        .then(() => graphInput?.focus())
+        .catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
     });
 
     graphInput?.addEventListener("input", () => {
@@ -10863,7 +10876,9 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       if (event.key === "Enter") {
         event.preventDefault();
         if (previewTimer) window.clearTimeout(previewTimer);
-        refreshGraphPreview().catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
+        refreshGraphPreview()
+          .then(() => graphInput?.focus())
+          .catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
       }
     });
 
