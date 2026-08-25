@@ -9,7 +9,7 @@
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script type="module" src="./dist/monaco-lua-editor.js?v=20260823-love-preview-experiment"></script>
-    <script defer src="./app.js?v=20260824-explicit-program-editor-page"></script>
+    <script defer src="./app.js?v=20260824-sheet-save-menu-fix"></script>
   </head>
   <body>
     <div id="mouse-glow" class="mouse-glow" aria-hidden="true"></div>
@@ -94,10 +94,10 @@
                 <button type="button" class="menu-action nested-trigger" data-i18n="addPage">+Page</button>
                 <div class="menu-panel nested-panel">
                   <button type="button" id="file-page-add-program-editor" class="menu-action" data-i18n="addProgramEditorWidget">Agregar editor de programas</button>
-                  <button type="button" id="file-page-add-image" class="menu-action" data-i18n="addImageWidget">Agregar imagen</button>
                   <button type="button" id="file-page-add-python" class="menu-action" data-i18n="addPythonWidget">Agregar Python</button>
                   <button type="button" id="file-page-add-lua" class="menu-action" data-i18n="addLuaWidget">Agregar Lua ScriptApp</button>
                   <button type="button" id="file-page-add-spreadsheet" class="menu-action" data-i18n="addSpreadsheetWidget">Agregar listas y hojas de cálculo</button>
+                  <button type="button" id="file-page-add-image" class="menu-action" data-i18n="addImageWidget">Agregar imagen</button>
                 </div>
               </div>
               <button id="xml-new-btn" class="menu-action" data-i18n="newXmlProject">Nuevo</button>

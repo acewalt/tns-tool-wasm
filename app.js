@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-explicit-program-editor-page";
+const SOURCE_VERSION = "2026-08-24-sheet-save-menu-fix";
 
 const I18N = {
   es: {
@@ -14843,10 +14843,10 @@ async function openDocumentInspector() {
           <button type="button" id="inspector-page-trigger" class="menu-trigger green-menu-trigger"><span>${escapeHtml(t("addPage"))}</span></button>
           <div class="menu-panel">
             <button type="button" id="add-program-editor-widget" class="menu-action">${escapeHtml(t("addProgramEditorWidget"))}</button>
-            <button type="button" id="add-image-widget" class="menu-action">${escapeHtml(t("addImageWidget"))}</button>
             <button type="button" id="add-python-widget" class="menu-action">${escapeHtml(t("addPythonWidget"))}</button>
             <button type="button" id="add-lua-widget" class="menu-action">${escapeHtml(t("addLuaWidget"))}</button>
             <button type="button" id="add-spreadsheet-widget" class="menu-action">${escapeHtml(t("addSpreadsheetWidget"))}</button>
+            <button type="button" id="add-image-widget" class="menu-action">${escapeHtml(t("addImageWidget"))}</button>
           </div>
         </div>
         <button type="button" id="inspector-close">${escapeHtml(t("close"))}</button>
@@ -15364,9 +15364,15 @@ else:
 }
 
 async function saveXmlZip() {
-  if (!xmlDoctor.embedded) {
+  // Guardar el proyecto XML completo no debe depender de tener un
+  // TI.ProgramEditor/Lua/Python seleccionado. Documentos compuestos solo por
+  // imágenes, hojas de cálculo u otros widgets también son guardables.
+  if (xmlDoctor.current && !xmlDoctor.embedded) {
     await embedXmlCode();
+  } else if (!xmlDoctor.stagePrepared) {
+    await ensureXmlStageCopy();
   }
+
   const zip = new JSZip();
   collectFiles(xmlDoctor.stagePath, zip);
   const blob = await zip.generateAsync({ type: "uint8array" });
