@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-25-calculator-love-mathprint-v7";
+const SOURCE_VERSION = "2026-08-25-calculator-mathprint-v3";
 
 const I18N = {
   es: {
@@ -9098,366 +9098,6 @@ function drawCalculatorScratchpadPreview(canvas,rows=[],sel=-1,scroll=0){const c
 
 const CALCULATOR_COMPOSER_RESERVED_HEIGHT = 58;
 
-
-const CALC_LOVE_PLACEHOLDER = "□";
-const CALC_LOVE_SLOT_OPEN = "〖";
-const CALC_LOVE_SLOT_CLOSE = "〗";
-const calculatorLoveSlot = (value = CALC_LOVE_PLACEHOLDER) => `${CALC_LOVE_SLOT_OPEN}${value}${CALC_LOVE_SLOT_CLOSE}`;
-
-function calculatorLovePlainSource(stateOrSource) {
-  const source = typeof stateOrSource === "string" ? stateOrSource : String(stateOrSource?.source || "");
-  return source.split(CALC_LOVE_SLOT_OPEN).join("").split(CALC_LOVE_SLOT_CLOSE).join("");
-}
-
-function calculatorLoveTemplateSource(file = "") {
-  const type = calculatorTemplateType(file);
-  const p = () => calculatorLoveSlot();
-  return ({
-    fraction:`(${p()})/(${p()})`, power:`(${p()})^(${p()})`, sqrt:`√(${p()})`, root:`root(${p()},${p()})`,
-    exp:`e^(${p()})`, log:`log(${p()},${p()})`, piecewise2:`piecewise(${p()},${p()},${p()},${p()})`,
-    piecewise3:`piecewise(${p()},${p()},${p()},${p()},${p()},${p()})`, system2:`system(${p()},${p()})`,
-    system3:`system(${p()},${p()},${p()})`, abs:`abs(${p()})`, dms:`${p()}°${p()}'${p()}\"`,
-    matrix22:`[[${p()},${p()}][${p()},${p()}]]`, matrix12:`[[${p()},${p()}]]`, matrix21:`[[${p()}][${p()}]]`,
-    matrix32:`[[${p()},${p()}][${p()},${p()}][${p()},${p()}]]`, sum:`∑(${p()},${p()},${p()},${p()})`,
-    product:`∏(${p()},${p()},${p()},${p()})`, derivative1:`d(${p()},${p()})`, derivative2:`d(${p()},${p()},2)`,
-    derivativeN:`d(${p()},${p()},${p()})`, integralDef:`∫(${p()},${p()},${p()},${p()})`, integral:`∫(${p()},${p()})`,
-    limit:`lim(${p()},${p()},${p()})`, plain:p(),
-  })[type] || p();
-}
-
-function calculatorLoveNewState() {
-  return { source:"", caret:0, preferredX:null };
-}
-
-function calculatorLoveClampCaret(state) {
-  const len=String(state.source||"").length;
-  state.caret=Math.max(0,Math.min(len,Number(state.caret)||0));
-}
-
-function calculatorLoveInsert(state, text) {
-  const src=String(state.source||"");
-  calculatorLoveClampCaret(state);
-  const at=state.caret;
-  const insert=String(text||"");
-  // A highlighted empty MathPrint box is replaced rather than left beside text.
-  if(src[at]===CALC_LOVE_PLACEHOLDER){
-    state.source=src.slice(0,at)+insert+src.slice(at+1);
-    state.caret=at+insert.length;
-  }else{
-    state.source=src.slice(0,at)+insert+src.slice(at);
-    state.caret=at+insert.length;
-  }
-}
-
-function calculatorLoveInsertTemplate(state,file){
-  const src=String(state.source||"");
-  calculatorLoveClampCaret(state);
-  const templ=calculatorLoveTemplateSource(file);
-  let at=state.caret, remove=0;
-  if(src[at]===CALC_LOVE_PLACEHOLDER) remove=1;
-  else if(at>0 && src[at-1]===CALC_LOVE_PLACEHOLDER){at-=1;remove=1;}
-  let insert=templ;
-  if(!remove && at>0 && /[0-9A-Za-z_\)\]〗]/.test(src[at-1]||"")) insert="*"+templ;
-  state.source=src.slice(0,at)+insert+src.slice(at+remove);
-  const first=insert.indexOf(CALC_LOVE_PLACEHOLDER);
-  state.caret=at+(first>=0?first:insert.length);
-}
-
-function calculatorLoveBackspace(state){
-  calculatorLoveClampCaret(state);
-  const src=String(state.source||"");
-  if(state.caret<=0)return;
-  // Delete a whole empty template when possible.
-  const e=calculatorLoveSlot();
-  const emptyPatterns=[`(${e})/(${e})`,`(${e})^(${e})`,`√(${e})`,`root(${e},${e})`,`abs(${e})`,`e^(${e})`,`log(${e},${e})`];
-  for(const pat of emptyPatterns){
-    const from=Math.max(0,state.caret-pat.length);
-    const idx=src.lastIndexOf(pat,state.caret);
-    if(idx>=0 && idx<=state.caret && state.caret<=idx+pat.length){
-      state.source=src.slice(0,idx)+src.slice(idx+pat.length);state.caret=idx;return;
-    }
-  }
-  const prev=src[state.caret-1];
-  if(prev===CALC_LOVE_SLOT_OPEN||prev===CALC_LOVE_SLOT_CLOSE){calculatorLoveMove(state,-1);return;}
-  state.source=src.slice(0,state.caret-1)+src.slice(state.caret);state.caret-=1;
-}
-
-function calculatorLoveDelete(state){
-  calculatorLoveClampCaret(state);
-  const src=String(state.source||"");
-  if(state.caret>=src.length)return;
-  if(src[state.caret]===CALC_LOVE_SLOT_OPEN||src[state.caret]===CALC_LOVE_SLOT_CLOSE){calculatorLoveMove(state,1);return;}
-  state.source=src.slice(0,state.caret)+src.slice(state.caret+1);
-}
-
-function calculatorLoveSlotRanges(source=""){
-  const out=[],stack=[];const s=String(source||"");
-  for(let i=0;i<s.length;i++){
-    if(s[i]===CALC_LOVE_SLOT_OPEN)stack.push(i);
-    else if(s[i]===CALC_LOVE_SLOT_CLOSE&&stack.length){const start=stack.pop();out.push({open:start,start:start+1,end:i,close:i});}
-  }
-  return out.sort((a,b)=>a.open-b.open);
-}
-
-function calculatorLoveMove(state,delta){
-  calculatorLoveClampCaret(state);const s=String(state.source||"");const ranges=calculatorLoveSlotRanges(s);let c=state.caret;
-  if(!ranges.length){state.caret=Math.max(0,Math.min(s.length,c+delta));return;}
-  const inside=ranges.filter(r=>c>=r.start&&c<=r.end).sort((a,b)=>(a.end-a.start)-(b.end-b.start))[0];
-  if(delta>0){
-    if(inside && c<inside.end){state.caret=c+1;return;}
-    const next=ranges.find(r=>r.start>c);state.caret=next?next.start:s.length;return;
-  }
-  if(inside && c>inside.start){state.caret=c-1;return;}
-  const prev=[...ranges].reverse().find(r=>r.end<c);state.caret=prev?prev.end:0;
-}
-
-function calculatorLoveComplete(state){
-  const s=String(state?.source||"").trim();
-  return Boolean(s)&&!s.includes(CALC_LOVE_PLACEHOLDER);
-}
-
-function calculatorLoveSplitArgs(inner,base=0){
-  const out=[];let depth=0,start=0;
-  for(let i=0;i<inner.length;i++){
-    const c=inner[i];
-    if(c==='('||c==='['||c==='{')depth++;
-    else if(c===')'||c===']'||c==='}')depth=Math.max(0,depth-1);
-    else if(c===','&&depth===0){out.push({text:inner.slice(start,i),base:base+start});start=i+1;}
-  }
-  out.push({text:inner.slice(start),base:base+start});return out;
-}
-
-function calculatorLoveWrapped(s){
-  if(!(s.startsWith('(')&&s.endsWith(')')))return false;
-  let d=0;
-  for(let i=0;i<s.length;i++){
-    if(s[i]==='(')d++;else if(s[i]===')')d--;
-    if(d===0&&i<s.length-1)return false;
-  }
-  return d===0;
-}
-
-function calculatorLoveFindTop(s,ops,rtl=false){
-  let d=0;const start=rtl?s.length-1:0,end=rtl?-1:s.length,step=rtl?-1:1;
-  for(let i=start;i!==end;i+=step){
-    const c=s[i];
-    if(rtl){if(c===')'||c===']'||c==='}')d++;else if(c==='('||c==='['||c==='{')d--;}
-    else{if(c==='('||c==='['||c==='{')d++;else if(c===')'||c===']'||c==='}')d--;}
-    if(d===0&&ops.includes(c)){
-      if((c==='+'||c==='-')&&(i===0||'+-*/^(,'.includes(s[i-1])))continue;
-      return i;
-    }
-  }
-  return -1;
-}
-
-function calculatorLoveParse(source,base=0,ctx=null){
-  ctx=ctx||{ph:0};
-  let raw=String(source??''),lead=raw.length-raw.trimStart().length,trail=raw.trimEnd().length;
-  let s=raw.slice(lead,trail),b=base+lead;
-  if(!s)return {k:'text',text:'',start:b,end:b};
-  let normalized=true;
-  while(normalized){
-    normalized=false;
-    if(s===CALC_LOVE_PLACEHOLDER)return {k:'placeholder',ph:ctx.ph++,start:b,end:b+1};
-    if(s.startsWith(CALC_LOVE_SLOT_OPEN) && s.endsWith(CALC_LOVE_SLOT_CLOSE)){
-      s=s.slice(CALC_LOVE_SLOT_OPEN.length,-CALC_LOVE_SLOT_CLOSE.length);b+=CALC_LOVE_SLOT_OPEN.length;normalized=true;
-      if(!s)return {k:'placeholder',ph:ctx.ph++,start:b,end:b};
-      continue;
-    }
-    if(calculatorLoveWrapped(s)){s=s.slice(1,-1);b+=1;normalized=true;if(!s)return {k:'text',text:'',start:b,end:b};}
-  }
-
-  // Matrix rows: [[a,b][c,d]]
-  if(s.startsWith('[[')&&s.endsWith(']]')){
-    const rows=[];let i=1;
-    while(i<s.length-1){
-      if(s[i]!=='['){i++;continue;}let d=1,j=i+1;
-      while(j<s.length&&d){if(s[j]==='[')d++;else if(s[j]===']')d--;j++;}
-      const inner=s.slice(i+1,j-1);rows.push(calculatorLoveSplitArgs(inner,b+i+1).map(a=>calculatorLoveParse(a.text,a.base,ctx)));i=j;
-    }
-    if(rows.length)return {k:'matrix',rows,start:b,end:b+s.length};
-  }
-
-  const call=(name)=>s.startsWith(name+'(')&&s.endsWith(')');
-  if(s.startsWith('√(')&&s.endsWith(')'))return {k:'sqrt',body:calculatorLoveParse(s.slice(2,-1),b+2,ctx),start:b,end:b+s.length};
-  if(call('root')){const a=calculatorLoveSplitArgs(s.slice(5,-1),b+5);if(a.length>=2)return {k:'root',body:calculatorLoveParse(a[0].text,a[0].base,ctx),index:calculatorLoveParse(a[1].text,a[1].base,ctx),start:b,end:b+s.length};}
-  if(call('abs'))return {k:'abs',body:calculatorLoveParse(s.slice(4,-1),b+4,ctx),start:b,end:b+s.length};
-  if(call('log')){const a=calculatorLoveSplitArgs(s.slice(4,-1),b+4);if(a.length>=2)return {k:'log',body:calculatorLoveParse(a[0].text,a[0].base,ctx),baseNode:calculatorLoveParse(a[1].text,a[1].base,ctx),start:b,end:b+s.length};}
-  if(call('lim')){const a=calculatorLoveSplitArgs(s.slice(4,-1),b+4);if(a.length>=3)return {k:'limit',body:calculatorLoveParse(a[0].text,a[0].base,ctx),variable:calculatorLoveParse(a[1].text,a[1].base,ctx),to:calculatorLoveParse(a[2].text,a[2].base,ctx),start:b,end:b+s.length};}
-  if(call('d')){const a=calculatorLoveSplitArgs(s.slice(2,-1),b+2);if(a.length>=2)return {k:'derivative',body:calculatorLoveParse(a[0].text,a[0].base,ctx),variable:calculatorLoveParse(a[1].text,a[1].base,ctx),order:a[2]?calculatorLoveParse(a[2].text,a[2].base,ctx):{k:'text',text:'1'},start:b,end:b+s.length};}
-  if(s.startsWith('∫(')&&s.endsWith(')')){const a=calculatorLoveSplitArgs(s.slice(2,-1),b+2);if(a.length>=2)return {k:'integral',body:calculatorLoveParse(a[0].text,a[0].base,ctx),variable:calculatorLoveParse(a[1].text,a[1].base,ctx),lo:a[2]?calculatorLoveParse(a[2].text,a[2].base,ctx):null,hi:a[3]?calculatorLoveParse(a[3].text,a[3].base,ctx):null,start:b,end:b+s.length};}
-  if((s.startsWith('∑(')||s.startsWith('∏('))&&s.endsWith(')')){const a=calculatorLoveSplitArgs(s.slice(2,-1),b+2);if(a.length>=4)return {k:'bigop',symbol:s[0],body:calculatorLoveParse(a[0].text,a[0].base,ctx),variable:calculatorLoveParse(a[1].text,a[1].base,ctx),lo:calculatorLoveParse(a[2].text,a[2].base,ctx),hi:calculatorLoveParse(a[3].text,a[3].base,ctx),start:b,end:b+s.length};}
-  if(call('system')||call('piecewise')){const name=s.startsWith('system')?'system':'piecewise',off=name.length+1,a=calculatorLoveSplitArgs(s.slice(off,-1),b+off);return {k:name,args:a.map(x=>calculatorLoveParse(x.text,x.base,ctx)),start:b,end:b+s.length};}
-
-  // Top-level operators, low to high precedence.
-  let p=calculatorLoveFindTop(s,'+-',true);if(p>0)return {k:'binary',op:s[p],left:calculatorLoveParse(s.slice(0,p),b,ctx),right:calculatorLoveParse(s.slice(p+1),b+p+1,ctx),start:b,end:b+s.length};
-  p=calculatorLoveFindTop(s,'*/',true);
-  if(p>0){
-    const left=calculatorLoveParse(s.slice(0,p),b,ctx),right=calculatorLoveParse(s.slice(p+1),b+p+1,ctx);
-    return s[p]==='/' ? {k:'fraction',num:left,den:right,start:b,end:b+s.length} : {k:'binary',op:s[p],left,right,start:b,end:b+s.length};
-  }
-  p=calculatorLoveFindTop(s,'^',true);if(p>0)return {k:'power',baseNode:calculatorLoveParse(s.slice(0,p),b,ctx),exp:calculatorLoveParse(s.slice(p+1),b+p+1,ctx),start:b,end:b+s.length};
-
-  // If a text fallback still contains placeholders, split so they remain editable boxes.
-  if(s.includes(CALC_LOVE_PLACEHOLDER)){
-    const children=[];let last=0;
-    for(let i=0;i<s.length;i++)if(s[i]===CALC_LOVE_PLACEHOLDER){if(i>last)children.push({k:'text',text:s.slice(last,i),start:b+last,end:b+i});children.push({k:'placeholder',ph:ctx.ph++,start:b+i,end:b+i+1});last=i+1;}
-    if(last<s.length)children.push({k:'text',text:s.slice(last),start:b+last,end:b+s.length});
-    return {k:'row',children,start:b,end:b+s.length};
-  }
-  return {k:'text',text:s,start:b,end:b+s.length};
-}
-
-// Reparse fraction with a single shared placeholder counter. This wrapper also
-// normalizes the small parser shortcut above.
-function calculatorLoveAst(source){
-  const ctx={ph:0};
-  const parse=(s,b=0)=>{
-    const node=calculatorLoveParse(s,b,ctx);
-    if(node?.k==='fraction'&&node.left&&node.right){node.num=node.left;node.den=node.right;delete node.left;delete node.right;}
-    const walk=(n)=>{if(!n||typeof n!=='object')return;n&&Object.values(n).forEach(v=>{if(Array.isArray(v))v.forEach(walk);else if(v&&typeof v==='object')walk(v);});};
-    walk(node);return node;
-  };
-  return parse(String(source||''),0);
-}
-
-function calculatorLoveLuaString(value){return '"'+String(value??'').replace(/\\/g,'\\\\').replace(/"/g,'\\"').replace(/\n/g,'\\n').replace(/\r/g,'')+'"';}
-function calculatorLoveAstLua(node){
-  if(!node)return '{k="text",text=""}';
-  const q=calculatorLoveLuaString;
-  switch(node.k){
-    case 'text':return `{k="text",text=${q(node.text)}}`;
-    case 'placeholder':return `{k="placeholder",ph=${Number(node.ph)||0}}`;
-    case 'row':return `{k="row",children={${(node.children||[]).map(calculatorLoveAstLua).join(',')}}}`;
-    case 'binary':return `{k="binary",op=${q(node.op)},left=${calculatorLoveAstLua(node.left)},right=${calculatorLoveAstLua(node.right)}}`;
-    case 'fraction':return `{k="fraction",num=${calculatorLoveAstLua(node.num||node.left)},den=${calculatorLoveAstLua(node.den||node.right)}}`;
-    case 'power':return `{k="power",base=${calculatorLoveAstLua(node.baseNode)},exp=${calculatorLoveAstLua(node.exp)}}`;
-    case 'sqrt':return `{k="sqrt",body=${calculatorLoveAstLua(node.body)}}`;
-    case 'root':return `{k="root",body=${calculatorLoveAstLua(node.body)},index=${calculatorLoveAstLua(node.index)}}`;
-    case 'abs':return `{k="abs",body=${calculatorLoveAstLua(node.body)}}`;
-    case 'log':return `{k="log",body=${calculatorLoveAstLua(node.body)},base=${calculatorLoveAstLua(node.baseNode)}}`;
-    case 'limit':return `{k="limit",body=${calculatorLoveAstLua(node.body)},var=${calculatorLoveAstLua(node.variable)},to=${calculatorLoveAstLua(node.to)}}`;
-    case 'derivative':return `{k="derivative",body=${calculatorLoveAstLua(node.body)},var=${calculatorLoveAstLua(node.variable)},ord=${calculatorLoveAstLua(node.order)}}`;
-    case 'integral':return `{k="integral",body=${calculatorLoveAstLua(node.body)},var=${calculatorLoveAstLua(node.variable)},lo=${node.lo?calculatorLoveAstLua(node.lo):'nil'},hi=${node.hi?calculatorLoveAstLua(node.hi):'nil'}}`;
-    case 'bigop':return `{k="bigop",symbol=${q(node.symbol)},body=${calculatorLoveAstLua(node.body)},var=${calculatorLoveAstLua(node.variable)},lo=${calculatorLoveAstLua(node.lo)},hi=${calculatorLoveAstLua(node.hi)}}`;
-    case 'system':case 'piecewise':return `{k=${q(node.k)},args={${(node.args||[]).map(calculatorLoveAstLua).join(',')}}}`;
-    case 'matrix':return `{k="matrix",rows={${(node.rows||[]).map(r=>`{${r.map(calculatorLoveAstLua).join(',')}}`).join(',')}}}`;
-    default:return `{k="text",text=${q('')}}`;
-  }
-}
-
-function calculatorLoveActivePlaceholder(source,caret){
-  const s=String(source||'');if(s[caret]!==CALC_LOVE_PLACEHOLDER)return -1;
-  let n=0;for(let i=0;i<caret;i++)if(s[i]===CALC_LOVE_PLACEHOLDER)n++;return n;
-}
-
-function calculatorLoveBuildPreviewLua(rows=[],source='',caret=0,selected=-1,scrollPx=0){
-  const composer=calculatorLoveAst(source);
-  const active=calculatorLoveActivePlaceholder(source,caret);
-  const rowLua=(rows||[]).map((r)=>`{entry=${calculatorLoveAstLua(calculatorLoveAst(r.entry||''))},result=${calculatorLoveAstLua(calculatorLoveAst(r.display||r.full||''))}}`).join(',');
-  const composerLua=calculatorLoveAstLua(composer);
-  return `
-local rows={${rowLua}}
-local composer=${composerLua}
-local activePlaceholder=${active}
-local selectedRow=${Number(selected)||-1}
-local scrollPx=${Math.max(0,Number(scrollPx)||0)}
-local font=love.graphics.newFont(13)
-local small=love.graphics.newFont(9)
-local big=love.graphics.newFont(24)
-local medium=love.graphics.newFont(17)
-
-local function setfont(f) love.graphics.setFont(f) end
-local function tw(s,f) setfont(f or font); return love.graphics.getFont():getWidth(tostring(s or "")) end
-local function th(f) setfont(f or font); return love.graphics.getFont():getHeight() end
-local function text(s,x,y,f) setfont(f or font); love.graphics.print(tostring(s or ""),x,y) end
-local function dims(n)
-  if not n then return 0,18 end
-  local k=n.k
-  if k=="text" then return math.max(1,tw(n.text,font)),18 end
-  if k=="placeholder" then return 18,19 end
-  if k=="row" then local w,h=0,18;for _,c in ipairs(n.children or {}) do local cw,ch=dims(c);w=w+cw;h=math.max(h,ch) end;return w,h end
-  if k=="binary" then local a,b=dims(n.left);local c,d=dims(n.right);local ow=(n.op=="*") and 2 or (tw(n.op,font)+6);return a+ow+c,math.max(b,d) end
-  if k=="fraction" then local a,b=dims(n.num);local c,d=dims(n.den);return math.max(a,c)+10,b+d+8 end
-  if k=="power" then local a,b=dims(n.base);local c,d=dims(n.exp);return a+c*.68+2,math.max(b,d*.68+7) end
-  if k=="sqrt" then local a,b=dims(n.body);return a+15,b+5 end
-  if k=="root" then local a,b=dims(n.body);local c,d=dims(n.index);return a+18+c*.6,b+8 end
-  if k=="abs" then local a,b=dims(n.body);return a+10,b end
-  if k=="log" then local a,b=dims(n.body);local c,d=dims(n.base);return 30+c*.7+a,b+7 end
-  if k=="limit" then local a,b=dims(n.body);local c,d=dims(n.var);local e,f=dims(n.to);return 35+a,math.max(30,b) end
-  if k=="derivative" then local a,b=dims(n.body);return 46+a,math.max(36,b) end
-  if k=="integral" then local a,b=dims(n.body);return 40+a,math.max(42,b) end
-  if k=="bigop" then local a,b=dims(n.body);return 42+a,math.max(45,b) end
-  if k=="system" or k=="piecewise" then local w,h=20,0;for _,a in ipairs(n.args or {}) do local aw,ah=dims(a);w=math.max(w,aw+22);h=h+math.max(17,ah) end;return w,math.max(30,h) end
-  if k=="matrix" then local cols=0;for _,r in ipairs(n.rows or {}) do cols=math.max(cols,#r) end;return cols*30+16,#(n.rows or {})*20+8 end
-  return 20,18
-end
-
-local function draw(n,x,y,scale)
-  scale=scale or 1
-  if not n then return end
-  local k=n.k
-  if scale~=1 then love.graphics.push();love.graphics.translate(x,y);love.graphics.scale(scale,scale);draw(n,0,0,1);love.graphics.pop();return end
-  love.graphics.setColor(0,0,0,1)
-  if k=="text" then text(n.text,x,y,font);return end
-  if k=="placeholder" then
-    if n.ph==activePlaceholder then love.graphics.setColor(0.15,0.58,0.92,0.23);love.graphics.rectangle("fill",x,y,17,18);love.graphics.setColor(0.12,0.5,0.86,1) else love.graphics.setColor(0.7,0.7,0.7,1) end
-    love.graphics.rectangle("line",x,y,17,18);return
-  end
-  if k=="row" then local dx=x;for _,c in ipairs(n.children or {}) do draw(c,dx,y,1);local cw=dims(c);dx=dx+cw end;return end
-  if k=="binary" then local aw,ah=dims(n.left);draw(n.left,x,y,1);if n.op=="*" then draw(n.right,x+aw+2,y,1) else text(n.op,x+aw+3,y,font);draw(n.right,x+aw+tw(n.op,font)+6,y,1) end;return end
-  if k=="fraction" then local nw,nh=dims(n.num);local dw,dh=dims(n.den);local w=math.max(nw,dw)+10;draw(n.num,x+(w-nw)/2,y,1);love.graphics.line(x+2,y+nh+2,x+w-2,y+nh+2);draw(n.den,x+(w-dw)/2,y+nh+6,1);return end
-  if k=="power" then local bw,bh=dims(n.base);draw(n.base,x,y+5,1);draw(n.exp,x+bw+1,y,0.68);return end
-  if k=="sqrt" then local bw,bh=dims(n.body);text("√",x,y+2,big);love.graphics.line(x+13,y+2,x+15+bw,y+2);draw(n.body,x+15,y+5,1);return end
-  if k=="root" then local bw,bh=dims(n.body);local iw,ih=dims(n.index);draw(n.index,x,y,0.58);text("√",x+math.max(5,iw*.55),y+6,big);local rx=x+math.max(5,iw*.55)+13;love.graphics.line(rx,y+6,rx+bw+2,y+6);draw(n.body,rx,y+9,1);return end
-  if k=="abs" then local bw,bh=dims(n.body);love.graphics.line(x,y,x,y+bh);draw(n.body,x+5,y,1);love.graphics.line(x+bw+9,y,x+bw+9,y+bh);return end
-  if k=="log" then text("log",x,y,font);local lw=tw("log",font);draw(n.base,x+lw-1,y+10,0.65);draw(n.body,x+lw+10,y,1);return end
-  if k=="limit" then text("lim",x,y,font);draw(n.var,x,y+15,0.58);text("→",x+8,y+14,small);draw(n.to,x+15,y+15,0.58);draw(n.body,x+31,y,1);return end
-  if k=="derivative" then local ow,oh=dims(n.ord);text("d",x+8,y,big);draw(n.ord,x+21,y,0.55);love.graphics.line(x+2,y+20,x+36,y+20);text("d",x+5,y+23,font);draw(n.var,x+14,y+23,0.8);draw(n.ord,x+26,y+21,0.55);draw(n.body,x+43,y+8,1);return end
-  if k=="integral" then text("∫",x+5,y,big);if n.hi then draw(n.hi,x+21,y,0.55) end;if n.lo then draw(n.lo,x+2,y+29,0.55) end;draw(n.body,x+24,y+10,1);local bw=dims(n.body);text("d",x+27+bw,y+10,font);draw(n.var,x+35+bw,y+10,0.8);return end
-  if k=="bigop" then text(n.symbol,x+5,y+7,big);draw(n.hi,x+11,y,0.55);draw(n.var,x,y+33,0.55);text("=",x+9,y+33,small);draw(n.lo,x+15,y+33,0.55);draw(n.body,x+32,y+13,1);return end
-  if k=="system" then text("{",x,y,big);local yy=y;for _,a in ipairs(n.args or {}) do draw(a,x+16,yy,1);yy=yy+19 end;return end
-  if k=="piecewise" then text("{",x,y,big);local yy=y;local a=n.args or {};local i=1;while i<=#a do draw(a[i],x+16,yy,1);if a[i+1] then text(",",x+65,yy,font);draw(a[i+1],x+73,yy,1) end;yy=yy+20;i=i+2 end;return end
-  if k=="matrix" then local rows=n.rows or {};local cols=0;for _,r in ipairs(rows) do cols=math.max(cols,#r) end;local h=#rows*20+4;love.graphics.line(x+4,y,x,y,x,y+h,x+4,y+h);local right=x+cols*30+12;love.graphics.line(right-4,y,right,y,right,y+h,right-4,y+h);for ri,r in ipairs(rows) do for ci,c in ipairs(r) do draw(c,x+8+(ci-1)*30,y+4+(ri-1)*20,1) end end;return end
-end
-
-function love.load() love.graphics.setBackgroundColor(1,1,1,1) end
-function love.draw()
-  love.graphics.clear(1,1,1,1)
-  local W,H=love.graphics.getDimensions()
-  local composerH=58
-  local histH=H-composerH
-  love.graphics.setColor(0.82,0.82,0.82,1);love.graphics.line(0,histH,W,histH)
-  local y=-scrollPx
-  for i,row in ipairs(rows) do
-    local eh=dims(row.entry); local rh=dims(row.result); local rowH=math.max(48,math.max(select(2,dims(row.entry)),select(2,dims(row.result)))+18)
-    if y+rowH>=0 and y<histH then
-      if i-1==selectedRow then love.graphics.setColor(0.45,0.79,0.91,1);love.graphics.rectangle("fill",0,y,W-10,rowH-1) elseif i%2==0 then love.graphics.setColor(0.97,0.97,0.97,1);love.graphics.rectangle("fill",0,y,W-10,rowH-1) end
-      draw(row.entry,8,y+10,1)
-      local rw=select(1,dims(row.result));draw(row.result,math.max(180,W-18-rw),y+10,1)
-    end
-    y=y+rowH
-  end
-  love.graphics.setColor(1,1,1,1);love.graphics.rectangle("fill",0,histH,W,composerH)
-  love.graphics.setColor(0,0,0,1);draw(composer,8,histH+15,1)
-end
-`;
-}
-
-function calculatorLoveHistoryHeight(rows=[]){
-  return (rows||[]).reduce((sum,r)=>{
-    const e=String(r.entry||''),d=String(r.display||r.full||'');
-    const complex=/[∫∑∏]|root\(|√\(|system\(|piecewise\(|\[\[|d\(/.test(e+d);
-    return sum+(complex?62:48);
-  },0);
-}
-
-function calculatorLoveVisibleText(rows,state,scrollPx=0,viewH=156){
-  const all=(rows||[]).map(r=>`${r.entry||''}${(r.display||r.full)?` = ${r.display||r.full}`:''}`);
-  const current=calculatorLovePlainSource(state||'').replaceAll(CALC_LOVE_PLACEHOLDER,'□').trim();
-  return [...all,(current?`> ${current}`:'')].filter(Boolean).join('\n');
-}
 function calculatorTemplateType(file = "") {
   const n = String(file).slice(0, 2);
   return ({
@@ -11607,7 +11247,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       ${calculatorEditor ? `
       <div class="love-calculator-editor">
         <div class="love-calculator-editor-row love-calculator-toolbar">
-          <button type="button" id="love-calculator-templates-toggle" class="green-tool-button love-calculator-templates-toggle" title="${escapeHtml(t("calculatorTemplates"))}" aria-label="${escapeHtml(t("calculatorTemplates"))}"><img src="./assets/calculator-icons/templates_dark.png" alt="" /></button>
+          <button type="button" id="love-calculator-templates-toggle" class="green-tool-button">${escapeHtml(t("calculatorTemplates"))}</button>
           <span class="love-calculator-toolbar-spacer"></span>
           <button type="button" id="love-calculator-save" class="green-tool-button">${escapeHtml(t("calculatorSave"))}</button>
           <button type="button" id="love-calculator-cancel">${escapeHtml(t("calculatorCancel"))}</button>
@@ -11617,7 +11257,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       <div id="love-preview-stage" class="love-preview-stage calculator-view ${calculatorEditor ? "calculator-editor-stage" : ""}">
         <div class="love-preview-calculator-bar">${escapeHtml(t("lovePreviewCalculatorChromeTitle"))}</div>
         <canvas id="love-preview-canvas" class="calculator-view" width="320" height="214" tabindex="0"></canvas>
-        ${calculatorEditor ? `<textarea id="love-calculator-keyboard-capture" class="love-calculator-keyboard-capture" aria-label="TI-Nspire math entry" autocomplete="off" autocapitalize="off" spellcheck="false"></textarea>` : ""}
+        ${calculatorEditor ? `<div id="love-calculator-composer" class="love-calculator-composer" tabindex="0" aria-label="TI-Nspire math entry"></div>` : ""}
       </div>
       <div class="preview-controls">
         <button type="button" data-key="up">Up</button>
@@ -11671,22 +11311,8 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     runtime = null;
     if (calculatorEditor) {
       previewLog.textContent = "";
-      const sourceCode = source && /\blove\.draw\b/.test(String(source))
-        ? String(source)
-        : calculatorLoveBuildPreviewLua(
-            calculatorEditor.rows || [],
-            calculatorEditor.mathState?.source || "",
-            calculatorEditor.mathState?.caret || 0,
-            calculatorEditor.selectedIndex ?? -1,
-            calculatorEditor.scrollPx || 0
-          );
-      try {
-        runtime = await createLovePreviewRuntime(sourceCode, ctx, canvas, previewLog, {});
-        runtime.boot();
-        appendPreviewLog(previewLog, `TI.Scratchpad / LÖVE: ${calculatorEditor.rows?.length || 0} entradas.`);
-      } catch (error) {
-        appendPreviewLog(previewLog, `ERROR Calculator Preview LÖVE: ${describeLuaJsError(error)}`);
-      }
+      drawCalculatorScratchpadPreviewV2(canvas, calculatorEditor.rows || [], calculatorEditor.selectedIndex ?? -1, calculatorEditor.scrollPx ?? 0);
+      appendPreviewLog(previewLog, `TI.Scratchpad: ${calculatorEditor.rows?.length || 0} entradas cargadas.`);
       return;
     }
 
@@ -11732,12 +11358,13 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     button.addEventListener("click", () => {
       if (calculatorEditor) {
         const key = button.dataset.key;
-        if (key === "left") calculatorEditor.moveCaret?.(-1);
-        else if (key === "right") calculatorEditor.moveCaret?.(1);
-        else if (key === "space") calculatorEditor.insertText?.(" ");
+        const composer = backdrop.querySelector("#love-calculator-composer");
+        if (key === "left") calculatorVisualMove(composer, calculatorEditor.composer, -1);
+        else if (key === "right") calculatorVisualMove(composer, calculatorEditor.composer, 1);
+        else if (key === "space") document.execCommand("insertText", false, " ");
         else if (key === "return") calculatorEditor.commitComposer?.();
         else if (key === "up" || key === "down") calculatorEditor.scrollBy?.(key === "up" ? -54 : 54);
-        else if (key === "escape") backdrop.querySelector("#love-calculator-keyboard-capture")?.blur();
+        else if (key === "escape") composer?.querySelector('.calc-visual-slot[contenteditable]')?.blur();
       } else {
         runtime?.keypressed(button.dataset.key); canvas.focus();
       }
@@ -11746,31 +11373,14 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   sizeToggle.addEventListener("click", () => {
     applyPreviewSize(previewSizeMode === "expanded" ? "calculator" : "expanded", true);
     if (!calculatorEditor) canvas.focus();
-    else setTimeout(() => backdrop.querySelector('#love-calculator-keyboard-capture')?.focus(), 0);
+    else setTimeout(() => backdrop.querySelector('#love-calculator-composer .calc-visual-slot[contenteditable]')?.focus(), 0);
   });
   canvas.addEventListener("click", (event) => {
     const rect=canvas.getBoundingClientRect(),x=Math.round((event.clientX-rect.left)*(canvas.width/rect.width)),y=Math.round((event.clientY-rect.top)*(canvas.height/rect.height));
     if (calculatorEditor) {
-      const capture=backdrop.querySelector("#love-calculator-keyboard-capture");
-      const histH=(canvas.height||214)-58;
-      if(y<histH){
-        let pos=-Number(calculatorEditor.scrollPx||0),found=-1;
-        for(let i=0;i<(calculatorEditor.rows||[]).length;i++){
-          const txt=`${calculatorEditor.rows[i].entry||""}${calculatorEditor.rows[i].display||""}`;
-          const rh=/[∫∑∏]|root\(|√\(|system\(|piecewise\(|\[\[|d\(/.test(txt)?62:48;
-          if(y>=pos&&y<pos+rh){found=i;break;}pos+=rh;
-        }
-        if(found>=0)calculatorEditor.selectedIndex=found;
-      }else{
-        // Clicking the MathPrint line focuses entry. Repeated clicks advance through empty boxes.
-        const src=String(calculatorEditor.mathState?.source||"");
-        const boxes=calculatorLoveSlotRanges(src);
-        if(boxes.length){
-          const cur=calculatorEditor.mathState.caret||0;
-          calculatorEditor.mathState.caret=(boxes.find(v=>v.start>=cur)||boxes[0]).start;
-        }
-      }
-      calculatorEditor.refreshLove?.();capture?.focus();
+      const viewH=Math.max(40,(canvas.height||214)-CALCULATOR_COMPOSER_RESERVED_HEIGHT);
+      const i=calculatorRowAtY(calculatorEditor.rows||[],calculatorEditor.scrollPx||0,y,viewH);
+      if(i>=0){calculatorEditor.selectedIndex=i;drawCalculatorScratchpadPreviewV2(canvas,calculatorEditor.rows,i,calculatorEditor.scrollPx||0);}
     } else { runtime?.mousepressed(x,y,1); canvas.focus(); }
   });
   const isEditablePreviewTarget = (target) => {
@@ -11788,7 +11398,8 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     const key = lovePreviewKeyboardName(event);
     if (!key) return;
     if (calculatorEditor) {
-      if (key === "left" || key === "right") { event.preventDefault(); calculatorEditor.moveCaret?.(key === "left" ? -1 : 1); }
+      const composer = backdrop.querySelector("#love-calculator-composer");
+      if (key === "left" || key === "right") { event.preventDefault(); calculatorVisualMove(composer, calculatorEditor.composer, key === "left" ? -1 : 1); }
       else if (key === "up" || key === "down") { event.preventDefault(); calculatorEditor.scrollBy?.(key === "up" ? -54 : 54); }
       else if (key === "return") { event.preventDefault(); calculatorEditor.commitComposer?.(); }
       return;
@@ -11811,11 +11422,11 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   });
   backdrop.querySelector("#love-preview-copy-content")?.addEventListener("click", async () => {
     const text = calculatorEditor
-      ? calculatorLoveVisibleText(
+      ? calculatorVisibleScreenText(
           calculatorEditor.rows || [],
-          calculatorEditor.mathState || null,
+          calculatorEditor.composer || null,
           calculatorEditor.scrollPx || 0,
-          Math.max(40, (canvas.height || 214) - 58)
+          Math.max(40, (canvas.height || 214) - CALCULATOR_COMPOSER_RESERVED_HEIGHT)
         )
       : (runtime?.getScreenText?.() || "");
     await copyPlainText(text);
@@ -11833,82 +11444,108 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     const cancel = backdrop.querySelector("#love-calculator-cancel");
     const toggle = backdrop.querySelector("#love-calculator-templates-toggle");
     const panel = backdrop.querySelector("#love-calculator-template-panel");
-    const capture = backdrop.querySelector("#love-calculator-keyboard-capture");
-    calculatorEditor.mathState = calculatorLoveNewState();
+    const composer = backdrop.querySelector("#love-calculator-composer");
+    calculatorEditor.composer = calculatorNewComposer("plain");
     calculatorEditor.selectedIndex = -1;
-    calculatorEditor.scrollPx = Math.max(0, calculatorLoveHistoryHeight(calculatorEditor.rows||[]) - Math.max(40,(canvas.height||214)-58));
-    let refreshToken=0;
+    calculatorEditor.scrollPx = 0;
+    calculatorEditor.targetScrollPx = 0;
+    let scrollAnimation = 0;
 
-    calculatorEditor.refreshLove = async () => {
-      const token=++refreshToken;
-      const source=calculatorLoveBuildPreviewLua(
-        calculatorEditor.rows||[],calculatorEditor.mathState.source,calculatorEditor.mathState.caret,
-        calculatorEditor.selectedIndex??-1,calculatorEditor.scrollPx||0
-      );
-      await bootPreviewSource(source);
-      if(token!==refreshToken)return;
+    const redraw = () => drawCalculatorScratchpadPreviewV2(
+      canvas, calculatorEditor.rows || [], calculatorEditor.selectedIndex ?? -1, calculatorEditor.scrollPx || 0
+    );
+    const scrollToBottom = (immediate = false) => {
+      const metrics = calculatorHistoryMetrics(calculatorEditor.rows || [], Math.max(40,(canvas.height||214)-CALCULATOR_COMPOSER_RESERVED_HEIGHT));
+      calculatorEditor.targetScrollPx = metrics.maxScroll;
+      if (immediate) calculatorEditor.scrollPx = metrics.maxScroll;
     };
-    calculatorEditor.insertText = (text) => { calculatorLoveInsert(calculatorEditor.mathState,text); calculatorEditor.refreshLove(); };
-    calculatorEditor.moveCaret = (delta) => { calculatorLoveMove(calculatorEditor.mathState,delta); calculatorEditor.refreshLove(); capture?.focus(); };
+    const animateScroll = () => {
+      scrollAnimation = 0;
+      const diff=(calculatorEditor.targetScrollPx||0)-(calculatorEditor.scrollPx||0);
+      if(Math.abs(diff)<0.35){calculatorEditor.scrollPx=calculatorEditor.targetScrollPx||0;redraw();return;}
+      calculatorEditor.scrollPx=(calculatorEditor.scrollPx||0)+diff*0.28;redraw();
+      scrollAnimation=requestAnimationFrame(animateScroll);
+    };
+    const startScrollAnimation = () => { if(!scrollAnimation) scrollAnimation=requestAnimationFrame(animateScroll); };
     calculatorEditor.scrollBy = (delta) => {
-      const max=Math.max(0,calculatorLoveHistoryHeight(calculatorEditor.rows||[]) - Math.max(40,(canvas.height||214)-58));
-      calculatorEditor.scrollPx=Math.max(0,Math.min(max,(calculatorEditor.scrollPx||0)+delta));calculatorEditor.refreshLove();
+      const metrics=calculatorHistoryMetrics(calculatorEditor.rows||[],Math.max(40,(canvas.height||214)-CALCULATOR_COMPOSER_RESERVED_HEIGHT));
+      calculatorEditor.targetScrollPx=Math.max(0,Math.min(metrics.maxScroll,(calculatorEditor.targetScrollPx||0)+delta));
+      startScrollAnimation();
     };
+
     calculatorEditor.commitComposer = () => {
-      const raw=calculatorLovePlainSource(calculatorEditor.mathState).trim();
-      if(!raw || !calculatorLoveComplete(calculatorEditor.mathState))return false;
+      const raw=calculatorComposerSerialize(calculatorEditor.composer).trim();
+      if(!raw || !calculatorComposerIsComplete(calculatorEditor.composer)) return false;
       calculatorEditor.rows.push(calculateScratchpadRow(raw));
       calculatorEditor.selectedIndex=calculatorEditor.rows.length-1;
-      calculatorEditor.mathState=calculatorLoveNewState();
-      calculatorEditor.scrollPx=Math.max(0,calculatorLoveHistoryHeight(calculatorEditor.rows||[]) - Math.max(40,(canvas.height||214)-58));
-      calculatorEditor.refreshLove();
-      previewLog.textContent='';appendPreviewLog(previewLog,`Entrada: ${raw}`);capture?.focus();return true;
+      calculatorEditor.composer=calculatorNewComposer("plain");
+      calculatorRenderComposer(composer,calculatorEditor.composer,0);
+      scrollToBottom(true);redraw();
+      previewLog.textContent="";appendPreviewLog(previewLog,`Entrada: ${raw}`);
+      return true;
     };
 
-    toggle?.addEventListener("click",()=>{panel.hidden=!panel.hidden;if(!panel.hidden)panel.querySelector('button')?.focus();else capture?.focus();});
+    scrollToBottom(true); redraw(); calculatorRenderComposer(composer,calculatorEditor.composer,0);
+
+    toggle?.addEventListener("click",()=>{panel.hidden=!panel.hidden;if(!panel.hidden)panel.querySelector('button')?.focus();});
     for(const b of backdrop.querySelectorAll(".love-calculator-template-button")){
-      b.addEventListener("click",()=>{
-        calculatorLoveInsertTemplate(calculatorEditor.mathState,b.dataset.file||"");
-        panel.hidden=true;calculatorEditor.refreshLove();capture?.focus();
-      });
+      b.addEventListener("click",()=>{calculatorSetTemplate(composer,calculatorEditor.composer,b.dataset.file||"");panel.hidden=true;});
     }
 
-    capture?.addEventListener('keydown',(event)=>{
-      if(event.ctrlKey||event.metaKey||event.altKey)return;
-      if(event.key==='Enter'){event.preventDefault();calculatorEditor.commitComposer();return;}
-      if(event.key==='ArrowLeft'){event.preventDefault();calculatorEditor.moveCaret(-1);return;}
-      if(event.key==='ArrowRight'){event.preventDefault();calculatorEditor.moveCaret(1);return;}
-      if(event.key==='ArrowUp'){event.preventDefault();calculatorEditor.scrollBy(-54);return;}
-      if(event.key==='ArrowDown'){event.preventDefault();calculatorEditor.scrollBy(54);return;}
-      if(event.key==='Backspace'){event.preventDefault();calculatorLoveBackspace(calculatorEditor.mathState);calculatorEditor.refreshLove();return;}
-      if(event.key==='Delete'){event.preventDefault();calculatorLoveDelete(calculatorEditor.mathState);calculatorEditor.refreshLove();return;}
-      if(event.key==='Escape'){event.preventDefault();capture.blur();return;}
-      if(event.key.length===1){event.preventDefault();calculatorLoveInsert(calculatorEditor.mathState,event.key);calculatorEditor.refreshLove();}
+    // Physical keyboard Enter behaves like the calculator: commit the current 2D entry.
+    composer.addEventListener("keydown",(event)=>{
+      if(event.key==="Enter"){event.preventDefault();calculatorEditor.commitComposer();}
+      if(event.key==="Escape"){event.preventDefault();composer.querySelector('.calc-editor-part[contenteditable]')?.blur();}
+      if((event.key==="Backspace"||event.key==="Delete") && calculatorEditor.composer.type!=="plain" && calculatorComposerTemplateSlotsEmpty(calculatorEditor.composer)){
+        const active=event.target.closest?.('.calc-editor-part');
+        if(!active){event.preventDefault();calculatorTemplateToPlain(composer,calculatorEditor.composer);}
+      }
     });
-    capture?.addEventListener('paste',(event)=>{
-      event.preventDefault();const text=(event.clipboardData||window.clipboardData)?.getData('text')||'';
-      calculatorLoveInsert(calculatorEditor.mathState,text.replace(/[\r\n]+/g,' '));calculatorEditor.refreshLove();
-    });
-    capture?.addEventListener('input',()=>{capture.value='';});
 
-    stage.addEventListener("wheel",(event)=>{event.preventDefault();calculatorEditor.scrollBy(event.deltaY);capture?.focus();},{passive:false});
-    let dragY=null,dragStart=0;
-    canvas.addEventListener('pointerdown',(event)=>{dragY=event.clientY;dragStart=calculatorEditor.scrollPx||0;canvas.setPointerCapture?.(event.pointerId);});
-    canvas.addEventListener('pointermove',(event)=>{if(dragY==null)return;const dy=event.clientY-dragY;const max=Math.max(0,calculatorLoveHistoryHeight(calculatorEditor.rows||[])-Math.max(40,(canvas.height||214)-58));calculatorEditor.scrollPx=Math.max(0,Math.min(max,dragStart-dy*(canvas.height/canvas.getBoundingClientRect().height)));calculatorEditor.refreshLove();});
-    canvas.addEventListener('pointerup',()=>{dragY=null;capture?.focus();});canvas.addEventListener('pointercancel',()=>{dragY=null;});
+    // Paste normal calculator code and convert the common MathPrint forms to editable 2D templates.
+    composer.addEventListener("paste",(event)=>{
+      const active=event.target.closest?.('.calc-editor-part');
+      if(!active || calculatorEditor.composer.type!=="plain")return;
+      const text=(event.clipboardData||window.clipboardData)?.getData('text')?.trim()||'';
+      let m,type=null,slots=null;
+      if((m=text.match(/^root\((.*),([^,()]+)\)$/))){type='root';slots=[m[2],m[1]];}
+      else if((m=text.match(/^√\((.*)\)$/))){type='sqrt';slots=[m[1]];}
+      else if((m=text.match(/^d\((.*),([A-Za-z]+),([^()]+)\)$/))){type='derivativeN';slots=[m[1],m[2],m[3]];}
+      else if((m=text.match(/^d\((.*),([A-Za-z]+)\)$/))){type='derivative1';slots=[m[1],m[2]];}
+      else if((m=text.match(/^(.+?)\^\(?([^()]+)\)?$/))){type='power';slots=[m[1],m[2]];}
+      else if((m=text.match(/^([^/]+)\/([^/]+)$/))){type='fraction';slots=[m[1],m[2]];}
+      if(type){
+        event.preventDefault();
+        const prefix='';
+        Object.assign(calculatorEditor.composer,calculatorNewComposer(type));
+        calculatorEditor.composer.slots=slots;
+        calculatorEditor.composer.prefix=prefix;
+        calculatorEditor.composer.active=Math.max(0,slots.length-1);
+        calculatorEditor.composer.activePart=`slot:${calculatorEditor.composer.active}`;
+        calculatorRenderComposer(composer,calculatorEditor.composer,calculatorEditor.composer.active);
+      }
+    },true);
+
+    stage.addEventListener("wheel",(event)=>{event.preventDefault();calculatorEditor.scrollBy(event.deltaY);},{passive:false});
+    let dragY=null,dragStartScroll=0,dragMoved=false;
+    canvas.addEventListener('pointerdown',(event)=>{dragY=event.clientY;dragStartScroll=calculatorEditor.targetScrollPx||calculatorEditor.scrollPx||0;dragMoved=false;canvas.setPointerCapture?.(event.pointerId);});
+    canvas.addEventListener('pointermove',(event)=>{if(dragY==null)return;const dy=event.clientY-dragY;if(Math.abs(dy)>3)dragMoved=true;if(dragMoved){const metrics=calculatorHistoryMetrics(calculatorEditor.rows||[],Math.max(40,(canvas.height||214)-CALCULATOR_COMPOSER_RESERVED_HEIGHT));calculatorEditor.targetScrollPx=Math.max(0,Math.min(metrics.maxScroll,dragStartScroll-dy*(canvas.height/canvas.getBoundingClientRect().height)));startScrollAnimation();}});
+    canvas.addEventListener('pointerup',()=>{dragY=null;});
+    canvas.addEventListener('pointercancel',()=>{dragY=null;});
 
     save?.addEventListener("click",async()=>{
       save.disabled=true;
       try{
-        if(calculatorLoveComplete(calculatorEditor.mathState))calculatorEditor.commitComposer();
+        // If a complete expression is still in the current entry line, include it on Save.
+        if(calculatorComposerIsComplete(calculatorEditor.composer)) calculatorEditor.commitComposer();
         const r=await saveCalculatorWidgetToStage(calculatorEditor.item,calculatorEditor.rows);
-        calculatorEditor.item.raw_xml=r.raw_xml||calculatorEditor.item.raw_xml;calculatorEditor.item.file=r.file||calculatorEditor.item.file;
+        calculatorEditor.item.raw_xml=r.raw_xml||calculatorEditor.item.raw_xml;
+        calculatorEditor.item.file=r.file||calculatorEditor.item.file;
         calculatorEditor.item.detail={...(calculatorEditor.item.detail||{}),rows:calculatorEditor.rows.map(x=>({...x})),rowCount:calculatorEditor.rows.length};
         xmlLog(`${t("calculatorSave")}: ${r.saved_rows} entradas guardadas en TI.Scratchpad`);closeLovePreview();
       }catch(e){save.disabled=false;xmlLog(`ERROR Calculator Save: ${e.message}`);}
     });
     cancel?.addEventListener("click",()=>closeLovePreview());
-    await calculatorEditor.refreshLove();setTimeout(()=>capture?.focus(),0);
   }
 
   if (graphEditor) {
