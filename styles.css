@@ -3467,3 +3467,44 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   .note-calculator-shell,
   .graph-calculator-shell { width: 320px; max-width: 100%; }
 }
+
+/* Graph formula controls embedded in Preview LÖVE.
+   Intentionally does not modify .love-preview-calculator-bar. */
+.love-graph-editor {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+
+.love-graph-formula-label {
+  margin: 0;
+  font: 700 14px Consolas, monospace;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.love-graph-formula-input {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 9px 11px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text);
+  font: 14px Consolas, monospace;
+}
+
+@media (max-width: 700px) {
+  .love-graph-editor {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .love-graph-formula-label,
+  .love-graph-formula-input {
+    grid-column: 1 / -1;
+  }
+}
+

@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-notes-graphs-pages";
+const SOURCE_VERSION = "2026-08-24-graph-direct-love-formula-preview";
 
 const I18N = {
   es: {
@@ -61,6 +61,10 @@ const I18N = {
     graphFormula: "Función",
     graphPreviewLove: "Preview LÖVE",
     graphSave: "Save",
+    graphLiveFormula: "Type or paste a formula to preview it",
+    graphApplyPreview: "Preview",
+    graphLiveFormula: "Escribe o pega una fórmula para previsualizarla",
+    graphApplyPreview: "Previsualizar",
     viewImage: "Ver imagen",
     imageCalculatorView: "Vista calculadora",
     imageOriginalView: "Vista original",
@@ -571,6 +575,8 @@ const I18N = {
     graphFormula: "Fonction",
     graphPreviewLove: "Aperçu LÖVE",
     graphSave: "Save",
+    graphLiveFormula: "Écrivez ou collez une formule pour la prévisualiser",
+    graphApplyPreview: "Prévisualiser",
     viewImage: "Voir image",
     imageCalculatorView: "Vue calculatrice",
     imageOriginalView: "Vue originale",
@@ -1894,7 +1900,7 @@ for xml_file in sorted(root_path.rglob("*.xml")):
                                 if local_name(leaf.tag) == "leaf" and leaf.attrib.get("name") == "1word":
                                     chunks.append("".join(leaf.itertext()))
                             lines.append("".join(chunks))
-                        note_text = "\n".join(lines) if lines else "".join(fmt_root.itertext())
+                        note_text = chr(10).join(lines) if lines else "".join(fmt_root.itertext())
                     except Exception:
                         note_text = fmtxt
                 content = note_text
@@ -8980,6 +8986,23 @@ function on.paint(gc)
 end`;
 }
 
+
+function openGraphInLovePreview(item) {
+  const state = extractGraphStateFromRawXml(item?.raw_xml || "");
+  const functionName = item?.detail?.function || state.name || "f1";
+  const formula = normalizeGraphFormulaInput(
+    item?.detail?.expression || item?.content || state.formula || "sin(x)"
+  ) || "sin(x)";
+  const code = buildGraphPreviewLua(formula, functionName);
+  return showLovePreview(code, null, null, {
+    graphEditor: {
+      item,
+      functionName,
+      formula,
+    },
+  });
+}
+
 function drawNativeGraphPreview(canvas, formula = "0") {
   if (!canvas) return;
   const ctx = canvas.getContext("2d");
@@ -9236,7 +9259,7 @@ async function addPageFromFileMenu(kind) {
   }
   if (kind === "graph") {
     const item = await addGraphWidgetToStage();
-    showGraphModal(item);
+    await openGraphInLovePreview(item);
     return;
   }
   if (kind === "program-editor") {
@@ -10632,6 +10655,7 @@ async function showLoveProjectPicker(editor = null, editorLog = null) {
 
 async function showLovePreview(code, editor = null, editorLog = null, options = {}) {
   const project = options?.project || null;
+  const graphEditor = options?.graphEditor || null;
   const projectInfo = project
     ? formatLoveProjectMessage(t("loveProjectLoaded"), { count: project.files.length, entry: project.entryPath })
     : "";
@@ -10645,6 +10669,17 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       </div>
       <h2>${escapeHtml(t("previewLove"))}</h2>
       <p class="muted-text">${escapeHtml(projectInfo ? `${t("lovePreviewNote")} ${projectInfo}` : t("lovePreviewNote"))}</p>
+      ${graphEditor ? `
+      <div class="love-graph-editor">
+        <label class="love-graph-formula-label" for="love-graph-formula">
+          ${escapeHtml(graphEditor.functionName || "f1")}(x)=
+        </label>
+        <input id="love-graph-formula" class="love-graph-formula-input"
+          value="${escapeHtml(graphEditor.formula || "sin(x)")}"
+          placeholder="${escapeHtml(t("graphLiveFormula"))}" spellcheck="false" />
+        <button type="button" id="love-graph-apply" class="green-tool-button">${escapeHtml(t("graphApplyPreview"))}</button>
+        <button type="button" id="love-graph-save" class="green-tool-button">${escapeHtml(t("graphSave"))}</button>
+      </div>` : ""}
       <div id="love-preview-stage" class="love-preview-stage calculator-view">
         <div class="love-preview-calculator-bar">${escapeHtml(t("lovePreviewCalculatorChromeTitle"))}</div>
         <canvas id="love-preview-canvas" class="calculator-view" width="320" height="214" tabindex="0"></canvas>
@@ -10673,6 +10708,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   const previewLog = backdrop.querySelector("#love-preview-log");
   const sizeToggle = backdrop.querySelector("#love-preview-size-toggle");
   let runtime = null;
+  let currentCode = String(code || "");
   let previewSizeMode = "calculator";
   const applyPreviewSize = (mode, shouldLog = false) => {
     const normalizedMode = mode === "expanded" ? "expanded" : "calculator";
@@ -10694,34 +10730,48 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     }
   };
   applyPreviewSize("calculator");
-  const isLoveSource = project || looksLikeLoveSource(code);
-  const isNspireSource = looksLikeTINSPIRELuaSource(code);
-  if (isLoveSource && !isNspireSource) {
-    appendPreviewLog(previewLog, t("lovePreviewCalculatorWarning"));
-    if (project) appendPreviewLog(previewLog, t("loveProjectConversionDisabled"));
-    if (!/\blove\.(draw|update|load)\b/.test(String(code || ""))) appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
-    try {
-      runtime = await createLovePreviewRuntime(code, ctx, canvas, previewLog, { project });
-      runtime.boot();
-    } catch (error) {
-      appendPreviewLog(previewLog, `ERROR Preview LÖVE: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+  const bootPreviewSource = async (source) => {
+    currentCode = String(source || "");
+    runtime?.close?.();
+    runtime = null;
+
+    const targetCtx = canvas.getContext("2d");
+    targetCtx.setTransform(1, 0, 0, 1, 0, 0);
+    targetCtx.clearRect(0, 0, canvas.width, canvas.height);
+    previewLog.textContent = "";
+
+    const isLoveSource = project || looksLikeLoveSource(currentCode);
+    const isNspireSource = looksLikeTINSPIRELuaSource(currentCode);
+    if (isLoveSource && !isNspireSource) {
+      appendPreviewLog(previewLog, t("lovePreviewCalculatorWarning"));
+      if (project) appendPreviewLog(previewLog, t("loveProjectConversionDisabled"));
+      if (!/\blove\.(draw|update|load)\b/.test(currentCode)) appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
+      try {
+        runtime = await createLovePreviewRuntime(currentCode, ctx, canvas, previewLog, { project });
+        runtime.boot();
+      } catch (error) {
+        appendPreviewLog(previewLog, `ERROR Preview LÖVE: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      }
+    } else if (isNspireSource) {
+      appendPreviewLog(previewLog, t("lovePreviewNspireCompat"));
+      try {
+        const sourceItem = graphEditor?.item || options?.item || null;
+        const symbols = sourceItem ? await loadLuaPreviewSymbols(sourceItem, currentCode).catch((error) => {
+          appendPreviewLog(previewLog, `ERROR recursos Preview LÖVE: ${describeLuaJsError(error)}`);
+          return {};
+        }) : {};
+        logPreviewImageResources(previewLog, symbols.resources || [], currentCode);
+        runtime = await createLovePreviewNspireRuntime(currentCode, ctx, canvas, previewLog, symbols);
+        runtime.boot();
+      } catch (error) {
+        appendPreviewLog(previewLog, `ERROR Preview LÖVE/TI-Nspire: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      }
+    } else {
+      appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
     }
-  } else if (isNspireSource) {
-    appendPreviewLog(previewLog, t("lovePreviewNspireCompat"));
-    try {
-      const symbols = options?.item ? await loadLuaPreviewSymbols(options.item, code).catch((error) => {
-        appendPreviewLog(previewLog, `ERROR recursos Preview LÖVE: ${describeLuaJsError(error)}`);
-        return {};
-      }) : {};
-      logPreviewImageResources(previewLog, symbols.resources || [], code);
-      runtime = await createLovePreviewNspireRuntime(code, ctx, canvas, previewLog, symbols);
-      runtime.boot();
-    } catch (error) {
-      appendPreviewLog(previewLog, `ERROR Preview LÖVE/TI-Nspire: ${describeLuaJsError(error)}\n${compactStack(error)}`);
-    }
-  } else {
-    appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
-  }
+  };
+
+  await bootPreviewSource(currentCode);
 
   for (const button of backdrop.querySelectorAll(".preview-controls button")) {
     button.addEventListener("click", () => {
@@ -10757,7 +10807,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   document.addEventListener("keydown", keyDownHandler);
   document.addEventListener("keyup", keyUpHandler);
   backdrop.querySelector("#love-copy-nspire")?.addEventListener("click", async () => {
-    await copyPlainText(convertLoveToNspireScriptApp(code));
+    await copyPlainText(convertLoveToNspireScriptApp(currentCode));
     appendPreviewLog(previewLog, t("loveCopiedNspire"));
   });
   backdrop.querySelector("#love-preview-copy-content").addEventListener("click", async () => {
@@ -10767,11 +10817,59 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   });
   backdrop.querySelector("#love-replace-nspire")?.addEventListener("click", () => {
     if (!editor) return;
-    editor.value = convertLoveToNspireScriptApp(code);
+    editor.value = convertLoveToNspireScriptApp(currentCode);
     editor.dispatchEvent(new Event("input"));
     appendPreviewLog(previewLog, t("loveConvertedNspire"));
     if (editorLog) editorLog.textContent = t("loveConvertedNspire");
   });
+  if (graphEditor) {
+    const graphInput = backdrop.querySelector("#love-graph-formula");
+    const graphApply = backdrop.querySelector("#love-graph-apply");
+    const graphSave = backdrop.querySelector("#love-graph-save");
+    const graphFunctionName = graphEditor.functionName || "f1";
+    let previewTimer = null;
+
+    const refreshGraphPreview = async () => {
+      const formula = normalizeGraphFormulaInput(graphInput?.value || "0") || "0";
+      const source = buildGraphPreviewLua(formula, graphFunctionName);
+      await bootPreviewSource(source);
+      canvas.focus();
+    };
+
+    graphApply?.addEventListener("click", () => {
+      refreshGraphPreview().catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
+    });
+
+    graphInput?.addEventListener("input", () => {
+      if (previewTimer) window.clearTimeout(previewTimer);
+      previewTimer = window.setTimeout(() => {
+        refreshGraphPreview().catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
+      }, 250);
+    });
+
+    graphInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        if (previewTimer) window.clearTimeout(previewTimer);
+        refreshGraphPreview().catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
+      }
+    });
+
+    graphSave?.addEventListener("click", async () => {
+      try {
+        if (previewTimer) window.clearTimeout(previewTimer);
+        const formula = normalizeGraphFormulaInput(graphInput?.value || "0") || "0";
+        const result = await saveGraphWidgetToStage(graphEditor.item, formula);
+        graphEditor.item.detail = { ...(graphEditor.item.detail || {}), function: result.function, expression: result.formula };
+        graphEditor.item.content = result.formula;
+        xmlLog(`${t("graphSave")}: ${result.function}(x)=${result.formula}`);
+        closeLovePreview();
+      } catch (error) {
+        xmlLog(`ERROR Graph Save: ${error.message}`);
+      }
+    });
+  }
+
   const closeLovePreview = () => {
     document.removeEventListener("keydown", keyDownHandler);
     document.removeEventListener("keyup", keyUpHandler);
@@ -15761,7 +15859,9 @@ async function openDocumentInspector() {
   backdrop.querySelector("#add-graph-widget").addEventListener("click", async () => {
     try {
       const item = await addGraphWidgetToStage();
-      closeModal(backdrop, async () => { await openDocumentInspector(); showGraphModal(item); });
+      closeModal(backdrop, () => {
+        openGraphInLovePreview(item).catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
+      });
     } catch (error) { xmlLog(`ERROR: ${error.message}`); }
   });
   backdrop.querySelector("#add-image-widget").addEventListener("click", async () => {
@@ -15820,7 +15920,7 @@ async function openDocumentInspector() {
   for (const button of backdrop.querySelectorAll(".graph-action")) {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
-      showGraphModal(item);
+      openGraphInLovePreview(item).catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
     });
   }
   for (const button of backdrop.querySelectorAll(".edit-lua-action")) {
