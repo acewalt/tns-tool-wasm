@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-graph-direct-love-formula-preview";
+const SOURCE_VERSION = "2026-08-24-graph-pi-save-fix";
 
 const I18N = {
   es: {
@@ -8936,8 +8936,8 @@ function graphFormulaToLuaExpression(formula = "") {
   let expr = normalizeGraphFormulaInput(formula)
     .replace(/[−–]/g, "-")
     .replace(/[×·]/g, "*")
+    .replace(/(?<!\.)\bpi\b/gi, "math.pi")
     .replace(/π/g, "math.pi")
-    .replace(/\bpi\b/gi, "math.pi")
     .replace(/\bln\s*\(/gi, "math.log(");
   expr = expr.replace(/(?<!\.)\b(sin|cos|tan|sqrt|abs|exp|log|floor|ceil)\s*\(/gi, (match, name) => `math.${name.toLowerCase()}(`);
   expr = expr.replace(/(?<![A-Za-z0-9_.])(-?\d+(?:\.\d+)?)\s*x\b/g, "$1*x");
@@ -9097,6 +9097,7 @@ json.dumps({"type":"Widget","name":"TI.GeoGrapher","file":str(xml_file),"path":f
 }
 
 async function saveGraphWidgetToStage(item, formula) {
+  await ensureXmlStageCopy();
   const state=extractGraphStateFromRawXml(item?.raw_xml || "");
   const fname=item?.detail?.function || state.name || "f1";
   const clean=normalizeGraphFormulaInput(formula);
@@ -10833,6 +10834,17 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       const formula = normalizeGraphFormulaInput(graphInput?.value || "0") || "0";
       const source = buildGraphPreviewLua(formula, graphFunctionName);
       await bootPreviewSource(source);
+
+      // Validation independent from LuaJS: this makes malformed formulas explicit
+      // instead of silently looking like an empty graph.
+      let finiteSamples = 0;
+      for (let testX = -10; testX <= 10; testX += 1) {
+        const testY = evaluateTiMathExpression(formula, { x: testX });
+        if (Number.isFinite(testY)) finiteSamples += 1;
+      }
+      if (!finiteSamples) {
+        appendPreviewLog(previewLog, `Graph formula could not be evaluated: ${formula}`);
+      }
       canvas.focus();
     };
 
@@ -10862,6 +10874,9 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
         const result = await saveGraphWidgetToStage(graphEditor.item, formula);
         graphEditor.item.detail = { ...(graphEditor.item.detail || {}), function: result.function, expression: result.formula };
         graphEditor.item.content = result.formula;
+        graphEditor.item.raw_xml = result.raw_xml || graphEditor.item.raw_xml;
+        graphEditor.formula = result.formula;
+        currentCode = buildGraphPreviewLua(result.formula, result.function);
         xmlLog(`${t("graphSave")}: ${result.function}(x)=${result.formula}`);
         closeLovePreview();
       } catch (error) {
