@@ -193,6 +193,295 @@ Do not open `index.html` with `file://`, because browsers block the `fetch()` ca
 
 Bug reports, questions, suggestions, and test files are welcome.
 
+
+## Current Page, Resource, And Preview Updates
+
+Recent development has expanded TNS Tool WASM beyond program editing into a broader TI-Nspire document-building workflow.
+
+### `+Page` system
+
+A new `+Page` workflow can add pages directly to the current TI-Nspire document.
+
+Current page types include:
+
+- Program Editor
+- Python
+- Lua ScriptApp
+- Lists & Spreadsheet
+- Notes
+- Graphs
+- Images
+
+`+Page` is available from the `File` menu and from `Document Inspector`.
+
+If no document is open, `+Page` can create an empty base document automatically instead of forcing the user to create a default Program Editor document first.
+
+`New document` and `Add Program Editor` remain separate operations:
+
+- `New document` creates a new base Program Editor project.
+- `Add Program Editor` adds another Program Editor card to the current document.
+
+### Document Inspector improvements
+
+`Document Inspector` can now identify and expose more TI-Nspire document elements, including:
+
+- Cards
+- Widgets
+- Lua ScriptApps
+- Program Editor
+- Python
+- Resources
+- Images
+- Lists & Spreadsheet
+- Notes
+- Graphs
+- Symbols
+
+Context-specific actions are shown when supported, such as:
+
+- View XML
+- View/Edit Lua
+- View Image
+- Open Sheet
+- Open Notes
+- Open Graph
+
+The inspector and `+Page` menu were also adjusted for smaller/mobile layouts.
+
+### Image resources and Add Image
+
+`Add Image` can currently import:
+
+- PNG
+- JPG / JPEG
+- BMP
+- GIF
+
+Imported images are converted into the TI-Nspire image-resource format used by the tested ScriptApp documents.
+
+The current resource path is based on:
+
+```text
+source image
+    ↓
+browser canvas / RGBA
+    ↓
+RGB565 little-endian
+    ↓
+auxiliary 0xFF plane
+    ↓
+pageN.BMP
+    ↓
+TI ResourceHandle
+    ↓
+_R.IMG.img
+    ↓
+image.new(_R.IMG.img)
+```
+
+Multiple image cards use separate resources such as:
+
+```text
+page0.BMP
+page1.BMP
+page2.BMP
+...
+```
+
+Image ScriptApps use API level `2.3` so `_R.IMG` resources are available.
+
+### Image Viewer and Calculator View
+
+The image viewer can decode and display the tested TI-Nspire resource format directly in the browser.
+
+A `Calculator View` is also available to estimate how the resource will appear on the calculator.
+
+For image ScriptApps, the preview uses the calculator-oriented viewport instead of simply fitting the full source image into the browser window. This makes it possible to inspect the approximate crop and visible area before rebuilding the TNS.
+
+The tested calculator-oriented dimensions are approximately:
+
+```text
+320 × 240 total display
+320 × 212 ScriptApp content area
+```
+
+The initial image view is handled at approximately 1:1 scale, matching the behavior observed in the reference image viewer documents.
+
+### Preview LÖVE
+
+`Preview LÖVE` has been expanded into a compatibility environment for both LÖVE-style Lua and TI-Nspire ScriptApps.
+
+The goal is not to reproduce the full desktop LÖVE runtime. Instead, it provides enough compatibility to preview and test a growing subset of scripts directly in the browser.
+
+Implemented or partially implemented areas include:
+
+- `love.load`
+- `love.update`
+- `love.draw`
+- `love.resize`
+- keyboard and mouse callbacks
+- drawing primitives
+- text
+- colors
+- transforms
+- Canvas
+- Image / ImageData
+- Quads
+- Text objects
+- SpriteBatch
+- Mesh
+- timer
+- keyboard
+- mouse
+- virtual filesystem support
+- math helpers
+- TI-Nspire `platform`, `on.*`, `gc`, and image-resource compatibility
+
+Some complex APIs still use safe shims or partial implementations rather than full native behavior.
+
+Examples include:
+
+- shaders
+- advanced audio
+- video
+- physics
+- threads
+- joystick
+- sensors
+
+### Experimental LÖVE → TI-Nspire conversion
+
+The project also includes an experimental conversion layer for turning some LÖVE-style Lua programs into TI-Nspire ScriptApps.
+
+The generated compatibility layer maps supported LÖVE behavior to TI-Nspire-oriented APIs such as:
+
+```text
+platform
+on.paint
+on.timer
+on.charIn
+on.arrowKey
+gc
+```
+
+The intended workflow is:
+
+```text
+LÖVE-style Lua
+    ↓
+compatibility conversion
+    ↓
+TI-Nspire Lua ScriptApp
+    ↓
+TNS
+```
+
+This is not a universal converter.
+
+Programs that depend heavily on desktop-only features, external native libraries, advanced shaders, audio engines, physics, threads, or complex filesystem behavior may require manual changes or may not be compatible.
+
+### Lists & Spreadsheet
+
+Experimental `Lists & Spreadsheet` support has been added using the native `tabulator` widget structure.
+
+The browser preview reproduces a calculator-style spreadsheet with:
+
+- column labels
+- row numbers
+- selected cells
+- formula/value display
+- editable cells
+- Save / Cancel workflow
+
+Cell values are read from and written back to native TI-Nspire XML structures such as:
+
+```xml
+<tb:cell>
+    <tb:rowId>1</tb:rowId>
+    <tb:formula>111</tb:formula>
+    <tb:data>111</tb:data>
+</tb:cell>
+```
+
+This allows basic round-trip editing between the browser XML project and the calculator.
+
+The spreadsheet preview also includes experimental `.xlsx` import for the first worksheet.
+
+Current XLSX support is focused on basic cell data and simple formulas. Full Excel compatibility is not expected.
+
+### Notes
+
+`TI.Notepad` pages can now be detected, created, opened, edited, and saved from `Document Inspector`.
+
+The Notes editor is intended to provide a lightweight calculator-style editing experience while preserving the native Notepad widget inside the document.
+
+### Graphs
+
+Experimental `TI.GeoGrapher` support has been added.
+
+Graph pages can be created from `+Page`, detected in `Document Inspector`, and opened directly in `Preview LÖVE`.
+
+The graph preview includes an editable function field such as:
+
+```text
+f1(x)=sin(x)
+```
+
+or:
+
+```text
+f1(x)=3*cos(2*x+π/2)+1
+```
+
+The preview draws the function on a calculator-style coordinate plane, and the formula can be edited or pasted directly before saving it back into the native Graphs XML structure.
+
+Multiple graph pages can use function names such as:
+
+```text
+f1
+f2
+f3
+...
+```
+
+Graph parsing and expression compatibility are still experimental and will continue to expand.
+
+### Current limitations and planned work
+
+The following features are not yet implemented or are still planned:
+
+- PDF import into TNS documents
+- batch / multi-select image import
+- automatically creating one image card per selected image
+- broader XLSX compatibility
+- more TI-Nspire page/widget types
+- more complete Graphs support
+- a more complete mathematical expression parser
+- broader LÖVE runtime coverage
+- improved LÖVE → TI-Nspire conversion
+- more accurate calculator previews where possible
+
+A future batch-image workflow is expected to support a selection such as:
+
+```text
+image1.png
+image2.jpg
+image3.png
+image4.bmp
+```
+
+and automatically generate:
+
+```text
+Card 1 → page0.BMP
+Card 2 → page1.BMP
+Card 3 → page2.BMP
+Card 4 → page3.BMP
+```
+
+without requiring a separate `Add Image` operation for each file.
+
+
 ## Credits
 
 Developed and implemented by Andres Mauricio Chaparro Pena.
