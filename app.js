@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-love-preview-ti-image-resource-fix";
+const SOURCE_VERSION = "2026-08-24-page-menu-spreadsheet-preview";
 
 const I18N = {
   es: {
@@ -38,6 +38,15 @@ const I18N = {
     openPython: "Ver Python",
     editPython: "Editar Python",
     addPythonWidget: "Agregar Python",
+    addPage: "+Page",
+    addSpreadsheetWidget: "Agregar listas y hojas de cálculo",
+    spreadsheetWidgetAdded: "Lista y hoja de cálculo agregada como nueva card.",
+    openSpreadsheet: "Abrir hoja",
+    spreadsheetTitle: "Listas y hoja de cálculo",
+    spreadsheetImport: "Importar XLSX",
+    spreadsheetSave: "Save",
+    spreadsheetImportLoaded: "XLSX cargado en la previsualización.",
+    spreadsheetPreviewOnly: "La importación XLSX se conserva en la previsualización de esta sesión; la serialización de celdas TI se integrará cuando tengamos una muestra con datos.",
     viewImage: "Ver imagen",
     imageCalculatorView: "Vista calculadora",
     imageOriginalView: "Vista original",
@@ -270,6 +279,15 @@ const I18N = {
     openPython: "View Python",
     editPython: "Edit Python",
     addPythonWidget: "Add Python",
+    addPage: "+Page",
+    addSpreadsheetWidget: "Add Lists & Spreadsheet",
+    spreadsheetWidgetAdded: "Lists & Spreadsheet added as a new card.",
+    openSpreadsheet: "Open sheet",
+    spreadsheetTitle: "Lists & Spreadsheet",
+    spreadsheetImport: "Import XLSX",
+    spreadsheetSave: "Save",
+    spreadsheetImportLoaded: "XLSX loaded in the preview.",
+    spreadsheetPreviewOnly: "XLSX import is retained in this session preview; TI cell serialization will be integrated once a populated sample is available.",
     viewImage: "View image",
     imageCalculatorView: "Calculator view",
     imageOriginalView: "Original view",
@@ -502,6 +520,15 @@ const I18N = {
     openPython: "Voir Python",
     editPython: "Editer Python",
     addPythonWidget: "Ajouter Python",
+    addPage: "+Page",
+    addSpreadsheetWidget: "Ajouter listes et feuille de calcul",
+    spreadsheetWidgetAdded: "Feuille de calcul ajoutée comme nouvelle carte.",
+    openSpreadsheet: "Ouvrir feuille",
+    spreadsheetTitle: "Listes et feuille de calcul",
+    spreadsheetImport: "Importer XLSX",
+    spreadsheetSave: "Save",
+    spreadsheetImportLoaded: "XLSX chargé dans l’aperçu.",
+    spreadsheetPreviewOnly: "L’import XLSX reste dans l’aperçu de cette session ; la sérialisation des cellules TI sera intégrée avec un exemple contenant des données.",
     viewImage: "Voir image",
     imageCalculatorView: "Vue calculatrice",
     imageOriginalView: "Vue originale",
@@ -1698,7 +1725,7 @@ from xml_scanner import local_name, namespace_uri
 
 root_path = Path(wasm_xml_inspect_path)
 items = []
-summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "python_editors": 0, "python_files": 0, "resources": 0, "images": 0, "basic_blocks": 0, "symbols": 0}
+summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "python_editors": 0, "python_files": 0, "resources": 0, "images": 0, "spreadsheets": 0, "basic_blocks": 0, "symbols": 0}
 python_files_seen = set()
 image_extensions = {".bmp", ".png", ".jpg", ".jpeg", ".gif"}
 
@@ -1796,6 +1823,18 @@ for xml_file in sorted(root_path.rglob("*.xml")):
             elif widget_type == "TI.PythonShell":
                 pysh_ns = "urn:TI.PythonShell"
                 detail.update({"name": child_text(element, pysh_ns, "name")})
+            elif widget_type == "tabulator":
+                tb_ns = "urn:tabulator"
+                summary["spreadsheets"] += 1
+                column_count = 0
+                for candidate in element.iter():
+                    if namespace_uri(candidate.tag) == tb_ns and local_name(candidate.tag) == "column" and candidate.attrib.get("type") == "cell-column":
+                        column_count += 1
+                detail.update({
+                    "columns": column_count,
+                    "showingLnS": child_text(element, tb_ns, "showingLnS"),
+                })
+                content_label = "Spreadsheet"
             elif widget_type == "TI.Scratchpad":
                 sp_ns = "urn:TI.Scratchpad"
                 rows = []
@@ -14175,13 +14214,343 @@ function executeLuaPreviewCall(root, method, rawArgs, env, ctx, canvas, state) {
   }
 }
 
+
+const spreadsheetPreviewSessions = new Map();
+
+function spreadsheetSessionKey(item) {
+  return `${item?.file || ""}::${item?.path || item?.name || "spreadsheet"}`;
+}
+
+function spreadsheetColumnName(index) {
+  let value = Number(index) + 1;
+  let name = "";
+  while (value > 0) {
+    value -= 1;
+    name = String.fromCharCode(65 + (value % 26)) + name;
+    value = Math.floor(value / 26);
+  }
+  return name || "A";
+}
+
+function spreadsheetCellRefToCoords(ref) {
+  const match = String(ref || "").toUpperCase().match(/^([A-Z]+)(\d+)$/);
+  if (!match) return null;
+  let col = 0;
+  for (const ch of match[1]) col = col * 26 + (ch.charCodeAt(0) - 64);
+  return { row: Math.max(0, Number(match[2]) - 1), col: Math.max(0, col - 1) };
+}
+
+async function parseXlsxFirstSheet(file) {
+  if (!window.JSZip) throw new Error("JSZip no está disponible para abrir XLSX.");
+  const zip = await window.JSZip.loadAsync(await file.arrayBuffer());
+  const parseXml = (text) => new DOMParser().parseFromString(text, "application/xml");
+  const readXml = async (name) => {
+    const entry = zip.file(name);
+    if (!entry) return null;
+    return parseXml(await entry.async("text"));
+  };
+
+  const sharedStrings = [];
+  const sharedDoc = await readXml("xl/sharedStrings.xml");
+  if (sharedDoc) {
+    for (const si of sharedDoc.getElementsByTagNameNS("*", "si")) {
+      sharedStrings.push(Array.from(si.getElementsByTagNameNS("*", "t")).map((node) => node.textContent || "").join(""));
+    }
+  }
+
+  let sheetPath = "xl/worksheets/sheet1.xml";
+  const workbook = await readXml("xl/workbook.xml");
+  const rels = await readXml("xl/_rels/workbook.xml.rels");
+  if (workbook && rels) {
+    const firstSheet = workbook.getElementsByTagNameNS("*", "sheet")[0];
+    const relId = firstSheet?.getAttribute("r:id") || firstSheet?.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id");
+    if (relId) {
+      const rel = Array.from(rels.getElementsByTagNameNS("*", "Relationship")).find((node) => node.getAttribute("Id") === relId);
+      const target = rel?.getAttribute("Target") || "";
+      if (target) sheetPath = target.startsWith("/") ? target.slice(1) : `xl/${target.replace(/^\.\//, "")}`;
+    }
+  }
+
+  const sheet = await readXml(sheetPath);
+  if (!sheet) throw new Error("No se encontró la primera hoja dentro del XLSX.");
+  const values = {};
+  let maxRow = 0;
+  let maxCol = 0;
+  for (const cell of sheet.getElementsByTagNameNS("*", "c")) {
+    const ref = cell.getAttribute("r") || "";
+    const coords = spreadsheetCellRefToCoords(ref);
+    if (!coords) continue;
+    const type = cell.getAttribute("t") || "n";
+    const vNode = cell.getElementsByTagNameNS("*", "v")[0];
+    let value = vNode?.textContent ?? "";
+    if (type === "s") value = sharedStrings[Number(value)] ?? value;
+    else if (type === "inlineStr") value = Array.from(cell.getElementsByTagNameNS("*", "t")).map((node) => node.textContent || "").join("");
+    else if (type === "b") value = value === "1" ? "TRUE" : "FALSE";
+    values[`${coords.row}:${coords.col}`] = value;
+    maxRow = Math.max(maxRow, coords.row);
+    maxCol = Math.max(maxCol, coords.col);
+  }
+  return { values, rows: Math.max(12, maxRow + 1), cols: Math.max(8, maxCol + 1), sourceName: file.name };
+}
+
+async function addSpreadsheetWidgetToStage() {
+  await ensureXmlStageCopy();
+  const currentFile = xmlDoctor.current?.file || "";
+  pyodide.globals.set("wasm_sheet_current_file", currentFile);
+  const payload = await pyodide.runPythonAsync(`
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+current_file = Path(wasm_sheet_current_file) if wasm_sheet_current_file else None
+xml_file = None
+if current_file:
+    try:
+        rel = current_file.relative_to(stage_root)
+    except ValueError:
+        try:
+            rel = current_file.relative_to(source_root)
+        except ValueError:
+            rel = Path(current_file.name)
+    candidate = stage_root / rel
+    if candidate.exists():
+        xml_file = candidate
+if xml_file is None:
+    problem_files = sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p: p.name.lower())
+    xml_files = problem_files or sorted(stage_root.rglob("*.xml"))
+    if xml_files:
+        xml_file = xml_files[0]
+if xml_file is None:
+    raise RuntimeError("No XML file available for spreadsheet widget")
+
+tree = ET.parse(xml_file)
+root = tree.getroot()
+prob_ns = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+tb_ns = "urn:tabulator"
+ft_ns = "urn:TI.FunctionTable"
+ET.register_namespace("", prob_ns)
+ET.register_namespace("tb", tb_ns)
+
+def q(ns, name):
+    return f"{{{ns}}}{name}" if ns else name
+
+card = ET.Element(q(prob_ns, "card"), {"clay": "0", "h1": "10000", "h2": "10000", "w1": "10000", "w2": "10000"})
+ET.SubElement(card, q(prob_ns, "isDummyCard")).text = "0"
+ET.SubElement(card, q(prob_ns, "flag")).text = "0"
+wdgt = ET.SubElement(card, q(prob_ns, "wdgt"), {"type": "tabulator", "ver": "1.0"})
+ET.SubElement(wdgt, q(tb_ns, "mFlags")).text = "1024"
+ET.SubElement(wdgt, q(tb_ns, "value")).text = "2"
+ET.SubElement(wdgt, q(tb_ns, "cry")).text = "0"
+ET.SubElement(wdgt, q(tb_ns, "legal")).text = "none"
+ET.SubElement(wdgt, q(tb_ns, "schk")).text = "false"
+ET.SubElement(wdgt, q(tb_ns, "guid")).text = "00000000000000000000000000000000"
+ET.SubElement(wdgt, q(tb_ns, "showingLnS")).text = "1"
+
+table = ET.SubElement(wdgt, q(tb_ns, "table"))
+ET.SubElement(table, q(tb_ns, "rowHeights"))
+columns = ET.SubElement(table, q(tb_ns, "columns"))
+for _ in range(26):
+    column = ET.SubElement(columns, q(tb_ns, "column"), {"type": "cell-column"})
+    ET.SubElement(column, q(tb_ns, "columnWidthNative")).text = "70"
+    ET.SubElement(column, q(tb_ns, "columnWidth")).text = "70"
+    ET.SubElement(column, q(tb_ns, "columnFlags")).text = "0"
+    ET.SubElement(column, q(tb_ns, "cells"))
+
+color = ET.SubElement(wdgt, q(tb_ns, "color"), {"version": "2.0"})
+ET.SubElement(color, q(tb_ns, "columns")).text = "0" * 52
+
+functiontable = ET.SubElement(wdgt, q(ft_ns, "functiontable"))
+ET.SubElement(functiontable, q(ft_ns, "defaultColumnWidth")).text = "70"
+ET.SubElement(functiontable, q(ft_ns, "defaultIndependantStartValue")).text = "0.0"
+ET.SubElement(functiontable, q(ft_ns, "defaultIndependantStepValue")).text = "1.0"
+ET.SubElement(functiontable, q(ft_ns, "defaultIndependantAutoModeValue")).text = "1"
+ET.SubElement(functiontable, q(ft_ns, "defaultDependantAutoModeValue")).text = "1"
+ft_table = ET.SubElement(functiontable, q(ft_ns, "table"))
+ft_columns = ET.SubElement(ft_table, q(ft_ns, "columns"))
+ind = ET.SubElement(ft_columns, q(ft_ns, "column"), {"type": "function table independant column"})
+ET.SubElement(ind, q(ft_ns, "columnWidthNative")).text = "70"
+ET.SubElement(ind, q(ft_ns, "columnWidth")).text = "70"
+ET.SubElement(ind, q(ft_ns, "columnFlags")).text = "0"
+ET.SubElement(ind, q(ft_ns, "nvColumnWidth")).text = "0"
+ET.SubElement(ind, q(ft_ns, "autoSize")).text = "1"
+dep = ET.SubElement(ft_columns, q(ft_ns, "column"), {"type": "function table dependant column"})
+ET.SubElement(dep, q(ft_ns, "columnWidthNative")).text = "234"
+ET.SubElement(dep, q(ft_ns, "columnWidth")).text = "234"
+ET.SubElement(dep, q(ft_ns, "columnFlags")).text = "0"
+ET.SubElement(dep, q(ft_ns, "nvColumnWidth")).text = "0"
+
+root.append(card)
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+
+parent_map = {child: parent for parent in root.iter() for child in parent}
+def element_path(element):
+    parts = []
+    current = element
+    while current is not None:
+        parent = parent_map.get(current)
+        name = local_name(current.tag)
+        if parent is not None:
+            same = [child for child in parent if local_name(child.tag) == name]
+            if len(same) > 1:
+                name = f"{name}[{same.index(current)+1}]"
+        parts.append(name)
+        current = parent
+    return "/" + "/".join(reversed(parts))
+
+json.dumps({
+    "type": "Widget",
+    "name": "tabulator",
+    "file": str(xml_file),
+    "path": element_path(wdgt),
+    "detail": {"columns": 26, "showingLnS": "1", "created": "true"},
+    "content": "",
+    "content_label": "Spreadsheet",
+    "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False),
+})
+`);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  xmlLog(t("spreadsheetWidgetAdded"));
+  return JSON.parse(payload);
+}
+
+function showSpreadsheetModal(item) {
+  const key = spreadsheetSessionKey(item);
+  const saved = spreadsheetPreviewSessions.get(key) || { values: {}, rows: 20, cols: 12, sourceName: "" };
+  const state = {
+    values: { ...(saved.values || {}) },
+    rows: Math.max(20, saved.rows || 20),
+    cols: Math.max(12, saved.cols || 12),
+    sourceName: saved.sourceName || "",
+    activeRow: 0,
+    activeCol: 0,
+  };
+
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal inspector-modal spreadsheet-modal">
+      <div class="spreadsheet-modal-header">
+        <div>
+          <h2>${escapeHtml(t("spreadsheetTitle"))}</h2>
+          <div class="spreadsheet-source-name">${escapeHtml(state.sourceName || "TI-Nspire tabulator")}</div>
+        </div>
+        <div class="spreadsheet-header-actions">
+          <button type="button" id="spreadsheet-import">${escapeHtml(t("spreadsheetImport"))}</button>
+          <button type="button" id="spreadsheet-save" class="green-tool-button">${escapeHtml(t("spreadsheetSave"))}</button>
+          <button type="button" id="spreadsheet-close">${escapeHtml(t("close"))}</button>
+        </div>
+      </div>
+      <input id="spreadsheet-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+      <div class="spreadsheet-preview-stage">
+        <div class="spreadsheet-calc" aria-label="TI-Nspire Lists & Spreadsheet preview">
+          <div class="spreadsheet-calc-topbar">
+            <div class="spreadsheet-page-tab"><span class="spreadsheet-tab-arrow">◀</span><span>1.1</span><span class="spreadsheet-tab-arrow">▶</span></div>
+            <div class="spreadsheet-doc-title">${escapeHtml((state.sourceName || "excel").replace(/\.xlsx$/i, ""))}</div>
+            <div class="spreadsheet-calc-status">RAD ▯</div>
+          </div>
+          <div class="spreadsheet-grid-shell">
+            <div class="spreadsheet-grid" tabindex="0"></div>
+          </div>
+          <div class="spreadsheet-formula-bar"><span class="spreadsheet-cell-name">A1</span><span class="spreadsheet-formula-value"></span><span class="spreadsheet-nav-arrows">◀ ▶</span></div>
+        </div>
+      </div>
+      <div class="spreadsheet-preview-note">${escapeHtml(t("spreadsheetPreviewOnly"))}</div>
+    </div>`;
+  document.body.append(backdrop);
+
+  const grid = backdrop.querySelector(".spreadsheet-grid");
+  const cellName = backdrop.querySelector(".spreadsheet-cell-name");
+  const formulaValue = backdrop.querySelector(".spreadsheet-formula-value");
+  const sourceNameEl = backdrop.querySelector(".spreadsheet-source-name");
+  const docTitle = backdrop.querySelector(".spreadsheet-doc-title");
+
+  const render = () => {
+    const visibleRows = Math.min(100, Math.max(20, state.rows));
+    const visibleCols = Math.min(30, Math.max(12, state.cols));
+    let html = `<div class="sheet-corner"></div>`;
+    for (let col = 0; col < visibleCols; col += 1) html += `<div class="sheet-col-header">${spreadsheetColumnName(col)}</div>`;
+    for (let row = 0; row < visibleRows; row += 1) {
+      html += `<div class="sheet-row-header">${row + 1}</div>`;
+      for (let col = 0; col < visibleCols; col += 1) {
+        const value = state.values[`${row}:${col}`] ?? "";
+        const active = row === state.activeRow && col === state.activeCol ? " active" : "";
+        html += `<div class="sheet-cell${active}" contenteditable="true" spellcheck="false" data-row="${row}" data-col="${col}">${escapeHtml(String(value))}</div>`;
+      }
+    }
+    grid.style.setProperty("--sheet-cols", String(visibleCols));
+    grid.innerHTML = html;
+    cellName.textContent = `${spreadsheetColumnName(state.activeCol)}${state.activeRow + 1}`;
+    formulaValue.textContent = String(state.values[`${state.activeRow}:${state.activeCol}`] ?? "");
+  };
+
+  grid.addEventListener("focusin", (event) => {
+    const cell = event.target.closest(".sheet-cell");
+    if (!cell) return;
+    state.activeRow = Number(cell.dataset.row) || 0;
+    state.activeCol = Number(cell.dataset.col) || 0;
+    grid.querySelector(".sheet-cell.active")?.classList.remove("active");
+    cell.classList.add("active");
+    cellName.textContent = `${spreadsheetColumnName(state.activeCol)}${state.activeRow + 1}`;
+    formulaValue.textContent = String(state.values[`${state.activeRow}:${state.activeCol}`] ?? cell.textContent ?? "");
+  });
+  grid.addEventListener("input", (event) => {
+    const cell = event.target.closest(".sheet-cell");
+    if (!cell) return;
+    const row = Number(cell.dataset.row) || 0;
+    const col = Number(cell.dataset.col) || 0;
+    state.values[`${row}:${col}`] = cell.textContent || "";
+    formulaValue.textContent = cell.textContent || "";
+  });
+
+  const fileInput = backdrop.querySelector("#spreadsheet-file-input");
+  backdrop.querySelector("#spreadsheet-import").addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", async () => {
+    const file = fileInput.files?.[0];
+    if (!file) return;
+    try {
+      const imported = await parseXlsxFirstSheet(file);
+      state.values = imported.values;
+      state.rows = imported.rows;
+      state.cols = imported.cols;
+      state.sourceName = imported.sourceName;
+      sourceNameEl.textContent = imported.sourceName;
+      docTitle.textContent = imported.sourceName.replace(/\.xlsx$/i, "");
+      state.activeRow = 0;
+      state.activeCol = 0;
+      render();
+      xmlLog(t("spreadsheetImportLoaded"));
+    } catch (error) {
+      xmlLog(`ERROR XLSX: ${error.message}`);
+    } finally {
+      fileInput.value = "";
+    }
+  });
+
+  backdrop.querySelector("#spreadsheet-save").addEventListener("click", () => {
+    spreadsheetPreviewSessions.set(key, {
+      values: { ...state.values },
+      rows: state.rows,
+      cols: state.cols,
+      sourceName: state.sourceName,
+    });
+    xmlLog(`${t("spreadsheetSave")}: ${state.sourceName || "tabulator"}`);
+  });
+  backdrop.querySelector("#spreadsheet-close").addEventListener("click", () => closeModal(backdrop));
+  render();
+}
+
 async function openDocumentInspector() {
   const data = await inspectXmlDocument();
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   const summary = data.summary || {};
   const sortedItems = [...(data.items || [])].sort((a, b) => {
-    const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.content_label === "Image" ? 2 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 3 : item.type === "Card" ? 4 : 5;
+    const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.content_label === "Image" ? 2 : item.content_label === "Spreadsheet" ? 3 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 4 : item.type === "Card" ? 5 : 6;
     return rank(a) - rank(b) || String(a.file).localeCompare(String(b.file)) || String(a.path).localeCompare(String(b.path));
   });
   const rows = sortedItems.map((item, index) => {
@@ -14193,6 +14562,8 @@ async function openDocumentInspector() {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openPython"))}</button><button type="button" class="mini-action edit-python-action green-mini-action" data-index="${index}">${escapeHtml(t("editPython"))}</button>`;
     } else if (item.content_label === "Image") {
       contentAction = `<button type="button" class="mini-action image-action green-mini-action" data-index="${index}">${escapeHtml(t("viewImage"))}</button>`;
+    } else if (item.content_label === "Spreadsheet") {
+      contentAction = `<button type="button" class="mini-action spreadsheet-action green-mini-action" data-index="${index}">${escapeHtml(t("openSpreadsheet"))}</button>`;
     } else if (item.content) {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(item.content_label === "Scratchpad" ? t("viewDetails") : t("viewValue"))}</button>`;
     }
@@ -14212,6 +14583,7 @@ async function openDocumentInspector() {
         <span>Python: ${summary.python_editors || 0}</span>
         <span>Resources: ${summary.resources || 0}</span>
         <span>Images: ${summary.images || 0}</span>
+        <span>Sheets: ${summary.spreadsheets || 0}</span>
         <span>Basic: ${summary.basic_blocks || 0}</span>
         <span>Symbols: ${summary.symbols || 0}</span>
       </div>
@@ -14222,15 +14594,29 @@ async function openDocumentInspector() {
           <tbody>${rows}</tbody>
         </table>
       </div>
-      <div class="modal-actions">
-        <button type="button" id="add-lua-widget" class="green-tool-button">${escapeHtml(t("addLuaWidget"))}</button>
-        <button type="button" id="add-image-widget" class="green-tool-button">${escapeHtml(t("addImageWidget"))}</button>
-        <button type="button" id="add-python-widget" class="green-tool-button">${escapeHtml(t("addPythonWidget"))}</button>
+      <div class="modal-actions inspector-modal-actions">
+        <div class="tool-menu inspector-page-menu">
+          <button type="button" id="inspector-page-trigger" class="menu-trigger green-menu-trigger"><span class="menu-icon">＋</span><span>${escapeHtml(t("addPage"))}</span></button>
+          <div class="menu-panel">
+            <button type="button" id="add-image-widget" class="menu-action">${escapeHtml(t("addImageWidget"))}</button>
+            <button type="button" id="add-python-widget" class="menu-action">${escapeHtml(t("addPythonWidget"))}</button>
+            <button type="button" id="add-lua-widget" class="menu-action">${escapeHtml(t("addLuaWidget"))}</button>
+            <button type="button" id="add-spreadsheet-widget" class="menu-action">${escapeHtml(t("addSpreadsheetWidget"))}</button>
+          </div>
+        </div>
         <button type="button" id="inspector-close">${escapeHtml(t("close"))}</button>
       </div>
     </div>`;
   document.body.append(backdrop);
   backdrop.querySelector("#inspector-close").addEventListener("click", () => closeModal(backdrop));
+  const pageMenu = backdrop.querySelector(".inspector-page-menu");
+  backdrop.querySelector("#inspector-page-trigger").addEventListener("click", (event) => {
+    event.stopPropagation();
+    pageMenu.classList.toggle("open");
+  });
+  backdrop.addEventListener("click", (event) => {
+    if (!event.target.closest(".inspector-page-menu")) pageMenu.classList.remove("open");
+  });
   backdrop.querySelector("#add-lua-widget").addEventListener("click", async () => {
     try {
       const item = await addLuaScriptAppToStage();
@@ -14259,6 +14645,17 @@ async function openDocumentInspector() {
       xmlLog(`ERROR: ${error.message}`);
     }
   });
+  backdrop.querySelector("#add-spreadsheet-widget").addEventListener("click", async () => {
+    try {
+      const item = await addSpreadsheetWidgetToStage();
+      closeModal(backdrop, async () => {
+        await openDocumentInspector();
+        showSpreadsheetModal(item);
+      });
+    } catch (error) {
+      xmlLog(`ERROR: ${error.message}`);
+    }
+  });
   for (const button of backdrop.querySelectorAll(".view-action")) {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
@@ -14275,6 +14672,12 @@ async function openDocumentInspector() {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
       showImageModal(item);
+    });
+  }
+  for (const button of backdrop.querySelectorAll(".spreadsheet-action")) {
+    button.addEventListener("click", () => {
+      const item = sortedItems[Number(button.dataset.index)];
+      showSpreadsheetModal(item);
     });
   }
   for (const button of backdrop.querySelectorAll(".edit-lua-action")) {
