@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-image-view-realistic-cx";
+const SOURCE_VERSION = "2026-08-24-love-preview-ti-image-resource-fix";
 
 const I18N = {
   es: {
@@ -6999,7 +6999,7 @@ function buildLuaPagePreviewCode(baseCode, page, draft = {}) {
 async function renderLuaSnapshotToCanvas(code, canvas, item = null) {
   const ctx = canvas.getContext("2d");
   const logSink = { textContent: "", scrollTop: 0, scrollHeight: 0 };
-  const symbols = item ? await loadLuaPreviewSymbols(item).catch(() => ({})) : {};
+  const symbols = item ? await loadLuaPreviewSymbols(item, code).catch(() => ({})) : {};
   let runtime = null;
   try {
     runtime = await createLuaJsPreviewRuntime(code, ctx, canvas, logSink, symbols);
@@ -9481,7 +9481,7 @@ async function showLuaPreview(code, item = null) {
   const ctx = canvas.getContext("2d");
   const previewLog = backdrop.querySelector("#lua-preview-log");
   const textCapture = backdrop.querySelector("#lua-preview-input");
-  const symbols = item ? await loadLuaPreviewSymbols(item).catch(() => ({})) : {};
+  const symbols = item ? await loadLuaPreviewSymbols(item, code).catch(() => ({})) : {};
   let runtime;
   try {
     runtime = await createLuaJsPreviewRuntime(code, ctx, canvas, previewLog, symbols);
@@ -9859,7 +9859,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   } else if (isNspireSource) {
     appendPreviewLog(previewLog, t("lovePreviewNspireCompat"));
     try {
-      const symbols = options?.item ? await loadLuaPreviewSymbols(options.item).catch((error) => {
+      const symbols = options?.item ? await loadLuaPreviewSymbols(options.item, code).catch((error) => {
         appendPreviewLog(previewLog, `ERROR recursos Preview LÖVE: ${describeLuaJsError(error)}`);
         return {};
       }) : {};
@@ -10037,11 +10037,11 @@ function previewKeyboardEventToLua(event) {
   return null;
 }
 
-async function loadLuaPreviewSymbols(item) {
-  if (!item?.file || !window.pyodide) return {};
+async function loadLuaPreviewSymbols(item, sourceOverride = null) {
+  if (!item?.file || !pyodide) return {};
   pyodide.globals.set("wasm_lua_symbol_file", item.file);
   pyodide.globals.set("wasm_lua_symbol_path", item.path || "");
-  pyodide.globals.set("wasm_lua_symbol_content", item.content || "");
+  pyodide.globals.set("wasm_lua_symbol_content", sourceOverride ?? item.content ?? "");
   pyodide.globals.set("wasm_lua_symbol_stage_root", xmlDoctor.stagePath || "");
   pyodide.globals.set("wasm_lua_symbol_source_root", xmlDoctor.sourcePath || "");
   const payload = await pyodide.runPythonAsync(`
