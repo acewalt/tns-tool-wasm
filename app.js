@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-25-calculator-love-mathprint-v9-fixed";
+const SOURCE_VERSION = "2026-08-25-calculator-love-mathprint-v7";
 
 const I18N = {
   es: {
@@ -9352,10 +9352,6 @@ function calculatorLoveActivePlaceholder(source,caret){
   let n=0;for(let i=0;i<caret;i++)if(s[i]===CALC_LOVE_PLACEHOLDER)n++;return n;
 }
 
-
-// Main Calculator MathPrint is rendered by LÖVE.
-// The Templates palette stays as the proven HTML/image-button UI.
-// Vector math primitives below are based on the user's tested LÖVE drawing script.
 function calculatorLoveBuildPreviewLua(rows=[],source='',caret=0,selected=-1,scrollPx=0){
   const composer=calculatorLoveAst(source);
   const active=calculatorLoveActivePlaceholder(source,caret);
@@ -9376,31 +9372,6 @@ local function setfont(f) love.graphics.setFont(f) end
 local function tw(s,f) setfont(f or font); return love.graphics.getFont():getWidth(tostring(s or "")) end
 local function th(f) setfont(f or font); return love.graphics.getFont():getHeight() end
 local function text(s,x,y,f) setfont(f or font); love.graphics.print(tostring(s or ""),x,y) end
-local function box(x,y,w,h) love.graphics.rectangle("line",x,y,w,h) end
-local function leftBracket(x,y,h)
-  love.graphics.line(x+6,y,x,y);love.graphics.line(x,y,x,y+h);love.graphics.line(x,y+h,x+6,y+h)
-end
-local function rightBracket(x,y,h)
-  love.graphics.line(x-6,y,x,y);love.graphics.line(x,y,x,y+h);love.graphics.line(x,y+h,x-6,y+h)
-end
-local function brace(x,y,h)
-  local m=y+h/2
-  love.graphics.line(x+9,y,x+4,y);love.graphics.line(x+4,y,x+2,y+6);love.graphics.line(x+2,y+6,x+2,m-5)
-  love.graphics.line(x+2,m-5,x-2,m);love.graphics.line(x-2,m,x+2,m+5);love.graphics.line(x+2,m+5,x+2,y+h-6)
-  love.graphics.line(x+2,y+h-6,x+4,y+h);love.graphics.line(x+4,y+h,x+9,y+h)
-end
-local function radical(x,y,w,h)
-  love.graphics.line(x,y+h*.55,x+5,y+h*.72,x+10,y+h,x+17,y,x+w,y)
-end
-local function integralSymbol(x,y,h)
-  love.graphics.line(x+10,y,x+6,y,x+3,y+5,x+2,y+h*.30,x+3,y+h*.55,x+1,y+h*.80,x-1,y+h-4,x-5,y+h,x-9,y+h)
-end
-local function sigma(x,y,w,h)
-  love.graphics.line(x+w,y,x,y);love.graphics.line(x,y,x+w*.60,y+h/2);love.graphics.line(x+w*.60,y+h/2,x,y+h);love.graphics.line(x,y+h,x+w,y+h)
-end
-local function productSymbol(x,y,w,h)
-  love.graphics.line(x,y,x+w,y);love.graphics.line(x+3,y,x+3,y+h);love.graphics.line(x+w-3,y,x+w-3,y+h)
-end
 local function dims(n)
   if not n then return 0,18 end
   local k=n.k
@@ -9431,58 +9402,24 @@ local function draw(n,x,y,scale)
   love.graphics.setColor(0,0,0,1)
   if k=="text" then text(n.text,x,y,font);return end
   if k=="placeholder" then
-    if n.ph==activePlaceholder then love.graphics.setColor(0.15,0.58,0.92,0.23);love.graphics.rectangle("fill",x,y,16,18);love.graphics.setColor(0.12,0.5,0.86,1) else love.graphics.setColor(0.55,0.55,0.55,1) end
-    love.graphics.setLineWidth(1.2);box(x,y,16,18);love.graphics.setLineWidth(2.2);return
+    if n.ph==activePlaceholder then love.graphics.setColor(0.15,0.58,0.92,0.23);love.graphics.rectangle("fill",x,y,17,18);love.graphics.setColor(0.12,0.5,0.86,1) else love.graphics.setColor(0.7,0.7,0.7,1) end
+    love.graphics.rectangle("line",x,y,17,18);return
   end
   if k=="row" then local dx=x;for _,c in ipairs(n.children or {}) do draw(c,dx,y,1);local cw=dims(c);dx=dx+cw end;return end
   if k=="binary" then local aw,ah=dims(n.left);draw(n.left,x,y,1);if n.op=="*" then draw(n.right,x+aw+2,y,1) else text(n.op,x+aw+3,y,font);draw(n.right,x+aw+tw(n.op,font)+6,y,1) end;return end
   if k=="fraction" then local nw,nh=dims(n.num);local dw,dh=dims(n.den);local w=math.max(nw,dw)+10;draw(n.num,x+(w-nw)/2,y,1);love.graphics.line(x+2,y+nh+2,x+w-2,y+nh+2);draw(n.den,x+(w-dw)/2,y+nh+6,1);return end
   if k=="power" then local bw,bh=dims(n.base);draw(n.base,x,y+5,1);draw(n.exp,x+bw+1,y,0.68);return end
-  if k=="sqrt" then local bw,bh=dims(n.body);love.graphics.setLineWidth(2.2);radical(x,y+1,bw+26,math.max(24,bh+4));draw(n.body,x+18,y+8,1);return end
-  if k=="root" then
-    local bw,bh=dims(n.body);local iw,ih=dims(n.index);local idxw=math.max(6,iw*.58)
-    draw(n.index,x,y,0.58)
-    local rx=x+math.max(8,idxw-1)
-    love.graphics.setLineWidth(2.2);radical(rx,y+6,bw+27,math.max(25,bh+5))
-    draw(n.body,rx+18,y+13,1);return
-  end
+  if k=="sqrt" then local bw,bh=dims(n.body);text("√",x,y+2,big);love.graphics.line(x+13,y+2,x+15+bw,y+2);draw(n.body,x+15,y+5,1);return end
+  if k=="root" then local bw,bh=dims(n.body);local iw,ih=dims(n.index);draw(n.index,x,y,0.58);text("√",x+math.max(5,iw*.55),y+6,big);local rx=x+math.max(5,iw*.55)+13;love.graphics.line(rx,y+6,rx+bw+2,y+6);draw(n.body,rx,y+9,1);return end
   if k=="abs" then local bw,bh=dims(n.body);love.graphics.line(x,y,x,y+bh);draw(n.body,x+5,y,1);love.graphics.line(x+bw+9,y,x+bw+9,y+bh);return end
   if k=="log" then text("log",x,y,font);local lw=tw("log",font);draw(n.base,x+lw-1,y+10,0.65);draw(n.body,x+lw+10,y,1);return end
   if k=="limit" then text("lim",x,y,font);draw(n.var,x,y+15,0.58);text("→",x+8,y+14,small);draw(n.to,x+15,y+15,0.58);draw(n.body,x+31,y,1);return end
-  if k=="derivative" then
-    local ow,oh=dims(n.ord);love.graphics.setLineWidth(1.8)
-    text("d",x+9,y+1,medium);draw(n.ord,x+20,y-2,0.52)
-    love.graphics.line(x+3,y+19,x+37,y+19)
-    text("d",x+6,y+23,font);draw(n.var,x+15,y+24,0.72);draw(n.ord,x+25,y+20,0.52)
-    draw(n.body,x+45,y+9,1);return
-  end
-  if k=="integral" then
-    local bw,bh=dims(n.body);love.graphics.setLineWidth(2.0);integralSymbol(x+12,y+2,math.max(37,bh+15))
-    if n.hi then draw(n.hi,x+19,y-1,0.52) end
-    if n.lo then draw(n.lo,x+1,y+31,0.52) end
-    draw(n.body,x+29,y+10,1);text("d",x+32+bw,y+10,font);draw(n.var,x+41+bw,y+11,0.72);return
-  end
-  if k=="bigop" then
-    love.graphics.setLineWidth(2.0)
-    if n.symbol=="∑" then sigma(x+9,y+9,25,28) else productSymbol(x+9,y+9,25,28) end
-    draw(n.hi,x+16,y-2,0.52);draw(n.var,x,y+38,0.52);text("=",x+8,y+37,small);draw(n.lo,x+14,y+38,0.52)
-    draw(n.body,x+40,y+14,1);return
-  end
-  if k=="system" then
-    local h=math.max(35,#(n.args or {})*20);love.graphics.setLineWidth(2.0);brace(x+7,y,h)
-    local yy=y+2;for _,a in ipairs(n.args or {}) do draw(a,x+20,yy,1);yy=yy+20 end;return
-  end
-  if k=="piecewise" then
-    local a=n.args or {};local rows=math.max(1,math.ceil(#a/2));local h=math.max(40,rows*22)
-    love.graphics.setLineWidth(2.0);brace(x+7,y,h)
-    local yy=y+3;local i=1
-    while i<=#a do draw(a[i],x+20,yy,1);if a[i+1] then text(",",x+68,yy,font);draw(a[i+1],x+77,yy,1) end;yy=yy+22;i=i+2 end;return
-  end
-  if k=="matrix" then
-    local rows=n.rows or {};local cols=0;for _,r in ipairs(rows) do cols=math.max(cols,#r) end
-    local h=#rows*20+5;love.graphics.setLineWidth(1.7);leftBracket(x+4,y,h);local right=x+cols*30+14;rightBracket(right,y,h)
-    for ri,r in ipairs(rows) do for ci,c in ipairs(r) do draw(c,x+10+(ci-1)*30,y+4+(ri-1)*20,1) end end;return
-  end
+  if k=="derivative" then local ow,oh=dims(n.ord);text("d",x+8,y,big);draw(n.ord,x+21,y,0.55);love.graphics.line(x+2,y+20,x+36,y+20);text("d",x+5,y+23,font);draw(n.var,x+14,y+23,0.8);draw(n.ord,x+26,y+21,0.55);draw(n.body,x+43,y+8,1);return end
+  if k=="integral" then text("∫",x+5,y,big);if n.hi then draw(n.hi,x+21,y,0.55) end;if n.lo then draw(n.lo,x+2,y+29,0.55) end;draw(n.body,x+24,y+10,1);local bw=dims(n.body);text("d",x+27+bw,y+10,font);draw(n.var,x+35+bw,y+10,0.8);return end
+  if k=="bigop" then text(n.symbol,x+5,y+7,big);draw(n.hi,x+11,y,0.55);draw(n.var,x,y+33,0.55);text("=",x+9,y+33,small);draw(n.lo,x+15,y+33,0.55);draw(n.body,x+32,y+13,1);return end
+  if k=="system" then text("{",x,y,big);local yy=y;for _,a in ipairs(n.args or {}) do draw(a,x+16,yy,1);yy=yy+19 end;return end
+  if k=="piecewise" then text("{",x,y,big);local yy=y;local a=n.args or {};local i=1;while i<=#a do draw(a[i],x+16,yy,1);if a[i+1] then text(",",x+65,yy,font);draw(a[i+1],x+73,yy,1) end;yy=yy+20;i=i+2 end;return end
+  if k=="matrix" then local rows=n.rows or {};local cols=0;for _,r in ipairs(rows) do cols=math.max(cols,#r) end;local h=#rows*20+4;love.graphics.line(x+4,y,x,y,x,y+h,x+4,y+h);local right=x+cols*30+12;love.graphics.line(right-4,y,right,y,right,y+h,right-4,y+h);for ri,r in ipairs(rows) do for ci,c in ipairs(r) do draw(c,x+8+(ci-1)*30,y+4+(ri-1)*20,1) end end;return end
 end
 
 function love.load() love.graphics.setBackgroundColor(1,1,1,1) end
