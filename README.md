@@ -12,6 +12,11 @@ https://acewalt.github.io/tns-tool-wasm/
 
 [Watch the demo on YouTube](https://youtu.be/ahgmAFpDRj8)
 
+If you found this helpful and would like to support its development, you can buy me a coffee. Thank you so much for your support!
+https://paypal.me/waltDx
+Si esto te resulto util y quieres apoyar su desarrollo, puedes invitarme un cafe. Muchas gracias por tu apoyo!
+
+
 ## What It Can Do
 
 - Decode normal `.tns` files into editable XML folders.
