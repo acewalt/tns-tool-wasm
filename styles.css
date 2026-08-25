@@ -3392,3 +3392,78 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   }
 }
 
+
+
+/* TI-Nspire Notes / Graphs +Page previews */
+.note-page-modal,
+.graph-page-modal {
+  width: min(900px, calc(100vw - 28px));
+}
+
+.note-calculator-shell,
+.graph-calculator-shell {
+  width: 320px;
+  max-width: 100%;
+  margin: 18px auto 8px;
+  border: 1px solid #334155;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.note-calculator-shell .love-preview-calculator-bar,
+.graph-calculator-shell .love-preview-calculator-bar {
+  /* reuse Preview LÖVE calculator bar without changing its colors/style */
+  width: 100%;
+}
+
+#note-editor {
+  display: block;
+  width: 320px;
+  max-width: 100%;
+  height: 214px;
+  min-height: 214px;
+  margin: 0;
+  padding: 7px 6px;
+  border: 0;
+  border-radius: 0;
+  resize: none;
+  outline: none;
+  background: #ffffff;
+  color: #111111;
+  font: 14px Arial, sans-serif;
+}
+
+.graph-function-row {
+  display: grid;
+  grid-template-columns: 22px auto minmax(0, 1fr) 24px;
+  align-items: center;
+  min-height: 31px;
+  border-bottom: 1px solid #2b9fd9;
+  background: #f7f7f7;
+  color: #111;
+  font: 14px Arial, sans-serif;
+}
+
+.graph-check { text-align: center; color: #9ca3af; }
+.graph-function-name { white-space: nowrap; padding-right: 2px; font-style: italic; }
+.graph-list-icon { text-align: center; color: #0089c7; font-size: 20px; }
+#graph-formula-input {
+  min-width: 0;
+  width: 100%;
+  margin: 0;
+  padding: 3px 2px;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: #111;
+  font: 14px Arial, sans-serif;
+}
+#graph-native-canvas { display: block; width: 320px; max-width: 100%; height: auto; background: #fff; }
+
+@media (max-width: 420px) {
+  .note-page-modal,
+  .graph-page-modal { width: calc(100vw - 16px); padding: 12px; }
+  .note-calculator-shell,
+  .graph-calculator-shell { width: 320px; max-width: 100%; }
+}

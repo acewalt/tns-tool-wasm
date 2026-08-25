@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-spreadsheet-save-path-fix";
+const SOURCE_VERSION = "2026-08-24-notes-graphs-pages";
 
 const I18N = {
   es: {
@@ -49,6 +49,18 @@ const I18N = {
     spreadsheetSave: "Save",
     spreadsheetImportLoaded: "XLSX cargado en la previsualización.",
     spreadsheetPreviewOnly: "Save escribe las celdas directamente en el XML TI-Nspire. Las fórmulas simples conservan formula y data.",
+    addNotepadWidget: "Agregar notas",
+    notepadWidgetAdded: "Notas agregadas como nueva card.",
+    openNotepad: "Abrir notas",
+    notepadTitle: "Notas",
+    notepadSave: "Save",
+    addGraphWidget: "Agregar gráficos",
+    graphWidgetAdded: "Gráficos agregados como nueva card.",
+    openGraph: "Abrir gráfica",
+    graphTitle: "Gráficos",
+    graphFormula: "Función",
+    graphPreviewLove: "Preview LÖVE",
+    graphSave: "Save",
     viewImage: "Ver imagen",
     imageCalculatorView: "Vista calculadora",
     imageOriginalView: "Vista original",
@@ -292,6 +304,18 @@ const I18N = {
     spreadsheetSave: "Save",
     spreadsheetImportLoaded: "XLSX loaded in the preview.",
     spreadsheetPreviewOnly: "Save writes cells directly into the TI-Nspire XML. Simple formulas preserve formula and data.",
+    addNotepadWidget: "Add Notes",
+    notepadWidgetAdded: "Notes added as a new card.",
+    openNotepad: "Open notes",
+    notepadTitle: "Notes",
+    notepadSave: "Save",
+    addGraphWidget: "Add Graphs",
+    graphWidgetAdded: "Graphs added as a new card.",
+    openGraph: "Open graph",
+    graphTitle: "Graphs",
+    graphFormula: "Function",
+    graphPreviewLove: "Preview LÖVE",
+    graphSave: "Save",
     viewImage: "View image",
     imageCalculatorView: "Calculator view",
     imageOriginalView: "Original view",
@@ -535,6 +559,18 @@ const I18N = {
     spreadsheetSave: "Save",
     spreadsheetImportLoaded: "XLSX chargé dans l’aperçu.",
     spreadsheetPreviewOnly: "Save écrit les cellules directement dans le XML TI-Nspire. Les formules simples conservent formula et data.",
+    addNotepadWidget: "Ajouter notes",
+    notepadWidgetAdded: "Notes ajoutées comme nouvelle carte.",
+    openNotepad: "Ouvrir notes",
+    notepadTitle: "Notes",
+    notepadSave: "Save",
+    addGraphWidget: "Ajouter graphiques",
+    graphWidgetAdded: "Graphiques ajoutés comme nouvelle carte.",
+    openGraph: "Ouvrir graphique",
+    graphTitle: "Graphiques",
+    graphFormula: "Fonction",
+    graphPreviewLove: "Aperçu LÖVE",
+    graphSave: "Save",
     viewImage: "Voir image",
     imageCalculatorView: "Vue calculatrice",
     imageOriginalView: "Vue originale",
@@ -1731,7 +1767,7 @@ from xml_scanner import local_name, namespace_uri
 
 root_path = Path(wasm_xml_inspect_path)
 items = []
-summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "python_editors": 0, "python_files": 0, "resources": 0, "images": 0, "spreadsheets": 0, "basic_blocks": 0, "symbols": 0}
+summary = {"files": 0, "cards": 0, "widgets": 0, "lua_scripts": 0, "python_editors": 0, "python_files": 0, "resources": 0, "images": 0, "spreadsheets": 0, "notepads": 0, "graphs": 0, "basic_blocks": 0, "symbols": 0}
 python_files_seen = set()
 image_extensions = {".bmp", ".png", ".jpg", ".jpeg", ".gif"}
 
@@ -1841,6 +1877,47 @@ for xml_file in sorted(root_path.rglob("*.xml")):
                     "showingLnS": child_text(element, tb_ns, "showingLnS"),
                 })
                 content_label = "Spreadsheet"
+            elif widget_type == "TI.Notepad":
+                np_ns = "urn:TI.Notepad"
+                summary["notepads"] += 1
+                fmtxt = child_text(element, np_ns, "fmtxt")
+                note_text = ""
+                if fmtxt:
+                    try:
+                        fmt_root = ET.fromstring(fmtxt)
+                        lines = []
+                        for para in fmt_root.iter():
+                            if local_name(para.tag) != "node" or para.attrib.get("name") != "1para":
+                                continue
+                            chunks = []
+                            for leaf in para.iter():
+                                if local_name(leaf.tag) == "leaf" and leaf.attrib.get("name") == "1word":
+                                    chunks.append("".join(leaf.itertext()))
+                            lines.append("".join(chunks))
+                        note_text = "\n".join(lines) if lines else "".join(fmt_root.itertext())
+                    except Exception:
+                        note_text = fmtxt
+                content = note_text
+                content_label = "Notepad"
+                detail.update({"length": len(note_text)})
+            elif widget_type == "TI.GeoGrapher":
+                gg_ns = "urn:TI.GeoGrapher"
+                summary["graphs"] += 1
+                graph_expr = ""
+                graph_name = "f1"
+                for candidate in element.iter():
+                    if namespace_uri(candidate.tag) != gg_ns:
+                        continue
+                    if local_name(candidate.tag) == "expression":
+                        for child in candidate:
+                            if local_name(child.tag) == "expr" and not graph_expr:
+                                graph_expr = (child.text or "").strip()
+                            elif local_name(child.tag) == "lbl" and (child.text or "").strip():
+                                graph_name = (child.text or "").strip()
+                        break
+                content = graph_expr
+                content_label = "Graph"
+                detail.update({"function": graph_name, "expression": graph_expr})
             elif widget_type == "TI.Scratchpad":
                 sp_ns = "urn:TI.Scratchpad"
                 rows = []
@@ -8644,6 +8721,492 @@ json.dumps({
   return result;
 }
 
+
+const TI_NOTEPAD_CARD_TEMPLATE_B64 = "PG5zMDpjYXJkIHhtbG5zOm5zMD0idXJuOlRJLlByb2JsZW0iIHhtbG5zOm5zMT0idXJuOlRJLk5vdGVwYWQiIGNsYXk9IjAiIGgxPSIxMDAwMCIgaDI9IjEwMDAwIiB3MT0iMTAwMDAiIHcyPSIxMDAwMCI+PG5zMDppc0R1bW15Q2FyZD4wPC9uczA6aXNEdW1teUNhcmQ+PG5zMDpmbGFnPjA8L25zMDpmbGFnPjxuczA6d2RndCB0eXBlPSJUSS5Ob3RlcGFkIiB2ZXI9IjIuMCI+PG5zMTptRmxhZ3M+MTAyNDwvbnMxOm1GbGFncz48bnMxOnZhbHVlPjM8L25zMTp2YWx1ZT48bnMxOmZtdHh0PiZsdDtyMmR0b3RyZWUgdmVyc2lvbj0iMSImZ3Q7Jmx0O2Zvcm1hdE1hbmFnZXIgdGFibGVTaXplPSIxIiBjYXBhY2l0eT0iMTAiJmd0OyZsdDtmb3JtYXRFbnRyeSBlbnRyeUluZGV4PSIwIiBlbnRyeUlEPSIwIiBlbnRyeVJlZkNudD0iNiIgdGM9IjEiIGZjPSIyNjg0MzUxOTkiIGZzPSIxMSIgZnN0PSIwIiBjYz0iMCIgZmVzdD0iMCIgZmV1bj0iMCIgZmVzdWI9IjAiIGZlc3VwPSIwIiBmbjA9IlRJLU5zcGlyZSBTYW5zIiZndDsmbHQ7L2Zvcm1hdEVudHJ5Jmd0OyZsdDsvZm9ybWF0TWFuYWdlciZndDsmbHQ7bm9kZSBuYW1lPSIxZG9jIiZndDsmbHQ7bm9kZSBuYW1lPSIxcGFyYSImZ3Q7Jmx0O25vZGUgbmFtZT0iMXJ0bGluZSImZ3Q7Jmx0O2xlYWYgbmFtZT0iMXdvcmQiIG5wPSIxIiBpZDA9IjAiIHBwMD0iNSImZ3Q7aG9sYSAmbHQ7L2xlYWYmZ3Q7Jmx0O2xlYWYgbmFtZT0iMXdvcmQiIG5wPSIxIiBpZDA9IjAiIHBwMD0iNSImZ3Q7ZXN0byAmbHQ7L2xlYWYmZ3Q7Jmx0O2xlYWYgbmFtZT0iMXdvcmQiIG5wPSIxIiBpZDA9IjAiIHBwMD0iMyImZ3Q7ZXMgJmx0Oy9sZWFmJmd0OyZsdDtsZWFmIG5hbWU9IjF3b3JkIiBucD0iMSIgaWQwPSIwIiBwcDA9IjQiJmd0O3VuYSAmbHQ7L2xlYWYmZ3Q7Jmx0O2xlYWYgbmFtZT0iMXdvcmQiIG5wPSIxIiBpZDA9IjAiIHBwMD0iNCImZ3Q7bm90YSZsdDtjdXJzb3IgaW5kZXg9IjAiLyZndDsmbHQ7L2xlYWYmZ3Q7Jmx0Oy9ub2RlJmd0OyZsdDsvbm9kZSZndDsmbHQ7L25vZGUmZ3Q7Jmx0Oy9yMmR0b3RyZWUmZ3Q7PC9uczE6Zm10eHQ+PC9uczA6d2RndD48L25zMDpjYXJkPg==";
+const TI_GRAPH_CARD_TEMPLATE_B64 = "PG5zMDpjYXJkIHhtbG5zOm5zMD0idXJuOlRJLlByb2JsZW0iIHhtbG5zOm5zMT0idXJuOlRJLkdlb0dyYXBoZXIiIGNsYXk9IjAiIGgxPSIxMDAwMCIgaDI9IjEwMDAwIiB3MT0iMTAwMDAiIHcyPSIxMDAwMCI+PG5zMDppc0R1bW15Q2FyZD4wPC9uczA6aXNEdW1teUNhcmQ+PG5zMDpmbGFnPjA8L25zMDpmbGFnPjxuczA6d2RndCB0eXBlPSJUSS5HZW9HcmFwaGVyIiB2ZXI9IjEuMCI+PG5zMTptRmxhZ3M+MzA3MjwvbnMxOm1GbGFncz48bnMxOnZhbHVlPjE8L25zMTp2YWx1ZT48bnMxOmNyeT4wPC9uczE6Y3J5PjxuczE6bGVnYWw+bm9uZTwvbnMxOmxlZ2FsPjxuczE6c2Noaz5mYWxzZTwvbnMxOnNjaGs+PG5zMTpndWlkPjAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwPC9uczE6Z3VpZD48bnMxOmFuaW1feD4xMDwvbnMxOmFuaW1feD48bnMxOmFuaW1feT4zNTwvbnMxOmFuaW1feT48bnMxOmZpZz48bnMxOnZlcj4xMDwvbnMxOnZlcj48bnMxOm9ianM+PG5zMTpheGVzX3N5c3RlbT48bnMxOmlkPjE8L25zMTppZD48bnMxOmF4ZXM+PC9uczE6YXhlcz48bnMxOnVtaW4+4oiSMTA8L25zMTp1bWluPjxuczE6dW1heD4xMDwvbnMxOnVtYXg+PG5zMTp2bWluPuKIkjYuNjY2NjY2NjY2NjY2NzwvbnMxOnZtaW4+PG5zMTp2bWF4PjYuNjY2NjY2NjY2NjY2NzwvbnMxOnZtYXg+PG5zMTpzcmZ4PjM0LjAxMjU3ODYxNjM1MjI8L25zMTpzcmZ4PjxuczE6c3JmeT4zOC42NDE1MDk0MzM5NjIzPC9uczE6c3JmeT48bnMxOnNyZnc+MzI8L25zMTpzcmZ3PjxuczE6c3JmaD4yMS4zMzMzMzMzMzMzMzMzPC9uczE6c3JmaD48bnMxOmZzbW8+MDwvbnMxOmZzbW8+PG5zMTp0aW11PjA8L25zMTp0aW11PjxuczE6dGltdj4wPC9uczE6dGltdj48bnMxOnRpdnU+4oiSMTwvbnMxOnRpdnU+PG5zMTp0aXZ2PuKIkjE8L25zMTp0aXZ2PjxuczE6YWNvbD4wPC9uczE6YWNvbD48bnMxOmFhc3Q+MDwvbnMxOmFhc3Q+PG5zMTphYXptPjQ8L25zMTphYXptPjxuczE6YXB0aD4xPC9uczE6YXB0aD48bnMxOmFzaG8+MTwvbnMxOmFzaG8+PG5zMTphbXRtPjE8L25zMTphbXRtPjxuczE6YXpscT4wPC9uczE6YXpscT48bnMxOmF0bGg+MDwvbnMxOmF0bGg+PG5zMTphYWxoPjA8L25zMTphYWxoPjxuczE6bGJsPjwvbnMxOmxibD48bnMxOnN0YXQ+MDwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOmF4ZXNfc3lzdGVtPjxuczE6YXhpcz48bnMxOmlkPjI8L25zMTppZD48bnMxOnBhcj4xIDwvbnMxOnBhcj48bnMxOnhheGlzPjwvbnMxOnhheGlzPjxuczE6c21ydD4yPC9uczE6c21ydD48bnMxOnNtMT7iiJIxNjwvbnMxOnNtMT48bnMxOnNtMj4xNjwvbnMxOnNtMj48bnMxOmFsY28+NjU1MzY8L25zMTphbGNvPjxuczE6YWNzdD4wPC9uczE6YWNzdD48bnMxOmFwc3Q+MDwvbnMxOmFwc3Q+PG5zMTphcHRoPjA8L25zMTphcHRoPjxuczE6YXNobz4xPC9uczE6YXNobz48bnMxOmFsZXM+MDwvbnMxOmFsZXM+PG5zMTpsYmw+eDwvbnMxOmxibD48bnMxOnN0YXQ+MTY8L25zMTpzdGF0PjxuczE6Z3BpZD4wPC9uczE6Z3BpZD48bnMxOnBpbj4wPC9uczE6cGluPjxuczE6bGhmPjwvbnMxOmxoZj48bnMxOmRsYz48L25zMTpkbGM+PG5zMTpkZmM+PC9uczE6ZGZjPjxuczE6ZGJjPjwvbnMxOmRiYz48L25zMTpheGlzPjxuczE6bGFiZWw+PG5zMTppZD4zPC9uczE6aWQ+PG5zMTpwYXI+MiA8L25zMTpwYXI+PG5zMTpsYmxfYT48bnMxOnQ+MC44NTwvbnMxOnQ+PG5zMTpkeD4wPC9uczE6ZHg+PG5zMTpkeT4wPC9uczE6ZHk+PC9uczE6bGJsX2E+PG5zMTpjaHJzPjEgMSAzIDAgMCAwIHgKPC9uczE6Y2hycz48bnMxOmRldGE+MDwvbnMxOmRldGE+PG5zMTphdHRhPjE8L25zMTphdHRhPjxuczE6eD42NS4yNDkzMzE3Nzg4MzM8L25zMTp4PjxuczE6eT41MS4wMTA4OTU1NDc0Njk3PC9uczE6eT48bnMxOnc+MC43MDQ0MDI1MTU3MjMzPC9uczE6dz48bnMxOmg+MS42MTAwNjI4OTMwODE4PC9uczE6aD48bnMxOmF0Y28+MTwvbnMxOmF0Y28+PG5zMTphZm9uPjE8L25zMTphZm9uPjxuczE6YXNobz4xPC9uczE6YXNobz48bnMxOmxkaXM+MDwvbnMxOmxkaXM+PG5zMTp0Z3RyPjA8L25zMTp0Z3RyPjxuczE6dGd0Yj4wPC9uczE6dGd0Yj48bnMxOnRnZnI+MDwvbnMxOnRnZnI+PG5zMTp0Z2ZiPjA8L25zMTp0Z2ZiPjxuczE6bGJsPjwvbnMxOmxibD48bnMxOnN0YXQ+MDwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOmxhYmVsPjxuczE6YXhpcz48bnMxOmlkPjQ8L25zMTppZD48bnMxOnBhcj4xIDwvbnMxOnBhcj48bnMxOnlheGlzPjwvbnMxOnlheGlzPjxuczE6c21ydD4yPC9uczE6c21ydD48bnMxOnNtMT7iiJIxMC42NjY2NjY2NjY2NjY3PC9uczE6c20xPjxuczE6c20yPjEwLjY2NjY2NjY2NjY2Njc8L25zMTpzbTI+PG5zMTphbGNvPjY1NTM2PC9uczE6YWxjbz48bnMxOmFjc3Q+MDwvbnMxOmFjc3Q+PG5zMTphcHN0PjA8L25zMTphcHN0PjxuczE6YXB0aD4wPC9uczE6YXB0aD48bnMxOmFzaG8+MTwvbnMxOmFzaG8+PG5zMTphbGVzPjA8L25zMTphbGVzPjxuczE6bGJsPnk8L25zMTpsYmw+PG5zMTpzdGF0PjE2PC9uczE6c3RhdD48bnMxOmdwaWQ+MDwvbnMxOmdwaWQ+PG5zMTpwaW4+MDwvbnMxOnBpbj48bnMxOmxoZj48L25zMTpsaGY+PG5zMTpkbGM+PC9uczE6ZGxjPjxuczE6ZGZjPjwvbnMxOmRmYz48bnMxOmRiYz48L25zMTpkYmM+PC9uczE6YXhpcz48bnMxOmxhYmVsPjxuczE6aWQ+NTwvbnMxOmlkPjxuczE6cGFyPjQgPC9uczE6cGFyPjxuczE6bGJsX2E+PG5zMTp0PjAuMTA1PC9uczE6dD48bnMxOmR4PjA8L25zMTpkeD48bnMxOmR5PjA8L25zMTpkeT48L25zMTpsYmxfYT48bnMxOmNocnM+MSAxIDMgMCAwIDAgeQo8L25zMTpjaHJzPjxuczE6ZGV0YT4wPC9uczE6ZGV0YT48bnMxOmF0dGE+MTwvbnMxOmF0dGE+PG5zMTp4PjUwLjU3NDg0NDIyNTg2ODM8L25zMTp4PjxuczE6eT42MC4wODM2MzczMzY1MDcyPC9uczE6eT48bnMxOnc+MC43MDQ0MDI1MTU3MjMzPC9uczE6dz48bnMxOmg+MS42MTAwNjI4OTMwODE4PC9uczE6aD48bnMxOmF0Y28+MTwvbnMxOmF0Y28+PG5zMTphZm9uPjE8L25zMTphZm9uPjxuczE6YXNobz4xPC9uczE6YXNobz48bnMxOmxkaXM+MDwvbnMxOmxkaXM+PG5zMTp0Z3RyPjA8L25zMTp0Z3RyPjxuczE6dGd0Yj4wPC9uczE6dGd0Yj48bnMxOnRnZnI+MDwvbnMxOnRnZnI+PG5zMTp0Z2ZiPjA8L25zMTp0Z2ZiPjxuczE6bGJsPjwvbnMxOmxibD48bnMxOnN0YXQ+MDwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOmxhYmVsPjxuczE6Z3JpZD48bnMxOmlkPjY8L25zMTppZD48bnMxOnBhcj4xIDwvbnMxOnBhcj48bnMxOmdyaWRfYXM+PC9uczE6Z3JpZF9hcz48bnMxOmFjb2w+MTUyNjM5NzY8L25zMTphY29sPjxuczE6YWdzdD4wPC9uczE6YWdzdD48bnMxOmFwdGg+MDwvbnMxOmFwdGg+PG5zMTphcHR4PjQ8L25zMTphcHR4PjxuczE6YXBzdD4wPC9uczE6YXBzdD48bnMxOmFzaG8+MDwvbnMxOmFzaG8+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4xNjwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOmdyaWQ+PG5zMTpudW1iZXI+PG5zMTppZD43PC9uczE6aWQ+PG5zMTpwYXI+MSA8L25zMTpwYXI+PG5zMTpheGlzdmFsPjxuczE6dHk+MDwvbnMxOnR5PjwvbnMxOmF4aXN2YWw+PG5zMTpudW0+MTA8L25zMTpudW0+PG5zMTpjcHI+MTwvbnMxOmNwcj48bnMxOmFuc3Q+MDwvbnMxOmFuc3Q+PG5zMTphcHJlPjI8L25zMTphcHJlPjxuczE6YWxvYz4wPC9uczE6YWxvYz48bnMxOmFzaG8+MTwvbnMxOmFzaG8+PG5zMTphY29sPjA8L25zMTphY29sPjxuczE6dGdlPjwvbnMxOnRnZT48bnMxOmFuZmM+MTwvbnMxOmFuZmM+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4xNjwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOm51bWJlcj48bnMxOnRleHQ+PG5zMTppZD44PC9uczE6aWQ+PG5zMTpwYXI+NyA8L25zMTpwYXI+PG5zMTp0ZXh0Xz48bnMxOmR4PjA8L25zMTpkeD48bnMxOmR5PjA8L25zMTpkeT48bnMxOnQ+MDwvbnMxOnQ+PC9uczE6dGV4dF8+PG5zMTpjaHJzPjEgMSAxIDAgMCAxIDEwCjwvbnMxOmNocnM+PG5zMTpkZXRhPjE8L25zMTpkZXRhPjxuczE6YXR0YT4xPC9uczE6YXR0YT48bnMxOng+NjQuODA1MDMxNDQ2NTQwOTwvbnMxOng+PG5zMTp5PjQ4Ljk1ODE3NjEwMDYyODk8L25zMTp5PjxuczE6dz4xLjIwNzU0NzE2OTgxMTM8L25zMTp3PjxuczE6aD4xLjYxMDA2Mjg5MzA4MTg8L25zMTpoPjxuczE6YXRjbz4xPC9uczE6YXRjbz48bnMxOmFmb24+MTwvbnMxOmFmb24+PG5zMTphc2hvPjE8L25zMTphc2hvPjxuczE6bGRpcz4wPC9uczE6bGRpcz48bnMxOnRndHI+MDwvbnMxOnRndHI+PG5zMTp0Z3RiPjA8L25zMTp0Z3RiPjxuczE6dGdmcj4wPC9uczE6dGdmcj48bnMxOnRnZmI+MDwvbnMxOnRnZmI+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4wPC9uczE6c3RhdD48bnMxOmdwaWQ+MDwvbnMxOmdwaWQ+PG5zMTpwaW4+MDwvbnMxOnBpbj48bnMxOmxoZj48L25zMTpsaGY+PG5zMTpkbGM+PC9uczE6ZGxjPjxuczE6ZGZjPjwvbnMxOmRmYz48bnMxOmRiYz48L25zMTpkYmM+PC9uczE6dGV4dD48bnMxOm51bWJlcj48bnMxOmlkPjk8L25zMTppZD48bnMxOnBhcj4xIDwvbnMxOnBhcj48bnMxOmF4aXN2YWw+PG5zMTp0eT4xPC9uczE6dHk+PC9uczE6YXhpc3ZhbD48bnMxOm51bT7iiJIxMDwvbnMxOm51bT48bnMxOmNwcj4xPC9uczE6Y3ByPjxuczE6YW5zdD4wPC9uczE6YW5zdD48bnMxOmFwcmU+MjwvbnMxOmFwcmU+PG5zMTphbG9jPjA8L25zMTphbG9jPjxuczE6YXNobz4xPC9uczE6YXNobz48bnMxOmFjb2w+MDwvbnMxOmFjb2w+PG5zMTp0Z2U+PC9uczE6dGdlPjxuczE6YW5mYz4xPC9uczE6YW5mYz48bnMxOmxibD48L25zMTpsYmw+PG5zMTpzdGF0PjE2PC9uczE6c3RhdD48bnMxOmdwaWQ+MDwvbnMxOmdwaWQ+PG5zMTpwaW4+MDwvbnMxOnBpbj48bnMxOmxoZj48L25zMTpsaGY+PG5zMTpkbGM+PC9uczE6ZGxjPjxuczE6ZGZjPjwvbnMxOmRmYz48bnMxOmRiYz48L25zMTpkYmM+PC9uczE6bnVtYmVyPjxuczE6dGV4dD48bnMxOmlkPjEwPC9uczE6aWQ+PG5zMTpwYXI+OSA8L25zMTpwYXI+PG5zMTp0ZXh0Xz48bnMxOmR4PjA8L25zMTpkeD48bnMxOmR5PjA8L25zMTpkeT48bnMxOnQ+MDwvbnMxOnQ+PC9uczE6dGV4dF8+PG5zMTpjaHJzPjEgMSAxIDAgMCAxIOKIkjEwCjwvbnMxOmNocnM+PG5zMTpkZXRhPjE8L25zMTpkZXRhPjxuczE6YXR0YT4xPC9uczE6YXR0YT48bnMxOng+MzQuMDEyNTc4NjE2MzUyMjwvbnMxOng+PG5zMTp5PjQ4Ljk1ODE3NjEwMDYyODk8L25zMTp5PjxuczE6dz4xLjcxMDY5MTgyMzg5OTQ8L25zMTp3PjxuczE6aD4xLjYxMDA2Mjg5MzA4MTg8L25zMTpoPjxuczE6YXRjbz4xPC9uczE6YXRjbz48bnMxOmFmb24+MTwvbnMxOmFmb24+PG5zMTphc2hvPjE8L25zMTphc2hvPjxuczE6bGRpcz4wPC9uczE6bGRpcz48bnMxOnRndHI+MDwvbnMxOnRndHI+PG5zMTp0Z3RiPjA8L25zMTp0Z3RiPjxuczE6dGdmcj4wPC9uczE6dGdmcj48bnMxOnRnZmI+MDwvbnMxOnRnZmI+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4wPC9uczE6c3RhdD48bnMxOmdwaWQ+MDwvbnMxOmdwaWQ+PG5zMTpwaW4+MDwvbnMxOnBpbj48bnMxOmxoZj48L25zMTpsaGY+PG5zMTpkbGM+PC9uczE6ZGxjPjxuczE6ZGZjPjwvbnMxOmRmYz48bnMxOmRiYz48L25zMTpkYmM+PC9uczE6dGV4dD48bnMxOm51bWJlcj48bnMxOmlkPjExPC9uczE6aWQ+PG5zMTpwYXI+MSA8L25zMTpwYXI+PG5zMTpheGlzdmFsPjxuczE6dHk+MjwvbnMxOnR5PjwvbnMxOmF4aXN2YWw+PG5zMTpudW0+Ni42NjY2NjY2NjY2NjY3PC9uczE6bnVtPjxuczE6Y3ByPjE8L25zMTpjcHI+PG5zMTphbnN0PjA8L25zMTphbnN0PjxuczE6YXByZT4yPC9uczE6YXByZT48bnMxOmFsb2M+MDwvbnMxOmFsb2M+PG5zMTphc2hvPjE8L25zMTphc2hvPjxuczE6YWNvbD4wPC9uczE6YWNvbD48bnMxOnRnZT48L25zMTp0Z2U+PG5zMTphbmZjPjE8L25zMTphbmZjPjxuczE6bGJsPjwvbnMxOmxibD48bnMxOnN0YXQ+MTY8L25zMTpzdGF0PjxuczE6Z3BpZD4wPC9uczE6Z3BpZD48bnMxOnBpbj4wPC9uczE6cGluPjxuczE6bGhmPjwvbnMxOmxoZj48bnMxOmRsYz48L25zMTpkbGM+PG5zMTpkZmM+PC9uczE6ZGZjPjxuczE6ZGJjPjwvbnMxOmRiYz48L25zMTpudW1iZXI+PG5zMTp0ZXh0PjxuczE6aWQ+MTI8L25zMTppZD48bnMxOnBhcj4xMSA8L25zMTpwYXI+PG5zMTp0ZXh0Xz48bnMxOmR4PjA8L25zMTpkeD48bnMxOmR5PjA8L25zMTpkeT48bnMxOnQ+MDwvbnMxOnQ+PC9uczE6dGV4dF8+PG5zMTpjaHJzPjEgMSAxIDAgMCAxIDYuNjcKPC9uczE6Y2hycz48bnMxOmRldGE+MTwvbnMxOmRldGE+PG5zMTphdHRhPjE8L25zMTphdHRhPjxuczE6eD40Ny40OTkzNzEwNjkxODI0PC9uczE6eD48bnMxOnk+NTkuOTc0ODQyNzY3Mjk1NjwvbnMxOnk+PG5zMTp3PjIuMTEzMjA3NTQ3MTY5ODwvbnMxOnc+PG5zMTpoPjEuNjEwMDYyODkzMDgxODwvbnMxOmg+PG5zMTphdGNvPjE8L25zMTphdGNvPjxuczE6YWZvbj4xPC9uczE6YWZvbj48bnMxOmFzaG8+MTwvbnMxOmFzaG8+PG5zMTpsZGlzPjA8L25zMTpsZGlzPjxuczE6dGd0cj4wPC9uczE6dGd0cj48bnMxOnRndGI+MDwvbnMxOnRndGI+PG5zMTp0Z2ZyPjA8L25zMTp0Z2ZyPjxuczE6dGdmYj4wPC9uczE6dGdmYj48bnMxOmxibD48L25zMTpsYmw+PG5zMTpzdGF0PjA8L25zMTpzdGF0PjxuczE6Z3BpZD4wPC9uczE6Z3BpZD48bnMxOnBpbj4wPC9uczE6cGluPjxuczE6bGhmPjwvbnMxOmxoZj48bnMxOmRsYz48L25zMTpkbGM+PG5zMTpkZmM+PC9uczE6ZGZjPjxuczE6ZGJjPjwvbnMxOmRiYz48L25zMTp0ZXh0PjxuczE6bnVtYmVyPjxuczE6aWQ+MTM8L25zMTppZD48bnMxOnBhcj4xIDwvbnMxOnBhcj48bnMxOmF4aXN2YWw+PG5zMTp0eT4zPC9uczE6dHk+PC9uczE6YXhpc3ZhbD48bnMxOm51bT7iiJI2LjY2NjY2NjY2NjY2Njc8L25zMTpudW0+PG5zMTpjcHI+MTwvbnMxOmNwcj48bnMxOmFuc3Q+MDwvbnMxOmFuc3Q+PG5zMTphcHJlPjI8L25zMTphcHJlPjxuczE6YWxvYz4wPC9uczE6YWxvYz48bnMxOmFzaG8+MTwvbnMxOmFzaG8+PG5zMTphY29sPjA8L25zMTphY29sPjxuczE6dGdlPjwvbnMxOnRnZT48bnMxOmFuZmM+MTwvbnMxOmFuZmM+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4xNjwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOm51bWJlcj48bnMxOnRleHQ+PG5zMTppZD4xNDwvbnMxOmlkPjxuczE6cGFyPjEzIDwvbnMxOnBhcj48bnMxOnRleHRfPjxuczE6ZHg+MDwvbnMxOmR4PjxuczE6ZHk+MDwvbnMxOmR5PjxuczE6dD4wPC9uczE6dD48L25zMTp0ZXh0Xz48bnMxOmNocnM+MSAxIDEgMCAwIDEg4oiSNi42Nwo8L25zMTpjaHJzPjxuczE6ZGV0YT4xPC9uczE6ZGV0YT48bnMxOmF0dGE+MTwvbnMxOmF0dGE+PG5zMTp4PjQ2Ljk5NjIyNjQxNTA5NDM8L25zMTp4PjxuczE6eT40MC4yNTE1NzIzMjcwNDQ8L25zMTp5PjxuczE6dz4yLjYxNjM1MjIwMTI1Nzk8L25zMTp3PjxuczE6aD4xLjYxMDA2Mjg5MzA4MTg8L25zMTpoPjxuczE6YXRjbz4xPC9uczE6YXRjbz48bnMxOmFmb24+MTwvbnMxOmFmb24+PG5zMTphc2hvPjE8L25zMTphc2hvPjxuczE6bGRpcz4wPC9uczE6bGRpcz48bnMxOnRndHI+MDwvbnMxOnRndHI+PG5zMTp0Z3RiPjA8L25zMTp0Z3RiPjxuczE6dGdmcj4wPC9uczE6dGdmcj48bnMxOnRnZmI+MDwvbnMxOnRnZmI+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4wPC9uczE6c3RhdD48bnMxOmdwaWQ+MDwvbnMxOmdwaWQ+PG5zMTpwaW4+MDwvbnMxOnBpbj48bnMxOmxoZj48L25zMTpsaGY+PG5zMTpkbGM+PC9uczE6ZGxjPjxuczE6ZGZjPjwvbnMxOmRmYz48bnMxOmRiYz48L25zMTpkYmM+PC9uczE6dGV4dD48bnMxOm51bWJlcj48bnMxOmlkPjE1PC9uczE6aWQ+PG5zMTpwYXI+MSA8L25zMTpwYXI+PG5zMTpheGlzdGljPjxuczE6dHk+MDwvbnMxOnR5PjxuczE6ZWg+PC9uczE6ZWg+PC9uczE6YXhpc3RpYz48bnMxOm51bT4xPC9uczE6bnVtPjxuczE6Y3ByPjE8L25zMTpjcHI+PG5zMTphbnN0PjA8L25zMTphbnN0PjxuczE6YXByZT4yPC9uczE6YXByZT48bnMxOmFsb2M+MDwvbnMxOmFsb2M+PG5zMTphc2hvPjE8L25zMTphc2hvPjxuczE6YWNvbD4wPC9uczE6YWNvbD48bnMxOnRnZT48L25zMTp0Z2U+PG5zMTphbmZjPjE8L25zMTphbmZjPjxuczE6bGJsPjwvbnMxOmxibD48bnMxOnN0YXQ+MTY8L25zMTpzdGF0PjxuczE6Z3BpZD4wPC9uczE6Z3BpZD48bnMxOnBpbj4wPC9uczE6cGluPjxuczE6bGhmPjwvbnMxOmxoZj48bnMxOmRsYz48L25zMTpkbGM+PG5zMTpkZmM+PC9uczE6ZGZjPjxuczE6ZGJjPjwvbnMxOmRiYz48L25zMTpudW1iZXI+PG5zMTp0ZXh0PjxuczE6aWQ+MTY8L25zMTppZD48bnMxOnBhcj4xNSA8L25zMTpwYXI+PG5zMTp0ZXh0Xz48bnMxOmR4PjA8L25zMTpkeD48bnMxOmR5PjA8L25zMTpkeT48bnMxOnQ+MDwvbnMxOnQ+PC9uczE6dGV4dF8+PG5zMTpjaHJzPjEgMSAxIDAgMCAxIDEKPC9uczE6Y2hycz48bnMxOmRldGE+MTwvbnMxOmRldGE+PG5zMTphdHRhPjE8L25zMTphdHRhPjxuczE6eD41MS4zNjEwMDYyODkzMDgyPC9uczE6eD48bnMxOnk+NDkuMDU4MTc2MTAwNjI4OTwvbnMxOnk+PG5zMTp3PjAuNzA0NDAyNTE1NzIzMzwvbnMxOnc+PG5zMTpoPjEuNjEwMDYyODkzMDgxODwvbnMxOmg+PG5zMTphdGNvPjE8L25zMTphdGNvPjxuczE6YWZvbj4xPC9uczE6YWZvbj48bnMxOmFzaG8+MTwvbnMxOmFzaG8+PG5zMTpsZGlzPjA8L25zMTpsZGlzPjxuczE6dGd0cj4wPC9uczE6dGd0cj48bnMxOnRndGI+MDwvbnMxOnRndGI+PG5zMTp0Z2ZyPjA8L25zMTp0Z2ZyPjxuczE6dGdmYj4wPC9uczE6dGdmYj48bnMxOmxibD48L25zMTpsYmw+PG5zMTpzdGF0PjA8L25zMTpzdGF0PjxuczE6Z3BpZD4wPC9uczE6Z3BpZD48bnMxOnBpbj4wPC9uczE6cGluPjxuczE6bGhmPjwvbnMxOmxoZj48bnMxOmRsYz48L25zMTpkbGM+PG5zMTpkZmM+PC9uczE6ZGZjPjxuczE6ZGJjPjwvbnMxOmRiYz48L25zMTp0ZXh0PjxuczE6bnVtYmVyPjxuczE6aWQ+MTc8L25zMTppZD48bnMxOnBhcj4xIDwvbnMxOnBhcj48bnMxOmF4aXN0aWM+PG5zMTp0eT4xPC9uczE6dHk+PG5zMTplaD48L25zMTplaD48L25zMTpheGlzdGljPjxuczE6bnVtPjE8L25zMTpudW0+PG5zMTpjcHI+MTwvbnMxOmNwcj48bnMxOmFuc3Q+MDwvbnMxOmFuc3Q+PG5zMTphcHJlPjI8L25zMTphcHJlPjxuczE6YWxvYz4wPC9uczE6YWxvYz48bnMxOmFzaG8+MTwvbnMxOmFzaG8+PG5zMTphY29sPjA8L25zMTphY29sPjxuczE6dGdlPjwvbnMxOnRnZT48bnMxOmFuZmM+MTwvbnMxOmFuZmM+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4xNjwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOm51bWJlcj48bnMxOnRleHQ+PG5zMTppZD4xODwvbnMxOmlkPjxuczE6cGFyPjE3IDwvbnMxOnBhcj48bnMxOnRleHRfPjxuczE6ZHg+MDwvbnMxOmR4PjxuczE6ZHk+MDwvbnMxOmR5PjxuczE6dD4wPC9uczE6dD48L25zMTp0ZXh0Xz48bnMxOmNocnM+MSAxIDEgMCAwIDEgMQo8L25zMTpjaHJzPjxuczE6ZGV0YT4xPC9uczE6ZGV0YT48bnMxOmF0dGE+MTwvbnMxOmF0dGE+PG5zMTp4PjQ5LjAwOTQzMzk2MjI2NDI8L25zMTp4PjxuczE6eT41MS4zOTExOTQ5Njg1NTM1PC9uczE6eT48bnMxOnc+MC43MDQ0MDI1MTU3MjMzPC9uczE6dz48bnMxOmg+MS42MTAwNjI4OTMwODE4PC9uczE6aD48bnMxOmF0Y28+MTwvbnMxOmF0Y28+PG5zMTphZm9uPjE8L25zMTphZm9uPjxuczE6YXNobz4xPC9uczE6YXNobz48bnMxOmxkaXM+MDwvbnMxOmxkaXM+PG5zMTp0Z3RyPjA8L25zMTp0Z3RyPjxuczE6dGd0Yj4wPC9uczE6dGd0Yj48bnMxOnRnZnI+MDwvbnMxOnRnZnI+PG5zMTp0Z2ZiPjA8L25zMTp0Z2ZiPjxuczE6bGJsPjwvbnMxOmxibD48bnMxOnN0YXQ+MDwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOnRleHQ+PG5zMTpheGVzXzNkPjxuczE6aWQ+MTk8L25zMTppZD48bnMxOmF4ZXMzZD48L25zMTpheGVzM2Q+PG5zMTp4bWluPuKIkjU8L25zMTp4bWluPjxuczE6eG1heD41PC9uczE6eG1heD48bnMxOnltaW4+4oiSNTwvbnMxOnltaW4+PG5zMTp5bWF4PjU8L25zMTp5bWF4PjxuczE6em1pbj7iiJI1PC9uczE6em1pbj48bnMxOnptYXg+NTwvbnMxOnptYXg+PG5zMTp4c2NhPjE8L25zMTp4c2NhPjxuczE6eXNjYT4xPC9uczE6eXNjYT48bnMxOnpzY2E+MTwvbnMxOnpzY2E+PG5zMTp4dG1vPjA8L25zMTp4dG1vPjxuczE6eXRtbz4wPC9uczE6eXRtbz48bnMxOnp0bW8+MDwvbnMxOnp0bW8+PG5zMTphbGNvPjY1NTM2PC9uczE6YWxjbz48bnMxOmFmY28+MTY3NzY5NTk8L25zMTphZmNvPjxuczE6YXNobz4xPC9uczE6YXNobz48bnMxOmFzYng+MTwvbnMxOmFzYng+PG5zMTphc2xnPjE8L25zMTphc2xnPjxuczE6YWFoZD4wPC9uczE6YWFoZD48bnMxOmFyc3Q+MDwvbnMxOmFyc3Q+PG5zMTphYWxoPjA8L25zMTphYWxoPjxuczE6YXRsaD4wPC9uczE6YXRsaD48bnMxOnByc3A+MTwvbnMxOnByc3A+PG5zMTp4bW5zPjE8L25zMTp4bW5zPjxuczE6eG14cz4xPC9uczE6eG14cz48bnMxOnltbnM+MTwvbnMxOnltbnM+PG5zMTp5bXhzPjE8L25zMTp5bXhzPjxuczE6em1ucz4xPC9uczE6em1ucz48bnMxOnpteHM+MTwvbnMxOnpteHM+PG5zMTp4dGNzPjE8L25zMTp4dGNzPjxuczE6eXRjcz4xPC9uczE6eXRjcz48bnMxOnp0Y3M+MTwvbnMxOnp0Y3M+PG5zMTp4YWxzPjE8L25zMTp4YWxzPjxuczE6eWFscz4xPC9uczE6eWFscz48bnMxOnphbHM+MTwvbnMxOnphbHM+PG5zMTp4YmxzPjE8L25zMTp4YmxzPjxuczE6eWJscz4xPC9uczE6eWJscz48bnMxOnpibHM+MTwvbnMxOnpibHM+PG5zMTp4bGxzPjE8L25zMTp4bGxzPjxuczE6eWxscz4xPC9uczE6eWxscz48bnMxOnpsbHM+MTwvbnMxOnpsbHM+PG5zMTp4YXNwPjE8L25zMTp4YXNwPjxuczE6eWFzcD4xPC9uczE6eWFzcD48bnMxOnphc3A+MTwvbnMxOnphc3A+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4wPC9uczE6c3RhdD48bnMxOmdwaWQ+MDwvbnMxOmdwaWQ+PG5zMTpwaW4+MDwvbnMxOnBpbj48bnMxOmxoZj48L25zMTpsaGY+PG5zMTpkbGM+PC9uczE6ZGxjPjxuczE6ZGZjPjwvbnMxOmRmYz48bnMxOmRiYz48L25zMTpkYmM+PC9uczE6YXhlc18zZD48bnMxOmNhbWVyYTNkPjxuczE6aWQ+MjA8L25zMTppZD48bnMxOmNhbWVyYTNkX2U+PG5zMTpjaWR4PjQ8L25zMTpjaWR4PjwvbnMxOmNhbWVyYTNkX2U+PG5zMTpoYW5nPjAuNjEwOTwvbnMxOmhhbmc+PG5zMTp2YW5nPjIuNzkyNTwvbnMxOnZhbmc+PG5zMTpkaXN0PjEuOTwvbnMxOmRpc3Q+PG5zMTpsbnN4PjEuMDI0MTwvbnMxOmxuc3g+PG5zMTpsbnN5PjAuNjQ5ODwvbnMxOmxuc3k+PG5zMTpsbnN6PjEuNDYyNTwvbnMxOmxuc3o+PG5zMTpsb2t4PuKIkjEuMDI0MTwvbnMxOmxva3g+PG5zMTpsb2t5PuKIkjAuNjQ5ODwvbnMxOmxva3k+PG5zMTpsb2t6PuKIkjEuNDYyNTwvbnMxOmxva3o+PG5zMTp1cHg+MDwvbnMxOnVweD48bnMxOnVweT7iiJIxPC9uczE6dXB5PjxuczE6dXB6PjA8L25zMTp1cHo+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4xNjwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOmNhbWVyYTNkPjxuczE6enRyYWNlM2Q+PG5zMTppZD4yMTwvbnMxOmlkPjxuczE6enRyYWNlM2RfZT48L25zMTp6dHJhY2UzZF9lPjxuczE6enBvcz4wPC9uczE6enBvcz48bnMxOmFsY28+NjU1MzY8L25zMTphbGNvPjxuczE6YWZjbz4yMDAzNDU1PC9uczE6YWZjbz48bnMxOmFiY28+MjAwMzQ1NTwvbnMxOmFiY28+PG5zMTphZGNwPjIwPC9uczE6YWRjcD48bnMxOmF0bnM+MjA8L25zMTphdG5zPjxuczE6YXNoZD4wPC9uczE6YXNoZD48bnMxOmFkZnQ+MTwvbnMxOmFkZnQ+PG5zMTphcmV4PjIxPC9uczE6YXJleD48bnMxOmFyZXk+MjE8L25zMTphcmV5PjxuczE6YXNobz4wPC9uczE6YXNobz48bnMxOmxibD48L25zMTpsYmw+PG5zMTpzdGF0PjE2PC9uczE6c3RhdD48bnMxOmdwaWQ+MDwvbnMxOmdwaWQ+PG5zMTpwaW4+MDwvbnMxOnBpbj48bnMxOmxoZj48L25zMTpsaGY+PG5zMTpkbGM+PC9uczE6ZGxjPjxuczE6ZGZjPjwvbnMxOmRmYz48bnMxOmRiYz48L25zMTpkYmM+PC9uczE6enRyYWNlM2Q+PG5zMTpleHByZXNzaW9uPjxuczE6aWQ+MjI8L25zMTppZD48bnMxOnJfZXhwcj48L25zMTpyX2V4cHI+PG5zMTpleHByPjMqY29zKDIqeCsoKM+AKS8oMikpKSsxPC9uczE6ZXhwcj48bnMxOnBybXM+eDwvbnMxOnBybXM+PG5zMTp4dHBlPjE8L25zMTp4dHBlPjxuczE6YWNvbD42NTc5MTwvbnMxOmFjb2w+PG5zMTpyZWx2PjMqY29zKDIqeCsoKM+AKS8oMikpKSsxPC9uczE6cmVsdj48bnMxOmxibD5mMTwvbnMxOmxibD48bnMxOnN0YXQ+ODIwODwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOmV4cHJlc3Npb24+PG5zMTpncmFwaD48bnMxOmlkPjIzPC9uczE6aWQ+PG5zMTpwYXI+MSAyMiA8L25zMTpwYXI+PG5zMTpncmFwaF9lPjxuczE6c3RlcD4wLjc2OTIzMDc2OTIzMDg8L25zMTpzdGVwPjxuczE6bm1wdD4yNTwvbnMxOm5tcHQ+PC9uczE6Z3JhcGhfZT48bnMxOmV4cHI+Mypjb3MoMip4Kygoz4ApLygyKSkpKzE8L25zMTpleHByPjxuczE6cHJlZj5mMSh4KTwvbnMxOnByZWY+PG5zMTp0eXBlPjA8L25zMTp0eXBlPjxuczE6YWxjbz42NTc5MTwvbnMxOmFsY28+PG5zMTphZmNvPjA8L25zMTphZmNvPjxuczE6YXBzdD4wPC9uczE6YXBzdD48bnMxOmFwdGg+MDwvbnMxOmFwdGg+PG5zMTphc2hvPjE8L25zMTphc2hvPjxuczE6YWxhcz4yPC9uczE6YWxhcz48bnMxOmFkc2M+MDwvbnMxOmFkc2M+PG5zMTphbHBzPjA8L25zMTphbHBzPjxuczE6bGJsPjwvbnMxOmxibD48bnMxOnN0YXQ+MDwvbnMxOnN0YXQ+PG5zMTpncGlkPjA8L25zMTpncGlkPjxuczE6cGluPjA8L25zMTpwaW4+PG5zMTpsaGY+PC9uczE6bGhmPjxuczE6ZGxjPjwvbnMxOmRsYz48bnMxOmRmYz48L25zMTpkZmM+PG5zMTpkYmM+PC9uczE6ZGJjPjwvbnMxOmdyYXBoPjxuczE6bGFiZWw+PG5zMTppZD4yNDwvbnMxOmlkPjxuczE6cGFyPjIzIDwvbnMxOnBhcj48bnMxOmxibF9nPjxuczE6dD7iiJIxMDwvbnMxOnQ+PG5zMTpkeD4wPC9uczE6ZHg+PG5zMTpkeT7iiJIwLjU8L25zMTpkeT48bnMxOnBzZXQ+MDwvbnMxOnBzZXQ+PG5zMTplcW5tPjA8L25zMTplcW5tPjwvbnMxOmxibF9nPjxuczE6Y2hycz4xIDEgMyAwIDAgMCBmMSh4KT0zKmNvcygyKngrz4AvMikrMQo8L25zMTpjaHJzPjxuczE6ZGV0YT4xPC9uczE6ZGV0YT48bnMxOmF0dGE+MTwvbnMxOmF0dGE+PG5zMTp4PjM0LjAxMjU3ODYxNjM1MjI8L25zMTp4PjxuczE6eT41NC43OTAzMTMzMDQxMjE3PC9uczE6eT48bnMxOnc+MTUuMTk0OTY4NTUzNDU5MTwvbnMxOnc+PG5zMTpoPjQuNzI5NTU5NzQ4NDI3NzwvbnMxOmg+PG5zMTphdGNvPjY1NzkxPC9uczE6YXRjbz48bnMxOmFmb24+MDwvbnMxOmFmb24+PG5zMTphc2hvPjE8L25zMTphc2hvPjxuczE6bGRpcz4wPC9uczE6bGRpcz48bnMxOnRndHI+MDwvbnMxOnRndHI+PG5zMTp0Z3RiPjA8L25zMTp0Z3RiPjxuczE6dGdmcj4wPC9uczE6dGdmcj48bnMxOnRnZmI+MDwvbnMxOnRnZmI+PG5zMTpsYmw+PC9uczE6bGJsPjxuczE6c3RhdD4wPC9uczE6c3RhdD48bnMxOmdwaWQ+MDwvbnMxOmdwaWQ+PG5zMTpwaW4+MDwvbnMxOnBpbj48bnMxOmxoZj48L25zMTpsaGY+PG5zMTpkbGM+PC9uczE6ZGxjPjxuczE6ZGZjPjwvbnMxOmRmYz48bnMxOmRiYz48L25zMTpkYmM+PC9uczE6bGFiZWw+PC9uczE6b2Jqcz48bnMxOnRvb2w+PG5zMTpUb29sRGlmZkVxR3JhcGhlcj48bnMxOnZpcz4wPC9uczE6dmlzPjwvbnMxOlRvb2xEaWZmRXFHcmFwaGVyPjxuczE6VG9vbDNER3JhcGhlcj48bnMxOnZpcz4wPC9uczE6dmlzPjxuczE6ZGhzPjwvbnMxOmRocz48bnMxOnBocz48L25zMTpwaHM+PG5zMTpzaHM+PC9uczE6c2hzPjwvbnMxOlRvb2wzREdyYXBoZXI+PG5zMTpUb29sQ29uaWM+PG5zMTp2aXM+MDwvbnMxOnZpcz48bnMxOmNocz48L25zMTpjaHM+PC9uczE6VG9vbENvbmljPjxuczE6VG9vbFNjYXR0ZXJQbG90R3JhcGhlcj48bnMxOnZpcz4wPC9uczE6dmlzPjxuczE6c2hzPjwvbnMxOnNocz48L25zMTpUb29sU2NhdHRlclBsb3RHcmFwaGVyPjxuczE6VG9vbEN1c3RvbUdyYXBoZXI+PG5zMTp2aXM+MDwvbnMxOnZpcz48bnMxOnBoaHM+PC9uczE6cGhocz48L25zMTpUb29sQ3VzdG9tR3JhcGhlcj48bnMxOlRvb2xTZXF1ZW5jZUdyYXBoZXI+PG5zMTp2aXM+MDwvbnMxOnZpcz48bnMxOnNxaHM+PC9uczE6c3Focz48L25zMTpUb29sU2VxdWVuY2VHcmFwaGVyPjxuczE6VG9vbEdyYXBoZXI+PG5zMTp2aXM+MTwvbnMxOnZpcz48bnMxOmRocz4qZjEqPC9uczE6ZGhzPjxuczE6cGhzPjwvbnMxOnBocz48bnMxOnBvaHM+PC9uczE6cG9ocz48bnMxOnNocz48L25zMTpzaHM+PC9uczE6VG9vbEdyYXBoZXI+PG5zMTpUb29sU2NhbGU+PG5zMTpsZW4+MjA8L25zMTpsZW4+PG5zMTp2aXM+MDwvbnMxOnZpcz48L25zMTpUb29sU2NhbGU+PG5zMTpUb29sR3JhcGhUcmFjZT48L25zMTpUb29sR3JhcGhUcmFjZT48bnMxOlRvb2xHcmFwaFRyYWNlQWxsPjwvbnMxOlRvb2xHcmFwaFRyYWNlQWxsPjwvbnMxOnRvb2w+PG5zMTphbmltPjA8L25zMTphbmltPjxuczE6dz4xMDA8L25zMTp3PjxuczE6aD4xMDA8L25zMTpoPjxuczE6dnB4PjM0LjAxMjU3ODYxNjM1MjI8L25zMTp2cHg+PG5zMTp2cHk+NTkuODc0MjEzODM2NDc4PC9uczE6dnB5PjxuczE6Z2Vvcz4xPC9uczE6Z2Vvcz48bnMxOmdlb3U+Y208L25zMTpnZW91PjxuczE6bW9kZT4xPC9uczE6bW9kZT48bnMxOnRyc3Q+4oiSMTwvbnMxOnRyc3Q+PG5zMTp0cm1kPjA8L25zMTp0cm1kPjxuczE6dHJwaT4wPC9uczE6dHJwaT48bnMxOnRyY20+MDwvbnMxOnRyY20+PG5zMTpia2dwPjA8L25zMTpia2dwPjxuczE6Z2NpZD4wPC9uczE6Z2NpZD48bnMxOnNjbGU+MTwvbnMxOnNjbGU+PG5zMTpyc2NsPjE8L25zMTpyc2NsPjxuczE6ZHBpaz4wPC9uczE6ZHBpaz48bnMxOnFtYXg+MDwvbnMxOnFtYXg+PG5zMTpwcmVrPjE8L25zMTpwcmVrPjxuczE6YXNwYT7iiJIxPC9uczE6YXNwYT48bnMxOmFzcHA+4oiSMTwvbnMxOmFzcHA+PG5zMTphc3BvPuKIkjE8L25zMTphc3BvPjxuczE6YWZzaD4xPC9uczE6YWZzaD48bnMxOmFjb2Q+MTwvbnMxOmFjb2Q+PC9uczE6ZmlnPjxuczE6d2RndCB0eXBlPSJDb250YWluZXIiPjwvbnMxOndkZ3Q+PG5zMTp3ZGd0IHR5cGU9Ik5ld0VkaXRpbmdMaW5lIj48L25zMTp3ZGd0PjxuczE6d2RndCB0eXBlPSJOZXdFZGl0aW5nTGluZSI+PC9uczE6d2RndD48bnMxOndkZ3QgdHlwZT0iTmV3RWRpdGluZ0xpbmUiPjwvbnMxOndkZ3Q+PG5zMTp3ZGd0IHR5cGU9Ik5ld0VkaXRpbmdMaW5lIj48L25zMTp3ZGd0PjxuczE6d2RndCB0eXBlPSJFZGl0aW5nTGluZSI+PC9uczE6d2RndD48bnMxOndkZ3QgdHlwZT0iRWRpdGluZ0xpbmUiPjwvbnMxOndkZ3Q+PG5zMTp3ZGd0IHR5cGU9IkVkaXRpbmdMaW5lIj48L25zMTp3ZGd0PjxuczE6d2RndCB0eXBlPSJFZGl0aW5nTGluZSI+PC9uczE6d2RndD48bnMxOndkZ3QgdHlwZT0iVGV4dEVkaXQiPjwvbnMxOndkZ3Q+PG5zMTp3ZGd0IHR5cGU9IkFtYmlndWl0eSI+PC9uczE6d2RndD48L25zMDp3ZGd0PjwvbnMwOmNhcmQ+";
+const TI_GRAPH_SYMBOL_TEMPLATE_B64 = "PG5zMDplIHhtbG5zOm5zMD0idXJuOlRJLlByb2JsZW0iIHQ9IjYiIGY9IjAiIGM9IjI1NSI+PG5zMDpuPmYxPC9uczA6bj48bnMwOnA+eDwvbnMwOnA+PG5zMDp2PjMqY29zKDIqeCvPgC8yKSsxPC9uczA6dj48L25zMDplPg==";
+
+function extractNotepadTextFromRawXml(rawXml = "") {
+  if (!rawXml) return "";
+  try {
+    const doc = new DOMParser().parseFromString(rawXml, "application/xml");
+    const fmtxt = doc.getElementsByTagNameNS("urn:TI.Notepad", "fmtxt")[0];
+    if (!fmtxt) return "";
+    const rich = new DOMParser().parseFromString(fmtxt.textContent || "", "application/xml");
+    if (rich.querySelector("parsererror")) return fmtxt.textContent || "";
+    const paragraphs = Array.from(rich.getElementsByTagName("node")).filter((node) => node.getAttribute("name") === "1para");
+    if (!paragraphs.length) return rich.documentElement?.textContent || "";
+    return paragraphs.map((para) => Array.from(para.getElementsByTagName("leaf"))
+      .filter((leaf) => leaf.getAttribute("name") === "1word")
+      .map((leaf) => leaf.textContent || "").join("")).join("\n");
+  } catch (_) {
+    return "";
+  }
+}
+
+function buildTiNotepadRichText(text = "") {
+  const escapeXml = (value) => String(value ?? "").replace(/[&<>\"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[char]));
+  const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
+  const paras = lines.map((line, index) => `<node name="1para"><node name="1rtline"><leaf name="1word" np="1" id0="0" pp0="${Math.max(0, line.length)}">${escapeXml(line)}${index === lines.length - 1 ? '<cursor index="0"/>' : ""}</leaf></node></node>`).join("");
+  return `<r2dtotree version="1"><formatManager tableSize="1" capacity="10"><formatEntry entryIndex="0" entryID="0" entryRefCnt="6" tc="1" fc="268435199" fs="11" fst="0" cc="0" fest="0" feun="0" fesub="0" fesup="0" fn0="TI-Nspire Sans"></formatEntry></formatManager><node name="1doc">${paras}</node></r2dtotree>`;
+}
+
+async function addNotepadWidgetToStage() {
+  await ensureXmlStageCopy();
+  const currentFile = xmlDoctor.current?.file || "";
+  pyodide.globals.set("wasm_note_current_file", currentFile);
+  pyodide.globals.set("wasm_note_card_b64", TI_NOTEPAD_CARD_TEMPLATE_B64);
+  const payload = await pyodide.runPythonAsync(`
+import base64
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+current_file = Path(wasm_note_current_file) if wasm_note_current_file else None
+xml_file = None
+if current_file:
+    try:
+        rel = current_file.relative_to(stage_root)
+    except ValueError:
+        try: rel = current_file.relative_to(source_root)
+        except ValueError: rel = Path(current_file.name)
+    candidate = stage_root / rel
+    if candidate.exists(): xml_file = candidate
+if xml_file is None:
+    problems = sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p: p.name.lower())
+    if problems: xml_file = problems[0]
+if xml_file is None: raise RuntimeError("No XML file available for Notes")
+
+tree = ET.parse(xml_file)
+root = tree.getroot()
+prob_ns = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+np_ns = "urn:TI.Notepad"
+ET.register_namespace("", prob_ns)
+ET.register_namespace("np", np_ns)
+card = ET.fromstring(base64.b64decode(wasm_note_card_b64).decode("utf-8"))
+for node in card.iter():
+    if local_name(node.tag) == "fmtxt":
+        node.text = '<r2dtotree version="1"><formatManager tableSize="1" capacity="10"><formatEntry entryIndex="0" entryID="0" entryRefCnt="1" tc="1" fc="268435199" fs="11" fst="0" cc="0" fest="0" feun="0" fesub="0" fesup="0" fn0="TI-Nspire Sans"></formatEntry></formatManager><node name="1doc"><node name="1para"><node name="1rtline"><leaf name="1word" np="1" id0="0" pp0="0"><cursor index="0"/></leaf></node></node></node></r2dtotree>'
+root.append(card)
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+card_index = len([x for x in root if local_name(x.tag) == "card"])
+wdgt = next((x for x in card if local_name(x.tag) == "wdgt"), None)
+json.dumps({
+    "type": "Widget", "name": "TI.Notepad", "file": str(xml_file),
+    "path": f"/prob/card[{card_index}]/wdgt", "detail": {"length": 0},
+    "content": "", "content_label": "Notepad",
+    "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False) if wdgt is not None else ""
+})
+`);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  const item = JSON.parse(payload);
+  xmlLog(t("notepadWidgetAdded"));
+  return item;
+}
+
+async function saveNotepadWidgetToStage(item, text) {
+  const currentFile = item?.file || "";
+  pyodide.globals.set("wasm_note_save_file", currentFile);
+  pyodide.globals.set("wasm_note_save_path", item?.path || "");
+  pyodide.globals.set("wasm_note_save_rich", buildTiNotepadRichText(text));
+  const payload = await pyodide.runPythonAsync(`
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+source_file = Path(wasm_note_save_file) if wasm_note_save_file else None
+xml_file = None
+if source_file:
+    try: rel = source_file.relative_to(stage_root)
+    except ValueError:
+        try: rel = source_file.relative_to(source_root)
+        except ValueError: rel = Path(source_file.name)
+    candidate = stage_root / rel
+    if candidate.exists(): xml_file = candidate
+if xml_file is None:
+    problems = sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p: p.name.lower())
+    if problems: xml_file = problems[0]
+if xml_file is None: raise RuntimeError("No XML file available for Notes save")
+
+def parse_part(part):
+    text = str(part or "")
+    if text.endswith("]") and "[" in text:
+        name, raw_index = text.rsplit("[", 1); raw_index = raw_index[:-1]
+        if raw_index.isdigit(): return name, int(raw_index)
+    return text, 1
+
+def resolve_path(root, path):
+    parts = [part for part in str(path or "").split("/") if part]
+    if parts and parse_part(parts[0])[0] == local_name(root.tag): parts = parts[1:]
+    current = root
+    for part in parts:
+        name, index = parse_part(part)
+        matches = [child for child in current if local_name(child.tag) == name]
+        if index < 1 or index > len(matches): return None
+        current = matches[index - 1]
+    return current
+
+tree = ET.parse(xml_file); root = tree.getroot()
+wdgt = resolve_path(root, wasm_note_save_path)
+if wdgt is None or wdgt.attrib.get("type") != "TI.Notepad":
+    matches = [node for node in root.iter() if local_name(node.tag) == "wdgt" and node.attrib.get("type") == "TI.Notepad"]
+    if not matches: raise RuntimeError("TI.Notepad widget not found")
+    wdgt = matches[-1]
+fmtxt = next((node for node in wdgt.iter() if local_name(node.tag) == "fmtxt"), None)
+if fmtxt is None: raise RuntimeError("np:fmtxt not found")
+fmtxt.text = wasm_note_save_rich
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+json.dumps({"file": str(xml_file), "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False)})
+`);
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  return JSON.parse(payload);
+}
+
+function showNotepadModal(item) {
+  const initialText = item?.content || extractNotepadTextFromRawXml(item?.raw_xml || "");
+  const backdrop = document.createElement("div");
+  backdrop.className = "modal-backdrop";
+  backdrop.innerHTML = `
+    <div class="modal note-page-modal">
+      <div class="modal-top-actions">
+        <button type="button" id="note-save" class="green-tool-button">${escapeHtml(t("notepadSave"))}</button>
+        <button type="button" id="note-cancel">${escapeHtml(t("cancel"))}</button>
+      </div>
+      <h2>${escapeHtml(t("notepadTitle"))}</h2>
+      <div class="note-calculator-shell">
+        <div class="love-preview-calculator-bar">CALCULATOR VIEW</div>
+        <textarea id="note-editor" spellcheck="false" aria-label="TI-Nspire Notes">${escapeHtml(initialText)}</textarea>
+      </div>
+    </div>`;
+  document.body.append(backdrop);
+  const editor = backdrop.querySelector("#note-editor");
+  editor.focus();
+  backdrop.querySelector("#note-cancel").addEventListener("click", () => closeModal(backdrop));
+  backdrop.querySelector("#note-save").addEventListener("click", async () => {
+    try {
+      const result = await saveNotepadWidgetToStage(item, editor.value);
+      item.content = editor.value;
+      item.raw_xml = result.raw_xml || item.raw_xml;
+      xmlLog(`${t("notepadSave")}: ${editor.value.length} chars`);
+      closeModal(backdrop);
+    } catch (error) {
+      xmlLog(`ERROR Notes Save: ${error.message}`);
+    }
+  });
+}
+
+function normalizeGraphFormulaInput(value = "") {
+  return String(value || "").trim().replace(/^f\d+\s*\(\s*x\s*\)\s*=\s*/i, "").replace(/^y\s*=\s*/i, "") || "0";
+}
+
+function extractGraphStateFromRawXml(rawXml = "") {
+  const state = { name: "f1", formula: "0" };
+  if (!rawXml) return state;
+  try {
+    const doc = new DOMParser().parseFromString(rawXml, "application/xml");
+    const expressions = Array.from(doc.getElementsByTagNameNS("urn:TI.GeoGrapher", "expression"));
+    const expression = expressions[0];
+    if (expression) {
+      const label = expression.getElementsByTagNameNS("urn:TI.GeoGrapher", "lbl")[0]?.textContent?.trim();
+      const expr = expression.getElementsByTagNameNS("urn:TI.GeoGrapher", "expr")[0]?.textContent?.trim();
+      if (label) state.name = label;
+      if (expr) state.formula = expr;
+    }
+  } catch (_) {}
+  return state;
+}
+
+function graphFormulaToLuaExpression(formula = "") {
+  let expr = normalizeGraphFormulaInput(formula)
+    .replace(/[−–]/g, "-")
+    .replace(/[×·]/g, "*")
+    .replace(/π/g, "math.pi")
+    .replace(/\bpi\b/gi, "math.pi")
+    .replace(/\bln\s*\(/gi, "math.log(");
+  expr = expr.replace(/(?<!\.)\b(sin|cos|tan|sqrt|abs|exp|log|floor|ceil)\s*\(/gi, (match, name) => `math.${name.toLowerCase()}(`);
+  expr = expr.replace(/(?<![A-Za-z0-9_.])(-?\d+(?:\.\d+)?)\s*x\b/g, "$1*x");
+  return expr;
+}
+
+function buildGraphPreviewLua(formula = "0", functionName = "f1") {
+  const safeName = /^[A-Za-z_][A-Za-z0-9_]*$/.test(functionName) ? functionName : "f1";
+  const luaExpr = graphFormulaToLuaExpression(formula);
+  const shown = normalizeGraphFormulaInput(formula).replace(/\\/g, "\\\\").replace(/\"/g, '\\"');
+  return `platform.apilevel = '2.3'
+local xmin, xmax = -10, 10
+local ymin, ymax = -6.6666666667, 6.6666666667
+local formula = "${shown}"
+local function f(x)
+  local ok, value = pcall(function() return ${luaExpr} end)
+  if ok and type(value) == "number" then return value end
+  return nil
+end
+local function sx(x,w) return (x-xmin)/(xmax-xmin)*w end
+local function sy(y,h) return h-(y-ymin)/(ymax-ymin)*h end
+function on.paint(gc)
+  local w,h = platform.window:width(), platform.window:height()
+  local top = 31
+  gc:setColorRGB(255,255,255); gc:fillRect(0,0,w,h)
+  gc:setColorRGB(248,248,248); gc:fillRect(0,0,w,top)
+  gc:setColorRGB(38,143,209); gc:drawLine(0,top-1,w,top-1)
+  gc:setColorRGB(0,0,0); gc:setFont("sansserif","r",10)
+  gc:drawString("□",10,7,"top"); gc:drawString("${safeName}(x)=",39,7,"top"); gc:drawString(formula,83,7,"top")
+  gc:setColorRGB(0,0,0)
+  local xzero=sx(0,w); local yzero=top+sy(0,h-top)
+  gc:drawLine(0,yzero,w,yzero); gc:drawLine(xzero,top,xzero,h)
+  for x=-10,10,5 do local px=sx(x,w); gc:drawLine(px,yzero-2,px,yzero+2) end
+  for y=-5,5,5 do local py=top+sy(y,h-top); gc:drawLine(xzero-2,py,xzero+2,py) end
+  gc:setColorRGB(0,0,255)
+  local lastx,lasty=nil,nil
+  for px=0,w-1 do
+    local x=xmin+(px/(w-1))*(xmax-xmin)
+    local y=f(x)
+    if y and y==y and math.abs(y)<1e9 then
+      local py=top+sy(y,h-top)
+      if lastx and math.abs(py-lasty)<h then gc:drawLine(lastx,lasty,px,py) end
+      lastx,lasty=px,py
+    else lastx,lasty=nil,nil end
+  end
+end`;
+}
+
+function drawNativeGraphPreview(canvas, formula = "0") {
+  if (!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width || 320, h = canvas.height || 182;
+  const xmin=-10, xmax=10, ymin=-6.6666666667, ymax=6.6666666667;
+  ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,w,h);
+  ctx.fillStyle="#fff"; ctx.fillRect(0,0,w,h);
+  const sx=(x)=>(x-xmin)/(xmax-xmin)*w;
+  const sy=(y)=>h-(y-ymin)/(ymax-ymin)*h;
+  const x0=sx(0), y0=sy(0);
+  ctx.strokeStyle="#111"; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(0,y0+0.5); ctx.lineTo(w,y0+0.5); ctx.moveTo(x0+0.5,0); ctx.lineTo(x0+0.5,h); ctx.stroke();
+  ctx.font="9px sans-serif"; ctx.fillStyle="#222";
+  for (let x=-10;x<=10;x+=5) { const px=sx(x); ctx.beginPath(); ctx.moveTo(px,y0-2);ctx.lineTo(px,y0+2);ctx.stroke(); if(x!==0)ctx.fillText(String(x),px-5,y0+12); }
+  for (let y=-5;y<=5;y+=5) { const py=sy(y); ctx.beginPath();ctx.moveTo(x0-2,py);ctx.lineTo(x0+2,py);ctx.stroke(); }
+  ctx.strokeStyle="#0000ff"; ctx.lineWidth=1.2; ctx.beginPath();
+  let drawing=false;
+  for (let px=0;px<w;px++) {
+    const x=xmin+(px/(w-1))*(xmax-xmin);
+    const y=evaluateTiMathExpression(normalizeGraphFormulaInput(formula), {x});
+    if (!Number.isFinite(y) || Math.abs(y)>1e8) { drawing=false; continue; }
+    const py=sy(y);
+    if (!Number.isFinite(py) || py < -h*3 || py > h*4) { drawing=false; continue; }
+    if (!drawing) { ctx.moveTo(px,py); drawing=true; } else ctx.lineTo(px,py);
+  }
+  ctx.stroke();
+}
+
+async function addGraphWidgetToStage() {
+  await ensureXmlStageCopy();
+  const currentFile = xmlDoctor.current?.file || "";
+  pyodide.globals.set("wasm_graph_current_file", currentFile);
+  pyodide.globals.set("wasm_graph_card_b64", TI_GRAPH_CARD_TEMPLATE_B64);
+  pyodide.globals.set("wasm_graph_sym_b64", TI_GRAPH_SYMBOL_TEMPLATE_B64);
+  const payload = await pyodide.runPythonAsync(`
+import base64
+import json
+import re
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+source_root=Path("${xmlDoctor.sourcePath}"); stage_root=Path("${xmlDoctor.stagePath}")
+current_file=Path(wasm_graph_current_file) if wasm_graph_current_file else None
+xml_file=None
+if current_file:
+    try: rel=current_file.relative_to(stage_root)
+    except ValueError:
+        try: rel=current_file.relative_to(source_root)
+        except ValueError: rel=Path(current_file.name)
+    candidate=stage_root/rel
+    if candidate.exists(): xml_file=candidate
+if xml_file is None:
+    problems=sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p:p.name.lower())
+    if problems: xml_file=problems[0]
+if xml_file is None: raise RuntimeError("No XML file available for Graphs")
+
+tree=ET.parse(xml_file); root=tree.getroot()
+prob_ns=root.tag[1:].split("}",1)[0] if root.tag.startswith("{") else ""
+gg_ns="urn:TI.GeoGrapher"
+ET.register_namespace("",prob_ns); ET.register_namespace("gg",gg_ns)
+sym=next((x for x in root if local_name(x.tag)=="sym"),None)
+if sym is None:
+    sym=ET.Element(f"{{{prob_ns}}}sym" if prob_ns else "sym"); root.insert(0,sym)
+used=set()
+for entry in sym:
+    if local_name(entry.tag)!="e": continue
+    name=next(((child.text or "").strip() for child in entry if local_name(child.tag)=="n"),"")
+    if name: used.add(name)
+idx=1
+while f"f{idx}" in used: idx+=1
+fname=f"f{idx}"; formula="sin(x)"
+card=ET.fromstring(base64.b64decode(wasm_graph_card_b64).decode("utf-8"))
+entry=ET.fromstring(base64.b64decode(wasm_graph_sym_b64).decode("utf-8"))
+old_raw="3*cos(2*x+π/2)+1"; old_norm="3*cos(2*x+((π)/(2)))+1"
+for node in list(card.iter())+[entry]:
+    if node.text:
+        node.text=node.text.replace("f1",fname).replace(old_raw,formula).replace(old_norm,formula)
+for node in entry.iter():
+    if local_name(node.tag)=="n": node.text=fname
+    elif local_name(node.tag)=="p": node.text="x"
+    elif local_name(node.tag)=="v": node.text=formula
+sym.append(entry); root.append(card)
+body=ET.tostring(root,encoding="UTF-8",short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+body)
+card_index=len([x for x in root if local_name(x.tag)=="card"])
+wdgt=next((x for x in card if local_name(x.tag)=="wdgt"),None)
+json.dumps({"type":"Widget","name":"TI.GeoGrapher","file":str(xml_file),"path":f"/prob/card[{card_index}]/wdgt","detail":{"function":fname,"expression":formula},"content":formula,"content_label":"Graph","raw_xml":ET.tostring(wdgt,encoding="unicode",short_empty_elements=False) if wdgt is not None else ""})
+`);
+  xmlDoctor.embedded=true; xmlDoctor.stagePrepared=true;
+  const item=JSON.parse(payload); xmlLog(t("graphWidgetAdded")); return item;
+}
+
+async function saveGraphWidgetToStage(item, formula) {
+  const state=extractGraphStateFromRawXml(item?.raw_xml || "");
+  const fname=item?.detail?.function || state.name || "f1";
+  const clean=normalizeGraphFormulaInput(formula);
+  pyodide.globals.set("wasm_graph_save_file", item?.file || "");
+  pyodide.globals.set("wasm_graph_save_path", item?.path || "");
+  pyodide.globals.set("wasm_graph_save_name", fname);
+  pyodide.globals.set("wasm_graph_save_formula", clean);
+  const payload=await pyodide.runPythonAsync(`
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name, namespace_uri
+source_root=Path("${xmlDoctor.sourcePath}"); stage_root=Path("${xmlDoctor.stagePath}")
+source_file=Path(wasm_graph_save_file) if wasm_graph_save_file else None
+xml_file=None
+if source_file:
+    try: rel=source_file.relative_to(stage_root)
+    except ValueError:
+        try: rel=source_file.relative_to(source_root)
+        except ValueError: rel=Path(source_file.name)
+    candidate=stage_root/rel
+    if candidate.exists(): xml_file=candidate
+if xml_file is None:
+    problems=sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p:p.name.lower())
+    if problems: xml_file=problems[0]
+if xml_file is None: raise RuntimeError("No XML file available for Graph save")
+
+def parse_part(part):
+    text=str(part or "")
+    if text.endswith("]") and "[" in text:
+        name,raw=text.rsplit("[",1); raw=raw[:-1]
+        if raw.isdigit(): return name,int(raw)
+    return text,1
+
+def resolve_path(root,path):
+    parts=[p for p in str(path or "").split("/") if p]
+    if parts and parse_part(parts[0])[0]==local_name(root.tag): parts=parts[1:]
+    cur=root
+    for part in parts:
+        name,index=parse_part(part); matches=[c for c in cur if local_name(c.tag)==name]
+        if index<1 or index>len(matches): return None
+        cur=matches[index-1]
+    return cur
+
+tree=ET.parse(xml_file); root=tree.getroot(); gg_ns="urn:TI.GeoGrapher"
+wdgt=resolve_path(root,wasm_graph_save_path)
+if wdgt is None or wdgt.attrib.get("type")!="TI.GeoGrapher":
+    matches=[n for n in root.iter() if local_name(n.tag)=="wdgt" and n.attrib.get("type")=="TI.GeoGrapher"]
+    if not matches: raise RuntimeError("TI.GeoGrapher widget not found")
+    wdgt=matches[-1]
+fname=str(wasm_graph_save_name or "f1"); formula=str(wasm_graph_save_formula or "0")
+for node in wdgt.iter():
+    if namespace_uri(node.tag)!=gg_ns: continue
+    lname=local_name(node.tag)
+    if lname=="expression":
+        for child in node:
+            cn=local_name(child.tag)
+            if cn in {"expr","relv"}: child.text=formula
+            elif cn=="lbl": child.text=fname
+    elif lname=="graph":
+        for child in node:
+            cn=local_name(child.tag)
+            if cn=="expr": child.text=formula
+            elif cn=="pref": child.text=f"{fname}(x)"
+    elif lname=="label":
+        has_graph_label=any(local_name(c.tag)=="lbl_g" for c in node)
+        if has_graph_label:
+            chrs=next((c for c in node if local_name(c.tag)=="chrs"),None)
+            if chrs is not None: chrs.text=f"1 1 3 0 0 0 {fname}(x)={formula}\\n"
+    elif lname=="ToolGrapher":
+        dhs=next((c for c in node if local_name(c.tag)=="dhs"),None)
+        if dhs is not None: dhs.text=f"*{fname}*"
+sym=next((x for x in root if local_name(x.tag)=="sym"),None)
+entry=None
+if sym is not None:
+    for candidate in sym:
+        if local_name(candidate.tag)!="e": continue
+        n=next((c for c in candidate if local_name(c.tag)=="n"),None)
+        if n is not None and (n.text or "").strip()==fname: entry=candidate; break
+if entry is None and sym is not None:
+    entry=ET.SubElement(sym, f"{{{root.tag[1:].split('}',1)[0]}}}e" if root.tag.startswith("{") else "e", {"t":"6","f":"0","c":"255"})
+    ns=root.tag[1:].split("}",1)[0] if root.tag.startswith("{") else ""
+    def q(name): return f"{{{ns}}}{name}" if ns else name
+    ET.SubElement(entry,q("n")).text=fname; ET.SubElement(entry,q("p")).text="x"; ET.SubElement(entry,q("v")).text=formula
+elif entry is not None:
+    for child in entry:
+        if local_name(child.tag)=="v": child.text=formula
+body=ET.tostring(root,encoding="UTF-8",short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+body)
+json.dumps({"file":str(xml_file),"formula":formula,"function":fname,"raw_xml":ET.tostring(wdgt,encoding="unicode",short_empty_elements=False)})
+`);
+  xmlDoctor.embedded=true; xmlDoctor.stagePrepared=true; return JSON.parse(payload);
+}
+
+function showGraphModal(item) {
+  const base=extractGraphStateFromRawXml(item?.raw_xml || "");
+  const functionName=item?.detail?.function || base.name || "f1";
+  const initialFormula=item?.content || item?.detail?.expression || base.formula || "sin(x)";
+  const backdrop=document.createElement("div"); backdrop.className="modal-backdrop";
+  backdrop.innerHTML=`
+    <div class="modal graph-page-modal">
+      <div class="modal-top-actions">
+        <button type="button" id="graph-love-preview" class="green-tool-button">${escapeHtml(t("graphPreviewLove"))}</button>
+        <button type="button" id="graph-save" class="green-tool-button">${escapeHtml(t("graphSave"))}</button>
+        <button type="button" id="graph-cancel">${escapeHtml(t("cancel"))}</button>
+      </div>
+      <h2>${escapeHtml(t("graphTitle"))}</h2>
+      <div class="graph-calculator-shell">
+        <div class="love-preview-calculator-bar">CALCULATOR VIEW</div>
+        <div class="graph-function-row"><span class="graph-check">□</span><span class="graph-function-name">${escapeHtml(functionName)}(x)=</span><input id="graph-formula-input" value="${escapeHtml(initialFormula)}" spellcheck="false"/><span class="graph-list-icon">☷</span></div>
+        <canvas id="graph-native-canvas" width="320" height="182"></canvas>
+      </div>
+      <p class="muted-text">${escapeHtml(t("graphFormula"))}: ${escapeHtml(functionName)}(x)</p>
+    </div>`;
+  document.body.append(backdrop);
+  const input=backdrop.querySelector("#graph-formula-input"); const canvas=backdrop.querySelector("#graph-native-canvas");
+  const redraw=()=>drawNativeGraphPreview(canvas,input.value); redraw();
+  input.addEventListener("input",redraw);
+  backdrop.querySelector("#graph-cancel").addEventListener("click",()=>closeModal(backdrop));
+  backdrop.querySelector("#graph-love-preview").addEventListener("click",()=>{
+    const code=buildGraphPreviewLua(input.value,functionName);
+    showLovePreview(code,null,null,{}).catch((error)=>xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
+  });
+  backdrop.querySelector("#graph-save").addEventListener("click",async()=>{
+    try {
+      const result=await saveGraphWidgetToStage(item,input.value);
+      item.content=result.formula; item.detail={...(item.detail||{}),function:result.function,expression:result.formula}; item.raw_xml=result.raw_xml||item.raw_xml;
+      xmlLog(`${t("graphSave")}: ${result.function}(x)=${result.formula}`); closeModal(backdrop);
+    } catch(error) { xmlLog(`ERROR Graph Save: ${error.message}`); }
+  });
+  input.focus(); input.select();
+}
+
 async function addPageFromFileMenu(kind) {
   await ensureXmlProjectForPageCreation();
 
@@ -8664,6 +9227,16 @@ async function addPageFromFileMenu(kind) {
   if (kind === "spreadsheet") {
     const item = await addSpreadsheetWidgetToStage();
     showSpreadsheetModal(item);
+    return;
+  }
+  if (kind === "notepad") {
+    const item = await addNotepadWidgetToStage();
+    showNotepadModal(item);
+    return;
+  }
+  if (kind === "graph") {
+    const item = await addGraphWidgetToStage();
+    showGraphModal(item);
     return;
   }
   if (kind === "program-editor") {
@@ -15077,7 +15650,7 @@ async function openDocumentInspector() {
   backdrop.className = "modal-backdrop";
   const summary = data.summary || {};
   const sortedItems = [...(data.items || [])].sort((a, b) => {
-    const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.content_label === "Image" ? 2 : item.content_label === "Spreadsheet" ? 3 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 4 : item.type === "Card" ? 5 : 6;
+    const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.content_label === "Spreadsheet" ? 2 : item.content_label === "Notepad" ? 3 : item.content_label === "Graph" ? 4 : item.content_label === "Image" ? 5 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 6 : item.type === "Card" ? 7 : 8;
     return rank(a) - rank(b) || String(a.file).localeCompare(String(b.file)) || String(a.path).localeCompare(String(b.path));
   });
   const rows = sortedItems.map((item, index) => {
@@ -15091,6 +15664,10 @@ async function openDocumentInspector() {
       contentAction = `<button type="button" class="mini-action image-action green-mini-action" data-index="${index}">${escapeHtml(t("viewImage"))}</button>`;
     } else if (item.content_label === "Spreadsheet") {
       contentAction = `<button type="button" class="mini-action spreadsheet-action green-mini-action" data-index="${index}">${escapeHtml(t("openSpreadsheet"))}</button>`;
+    } else if (item.content_label === "Notepad") {
+      contentAction = `<button type="button" class="mini-action notepad-action green-mini-action" data-index="${index}">${escapeHtml(t("openNotepad"))}</button>`;
+    } else if (item.content_label === "Graph") {
+      contentAction = `<button type="button" class="mini-action graph-action green-mini-action" data-index="${index}">${escapeHtml(t("openGraph"))}</button>`;
     } else if (item.content) {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(item.content_label === "Scratchpad" ? t("viewDetails") : t("viewValue"))}</button>`;
     }
@@ -15111,6 +15688,8 @@ async function openDocumentInspector() {
         <span>Resources: ${summary.resources || 0}</span>
         <span>Images: ${summary.images || 0}</span>
         <span>Sheets: ${summary.spreadsheets || 0}</span>
+        <span>Notes: ${summary.notepads || 0}</span>
+        <span>Graphs: ${summary.graphs || 0}</span>
         <span>Basic: ${summary.basic_blocks || 0}</span>
         <span>Symbols: ${summary.symbols || 0}</span>
       </div>
@@ -15129,6 +15708,8 @@ async function openDocumentInspector() {
             <button type="button" id="add-python-widget" class="menu-action">${escapeHtml(t("addPythonWidget"))}</button>
             <button type="button" id="add-lua-widget" class="menu-action">${escapeHtml(t("addLuaWidget"))}</button>
             <button type="button" id="add-spreadsheet-widget" class="menu-action">${escapeHtml(t("addSpreadsheetWidget"))}</button>
+            <button type="button" id="add-notepad-widget" class="menu-action">${escapeHtml(t("addNotepadWidget"))}</button>
+            <button type="button" id="add-graph-widget" class="menu-action">${escapeHtml(t("addGraphWidget"))}</button>
             <button type="button" id="add-image-widget" class="menu-action">${escapeHtml(t("addImageWidget"))}</button>
           </div>
         </div>
@@ -15170,6 +15751,18 @@ async function openDocumentInspector() {
     } catch (error) {
       xmlLog(`ERROR: ${error.message}`);
     }
+  });
+  backdrop.querySelector("#add-notepad-widget").addEventListener("click", async () => {
+    try {
+      const item = await addNotepadWidgetToStage();
+      closeModal(backdrop, async () => { await openDocumentInspector(); showNotepadModal(item); });
+    } catch (error) { xmlLog(`ERROR: ${error.message}`); }
+  });
+  backdrop.querySelector("#add-graph-widget").addEventListener("click", async () => {
+    try {
+      const item = await addGraphWidgetToStage();
+      closeModal(backdrop, async () => { await openDocumentInspector(); showGraphModal(item); });
+    } catch (error) { xmlLog(`ERROR: ${error.message}`); }
   });
   backdrop.querySelector("#add-image-widget").addEventListener("click", async () => {
     try {
@@ -15216,6 +15809,18 @@ async function openDocumentInspector() {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
       showSpreadsheetModal(item);
+    });
+  }
+  for (const button of backdrop.querySelectorAll(".notepad-action")) {
+    button.addEventListener("click", () => {
+      const item = sortedItems[Number(button.dataset.index)];
+      showNotepadModal(item);
+    });
+  }
+  for (const button of backdrop.querySelectorAll(".graph-action")) {
+    button.addEventListener("click", () => {
+      const item = sortedItems[Number(button.dataset.index)];
+      showGraphModal(item);
     });
   }
   for (const button of backdrop.querySelectorAll(".edit-lua-action")) {
@@ -16402,6 +17007,8 @@ function wireEvents() {
   document.querySelector("#file-page-add-python").addEventListener("click", () => addPageFromFileMenu("python").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-lua").addEventListener("click", () => addPageFromFileMenu("lua").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-spreadsheet").addEventListener("click", () => addPageFromFileMenu("spreadsheet").catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#file-page-add-notepad").addEventListener("click", () => addPageFromFileMenu("notepad").catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#file-page-add-graph").addEventListener("click", () => addPageFromFileMenu("graph").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-programs").addEventListener("change", (event) => selectXmlProgram(event.target.value));
   document.querySelector("#xml-code").addEventListener("input", () => {
     xmlDoctor.embedded = false;
