@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-page-menu-layout-autocreate";
+const SOURCE_VERSION = "2026-08-24-explicit-program-editor-page";
 
 const I18N = {
   es: {
@@ -40,6 +40,8 @@ const I18N = {
     addPythonWidget: "Agregar Python",
     addPage: "+Page",
     addSpreadsheetWidget: "Agregar listas y hojas de cálculo",
+    addProgramEditorWidget: "Agregar editor de programas",
+    programEditorWidgetAdded: "Editor de programas agregado como nueva card.",
     spreadsheetWidgetAdded: "Lista y hoja de cálculo agregada como nueva card.",
     openSpreadsheet: "Abrir hoja",
     spreadsheetTitle: "Listas y hoja de cálculo",
@@ -281,6 +283,8 @@ const I18N = {
     addPythonWidget: "Add Python",
     addPage: "+Page",
     addSpreadsheetWidget: "Add Lists & Spreadsheet",
+    addProgramEditorWidget: "Add Program Editor",
+    programEditorWidgetAdded: "Program Editor added as a new card.",
     spreadsheetWidgetAdded: "Lists & Spreadsheet added as a new card.",
     openSpreadsheet: "Open sheet",
     spreadsheetTitle: "Lists & Spreadsheet",
@@ -522,6 +526,8 @@ const I18N = {
     addPythonWidget: "Ajouter Python",
     addPage: "+Page",
     addSpreadsheetWidget: "Ajouter listes et feuille de calcul",
+    addProgramEditorWidget: "Ajouter éditeur de programmes",
+    programEditorWidgetAdded: "Éditeur de programmes ajouté comme nouvelle carte.",
     spreadsheetWidgetAdded: "Feuille de calcul ajoutée comme nouvelle carte.",
     openSpreadsheet: "Ouvrir feuille",
     spreadsheetTitle: "Listes et feuille de calcul",
@@ -8450,10 +8456,192 @@ function xmlDoctorHasProjectFiles() {
   return false;
 }
 
+async function createEmptyXmlProjectForPageCreation() {
+  clearDir(xmlDoctor.sourcePath);
+  clearDir(xmlDoctor.stagePath);
+  xmlDoctor.sourceFileName = "documento.tns";
+
+  const response = await fetch(`./templates/blank_tns_xml/Document.xml?v=${SOURCE_VERSION}`, { cache: "no-store" });
+  if (!response.ok) throw new Error(`No se pudo cargar plantilla Document.xml: HTTP ${response.status}`);
+  pyodide.FS.writeFile(`${xmlDoctor.sourcePath}/Document.xml`, await response.text());
+
+  // +Page necesita un contenedor de problema, no una página TI.ProgramEditor
+  // implícita. "Nuevo documento" conserva su comportamiento anterior.
+  const emptyProblem = '<?xml version="1.0" encoding="UTF-8" ?><prob xmlns="urn:TI.Problem" ver="1.0" pbname=""><sym></sym></prob>';
+  pyodide.FS.writeFile(`${xmlDoctor.sourcePath}/Problem1.xml`, emptyProblem);
+
+  xmlDoctor.embedded = false;
+  xmlDoctor.stagePrepared = false;
+  xmlDoctor.lastDiff = "";
+  xmlDoctor.issueLines.clear();
+  await scanXmlPrograms();
+}
+
 async function ensureXmlProjectForPageCreation() {
   if (xmlDoctorHasProjectFiles()) return;
-  await createNewXmlProject();
-  xmlLog("Documento nuevo creado automáticamente para +Page.");
+  await createEmptyXmlProjectForPageCreation();
+  xmlLog("Documento base vacío creado automáticamente para +Page.");
+}
+
+
+async function addProgramEditorToStage() {
+  await ensureXmlStageCopy();
+
+  const templateResponse = await fetch(`./templates/blank_tns_xml/Problem1.xml?v=${SOURCE_VERSION}`, { cache: "no-store" });
+  if (!templateResponse.ok) {
+    throw new Error(`No se pudo cargar la plantilla TI.ProgramEditor: HTTP ${templateResponse.status}`);
+  }
+
+  const currentFile = xmlDoctor.current?.file || "";
+  pyodide.globals.set("wasm_program_editor_current_file", currentFile);
+  pyodide.globals.set("wasm_program_editor_template", await templateResponse.text());
+
+  const payload = await pyodide.runPythonAsync(`
+import copy
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name, namespace_uri
+
+source_root = Path("${xmlDoctor.sourcePath}")
+stage_root = Path("${xmlDoctor.stagePath}")
+current_file = Path(wasm_program_editor_current_file) if wasm_program_editor_current_file else None
+
+xml_file = None
+if current_file:
+    try:
+        rel = current_file.relative_to(stage_root)
+    except ValueError:
+        try:
+            rel = current_file.relative_to(source_root)
+        except ValueError:
+            rel = Path(current_file.name)
+    candidate = stage_root / rel
+    if candidate.exists():
+        xml_file = candidate
+
+if xml_file is None:
+    problem_files = sorted(
+        [p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")],
+        key=lambda p: p.name.lower(),
+    )
+    xml_files = problem_files or sorted(stage_root.rglob("*.xml"))
+    if xml_files:
+        xml_file = xml_files[0]
+
+if xml_file is None:
+    raise RuntimeError("No XML file available for TI.ProgramEditor")
+
+tree = ET.parse(xml_file)
+root = tree.getroot()
+prob_ns = root.tag[1:].split("}", 1)[0] if root.tag.startswith("{") else ""
+pe_ns = "urn:TI.ProgramEditor"
+ET.register_namespace("", prob_ns)
+ET.register_namespace("pe", pe_ns)
+
+def q(ns, name):
+    return f"{{{ns}}}{name}" if ns else name
+
+# Resolve / create <sym>.
+sym = None
+for child in root:
+    if local_name(child.tag) == "sym":
+        sym = child
+        break
+if sym is None:
+    sym = ET.Element(q(prob_ns, "sym"))
+    root.insert(0, sym)
+
+# Choose a unique TI-Basic program name.
+existing = set()
+for element in root.iter():
+    if local_name(element.tag) == "n" and element.text:
+        existing.add(element.text.strip())
+    if namespace_uri(element.tag) == pe_ns and local_name(element.tag) == "name" and element.text:
+        existing.add(element.text.strip())
+
+base = "nuevo"
+program_name = base
+counter = 1
+while program_name in existing:
+    counter += 1
+    program_name = f"{base}_{counter}"
+
+# Clone the known-working ProgramEditor card/symbol from the project's
+# blank template rather than hand-inventing the internal r2dtotree.
+template_root = ET.fromstring(wasm_program_editor_template)
+template_card = None
+template_symbol = None
+
+for candidate in template_root:
+    if local_name(candidate.tag) == "sym":
+        for entry in candidate:
+            if local_name(entry.tag) == "e":
+                template_symbol = copy.deepcopy(entry)
+                break
+    elif local_name(candidate.tag) == "card":
+        for wdgt in candidate.iter():
+            if local_name(wdgt.tag) == "wdgt" and wdgt.attrib.get("type") == "TI.ProgramEditor":
+                template_card = copy.deepcopy(candidate)
+                break
+    if template_card is not None and template_symbol is not None:
+        break
+
+if template_card is None:
+    raise RuntimeError("La plantilla no contiene una card TI.ProgramEditor")
+if template_symbol is None:
+    raise RuntimeError("La plantilla no contiene el símbolo del programa")
+
+# Rename the cloned program everywhere it occurs, including the escaped
+# r2dtotree text stored in pe:editor.
+for element in template_card.iter():
+    if element.text:
+        element.text = element.text.replace("nuevo", program_name)
+    if element.tail:
+        element.tail = element.tail.replace("nuevo", program_name)
+
+for element in template_symbol.iter():
+    if local_name(element.tag) == "n":
+        element.text = program_name
+    elif element.text:
+        element.text = element.text.replace("nuevo", program_name)
+
+sym.append(template_symbol)
+root.append(template_card)
+
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+
+# Return the newly-created widget for consumers that want to refresh UI.
+created_widget = None
+for wdgt in template_card.iter():
+    if local_name(wdgt.tag) == "wdgt" and wdgt.attrib.get("type") == "TI.ProgramEditor":
+        created_widget = wdgt
+        break
+
+json.dumps({
+    "type": "Widget",
+    "name": "TI.ProgramEditor",
+    "file": str(xml_file),
+    "path": "",
+    "detail": {"name": program_name, "type": "Prgm", "visibility": "LibPub ", "created": "true"},
+    "content": f"Define LibPub {program_name}()=\\nPrgm\\r:\\r:EndPrgm",
+    "content_label": "ProgramEditor",
+    "raw_xml": ET.tostring(created_widget, encoding="unicode", short_empty_elements=False) if created_widget is not None else "",
+    "program_name": program_name,
+})
+`);
+
+  xmlDoctor.embedded = true;
+  xmlDoctor.stagePrepared = true;
+  const result = JSON.parse(payload);
+
+  // ProgramEditor is directly editable by Syntax Doctor XML.
+  await scanXmlPrograms();
+  const created = xmlDoctor.candidates.find((item) => item.program_name === result.program_name);
+  if (created) selectXmlProgram(created.index);
+  xmlLog(t("programEditorWidgetAdded"));
+  return result;
 }
 
 async function addPageFromFileMenu(kind) {
@@ -8476,6 +8664,10 @@ async function addPageFromFileMenu(kind) {
   if (kind === "spreadsheet") {
     const item = await addSpreadsheetWidgetToStage();
     showSpreadsheetModal(item);
+    return;
+  }
+  if (kind === "program-editor") {
+    await addProgramEditorToStage();
     return;
   }
   throw new Error(`Tipo de página no soportado: ${kind}`);
@@ -14650,6 +14842,7 @@ async function openDocumentInspector() {
         <div class="tool-menu inspector-page-menu">
           <button type="button" id="inspector-page-trigger" class="menu-trigger green-menu-trigger"><span>${escapeHtml(t("addPage"))}</span></button>
           <div class="menu-panel">
+            <button type="button" id="add-program-editor-widget" class="menu-action">${escapeHtml(t("addProgramEditorWidget"))}</button>
             <button type="button" id="add-image-widget" class="menu-action">${escapeHtml(t("addImageWidget"))}</button>
             <button type="button" id="add-python-widget" class="menu-action">${escapeHtml(t("addPythonWidget"))}</button>
             <button type="button" id="add-lua-widget" class="menu-action">${escapeHtml(t("addLuaWidget"))}</button>
@@ -14668,6 +14861,16 @@ async function openDocumentInspector() {
   });
   backdrop.addEventListener("click", (event) => {
     if (!event.target.closest(".inspector-page-menu")) pageMenu.classList.remove("open");
+  });
+  backdrop.querySelector("#add-program-editor-widget").addEventListener("click", async () => {
+    try {
+      await addProgramEditorToStage();
+      closeModal(backdrop, async () => {
+        await openDocumentInspector();
+      });
+    } catch (error) {
+      xmlLog(`ERROR: ${error.message}`);
+    }
   });
   backdrop.querySelector("#add-lua-widget").addEventListener("click", async () => {
     try {
@@ -15905,6 +16108,7 @@ function wireEvents() {
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-folder").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "folder").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-new-btn").addEventListener("click", () => createNewXmlProject().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#file-page-add-program-editor").addEventListener("click", () => addPageFromFileMenu("program-editor").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-image").addEventListener("click", () => addPageFromFileMenu("image").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-python").addEventListener("click", () => addPageFromFileMenu("python").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-lua").addEventListener("click", () => addPageFromFileMenu("lua").catch((err) => xmlLog(`ERROR: ${err.message}`)));

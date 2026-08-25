@@ -3316,3 +3316,79 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 [data-theme="dark"] .file-page-menu > .nested-trigger {
   color: #d9f99d;
 }
+
+/* Document Inspector +Page: responsive/mobile positioning.
+   Keep the menu inside the modal and prevent the generic mobile .menu-panel
+   rule from shrinking it to the width of the +Page button. */
+.inspector-page-menu .menu-panel {
+  width: min(320px, calc(100vw - 48px));
+  max-width: min(320px, calc(100vw - 48px));
+  overflow-x: hidden;
+}
+
+.inspector-page-menu .menu-panel .menu-action {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  line-height: 1.25;
+}
+
+@media (max-width: 700px) {
+  .inspector-modal {
+    width: calc(100vw - 20px);
+    padding: 14px;
+  }
+
+  .inspector-modal-actions {
+    width: 100%;
+    justify-content: flex-end;
+    gap: 10px;
+  }
+
+  .inspector-page-menu {
+    flex: 0 0 auto;
+  }
+
+  .inspector-page-menu .menu-panel {
+    position: absolute;
+    top: auto;
+    bottom: calc(100% + 10px);
+    left: auto;
+    right: 0;
+    width: min(320px, calc(100vw - 48px));
+    max-width: min(320px, calc(100vw - 48px));
+    max-height: min(55vh, 360px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    margin: 0;
+    transform-origin: bottom right;
+  }
+
+  .inspector-page-menu.open > .menu-panel {
+    display: block;
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .inspector-modal-actions {
+    align-items: stretch;
+  }
+
+  .inspector-page-menu {
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+
+  #inspector-page-trigger {
+    width: 100%;
+  }
+
+  .inspector-page-menu .menu-panel {
+    right: 0;
+    width: min(300px, calc(100vw - 36px));
+    max-width: min(300px, calc(100vw - 36px));
+  }
+}
+
