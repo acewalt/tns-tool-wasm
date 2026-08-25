@@ -3532,3 +3532,22 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .love-calculator-template-panel{z-index:30;top:calc(100% + 6px)}
 .calculator-editor-stage.expanded-view .love-calculator-composer{height:72px;min-height:72px;font-size:24px;padding-left:14px}.calculator-editor-stage.expanded-view .calc-v-radical{font-size:38px}
 @media(max-width:760px){.love-calculator-toolbar{display:flex!important}.love-calculator-composer{font-size:18px}.love-calculator-template-panel{position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);max-height:60vh;overflow:auto}.love-calculator-template-panel[hidden]{display:none}}
+
+
+/* Calculator MathPrint v3: nth-root index, editable boundaries and derivative/dx layout. */
+.calc-v-expression{display:inline-flex;align-items:center;white-space:nowrap;min-width:8px}
+.calc-v-template{display:inline-flex;align-items:center}
+.love-calculator-composer .calc-v-affix{display:inline-block;min-width:3px;min-height:24px;padding:1px 0;outline:none;white-space:pre;caret-color:#111;color:#111;text-align:left}
+.love-calculator-composer .calc-v-affix:focus{min-width:7px;background:rgba(199,234,255,.55);box-shadow:inset 0 -1px 0 #3199d8}
+.calc-v-nroot{position:relative;display:inline-block!important;padding-left:8px;vertical-align:middle;min-height:34px}
+.calc-v-nroot-index{position:absolute;left:0;top:-3px;z-index:3;transform:scale(.78);transform-origin:right bottom;line-height:1}
+.calc-v-nroot-index .calc-v-index{min-width:14px!important;min-height:14px!important;font-size:12px!important;padding:0 1px!important}
+.calc-v-root-main{display:inline-flex;align-items:flex-end}
+.calc-v-nroot .calc-v-radical{font-size:34px;line-height:.82;margin-right:-3px}
+.calc-v-nroot .calc-v-radicand{min-height:27px;padding-top:2px}
+.calc-v-dfrac{min-width:34px!important;margin-right:3px}
+.calc-v-dfrac .calc-v-frac-num,.calc-v-dfrac .calc-v-frac-den{min-width:34px}
+.calc-v-dfrac sup{font-size:9px;position:relative;top:-5px}
+.calc-v-derivative-body{font-size:20px;line-height:1}
+.calc-v-differential{margin-left:4px;font-style:italic}
+.calculator-editor-stage.expanded-view .calc-v-nroot{padding-left:10px}.calculator-editor-stage.expanded-view .calc-v-nroot .calc-v-radical{font-size:42px}.calculator-editor-stage.expanded-view .calc-v-nroot-index{top:-5px}

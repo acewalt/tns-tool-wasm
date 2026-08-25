@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-25-calculator-direct-2d-editor";
+const SOURCE_VERSION = "2026-08-25-calculator-mathprint-v3";
 
 const I18N = {
   es: {
@@ -9036,7 +9036,64 @@ function drawCalculatorInlineV2(ctx,text,x,y,fontSize=15){
   ctx.restore();
 }
 
-function drawCalculatorMath(ctx,raw,x,y,max=210){const t=String(raw||"").replace(/−/g,"-").replace(//g,"e").replace(//g,"d");ctx.save();ctx.fillStyle="#111";ctx.strokeStyle="#111";ctx.lineWidth=1;ctx.textBaseline="alphabetic";ctx.font="15px serif";if(/^\[\[.*\]\]$/.test(t)){const rs=Array.from(t.matchAll(/\[([^\[\]]*)\]/g)).map(m=>m[1].split(",")),cols=Math.max(1,...rs.map(r=>r.length)),cw=27,ch=18,L=x+5,T=y-15,R=L+cols*cw;ctx.beginPath();ctx.moveTo(L,T);ctx.lineTo(L-4,T);ctx.lineTo(L-4,T+rs.length*ch);ctx.lineTo(L,T+rs.length*ch);ctx.moveTo(R,T);ctx.lineTo(R+4,T);ctx.lineTo(R+4,T+rs.length*ch);ctx.lineTo(R,T+rs.length*ch);ctx.stroke();rs.forEach((r,ri)=>r.forEach((v,ci)=>ctx.fillText(v.trim(),L+ci*cw+5,T+14+ri*ch)));ctx.restore();return;}let m=t.match(/^∫\((.*),([A-Za-z]+),([^,]+),([^\)]+)\)$/);if(m){ctx.font="28px serif";ctx.fillText("∫",x,y+4);ctx.font="10px serif";ctx.fillText(m[4],x+4,y-15);ctx.fillText(m[3],x+4,y+14);ctx.font="15px serif";ctx.fillText(m[1],x+23,y);ctx.fillText(`d${m[2]}`,x+28+cMeasure(ctx,m[1]),y);ctx.restore();return;}m=t.match(/^∫\((.*),([A-Za-z]+)\)$/);if(m){ctx.font="28px serif";ctx.fillText("∫",x,y+4);ctx.font="15px serif";ctx.fillText(m[1],x+19,y);ctx.fillText(`d${m[2]}`,x+24+cMeasure(ctx,m[1]),y);ctx.restore();return;}m=t.match(/^[∑∏]\((.*),([A-Za-z]+),([^,]+),([^\)]+)\)$/);if(m){ctx.font="30px serif";ctx.fillText(t[0],x,y+3);ctx.font="9px serif";ctx.fillText(m[4],x+8,y-18);ctx.fillText(`${m[2]}=${m[3]}`,x+2,y+16);ctx.font="15px serif";ctx.fillText(`(${m[1]})`,x+28,y);ctx.restore();return;}m=t.match(/^lim\((.*),([A-Za-z]+),([^\)]+)\)$/);if(m){ctx.font="15px serif";ctx.fillText("lim",x,y-3);ctx.font="9px serif";ctx.fillText(`${m[2]}→${m[3]}`,x-1,y+10);ctx.font="15px serif";ctx.fillText(m[1],x+28,y);ctx.restore();return;}m=t.match(/^√\((.*)\)$/);if(m){ctx.font="20px serif";ctx.fillText("√",x,y+2);ctx.font="15px serif";ctx.fillText(m[1],x+15,y);ctx.beginPath();ctx.moveTo(x+14,y-14);ctx.lineTo(x+18+cMeasure(ctx,m[1]),y-14);ctx.stroke();ctx.restore();return;}let slash=cTopSlash(t);if(slash>0&&t.length<36){let a=t.slice(0,slash),b=t.slice(slash+1),W=Math.max(cMeasure(ctx,a),cMeasure(ctx,b))+10;ctx.textAlign="center";ctx.fillText(a,x+W/2,y-5);ctx.fillText(b,x+W/2,y+13);ctx.beginPath();ctx.moveTo(x+2,y);ctx.lineTo(x+W-2,y);ctx.stroke();ctx.restore();return;}m=t.match(/^(.*)\^\(?([^\)]+)\)?$/);if(m&&m[1].length<24&&m[2].length<10){ctx.fillText(m[1],x,y);let w=cMeasure(ctx,m[1]);ctx.font="10px serif";ctx.fillText(m[2],x+w+1,y-8);ctx.restore();return;}ctx.font="15px Arial";ctx.fillText(t.length>44?t.slice(0,43)+"…":t,x,y);ctx.restore();}
+function drawCalculatorMath(ctx,raw,x,y,max=210,depth=0){
+  const t=String(raw||"").replace(/−/g,"-").replace(//g,"e").replace(//g,"d");
+  ctx.save();ctx.fillStyle="#111";ctx.strokeStyle="#111";ctx.lineWidth=1;ctx.textBaseline="alphabetic";ctx.font="15px serif";
+  if(depth>5){ctx.fillText(t,x,y);ctx.restore();return;}
+
+  if(/^\[\[.*\]\]$/.test(t)){
+    const rs=Array.from(t.matchAll(/\[([^\[\]]*)\]/g)).map(m=>m[1].split(",")),cols=Math.max(1,...rs.map(r=>r.length)),cw=27,ch=18,L=x+5,T=y-15,R=L+cols*cw;
+    ctx.beginPath();ctx.moveTo(L,T);ctx.lineTo(L-4,T);ctx.lineTo(L-4,T+rs.length*ch);ctx.lineTo(L,T+rs.length*ch);ctx.moveTo(R,T);ctx.lineTo(R+4,T);ctx.lineTo(R+4,T+rs.length*ch);ctx.lineTo(R,T+rs.length*ch);ctx.stroke();
+    rs.forEach((r,ri)=>r.forEach((v,ci)=>drawCalculatorInlineV2(ctx,v.trim(),L+ci*cw+5,T+14+ri*ch,15)));ctx.restore();return;
+  }
+
+  let m=t.match(/^root\((.*),([^,()]+)\)$/);
+  if(m){
+    const body=m[1],index=m[2];ctx.font="9px serif";ctx.fillText(index,x,y-11);ctx.font="25px serif";ctx.fillText("√",x+6,y+3);
+    const bodyX=x+23;drawCalculatorInlineV2(ctx,body,bodyX,y,15);const bw=Math.max(12,cMeasure(ctx,body,"15px serif"));ctx.beginPath();ctx.moveTo(x+20,y-15);ctx.lineTo(bodyX+bw+3,y-15);ctx.stroke();ctx.restore();return;
+  }
+  m=t.match(/^√\((.*)\)$/);
+  if(m){ctx.font="25px serif";ctx.fillText("√",x,y+3);const bodyX=x+17;drawCalculatorInlineV2(ctx,m[1],bodyX,y,15);const bw=Math.max(12,cMeasure(ctx,m[1],"15px serif"));ctx.beginPath();ctx.moveTo(x+14,y-15);ctx.lineTo(bodyX+bw+3,y-15);ctx.stroke();ctx.restore();return;}
+
+  m=t.match(/^d\((.*),([A-Za-z]+)(?:,([^()]+))?\)$/);
+  if(m){
+    const expr=m[1],variable=m[2],order=String(m[3]||"1"),fracW=order==="1"?24:30;
+    ctx.textAlign="center";ctx.font="15px serif";ctx.fillText("d",x+fracW/2,y-5);
+    if(order!=="1"){ctx.font="9px serif";ctx.fillText(order,x+fracW/2+6,y-12);}
+    ctx.beginPath();ctx.moveTo(x+1,y);ctx.lineTo(x+fracW-1,y);ctx.stroke();
+    ctx.font="15px serif";ctx.fillText(`d${variable}`,x+fracW/2,y+15);
+    if(order!=="1"){ctx.font="9px serif";ctx.fillText(order,x+fracW/2+9,y+7);}
+    ctx.textAlign="left";ctx.font="15px serif";ctx.fillText("(",x+fracW+3,y+3);drawCalculatorMath(ctx,expr,x+fracW+9,y+3,max-fracW-16,depth+1);const ew=Math.min(100,cMeasure(ctx,expr,"15px serif"));ctx.fillText(")",x+fracW+12+ew,y+3);ctx.restore();return;
+  }
+
+  m=t.match(/^∫\((.*),([A-Za-z]+),([^,]+),([^\)]+)\)$/);
+  if(m){ctx.font="28px serif";ctx.fillText("∫",x,y+4);ctx.font="10px serif";ctx.fillText(m[4],x+4,y-15);ctx.fillText(m[3],x+4,y+14);drawCalculatorMath(ctx,m[1],x+23,y,max-50,depth+1);const bw=Math.min(120,cMeasure(ctx,m[1],"15px serif"));ctx.font="15px serif";ctx.fillText(`d${m[2]}`,x+29+bw,y);ctx.restore();return;}
+  m=t.match(/^∫\((.*),([A-Za-z]+)\)$/);
+  if(m){ctx.font="28px serif";ctx.fillText("∫",x,y+4);drawCalculatorMath(ctx,m[1],x+19,y,max-45,depth+1);const bw=Math.min(120,cMeasure(ctx,m[1],"15px serif"));ctx.font="15px serif";ctx.fillText(`d${m[2]}`,x+25+bw,y);ctx.restore();return;}
+
+  m=t.match(/^[∑∏]\((.*),([A-Za-z]+),([^,]+),([^\)]+)\)$/);
+  if(m){ctx.font="30px serif";ctx.fillText(t[0],x,y+3);ctx.font="9px serif";ctx.fillText(m[4],x+8,y-18);ctx.fillText(`${m[2]}=${m[3]}`,x+2,y+16);drawCalculatorMath(ctx,m[1],x+30,y,max-35,depth+1);ctx.restore();return;}
+  m=t.match(/^lim\((.*),([A-Za-z]+),([^\)]+)\)$/);
+  if(m){ctx.font="15px serif";ctx.fillText("lim",x,y-3);ctx.font="9px serif";ctx.fillText(`${m[2]}→${m[3]}`,x-1,y+10);drawCalculatorMath(ctx,m[1],x+29,y,max-34,depth+1);ctx.restore();return;}
+
+  m=t.match(/^system\((.*)\)$/i);
+  if(m){const parts=m[1].split(",").map(v=>v.trim()).filter(Boolean);ctx.font="38px serif";ctx.fillText("{",x,y+7);ctx.font="12px serif";parts.slice(0,4).forEach((v,i)=>ctx.fillText(v.replace(/\*/g,"·"),x+17,y-12+i*15));ctx.restore();return;}
+  m=t.match(/^piecewise\((.*)\)$/i);
+  if(m){const parts=m[1].split(",").map(v=>v.trim());ctx.font="38px serif";ctx.fillText("{",x,y+7);ctx.font="11px serif";for(let i=0;i+1<parts.length&&i<6;i+=2)ctx.fillText(`${parts[i]},  ${parts[i+1]}`,x+17,y-12+(i/2)*15);ctx.restore();return;}
+  m=t.match(/^abs\((.*)\)$/i);
+  if(m){ctx.beginPath();ctx.moveTo(x,y-15);ctx.lineTo(x,y+7);ctx.moveTo(x+8+cMeasure(ctx,m[1]),y-15);ctx.lineTo(x+8+cMeasure(ctx,m[1]),y+7);ctx.stroke();drawCalculatorMath(ctx,m[1],x+5,y,max-12,depth+1);ctx.restore();return;}
+  m=t.match(/^log\((.*),([^,()]+)\)$/i);
+  if(m){ctx.font="15px serif";ctx.fillText("log",x,y);ctx.font="9px serif";ctx.fillText(m[2],x+20,y+6);ctx.font="15px serif";ctx.fillText("(",x+28,y);drawCalculatorMath(ctx,m[1],x+34,y,max-45,depth+1);ctx.fillText(")",x+37+cMeasure(ctx,m[1]),y);ctx.restore();return;}
+
+  const slash=cTopSlash(t);
+  if(slash>0&&slash<t.length-1&&t.length<48){
+    const a=t.slice(0,slash).trim(),b=t.slice(slash+1).trim(),aw=Math.max(14,cMeasure(ctx,a,"15px serif")),bw=Math.max(14,cMeasure(ctx,b,"15px serif")),W=Math.max(aw,bw)+10;
+    drawCalculatorInlineV2(ctx,a,x+(W-aw)/2,y-6,15);drawCalculatorInlineV2(ctx,b,x+(W-bw)/2,y+14,15);ctx.beginPath();ctx.moveTo(x+2,y);ctx.lineTo(x+W-2,y);ctx.stroke();ctx.restore();return;
+  }
+  m=t.match(/^(.*)\^\(?([^\)]+)\)?$/);
+  if(m&&m[1].length<32&&m[2].length<14){drawCalculatorInlineV2(ctx,t,x,y,15);ctx.restore();return;}
+  ctx.font="15px Arial";ctx.fillText(t.replace(/\*/g,"·").length>44?t.replace(/\*/g,"·").slice(0,43)+"…":t.replace(/\*/g,"·"),x,y);ctx.restore();
+}
 function drawCalculatorScratchpadPreview(canvas,rows=[],sel=-1,scroll=0){const ctx=canvas.getContext("2d"),w=canvas.width||320,h=canvas.height||214,rowH=53,vis=5,start=Math.max(0,Math.min(Math.max(0,rows.length-vis),scroll));ctx.setTransform(1,0,0,1,0,0);ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);rows.slice(start,start+vis).forEach((r,i)=>{let gi=start+i,top=i*rowH;ctx.fillStyle=gi===sel?"#75cbe9":(gi%2?"#f7f7f7":"#fff");ctx.fillRect(0,top,w-12,rowH-1);drawCalculatorMath(ctx,r.entry||"",8,top+29,200);let res=r.display||r.full||"";if(res)drawCalculatorMath(ctx,res,Math.max(190,w-22-Math.min(120,cMeasure(ctx,res))),top+29,120);});ctx.fillStyle="#f5f5f5";ctx.fillRect(w-12,0,12,h);if(rows.length>vis){let th=Math.max(22,h*vis/rows.length),ty=(h-th)*start/Math.max(1,rows.length-vis);ctx.fillStyle="#aaa";ctx.fillRect(w-9,ty+2,6,th-4);}}
 
 const CALCULATOR_COMPOSER_RESERVED_HEIGHT = 58;
@@ -9063,11 +9120,19 @@ function calculatorComposerSlotCount(type) {
 
 function calculatorNewComposer(type = "plain", carry = "") {
   const slots = Array.from({ length: calculatorComposerSlotCount(type) }, () => "");
-  if (carry && slots.length) slots[0] = carry;
-  return { type, slots, active: 0 };
+  if (type === "plain" && carry && slots.length) slots[0] = carry;
+  return {
+    type,
+    slots,
+    prefix: "",
+    suffix: "",
+    active: 0,
+    activePart: "slot:0",
+    carets: { "slot:0": String(slots[0] || "").length },
+  };
 }
 
-function calculatorComposerSerialize(state) {
+function calculatorComposerCoreSerialize(state) {
   const s = (i) => String(state?.slots?.[i] || "").trim();
   switch (state?.type || "plain") {
     case "fraction": return `${s(0)}/${s(1)}`;
@@ -9098,14 +9163,34 @@ function calculatorComposerSerialize(state) {
   }
 }
 
+function calculatorNeedsImplicitMultiply(left, core) {
+  const l = String(left || "").trimEnd();
+  if (!l || !core) return false;
+  if (!/[0-9A-Za-z_)\]]$/.test(l)) return false;
+  return /^(?:root\(|√\(|e\^|log\(|abs\(|system\(|piecewise\(|∑\(|∏\(|d\(|∫\(|lim\(|\[\[)/.test(core);
+}
+
+function calculatorComposerSerialize(state) {
+  if ((state?.type || "plain") === "plain") return String(state?.slots?.[0] || "").trim();
+  const prefix = String(state?.prefix || "");
+  const suffix = String(state?.suffix || "");
+  const core = calculatorComposerCoreSerialize(state);
+  return `${prefix}${calculatorNeedsImplicitMultiply(prefix, core) ? "*" : ""}${core}${suffix}`.trim();
+}
+
 function calculatorComposerHasContent(state) {
-  return (state?.slots || []).some((v) => String(v || "").trim());
+  return Boolean(String(state?.prefix || "").trim() || String(state?.suffix || "").trim() || (state?.slots || []).some((v) => String(v || "").trim()));
+}
+
+function calculatorComposerTemplateSlotsEmpty(state) {
+  return (state?.slots || []).every((v) => !String(v || "").trim());
 }
 
 function calculatorComposerIsComplete(state) {
   if (!calculatorComposerHasContent(state)) return false;
+  if ((state?.type || "plain") === "plain") return Boolean(String(state?.slots?.[0] || "").trim());
   const required = ({
-    plain:[0], fraction:[0,1], power:[0,1], sqrt:[0], root:[0,1], exp:[0], log:[0,1],
+    fraction:[0,1], power:[0,1], sqrt:[0], root:[0,1], exp:[0], log:[0,1],
     piecewise2:[0,1,2,3], piecewise3:[0,1,2,3,4,5], system2:[0,1], system3:[0,1,2], abs:[0],
     dms:[0], matrix22:[0,1,2,3], matrix12:[0,1], matrix21:[0,1], matrix32:[0,1,2,3,4,5],
     sum:[0,2,3], product:[0,2,3], derivative1:[0], derivative2:[0], derivativeN:[0,2],
@@ -9115,16 +9200,20 @@ function calculatorComposerIsComplete(state) {
 }
 
 function calculatorSlotHtml(i, cls = "") {
-  return `<span class="calc-visual-slot ${cls}" contenteditable="plaintext-only" spellcheck="false" data-slot="${i}"></span>`;
+  return `<span class="calc-visual-slot calc-editor-part ${cls}" contenteditable="plaintext-only" spellcheck="false" data-slot="${i}" data-editor-part="slot:${i}"></span>`;
 }
 
-function calculatorComposerMarkup(state) {
+function calculatorAffixHtml(name, text = "") {
+  return `<span class="calc-v-affix calc-editor-part calc-v-affix-${name}" contenteditable="plaintext-only" spellcheck="false" data-affix="${name}" data-editor-part="${name}">${escapeHtml(String(text || ""))}</span>`;
+}
+
+function calculatorComposerTemplateMarkup(state) {
   const slot = calculatorSlotHtml;
   switch (state.type) {
     case "fraction": return `<span class="calc-v-frac"><span class="calc-v-frac-num">${slot(0)}</span><span class="calc-v-frac-bar"></span><span class="calc-v-frac-den">${slot(1)}</span></span>`;
     case "power": return `<span class="calc-v-power"><span class="calc-v-base">${slot(0)}</span><sup>${slot(1,"calc-v-sup-slot")}</sup></span>`;
     case "sqrt": return `<span class="calc-v-root"><span class="calc-v-radical">√</span><span class="calc-v-radicand">${slot(0)}</span></span>`;
-    case "root": return `<span class="calc-v-root calc-v-nroot"><sup>${slot(0,"calc-v-index")}</sup><span class="calc-v-radical">√</span><span class="calc-v-radicand">${slot(1)}</span></span>`;
+    case "root": return `<span class="calc-v-root calc-v-nroot"><span class="calc-v-nroot-index">${slot(0,"calc-v-index")}</span><span class="calc-v-root-main"><span class="calc-v-radical">√</span><span class="calc-v-radicand">${slot(1)}</span></span></span>`;
     case "exp": return `<span class="calc-v-power"><span class="calc-v-base calc-v-italic">e</span><sup>${slot(0,"calc-v-sup-slot")}</sup></span>`;
     case "log": return `<span class="calc-v-log"><span>log</span><sub>${slot(0,"calc-v-sub-slot")}</sub><span>(</span>${slot(1)}<span>)</span></span>`;
     case "abs": return `<span class="calc-v-abs"><span class="calc-v-abs-bar"></span>${slot(0)}<span class="calc-v-abs-bar"></span></span>`;
@@ -9139,20 +9228,25 @@ function calculatorComposerMarkup(state) {
     case "piecewise3": return `<span class="calc-v-system"><span class="calc-v-brace">{</span><span class="calc-v-piece-rows"><span>${slot(0)}<span class="calc-v-if">,</span>${slot(1)}</span><span>${slot(2)}<span class="calc-v-if">,</span>${slot(3)}</span><span>${slot(4)}<span class="calc-v-if">,</span>${slot(5)}</span></span></span>`;
     case "sum": return `<span class="calc-v-bigop"><span class="calc-v-bigop-stack"><span class="calc-v-upper">${slot(3)}</span><span class="calc-v-op">∑</span><span class="calc-v-lower">${slot(1,"calc-v-var")}<span>=</span>${slot(2)}</span></span><span class="calc-v-body">(${slot(0)})</span></span>`;
     case "product": return `<span class="calc-v-bigop"><span class="calc-v-bigop-stack"><span class="calc-v-upper">${slot(3)}</span><span class="calc-v-op">∏</span><span class="calc-v-lower">${slot(1,"calc-v-var")}<span>=</span>${slot(2)}</span></span><span class="calc-v-body">(${slot(0)})</span></span>`;
-    case "derivative1": return `<span class="calc-v-derivative"><span class="calc-v-frac"><span class="calc-v-frac-num calc-v-fixed">d</span><span class="calc-v-frac-bar"></span><span class="calc-v-frac-den"><span>d</span>${slot(1,"calc-v-var")}</span></span><span>(</span>${slot(0)}<span>)</span></span>`;
-    case "derivative2": return `<span class="calc-v-derivative"><span class="calc-v-frac"><span class="calc-v-frac-num calc-v-fixed">d<sup>2</sup></span><span class="calc-v-frac-bar"></span><span class="calc-v-frac-den"><span>d</span>${slot(1,"calc-v-var")}<sup>2</sup></span></span><span>(</span>${slot(0)}<span>)</span></span>`;
-    case "derivativeN": return `<span class="calc-v-derivative"><span class="calc-v-frac"><span class="calc-v-frac-num calc-v-fixed">d<sup>${slot(2,"calc-v-order")}</sup></span><span class="calc-v-frac-bar"></span><span class="calc-v-frac-den"><span>d</span>${slot(1,"calc-v-var")}<sup>${slot(2,"calc-v-order clone-order")}</sup></span></span><span>(</span>${slot(0)}<span>)</span></span>`;
-    case "integralDef": return `<span class="calc-v-integral"><span class="calc-v-int-stack"><span class="calc-v-upper">${slot(3)}</span><span class="calc-v-int">∫</span><span class="calc-v-lower">${slot(2)}</span></span><span>${slot(0)}</span><span>d</span>${slot(1,"calc-v-var")}</span>`;
-    case "integral": return `<span class="calc-v-integral"><span class="calc-v-int">∫</span><span>${slot(0)}</span><span>d</span>${slot(1,"calc-v-var")}</span>`;
+    case "derivative1": return `<span class="calc-v-derivative"><span class="calc-v-frac calc-v-dfrac"><span class="calc-v-frac-num calc-v-fixed">d</span><span class="calc-v-frac-bar"></span><span class="calc-v-frac-den"><span>d</span>${slot(1,"calc-v-var")}</span></span><span class="calc-v-derivative-body">(</span>${slot(0)}<span class="calc-v-derivative-body">)</span></span>`;
+    case "derivative2": return `<span class="calc-v-derivative"><span class="calc-v-frac calc-v-dfrac"><span class="calc-v-frac-num calc-v-fixed">d<sup>2</sup></span><span class="calc-v-frac-bar"></span><span class="calc-v-frac-den"><span>d</span>${slot(1,"calc-v-var")}<sup>2</sup></span></span><span class="calc-v-derivative-body">(</span>${slot(0)}<span class="calc-v-derivative-body">)</span></span>`;
+    case "derivativeN": return `<span class="calc-v-derivative"><span class="calc-v-frac calc-v-dfrac"><span class="calc-v-frac-num calc-v-fixed">d<sup>${slot(2,"calc-v-order")}</sup></span><span class="calc-v-frac-bar"></span><span class="calc-v-frac-den"><span>d</span>${slot(1,"calc-v-var")}<sup>${slot(2,"calc-v-order clone-order")}</sup></span></span><span class="calc-v-derivative-body">(</span>${slot(0)}<span class="calc-v-derivative-body">)</span></span>`;
+    case "integralDef": return `<span class="calc-v-integral"><span class="calc-v-int-stack"><span class="calc-v-upper">${slot(3)}</span><span class="calc-v-int">∫</span><span class="calc-v-lower">${slot(2)}</span></span><span class="calc-v-integrand">${slot(0)}</span><span class="calc-v-differential">d</span>${slot(1,"calc-v-var")}</span>`;
+    case "integral": return `<span class="calc-v-integral"><span class="calc-v-int">∫</span><span class="calc-v-integrand">${slot(0)}</span><span class="calc-v-differential">d</span>${slot(1,"calc-v-var")}</span>`;
     case "limit": return `<span class="calc-v-limit"><span class="calc-v-lim-stack"><span class="calc-v-lim">lim</span><span class="calc-v-lower">${slot(1,"calc-v-var")}<span>→</span>${slot(2)}</span></span>${slot(0)}</span>`;
     default: return `<span class="calc-v-plain">${slot(0,"calc-v-plain-slot")}</span>`;
   }
 }
 
-function calculatorPlaceCaret(slot, offset = null) {
-  if (!slot) return;
-  slot.focus();
-  const node = slot.firstChild || slot.appendChild(document.createTextNode(""));
+function calculatorComposerMarkup(state) {
+  if ((state?.type || "plain") === "plain") return calculatorComposerTemplateMarkup(state);
+  return `<span class="calc-v-expression">${calculatorAffixHtml("prefix", state.prefix)}<span class="calc-v-template" data-template-type="${escapeHtml(state.type)}">${calculatorComposerTemplateMarkup(state)}</span>${calculatorAffixHtml("suffix", state.suffix)}</span>`;
+}
+
+function calculatorPlaceCaret(part, offset = null) {
+  if (!part) return;
+  part.focus();
+  const node = part.firstChild || part.appendChild(document.createTextNode(""));
   const length = node.textContent?.length || 0;
   const pos = offset == null ? length : Math.max(0, Math.min(length, offset));
   const range = document.createRange();
@@ -9160,84 +9254,185 @@ function calculatorPlaceCaret(slot, offset = null) {
   const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range);
 }
 
-function calculatorSlotCaretOffset(slot) {
+function calculatorSlotCaretOffset(part) {
   const sel = window.getSelection();
-  if (!slot || !sel?.rangeCount || !slot.contains(sel.anchorNode)) return null;
+  if (!part || !sel?.rangeCount || !part.contains(sel.anchorNode)) return null;
   const range = sel.getRangeAt(0).cloneRange();
-  range.selectNodeContents(slot); range.setEnd(sel.anchorNode, sel.anchorOffset);
+  range.selectNodeContents(part); range.setEnd(sel.anchorNode, sel.anchorOffset);
   return range.toString().length;
 }
 
-function calculatorRenderComposer(container, state, focusSlot = null) {
+function calculatorEditorParts(container) {
+  return Array.from(container.querySelectorAll('.calc-editor-part[contenteditable]'));
+}
+
+function calculatorStatePartText(state, partName) {
+  if (partName === "prefix" || partName === "suffix") return String(state[partName] || "");
+  const m = String(partName || "").match(/^slot:(\d+)$/);
+  return m ? String(state.slots?.[Number(m[1])] || "") : "";
+}
+
+function calculatorSetStatePartText(state, partName, value) {
+  if (partName === "prefix" || partName === "suffix") state[partName] = value;
+  else {
+    const m = String(partName || "").match(/^slot:(\d+)$/);
+    if (m) state.slots[Number(m[1])] = value;
+  }
+}
+
+function calculatorTemplateToPlain(container, state, caretOffset = null) {
+  const prefix = String(state.prefix || "");
+  const suffix = String(state.suffix || "");
+  const combined = prefix + suffix;
+  Object.assign(state, calculatorNewComposer("plain", combined));
+  state.carets["slot:0"] = caretOffset == null ? prefix.length : caretOffset;
+  calculatorRenderComposer(container, state, { part: "slot:0", offset: state.carets["slot:0"] });
+}
+
+function calculatorRenderComposer(container, state, focusTarget = null) {
   container.innerHTML = calculatorComposerMarkup(state);
-  const slots = Array.from(container.querySelectorAll('.calc-visual-slot'));
-  slots.forEach((slot) => {
+  const allSlots = Array.from(container.querySelectorAll('.calc-visual-slot'));
+  allSlots.forEach((slot) => {
     const i = Number(slot.dataset.slot);
     if (slot.classList.contains('clone-order')) {
-      slot.removeAttribute('contenteditable'); slot.setAttribute('aria-hidden','true');
+      slot.removeAttribute('contenteditable');
+      slot.removeAttribute('data-editor-part');
+      slot.classList.remove('calc-editor-part');
+      slot.setAttribute('aria-hidden','true');
     }
     slot.textContent = state.slots[i] || "";
-    if (slot.hasAttribute('contenteditable')) {
-      slot.addEventListener('focus', () => { state.active = i; container.classList.add('is-editing'); });
-      slot.addEventListener('input', () => {
-        state.slots[i] = slot.textContent.replace(/\n/g, '');
-        for (const clone of container.querySelectorAll(`.clone-order[data-slot="${i}"]`)) clone.textContent = state.slots[i];
-      });
-      slot.addEventListener('paste', (event) => {
-        event.preventDefault();
-        const text = (event.clipboardData || window.clipboardData)?.getData('text') || '';
-        document.execCommand('insertText', false, text.replace(/[\r\n]+/g, ' '));
-      });
-      slot.addEventListener('keydown', (event) => {
-        const offset = calculatorSlotCaretOffset(slot);
-        const len = slot.textContent.length;
-        if (event.key === 'ArrowRight' && offset === len) {
-          const next = slots.find((s) => s.hasAttribute('contenteditable') && Number(s.dataset.slot) > i);
-          if (next) { event.preventDefault(); calculatorPlaceCaret(next, 0); }
-        } else if (event.key === 'ArrowLeft' && offset === 0) {
-          const prev = [...slots].reverse().find((s) => s.hasAttribute('contenteditable') && Number(s.dataset.slot) < i);
-          if (prev) { event.preventDefault(); calculatorPlaceCaret(prev); }
-        } else if (event.key === 'Backspace' && offset === 0 && !slot.textContent) {
-          const prev = [...slots].reverse().find((s) => s.hasAttribute('contenteditable') && Number(s.dataset.slot) < i);
-          if (prev) { event.preventDefault(); calculatorPlaceCaret(prev); }
-        } else if (state.type === 'plain' && event.key === '^' && slot.textContent.trim()) {
-          event.preventDefault();
-          const carry = slot.textContent.trim(); state.type='power'; state.slots=[carry,'']; state.active=1;
-          calculatorRenderComposer(container,state,1);
-        } else if (state.type === 'plain' && event.key === '/' && slot.textContent.trim()) {
-          event.preventDefault();
-          const carry = slot.textContent.trim(); state.type='fraction'; state.slots=[carry,'']; state.active=1;
-          calculatorRenderComposer(container,state,1);
-        }
-      });
-    }
   });
-  const targetIndex = focusSlot == null ? state.active : focusSlot;
-  const target = slots.find((s) => s.hasAttribute('contenteditable') && Number(s.dataset.slot) === targetIndex)
-    || slots.find((s) => s.hasAttribute('contenteditable'));
-  if (target && focusSlot != null) setTimeout(() => calculatorPlaceCaret(target),0);
+  for (const affix of container.querySelectorAll('.calc-v-affix')) affix.textContent = String(state[affix.dataset.affix] || "");
+
+  const parts = calculatorEditorParts(container);
+  const syncCaret = (part) => {
+    const name = part.dataset.editorPart;
+    state.activePart = name;
+    const m = name?.match(/^slot:(\d+)$/);
+    if (m) state.active = Number(m[1]);
+    const offset = calculatorSlotCaretOffset(part);
+    if (offset != null) state.carets[name] = offset;
+  };
+
+  parts.forEach((part) => {
+    const name = part.dataset.editorPart;
+    part.addEventListener('focus', () => { syncCaret(part); container.classList.add('is-editing'); });
+    part.addEventListener('click', () => syncCaret(part));
+    part.addEventListener('keyup', () => syncCaret(part));
+    part.addEventListener('input', () => {
+      const value = part.textContent.replace(/[\r\n]+/g, '');
+      calculatorSetStatePartText(state, name, value);
+      syncCaret(part);
+      const m = name?.match(/^slot:(\d+)$/);
+      if (m) for (const clone of container.querySelectorAll(`.clone-order[data-slot="${m[1]}"]`)) clone.textContent = value;
+    });
+    part.addEventListener('paste', (event) => {
+      event.preventDefault();
+      const text = (event.clipboardData || window.clipboardData)?.getData('text') || '';
+      document.execCommand('insertText', false, text.replace(/[\r\n]+/g, ' '));
+    });
+    part.addEventListener('keydown', (event) => {
+      const offset = calculatorSlotCaretOffset(part) ?? 0;
+      const len = part.textContent.length;
+      const editable = calculatorEditorParts(container);
+      const idx = editable.indexOf(part);
+      if (event.key === 'ArrowRight' && offset === len) {
+        const next = editable[idx + 1];
+        if (next) { event.preventDefault(); calculatorPlaceCaret(next, 0); state.activePart = next.dataset.editorPart; state.carets[state.activePart] = 0; }
+      } else if (event.key === 'ArrowLeft' && offset === 0) {
+        const prev = editable[idx - 1];
+        if (prev) { event.preventDefault(); calculatorPlaceCaret(prev); state.activePart = prev.dataset.editorPart; state.carets[state.activePart] = prev.textContent.length; }
+      } else if (event.key === 'Backspace' && offset === 0 && !part.textContent) {
+        if (state.type !== 'plain' && calculatorComposerTemplateSlotsEmpty(state) && name?.startsWith('slot:')) {
+          event.preventDefault(); calculatorTemplateToPlain(container, state);
+        } else {
+          const prev = editable[idx - 1];
+          if (prev) { event.preventDefault(); calculatorPlaceCaret(prev); }
+        }
+      } else if (event.key === 'Delete' && offset === len && !part.textContent && state.type !== 'plain' && calculatorComposerTemplateSlotsEmpty(state)) {
+        event.preventDefault(); calculatorTemplateToPlain(container, state);
+      } else if (state.type === 'plain' && event.key === '^' && part.textContent.trim()) {
+        event.preventDefault();
+        const carry = part.textContent.trim();
+        Object.assign(state, calculatorNewComposer('power'));
+        state.slots = [carry, '']; state.active = 1; state.activePart = 'slot:1';
+        calculatorRenderComposer(container, state, 1);
+      } else if (state.type === 'plain' && event.key === '/' && part.textContent.trim()) {
+        event.preventDefault();
+        const carry = part.textContent.trim();
+        Object.assign(state, calculatorNewComposer('fraction'));
+        state.slots = [carry, '']; state.active = 1; state.activePart = 'slot:1';
+        calculatorRenderComposer(container, state, 1);
+      }
+    });
+  });
+
+  let requestedPart = null, requestedOffset = null;
+  if (typeof focusTarget === 'number') requestedPart = `slot:${focusTarget}`;
+  else if (typeof focusTarget === 'string') requestedPart = focusTarget;
+  else if (focusTarget && typeof focusTarget === 'object') { requestedPart = focusTarget.part; requestedOffset = focusTarget.offset; }
+  if (requestedPart == null) requestedPart = state.activePart || `slot:${state.active || 0}`;
+  const target = parts.find((p) => p.dataset.editorPart === requestedPart) || parts[0];
+  if (target && focusTarget != null) setTimeout(() => {
+    calculatorPlaceCaret(target, requestedOffset == null ? state.carets?.[target.dataset.editorPart] : requestedOffset);
+    state.activePart = target.dataset.editorPart;
+  }, 0);
 }
 
 function calculatorSetTemplate(container, state, file) {
   const type = calculatorTemplateType(file);
-  const carry = state.type === 'plain' ? String(state.slots?.[0] || '').trim() : '';
-  const next = calculatorNewComposer(type, carry);
+  let prefix = "";
+  if ((state.type || "plain") === "plain") prefix = String(state.slots?.[0] || "");
+  else prefix = calculatorComposerSerialize(state);
+  const next = calculatorNewComposer(type);
+  next.prefix = prefix;
+  next.suffix = "";
+  next.active = 0;
+  next.activePart = "slot:0";
+  next.carets = { prefix: prefix.length, "slot:0": 0, suffix: 0 };
   Object.assign(state, next);
-  calculatorRenderComposer(container, state, carry ? Math.min(1, next.slots.length - 1) : 0);
+  calculatorRenderComposer(container, state, 0);
 }
 
 function calculatorVisualMove(container, state, delta) {
-  const slots = Array.from(container.querySelectorAll('.calc-visual-slot[contenteditable]'));
-  const active = document.activeElement?.closest?.('.calc-visual-slot');
-  if (!active || !container.contains(active)) {
-    const slot = slots.find((s) => Number(s.dataset.slot) === state.active) || slots[0];
-    calculatorPlaceCaret(slot, delta < 0 ? null : 0); return;
+  const parts = calculatorEditorParts(container);
+  if (!parts.length) return;
+  let active = document.activeElement?.closest?.('.calc-editor-part[contenteditable]');
+  if (!active || !container.contains(active)) active = parts.find((p) => p.dataset.editorPart === state.activePart) || parts[0];
+  const name = active.dataset.editorPart;
+  const len = active.textContent.length;
+  let offset = calculatorSlotCaretOffset(active);
+  if (offset == null) offset = Number.isFinite(state.carets?.[name]) ? state.carets[name] : (delta < 0 ? len : 0);
+  if (delta < 0 && offset > 0) {
+    const nextOffset = offset - 1; calculatorPlaceCaret(active, nextOffset); state.carets[name] = nextOffset; state.activePart = name; return;
   }
-  const offset = calculatorSlotCaretOffset(active) ?? 0, len = active.textContent.length;
-  if (delta < 0 && offset > 0) return calculatorPlaceCaret(active, offset - 1);
-  if (delta > 0 && offset < len) return calculatorPlaceCaret(active, offset + 1);
-  const idx = slots.indexOf(active), next = slots[idx + (delta < 0 ? -1 : 1)];
-  if (next) calculatorPlaceCaret(next, delta < 0 ? null : 0);
+  if (delta > 0 && offset < len) {
+    const nextOffset = offset + 1; calculatorPlaceCaret(active, nextOffset); state.carets[name] = nextOffset; state.activePart = name; return;
+  }
+  const idx = parts.indexOf(active), next = parts[idx + (delta < 0 ? -1 : 1)];
+  if (next) {
+    const nextOffset = delta < 0 ? next.textContent.length : 0;
+    calculatorPlaceCaret(next, nextOffset); state.activePart = next.dataset.editorPart; state.carets[state.activePart] = nextOffset;
+  }
+}
+
+function calculatorVisibleScreenText(rows = [], composer = null, scrollPx = 0, viewHeight = 156) {
+  const lines = [];
+  let y = -Number(scrollPx || 0);
+  for (const row of rows || []) {
+    const rh = calculatorRowHeightV2(row);
+    if (y + rh >= 0 && y < viewHeight) {
+      const entry = String(row?.entry || "").trim();
+      const result = String(row?.display || row?.full || "").trim();
+      if (entry) lines.push(result && result !== entry ? `${entry} = ${result}` : entry);
+    }
+    y += rh;
+  }
+  if (composer && calculatorComposerHasContent(composer)) {
+    const current = calculatorComposerSerialize(composer);
+    if (current) lines.push(current);
+  }
+  return lines.join("\n");
 }
 
 function calculatorRowHeightV2(row) {
@@ -11075,7 +11270,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       </div>
       <pre id="love-preview-log" class="mini-log"></pre>
       <div class="modal-actions">
-        ${calculatorEditor ? "" : `<button type="button" id="love-preview-copy-content">${escapeHtml(t("copyScreenContent"))}</button>`}
+        <button type="button" id="love-preview-copy-content">${escapeHtml(t("copyScreenContent"))}</button>
         ${project || calculatorEditor ? "" : `<button type="button" id="love-copy-nspire">${escapeHtml(t("loveCopyNspire"))}</button>
         <button type="button" id="love-replace-nspire" class="green-tool-button">${escapeHtml(t("loveReplaceNspire"))}</button>`}
         <button type="button" id="love-preview-close">${escapeHtml(t("close"))}</button>
@@ -11226,7 +11421,14 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     appendPreviewLog(previewLog, t("loveCopiedNspire"));
   });
   backdrop.querySelector("#love-preview-copy-content")?.addEventListener("click", async () => {
-    const text = runtime?.getScreenText?.() || "";
+    const text = calculatorEditor
+      ? calculatorVisibleScreenText(
+          calculatorEditor.rows || [],
+          calculatorEditor.composer || null,
+          calculatorEditor.scrollPx || 0,
+          Math.max(40, (canvas.height || 214) - CALCULATOR_COMPOSER_RESERVED_HEIGHT)
+        )
+      : (runtime?.getScreenText?.() || "");
     await copyPlainText(text);
     appendPreviewLog(previewLog, text.trim() ? t("screenContentCopied") : t("screenContentEmpty"));
   });
@@ -11293,17 +11495,35 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     // Physical keyboard Enter behaves like the calculator: commit the current 2D entry.
     composer.addEventListener("keydown",(event)=>{
       if(event.key==="Enter"){event.preventDefault();calculatorEditor.commitComposer();}
-      if(event.key==="Escape"){event.preventDefault();composer.querySelector('.calc-visual-slot[contenteditable]')?.blur();}
+      if(event.key==="Escape"){event.preventDefault();composer.querySelector('.calc-editor-part[contenteditable]')?.blur();}
+      if((event.key==="Backspace"||event.key==="Delete") && calculatorEditor.composer.type!=="plain" && calculatorComposerTemplateSlotsEmpty(calculatorEditor.composer)){
+        const active=event.target.closest?.('.calc-editor-part');
+        if(!active){event.preventDefault();calculatorTemplateToPlain(composer,calculatorEditor.composer);}
+      }
     });
 
-    // Paste directly into the visual calculator area. Simple a^b and a/b pastes become 2D templates.
+    // Paste normal calculator code and convert the common MathPrint forms to editable 2D templates.
     composer.addEventListener("paste",(event)=>{
-      const active=event.target.closest?.('.calc-visual-slot');
+      const active=event.target.closest?.('.calc-editor-part');
       if(!active || calculatorEditor.composer.type!=="plain")return;
       const text=(event.clipboardData||window.clipboardData)?.getData('text')?.trim()||'';
-      let m;
-      if((m=text.match(/^(.+?)\^\(?([^()]+)\)?$/))){event.preventDefault();calculatorEditor.composer.type='power';calculatorEditor.composer.slots=[m[1],m[2]];calculatorEditor.composer.active=1;calculatorRenderComposer(composer,calculatorEditor.composer,1);}
-      else if((m=text.match(/^([^/]+)\/([^/]+)$/))){event.preventDefault();calculatorEditor.composer.type='fraction';calculatorEditor.composer.slots=[m[1],m[2]];calculatorEditor.composer.active=1;calculatorRenderComposer(composer,calculatorEditor.composer,1);}
+      let m,type=null,slots=null;
+      if((m=text.match(/^root\((.*),([^,()]+)\)$/))){type='root';slots=[m[2],m[1]];}
+      else if((m=text.match(/^√\((.*)\)$/))){type='sqrt';slots=[m[1]];}
+      else if((m=text.match(/^d\((.*),([A-Za-z]+),([^()]+)\)$/))){type='derivativeN';slots=[m[1],m[2],m[3]];}
+      else if((m=text.match(/^d\((.*),([A-Za-z]+)\)$/))){type='derivative1';slots=[m[1],m[2]];}
+      else if((m=text.match(/^(.+?)\^\(?([^()]+)\)?$/))){type='power';slots=[m[1],m[2]];}
+      else if((m=text.match(/^([^/]+)\/([^/]+)$/))){type='fraction';slots=[m[1],m[2]];}
+      if(type){
+        event.preventDefault();
+        const prefix='';
+        Object.assign(calculatorEditor.composer,calculatorNewComposer(type));
+        calculatorEditor.composer.slots=slots;
+        calculatorEditor.composer.prefix=prefix;
+        calculatorEditor.composer.active=Math.max(0,slots.length-1);
+        calculatorEditor.composer.activePart=`slot:${calculatorEditor.composer.active}`;
+        calculatorRenderComposer(composer,calculatorEditor.composer,calculatorEditor.composer.active);
+      }
     },true);
 
     stage.addEventListener("wheel",(event)=>{event.preventDefault();calculatorEditor.scrollBy(event.deltaY);},{passive:false});
