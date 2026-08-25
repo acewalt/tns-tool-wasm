@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-24-ti-sheet-cells-roundtrip";
+const SOURCE_VERSION = "2026-08-24-spreadsheet-save-path-fix";
 
 const I18N = {
   es: {
@@ -14631,7 +14631,6 @@ async function saveSpreadsheetWidgetToStage(item, state) {
 
   const payload = await pyodide.runPythonAsync(`
 import json
-import re
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from xml_scanner import local_name
@@ -14668,10 +14667,15 @@ def q(ns, name):
     return f"{{{ns}}}{name}"
 
 def parse_part(part):
-    match = re.fullmatch(r"([^\[]+)(?:\[(\d+)\])?", part)
-    if not match:
-        return part, 1
-    return match.group(1), int(match.group(2) or 1)
+    # No usar regex aquí: este Python vive dentro de un template literal JS
+    # y las barras invertidas pueden perderse antes de llegar a Pyodide.
+    text = str(part or "")
+    if text.endswith("]") and "[" in text:
+        name, raw_index = text.rsplit("[", 1)
+        raw_index = raw_index[:-1]
+        if raw_index.isdigit():
+            return name, int(raw_index)
+    return text, 1
 
 def resolve_path(root, path):
     parts = [part for part in str(path or "").split("/") if part]
