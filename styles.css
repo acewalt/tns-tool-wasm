@@ -3551,3 +3551,70 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .calc-v-derivative-body{font-size:20px;line-height:1}
 .calc-v-differential{margin-left:4px;font-style:italic}
 .calculator-editor-stage.expanded-view .calc-v-nroot{padding-left:10px}.calculator-editor-stage.expanded-view .calc-v-nroot .calc-v-radical{font-size:42px}.calculator-editor-stage.expanded-view .calc-v-nroot-index{top:-5px}
+
+
+/* Calculator MathPrint v4: LÖVE-rendered editor. */
+.love-calculator-templates-toggle {
+  width: 48px !important;
+  height: 48px !important;
+  min-width: 48px !important;
+  padding: 8px !important;
+  border-radius: 999px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.love-calculator-templates-toggle img { width: 30px; height: 30px; object-fit: contain; display:block; }
+.love-calculator-template-panel { background: var(--panel, #101a2b) !important; border-color: rgba(162,255,64,.5) !important; }
+.love-calculator-template-button {
+  border-radius: 999px !important;
+  background: #a8f43a !important;
+  border: 1px solid rgba(255,255,255,.16) !important;
+  width: 40px !important; height: 40px !important; min-width: 40px !important;
+  padding: 7px !important;
+}
+.love-calculator-template-button:hover,.love-calculator-template-button:focus { filter: brightness(1.08); outline: 2px solid rgba(168,244,58,.35); }
+.love-calculator-template-button img { width: 24px !important; height: 24px !important; object-fit:contain; filter: contrast(1.1); }
+.love-calculator-keyboard-capture {
+  position:absolute !important;
+  left:8px !important;
+  bottom:8px !important;
+  width:1px !important;
+  height:1px !important;
+  opacity:.01 !important;
+  padding:0 !important;
+  border:0 !important;
+  resize:none !important;
+  color:transparent !important;
+  background:transparent !important;
+  caret-color:transparent !important;
+  z-index:5;
+}
+.calculator-editor-stage canvas { cursor:text; }
+
+/* v8: template chooser is rendered by LÖVE itself using the same primitive
+   geometry as the calculator MathPrint renderer. */
+.love-calculator-template-love-panel {
+  display: block;
+  width: min(720px, calc(100vw - 44px));
+  max-width: 720px;
+  padding: 7px;
+  background: #f6f6f6;
+  overflow: hidden;
+}
+.love-calculator-template-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: min(68vh, 560px);
+  background: #f6f6f6;
+  border-radius: 5px;
+  outline: none;
+}
+@media (max-width: 760px) {
+  .love-calculator-template-love-panel {
+    width: min(94vw, 720px);
+    left: 0;
+    right: auto;
+  }
+}
