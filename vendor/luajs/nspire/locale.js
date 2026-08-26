@@ -15,9 +15,8 @@ G.str['select'] = function (index) {
 		throw new Error("bad argument #1 to 'select' (index out of range)");
 	}
 	var start;
-	if (numeric > 0) {
-		start = Math.min(numeric - 1, values.length);
-	} else {
+	if (numeric > 0) start = Math.min(numeric - 1, values.length);
+	else {
 		start = values.length + numeric;
 		if (start < 0) throw new Error("bad argument #1 to 'select' (index out of range)");
 	}
@@ -31,9 +30,7 @@ G.str['select'] = function (index) {
 		if (typeof value !== 'string' || value.trim() === '') return false;
 		return !Number.isNaN(Number(value));
 	}
-	function toLuaNumber(value) {
-		return typeof value === 'number' ? value : Number(value);
-	}
+	function toLuaNumber(value) { return typeof value === 'number' ? value : Number(value); }
 	function meta(value, name) {
 		return value && typeof value === 'object' && value.metatable && value.metatable.str
 			? value.metatable.str[name]
@@ -51,21 +48,11 @@ G.str['select'] = function (index) {
 		throw new Error(label + ' <' + left + '> and <' + right + '> not supported' + diagnosticSuffix());
 	}
 
-	lua_add = function (left, right) {
-		return binaryArithmetic(left, right, '__add', function (a, b) { return a + b; }, 'Adding');
-	};
-	lua_subtract = function (left, right) {
-		return binaryArithmetic(left, right, '__sub', function (a, b) { return a - b; }, 'Subtracting');
-	};
-	lua_multiply = function (left, right) {
-		return binaryArithmetic(left, right, '__mul', function (a, b) { return a * b; }, 'Multiplying');
-	};
-	lua_divide = function (left, right) {
-		return binaryArithmetic(left, right, '__div', function (a, b) { return a / b; }, 'Dividing');
-	};
-	lua_power = function (left, right) {
-		return binaryArithmetic(left, right, '__pow', function (a, b) { return Math.pow(a, b); }, 'Power');
-	};
+	lua_add = function (left, right) { return binaryArithmetic(left, right, '__add', function (a, b) { return a + b; }, 'Adding'); };
+	lua_subtract = function (left, right) { return binaryArithmetic(left, right, '__sub', function (a, b) { return a - b; }, 'Subtracting'); };
+	lua_multiply = function (left, right) { return binaryArithmetic(left, right, '__mul', function (a, b) { return a * b; }, 'Multiplying'); };
+	lua_divide = function (left, right) { return binaryArithmetic(left, right, '__div', function (a, b) { return a / b; }, 'Dividing'); };
+	lua_power = function (left, right) { return binaryArithmetic(left, right, '__pow', function (a, b) { return Math.pow(a, b); }, 'Power'); };
 	lua_mod = function (left, right) {
 		return binaryArithmetic(left, right, '__mod', function (a, b) {
 			if (b === 0) return NaN;
@@ -118,9 +105,7 @@ G.str['select'] = function (index) {
 		return result;
 	});
 
-	function escapeRegexChar(ch) {
-		return /[\\^$.*+?()[\]{}|/]/.test(ch) ? '\\' + ch : ch;
-	}
+	function escapeRegexChar(ch) { return /[\\^$.*+?()[\]{}|/]/.test(ch) ? '\\' + ch : ch; }
 	function luaClass(code) {
 		var map = {
 			a: '[A-Za-z]', A: '[^A-Za-z]',
@@ -159,20 +144,14 @@ G.str['select'] = function (index) {
 						end += 1;
 						var translated = luaClass(pattern.charAt(end));
 						cls += translated.charAt(0) === '[' ? translated.slice(1, -1) : translated.replace(/^\\/, '\\');
-					} else {
-						cls += cc === '\\' ? '\\\\' : cc;
-					}
+					} else cls += cc === '\\' ? '\\\\' : cc;
 				}
 				cls += ']';
 				output += cls;
 				index = end;
 				continue;
 			}
-			if (ch === '(') {
-				captures += 1;
-				output += '(';
-				continue;
-			}
+			if (ch === '(') { captures += 1; output += '('; continue; }
 			if (ch === ')' || ch === '^' || ch === '$' || ch === '.' || ch === '*' || ch === '+' || ch === '?' || ch === '-') {
 				output += ch === '-' ? '*?' : ch;
 				continue;
@@ -241,10 +220,13 @@ G.str['select'] = function (index) {
 				var value = lua_tableget(replacement, key);
 				return value == null || value === false ? whole : String(value);
 			}
-			return String(replacement == null ? '' : replacement).replace(/%%/g, '\u0000').replace(/%([0-9])/g, function (_m, digit) {
-				var idx = Number(digit);
-				return idx === 0 ? whole : String(captures[idx - 1] == null ? '' : captures[idx - 1]);
-			}).replace(/\u0000/g, '%');
+			return String(replacement == null ? '' : replacement)
+				.replace(/%%/g, '\u0000')
+				.replace(/%([0-9])/g, function (_m, digit) {
+					var idx = Number(digit);
+					return idx === 0 ? whole : String(captures[idx - 1] == null ? '' : captures[idx - 1]);
+				})
+				.replace(/\u0000/g, '%');
 		});
 		return [output, count];
 	});
@@ -266,8 +248,7 @@ G.str['select'] = function (index) {
 })();
 
 // Preserve the forgiving TI-Nspire preview, but make missing accesses visible
-// while a LÖVE runtime is active. This records the lookup that produced nil so
-// arithmetic errors can show the actual array index/key instead of only "nil".
+// while a LÖVE runtime is active.
 (function installLoveLuaAccessDiagnostics() {
 	if (typeof hardenLuaJsPreviewRuntime !== 'function' || hardenLuaJsPreviewRuntime.__tnsLoveDiagnostics) return;
 	var originalHarden = hardenLuaJsPreviewRuntime;
@@ -281,15 +262,12 @@ G.str['select'] = function (index) {
 			if (loveActive && value == null) {
 				var history = Array.isArray(window.__tnsLuaMissingAccessHistory) ? window.__tnsLuaMissingAccessHistory : [];
 				var entry;
-				if (table == null || table === false) {
-					entry = 'nil[' + String(key) + ']';
-				} else if (typeof key === 'number') {
+				if (table == null || table === false) entry = 'nil[' + String(key) + ']';
+				else if (typeof key === 'number') {
 					var len = '?';
 					try { len = String(window.lua_len(table)); } catch (_error) {}
 					entry = 'table[' + key + '] (len=' + len + ')';
-				} else {
-					entry = 'table.' + String(key);
-				}
+				} else entry = 'table.' + String(key);
 				history.push(entry);
 				if (history.length > 12) history.splice(0, history.length - 12);
 				window.__tnsLuaMissingAccessHistory = history;
@@ -301,4 +279,86 @@ G.str['select'] = function (index) {
 		return result;
 	};
 	hardenLuaJsPreviewRuntime.__tnsLoveDiagnostics = true;
+})();
+
+// The original lua.js Jison grammar gives unary '-' the same precedence as
+// binary subtraction. Lua requires unary '-' to bind more tightly than *, /,
+// and %, while still binding less tightly than exponentiation. The bug turns
+// `-1 * object` into `-(1 * object)`, which incorrectly requires __unm.
+// Normalize negative numeric literals before multiplicative operators so the
+// generated parser follows Lua's intended grouping for this common form.
+(function installLuaUnaryMinusPrecedenceCompatibility() {
+	if (typeof lua_parser === 'undefined' || !lua_parser || typeof lua_parser.parse !== 'function') return;
+	if (lua_parser.__tnsUnaryMinusPrecedenceInstalled) return;
+	var previousParse = lua_parser.parse;
+
+	function rewriteChunk(chunk) {
+		return chunk.replace(/(^|[=,(\[{;:+\-*\/%^<>~]|\b(?:return|then|do|else|elseif|until|and|or|not)\s)(\s*)-(\s*)(0[xX][0-9A-Fa-f]+|(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?)(\s*)(?=[*\/%])/g,
+			function (_whole, prefix, beforeMinus, afterMinus, number, trailing) {
+				return prefix + beforeMinus + '(-' + afterMinus + number + ')' + trailing;
+			});
+	}
+
+	function normalize(source) {
+		source = String(source == null ? '' : source);
+		var output = '';
+		var codeStart = 0;
+		var index = 0;
+		function flushCode(end) {
+			if (end > codeStart) output += rewriteChunk(source.slice(codeStart, end));
+		}
+		while (index < source.length) {
+			var ch = source.charAt(index);
+			if (ch === '"' || ch === "'") {
+				flushCode(index);
+				var quote = ch;
+				var start = index++;
+				while (index < source.length) {
+					var current = source.charAt(index++);
+					if (current === '\\') index += 1;
+					else if (current === quote) break;
+				}
+				output += source.slice(start, index);
+				codeStart = index;
+				continue;
+			}
+			if (ch === '-' && source.charAt(index + 1) === '-') {
+				flushCode(index);
+				var commentStart = index;
+				var longMatch = source.slice(index + 2).match(/^\[(=*)\[/);
+				if (longMatch) {
+					var close = ']' + longMatch[1] + ']';
+					var bodyStart = index + 2 + longMatch[0].length;
+					var closeAt = source.indexOf(close, bodyStart);
+					index = closeAt < 0 ? source.length : closeAt + close.length;
+				} else {
+					var newline = source.indexOf('\n', index + 2);
+					index = newline < 0 ? source.length : newline + 1;
+				}
+				output += source.slice(commentStart, index);
+				codeStart = index;
+				continue;
+			}
+			if (ch === '[') {
+				var longString = source.slice(index).match(/^\[(=*)\[/);
+				if (longString) {
+					flushCode(index);
+					var stringStart = index;
+					var stringClose = ']' + longString[1] + ']';
+					var stringBodyStart = index + longString[0].length;
+					var stringCloseAt = source.indexOf(stringClose, stringBodyStart);
+					index = stringCloseAt < 0 ? source.length : stringCloseAt + stringClose.length;
+					output += source.slice(stringStart, index);
+					codeStart = index;
+					continue;
+				}
+			}
+			index += 1;
+		}
+		flushCode(source.length);
+		return output;
+	}
+
+	lua_parser.parse = function (source) { return previousParse.call(lua_parser, normalize(source)); };
+	lua_parser.__tnsUnaryMinusPrecedenceInstalled = true;
 })();
