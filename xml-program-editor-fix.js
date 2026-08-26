@@ -1,8 +1,8 @@
 (() => {
   "use strict";
-  if (window.__tnsXmlProgramEditorFix) return;
+
   window.__tnsXmlProgramEditorFix = true;
-  window.__tnsXmlProgramEditorFixVersion = 5;
+  window.__tnsXmlProgramEditorFixVersion = 6;
 
   const oldNew = createNewXmlProject;
   const oldAdd = addProgramEditorToStage;
@@ -121,6 +121,42 @@
     return rescanSelect(settings.name, settings.documentType);
   }
 
+  openXmlDocumentSettings = async function () {
+    if (!xmlDoctor.current) return;
+    syncCode();
+    const current = xmlDoctor.current;
+    const originalName = current.original_name || current.program_name;
+    const settings = await programSettingsModal({
+      name: current.program_name,
+      documentType: current.document_type || detectXmlDocumentType(codeBox()?.value || ""),
+      libraryAccess: current.library_access || "None",
+      parameters: current.parameters || "",
+    }, t("documentSettings"), true, current.program_name);
+    if (!settings) return;
+
+    current.original_name = originalName;
+    current.program_name = settings.name;
+    current.document_type = settings.documentType;
+    current.library_access = settings.libraryAccess;
+    current.parameters = settings.parameters;
+    const coerced = coerceXmlDocumentType(codeBox()?.value || current.code || "", settings.documentType);
+    codeBox().value = coerced;
+    current.code = coerced;
+    xmlDoctor.embedded = false;
+    refreshXmlProgramOptions();
+    updateXmlLineNumbers();
+    renderXmlAnalysis({ errors: 0, warnings: 0, infos: 0, diagnostics: [] });
+
+    try {
+      await embedXmlCode();
+      await rescanSelect(settings.name, settings.documentType);
+      xmlLog(`${t("documentSettings")}: ${settings.name}, ${settings.documentType}, ${settings.libraryAccess}, args=${settings.parameters || "-"}`);
+    } catch (error) {
+      xmlLog(`ERROR Document settings: ${error.message}`);
+      throw error;
+    }
+  };
+
   function validBareFuncValues() {
     const box = codeBox();
     if (!box || detectXmlDocumentType(box.value) !== "Func") return new Map();
@@ -136,11 +172,9 @@
       const bare = /^([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)$/.exec(line);
       if (bare && declared.has(bare[1])) valid.set(index + 1, bare[1]);
       const local = /^Local\s+(.+)$/i.exec(line);
-      if (local) {
-        for (const rawName of local[1].split(",")) {
-          const name = rawName.trim();
-          if (validTiName(name)) declared.add(name);
-        }
+      if (local) for (const rawName of local[1].split(",")) {
+        const name = rawName.trim();
+        if (validTiName(name)) declared.add(name);
       }
       const assign = /^([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*:=/.exec(line);
       if (assign) declared.add(assign[1]);
@@ -184,7 +218,6 @@
       basicFunctions[name] = { params: String(item.parameters ?? item.params ?? ""), body };
       sources[name] = source;
     };
-
     for (const item of xmlDoctor.candidates || []) add(item, "xmlDoctor.candidates");
     if (xmlDoctor.current) add(xmlDoctor.current, "editor-memory", codeBox()?.value ?? xmlDoctor.current.code);
     return { functions, basicFunctions, sources };
@@ -193,7 +226,6 @@
   async function readFuncSymbolsFromXml() {
     const memory = collectMemoryFuncSymbols();
     if (!pyodide) return memory;
-
     pyodide.globals.set("wasm_xpe_stage_root", String(xmlDoctor.stagePath || ""));
     pyodide.globals.set("wasm_xpe_source_root", String(xmlDoctor.sourcePath || ""));
     const payload = await pyodide.runPythonAsync(`
@@ -201,73 +233,40 @@ import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from xml_scanner import local_name
-
 stage_raw = str(wasm_xpe_stage_root or "")
 source_raw = str(wasm_xpe_source_root or "")
-
 def usable(raw):
-    if not raw:
-        return None
+    if not raw: return None
     p = Path(raw)
     return p if p.exists() else None
-
 root_path = usable(stage_raw) or usable(source_raw)
-functions = []
-basic_functions = {}
-sources = {}
-
+functions, basic_functions, sources = [], {}, {}
 def xml_files(root):
-    if root is None:
-        return []
-    if root.is_file():
-        return [root] if root.suffix.lower() == ".xml" else []
+    if root is None: return []
+    if root.is_file(): return [root] if root.suffix.lower() == ".xml" else []
     return sorted(root.rglob("*.xml"), key=lambda p: str(p).lower())
-
 def direct_text(parent, wanted):
     for child in list(parent):
         if local_name(child.tag) == wanted:
             return child.text or ""
     return ""
-
 for xml_file in xml_files(root_path):
-    try:
-        xml_root = ET.parse(xml_file).getroot()
-    except Exception:
-        continue
+    try: xml_root = ET.parse(xml_file).getroot()
+    except Exception: continue
     for element in xml_root.iter():
-        # ProgramEditor symbols have appeared both as <e> entries and in nested symbol containers.
-        # Do not key the scan on the container tag; key it on the n/p/v payload itself.
         name = direct_text(element, "n").strip()
         value = direct_text(element, "v")
-        if not name or not value.lstrip().startswith("Func"):
-            continue
+        if not name or not value.lstrip().startswith("Func"): continue
         params = direct_text(element, "p")
-        if name not in functions:
-            functions.append(name)
+        if name not in functions: functions.append(name)
         basic_functions[name] = {"params": params, "body": value}
         sources[name] = str(xml_file)
-
-json.dumps({
-    "root": str(root_path) if root_path is not None else "",
-    "functions": functions,
-    "basicFunctions": basic_functions,
-    "sources": sources,
-})
+json.dumps({"functions": functions, "basicFunctions": basic_functions, "sources": sources})
 `);
-
     let disk = { functions: [], basicFunctions: {}, sources: {} };
-    try {
-      disk = JSON.parse(payload);
-    } catch (error) {
-      console.warn("No se pudo decodificar el escaneo directo de Func", error);
-    }
-
-    // Staging supplies persisted definitions; the current editor/candidate model supplies
-    // newly-added or just-renamed Funcs that may not yet be represented by the same XML shape.
-    // Merge both. Memory wins only for the same name because it is the newest user state.
+    try { disk = JSON.parse(payload); } catch (error) { console.warn(error); }
     const functions = Array.from(new Set([...(disk.functions || []), ...(memory.functions || [])]));
     return {
-      root: disk.root || "",
       functions,
       basicFunctions: { ...(disk.basicFunctions || {}), ...(memory.basicFunctions || {}) },
       sources: { ...(disk.sources || {}), ...(memory.sources || {}) },
@@ -275,40 +274,31 @@ json.dumps({
   }
 
   function mergePreviewSymbols(base = {}, funcs = {}) {
-    const hasAuthoritativeFuncs = Object.keys(funcs?.basicFunctions || {}).length > 0;
+    const hasFuncs = Object.keys(funcs?.basicFunctions || {}).length > 0;
     return {
       ...(base || {}),
       functions: Array.from(new Set([...(base?.functions || []), ...(funcs?.functions || [])])),
-      basicFunctions: hasAuthoritativeFuncs
-        ? { ...(funcs.basicFunctions || {}) }
-        : { ...(base?.basicFunctions || {}) },
+      basicFunctions: hasFuncs ? { ...(funcs.basicFunctions || {}) } : { ...(base?.basicFunctions || {}) },
     };
   }
 
   function requestedMathEvalFunctions(code) {
     const names = [];
-    const text = String(code || "");
     const regex = /math\.eval\s*\(\s*["']\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
     let match;
-    while ((match = regex.exec(text))) {
-      if (!names.includes(match[1])) names.push(match[1]);
-    }
+    while ((match = regex.exec(String(code || "")))) if (!names.includes(match[1])) names.push(match[1]);
     return names;
   }
 
   loadLuaPreviewSymbols = async function (item, sourceOverride = null) {
     const base = await oldLoadLuaPreviewSymbols(item, sourceOverride);
-    const funcs = await readFuncSymbolsFromXml();
-    return mergePreviewSymbols(base, funcs);
+    return mergePreviewSymbols(base, await readFuncSymbolsFromXml());
   };
 
   createLovePreviewNspireRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
     const funcs = await readFuncSymbolsFromXml();
     const merged = mergePreviewSymbols(symbols, funcs);
-    const linked = Object.entries(merged.basicFunctions || {}).map(([name, def]) => {
-      const params = String(def?.params || "").trim();
-      return `${name}(${params})`;
-    });
+    const linked = Object.entries(merged.basicFunctions || {}).map(([name, def]) => `${name}(${String(def?.params || "").trim()})`);
     if (logEl) {
       appendPreviewLog(logEl, `TI Func XML: ${linked.length ? linked.join(", ") : "0"}`);
       const requested = requestedMathEvalFunctions(code);
@@ -316,67 +306,36 @@ json.dumps({
       const sources = Object.entries(funcs.sources || {}).map(([name, source]) => `${name}←${String(source).split("/").pop() || source}`);
       if (sources.length) appendPreviewLog(logEl, `TI Func fuentes: ${sources.join(", ")}`);
     }
-
     const runtime = await oldCreateLovePreviewNspireRuntime(code, ctx, canvas, logEl, merged);
-
     if (logEl && linked.length) {
-      const status = Object.keys(merged.basicFunctions || {}).map((name) => (
-        `${name}=${typeof window.G?.str?.[name] === "function" ? "OK" : "MISSING"}`
-      ));
+      const status = Object.keys(merged.basicFunctions || {}).map((name) => `${name}=${typeof window.G?.str?.[name] === "function" ? "OK" : "MISSING"}`);
       appendPreviewLog(logEl, `TI Func runtime: ${status.join(", ")}`);
     }
     return runtime;
   };
 
   function patchInspectorIfEmpty() {
-    const backdrops = Array.from(document.querySelectorAll(".modal-backdrop"));
-    const backdrop = backdrops[backdrops.length - 1];
+    const backdrop = Array.from(document.querySelectorAll(".modal-backdrop")).pop();
     const modal = backdrop?.querySelector(".modal");
     if (!modal) return;
     const heading = String(modal.querySelector("h2")?.textContent || "").toLowerCase();
     if (!heading.includes("inspector") && !heading.includes("document")) return;
-
     const table = modal.querySelector("table");
     if (!table) return;
     const tbody = table.tBodies[0] || table.createTBody();
-    const visibleRows = Array.from(tbody.rows).filter((row) => row.cells.length && String(row.textContent || "").trim());
-    if (visibleRows.length) {
-      for (const row of visibleRows) {
-        row.style.display = "table-row";
-        row.style.visibility = "visible";
-      }
-      return;
-    }
-
+    if (Array.from(tbody.rows).some((row) => String(row.textContent || "").trim())) return;
     const candidates = xmlDoctor.candidates || [];
-    if (!candidates.length) return;
     for (const item of candidates) {
       const row = tbody.insertRow();
-      const file = String(item.file || "").split("/").pop();
-      const detail = [item.library_access, item.parameters ? `(${item.parameters})` : ""].filter(Boolean).join(" ");
-      const values = [
-        item.program_name || "(sin nombre)",
-        "Editor",
-        item.document_type || item.kind || "Basic",
-        file,
-        item.path || "",
-        detail,
-      ];
-      for (const value of values) {
-        const cell = row.insertCell();
-        cell.textContent = String(value ?? "");
-        cell.style.whiteSpace = "nowrap";
-      }
-      row.dataset.xpeFallbackInspectorRow = "1";
+      const values = [item.program_name || "(sin nombre)", "Editor", item.document_type || item.kind || "Basic",
+        String(item.file || "").split("/").pop(), item.path || "", item.parameters ? `(${item.parameters})` : ""];
+      for (const value of values) row.insertCell().textContent = String(value ?? "");
     }
-    table.style.minWidth = "100%";
-    xmlLog(`Inspector: restauradas ${candidates.length} filas de ProgramEditor.`);
+    if (candidates.length) xmlLog(`Inspector: restauradas ${candidates.length} filas de ProgramEditor.`);
   }
 
   createNewXmlProject = async function () {
-    const settings = await programSettingsModal({
-      name: "nuevo", documentType: "Prgm", libraryAccess: "LibPub", parameters: "",
-    }, t("newXmlProject"));
+    const settings = await programSettingsModal({ name: "nuevo", documentType: "Prgm", libraryAccess: "LibPub", parameters: "" }, t("newXmlProject"));
     if (!settings) return;
     await oldNew();
     if (!xmlDoctor.current) await scanXmlPrograms();
@@ -385,9 +344,7 @@ json.dumps({
   };
 
   addProgramEditorToStage = async function () {
-    const settings = await programSettingsModal({
-      name: uniqueName(), documentType: "Prgm", libraryAccess: "LibPub", parameters: "",
-    }, t("addProgramEditorWidget"), true);
+    const settings = await programSettingsModal({ name: uniqueName(), documentType: "Prgm", libraryAccess: "LibPub", parameters: "" }, t("addProgramEditorWidget"), true);
     if (!settings) return null;
     if (xmlDoctor.current && !xmlDoctor.embedded) await persistCurrentProgram();
     await oldAdd();
@@ -399,7 +356,6 @@ json.dumps({
 
   openDocumentInspector = async function () {
     if (xmlDoctor.current && !xmlDoctor.embedded) await persistCurrentProgram();
-    // Re-scan before opening so the inspector and preview share the same candidate set.
     await scanXmlPrograms();
     const result = await oldInspector();
     patchInspectorIfEmpty();
@@ -413,7 +369,6 @@ json.dumps({
   };
 
   codeBox()?.addEventListener("input", syncCode);
-
   document.querySelector("#xml-programs")?.addEventListener("change", (event) => {
     event.preventDefault();
     event.stopImmediatePropagation();
