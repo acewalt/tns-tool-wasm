@@ -368,6 +368,12 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions, "sources"
     return oldSelect(index);
   };
 
+  document.querySelector("#xml-document-btn")?.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    openXmlDocumentSettings().catch((error) => xmlLog(`ERROR Document settings: ${error.message}`));
+  }, true);
+
   codeBox()?.addEventListener("input", syncCode);
   document.querySelector("#xml-programs")?.addEventListener("change", (event) => {
     event.preventDefault();
