@@ -2,6 +2,7 @@
   "use strict";
   if (window.__tnsXmlProgramEditorFix) return;
   window.__tnsXmlProgramEditorFix = true;
+  window.__tnsXmlProgramEditorFixVersion = 3;
 
   const oldNew = createNewXmlProject;
   const oldAdd = addProgramEditorToStage;
@@ -11,8 +12,12 @@
   const oldRenderXmlAnalysis = renderXmlAnalysis;
   const oldLoadLuaPreviewSymbols = loadLuaPreviewSymbols;
   const oldCreateLovePreviewNspireRuntime = createLovePreviewNspireRuntime;
+
   const codeBox = () => document.querySelector("#xml-code");
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({
+    "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+  }[c]));
+  const validTiName = (name) => /^[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*$/.test(String(name || ""));
 
   function syncCode() {
     if (!xmlDoctor.current || !codeBox()) return;
@@ -22,48 +27,66 @@
 
   function uniqueName(base = "nuevo") {
     const used = new Set((xmlDoctor.candidates || []).map((x) => String(x.program_name || "").toLowerCase()));
-    let name = base, i = 2;
-    while (used.has(name.toLowerCase())) name = `${base}_${i++}`;
+    let name = base;
+    let index = 2;
+    while (used.has(name.toLowerCase())) name = `${base}_${index++}`;
     return name;
   }
 
-  function settingsModal(initial, title, checkDuplicate = false, exclude = "") {
+  function programSettingsModal(initial, title, checkDuplicate = false, exclude = "") {
     return new Promise((resolve) => {
-      const modal = document.createElement("div");
-      modal.className = "modal-backdrop";
-      modal.innerHTML = `<div class="modal document-settings-modal">
-        <h2>${esc(title)}</h2>
-        <div class="document-settings-grid">
-          <label>Name<input id="xpe-name" value="${esc(initial.name || "nuevo")}" spellcheck="false"></label>
-          <label>Type<select id="xpe-type"><option>Prgm</option><option>Func</option></select></label>
-          <label>Library access<select id="xpe-access"><option>None</option><option>LibPub</option><option>LibPriv</option></select></label>
-          <label>Arguments<input id="xpe-args" value="${esc(initial.parameters || "")}" spellcheck="false"></label>
-        </div>
-        <div id="xpe-error" style="color:#ff6b6b;min-height:20px"></div>
-        <div class="modal-actions"><button id="xpe-cancel">Cancel</button><button id="xpe-apply">Apply</button></div>
-      </div>`;
-      document.body.append(modal);
-      modal.querySelector("#xpe-type").value = initial.documentType === "Func" ? "Func" : "Prgm";
-      modal.querySelector("#xpe-access").value = ["None","LibPub","LibPriv"].includes(initial.libraryAccess) ? initial.libraryAccess : "LibPub";
-      const done = (value) => typeof closeModal === "function" ? closeModal(modal, () => resolve(value)) : (modal.remove(), resolve(value));
-      modal.querySelector("#xpe-cancel").onclick = () => done(null);
-      modal.querySelector("#xpe-apply").onclick = () => {
-        const name = modal.querySelector("#xpe-name").value.trim();
-        const exists = (xmlDoctor.candidates || []).some((x) => String(x.program_name || "").toLowerCase() === name.toLowerCase() && String(x.program_name || "").toLowerCase() !== String(exclude || "").toLowerCase());
-        if (!/^[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*$/.test(name)) {
-          modal.querySelector("#xpe-error").textContent = "Nombre TI-Nspire inválido.";
+      const backdrop = document.createElement("div");
+      backdrop.className = "modal-backdrop";
+      backdrop.innerHTML = `
+        <div class="modal document-modal">
+          <h2>${esc(title)}</h2>
+          <div class="document-form">
+            <label for="xpe-name">${esc(t("documentName"))}</label>
+            <input id="xpe-name" value="${esc(initial.name || "nuevo")}" spellcheck="false">
+            <label for="xpe-type">${esc(t("documentType"))}</label>
+            <select id="xpe-type"><option>Prgm</option><option>Func</option></select>
+            <label for="xpe-access">${esc(t("libraryAccess"))}</label>
+            <select id="xpe-access"><option>None</option><option>LibPriv</option><option>LibPub</option></select>
+            <label for="xpe-args">${esc(t("arguments"))}</label>
+            <input id="xpe-args" value="${esc(initial.parameters || "")}" spellcheck="false">
+          </div>
+          <div id="xpe-error" style="color:#ff6b6b;min-height:20px"></div>
+          <div class="modal-actions">
+            <button type="button" id="xpe-cancel">${esc(t("cancel"))}</button>
+            <button type="button" id="xpe-apply">${esc(t("apply"))}</button>
+          </div>
+        </div>`;
+      document.body.append(backdrop);
+      backdrop.querySelector("#xpe-type").value = initial.documentType === "Func" ? "Func" : "Prgm";
+      backdrop.querySelector("#xpe-access").value = ["None", "LibPriv", "LibPub"].includes(initial.libraryAccess)
+        ? initial.libraryAccess : "LibPub";
+      const done = (value) => closeModal(backdrop, () => resolve(value));
+      backdrop.querySelector("#xpe-cancel").addEventListener("click", () => done(null));
+      backdrop.querySelector("#xpe-apply").addEventListener("click", () => {
+        const name = backdrop.querySelector("#xpe-name").value.trim();
+        const exists = (xmlDoctor.candidates || []).some((item) => (
+          String(item.program_name || "").toLowerCase() === name.toLowerCase()
+          && String(item.program_name || "").toLowerCase() !== String(exclude || "").toLowerCase()
+        ));
+        if (!validTiName(name)) {
+          backdrop.querySelector("#xpe-error").textContent = "Nombre TI-Nspire inválido.";
           return;
         }
         if (checkDuplicate && exists) {
-          modal.querySelector("#xpe-error").textContent = `Ya existe ${name}.`;
+          backdrop.querySelector("#xpe-error").textContent = `Ya existe ${name}.`;
           return;
         }
-        done({name, documentType: modal.querySelector("#xpe-type").value, libraryAccess: modal.querySelector("#xpe-access").value, parameters: modal.querySelector("#xpe-args").value.trim()});
-      };
+        done({
+          name,
+          documentType: backdrop.querySelector("#xpe-type").value,
+          libraryAccess: backdrop.querySelector("#xpe-access").value,
+          parameters: backdrop.querySelector("#xpe-args").value.trim(),
+        });
+      });
     });
   }
 
-  async function persist() {
+  async function persistCurrentProgram() {
     if (!xmlDoctor.current) return;
     syncCode();
     if (!xmlDoctor.embedded) {
@@ -80,7 +103,7 @@
     return found;
   }
 
-  async function applySettings(settings, fresh = false) {
+  async function applyFreshSettings(settings) {
     if (!xmlDoctor.current) throw new Error("No hay Prgm/Func seleccionado.");
     const item = xmlDoctor.current;
     if (!item.original_name) item.original_name = item.program_name;
@@ -88,8 +111,7 @@
     item.document_type = settings.documentType;
     item.library_access = settings.libraryAccess;
     item.parameters = settings.parameters;
-    let code = codeBox().value || item.code || "";
-    code = fresh && settings.documentType === "Func" ? "Func\nReturn 0\nEndFunc" : coerceXmlDocumentType(code, settings.documentType);
+    const code = settings.documentType === "Func" ? "Func\nReturn 0\nEndFunc" : "Prgm\n\nEndPrgm";
     codeBox().value = code;
     item.code = code;
     xmlDoctor.embedded = false;
@@ -106,27 +128,24 @@
     const declared = new Set();
     for (const raw of String(xmlDoctor.current?.parameters || "").split(",")) {
       const name = raw.trim();
-      if (/^[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*$/.test(name)) declared.add(name);
+      if (validTiName(name)) declared.add(name);
     }
     const valid = new Map();
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index].trim();
       const bare = /^([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)$/.exec(line);
       if (bare && declared.has(bare[1])) valid.set(index + 1, bare[1]);
-
       const local = /^Local\s+(.+)$/i.exec(line);
       if (local) {
         for (const rawName of local[1].split(",")) {
           const name = rawName.trim();
-          if (/^[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*$/.test(name)) declared.add(name);
+          if (validTiName(name)) declared.add(name);
         }
       }
-      const colonAssign = /^([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*:=/.exec(line);
-      if (colonAssign) declared.add(colonAssign[1]);
-      const arrowAssign = /(?:->|→)\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*$/.exec(line);
-      if (arrowAssign) declared.add(arrowAssign[1]);
-      const forVar = /^For\s+([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\b/i.exec(line);
-      if (forVar) declared.add(forVar[1]);
+      const assign = /^([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*:=/.exec(line);
+      if (assign) declared.add(assign[1]);
+      const arrow = /(?:->|→)\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*$/.exec(line);
+      if (arrow) declared.add(arrow[1]);
     }
     return valid;
   }
@@ -135,195 +154,142 @@
     if (!report || !Array.isArray(report.diagnostics)) return report;
     const valid = validBareFuncValues();
     if (!valid.size) return report;
-    const originalLength = report.diagnostics.length;
     report.diagnostics = report.diagnostics.filter((diag) => {
-      const isUnknownCommand = Number(diag?.code) === 410 || String(diag?.code_label || "").toUpperCase() === "E410";
-      if (!isUnknownCommand) return true;
-      const line = Number(diag?.line) || 0;
-      return !valid.has(line);
+      const e410 = Number(diag?.code) === 410 || String(diag?.code_label || "").toUpperCase() === "E410";
+      return !(e410 && valid.has(Number(diag?.line) || 0));
     });
-    if (report.diagnostics.length !== originalLength) {
-      report.errors = report.diagnostics.filter((diag) => String(diag?.severity || "").toUpperCase() === "ERROR").length;
-      report.warnings = report.diagnostics.filter((diag) => String(diag?.severity || "").toUpperCase() === "WARNING").length;
-    }
+    report.errors = report.diagnostics.filter((d) => String(d?.severity || "").toUpperCase() === "ERROR").length;
+    report.warnings = report.diagnostics.filter((d) => String(d?.severity || "").toUpperCase() === "WARNING").length;
     return report;
   }
 
   renderXmlAnalysis = function (report) {
     return oldRenderXmlAnalysis(normalizeFuncSyntaxReport(report));
   };
-
   runXmlSyntax = async function () {
     return normalizeFuncSyntaxReport(await oldRunXmlSyntax());
   };
 
-  function normalizeFsPath(path) {
-    return String(path || "").replace(/\\/g, "/").replace(/\/$/, "");
-  }
-
-  function fsExists(path) {
-    if (!path || !pyodide?.FS) return false;
+  function extractFuncFromRawXml(item) {
+    const raw = String(item?.raw_xml || "").trim();
+    if (!raw) return null;
     try {
-      return Boolean(pyodide.FS.analyzePath(path).exists);
+      const doc = new DOMParser().parseFromString(raw, "application/xml");
+      if (doc.querySelector("parsererror")) return null;
+      const root = doc.documentElement;
+      const pick = (local) => Array.from(root.getElementsByTagNameNS("*", local))[0]?.textContent ?? "";
+      const name = String(pick("n") || item?.name || "").trim();
+      const params = String(pick("p") || "");
+      const body = String(pick("v") || item?.content || "");
+      if (!name || !/^\s*Func\b/i.test(body)) return null;
+      return { name, params, body };
     } catch (_error) {
-      return false;
+      return null;
     }
   }
 
-  function stageAwarePreviewItem(item) {
-    if (!item?.file) return item;
-    const file = normalizeFsPath(item.file);
-    const sourceRoot = normalizeFsPath(xmlDoctor.sourcePath);
-    const stageRoot = normalizeFsPath(xmlDoctor.stagePath);
-    if (!stageRoot || file === stageRoot || file.startsWith(`${stageRoot}/`)) return item;
-    if (sourceRoot && (file === sourceRoot || file.startsWith(`${sourceRoot}/`))) {
-      const relative = file.slice(sourceRoot.length).replace(/^\/+/, "");
-      const candidate = `${stageRoot}/${relative}`;
-      if (fsExists(candidate) && (xmlDoctor.stagePrepared || xmlDoctor.embedded)) return { ...item, file: candidate };
-    }
-    return item;
-  }
-
-  function candidateProjectSymbols() {
-    const functions = [];
+  function memoryFuncSymbols() {
     const basicFunctions = {};
-    const items = [...(xmlDoctor.candidates || [])];
-    if (xmlDoctor.current && !items.includes(xmlDoctor.current)) items.push(xmlDoctor.current);
-    for (const item of items) {
-      const name = String(item?.program_name || item?.name || "").trim();
-      if (!name) continue;
-      let body = String(item?.code || item?.content || "");
-      let params = String(item?.parameters || "");
-      let type = String(item?.document_type || "");
-      if (item === xmlDoctor.current && codeBox()) {
-        body = String(codeBox().value || body);
-        params = String(xmlDoctor.current?.parameters || params);
-        type = String(xmlDoctor.current?.document_type || type);
+    const functions = [];
+    for (const item of xmlDoctor.candidates || []) {
+      const name = String(item?.program_name || "").trim();
+      const body = String(item?.code || "");
+      if (name && (item?.document_type === "Func" || /^\s*Func\b/i.test(body))) {
+        basicFunctions[name] = { params: String(item?.parameters || ""), body };
+        functions.push(name);
       }
-      const isFunc = type === "Func" || /^\s*Func\b/i.test(body);
-      const isProgram = isFunc || type === "Prgm" || /^\s*Prgm\b/i.test(body);
-      if (!isProgram) continue;
-      if (!functions.includes(name)) functions.push(name);
-      if (isFunc) basicFunctions[name] = { params, body };
+    }
+    if (xmlDoctor.current && codeBox()) {
+      const name = String(xmlDoctor.current.program_name || "").trim();
+      const body = String(codeBox().value || "");
+      if (name && (xmlDoctor.current.document_type === "Func" || /^\s*Func\b/i.test(body))) {
+        basicFunctions[name] = { params: String(xmlDoctor.current.parameters || ""), body };
+        if (!functions.includes(name)) functions.push(name);
+      }
     }
     return { functions, basicFunctions };
   }
 
-  async function loadProjectBasicFunctions() {
-    const memory = candidateProjectSymbols();
-    if (!pyodide) return memory;
-    const sourceRoot = normalizeFsPath(xmlDoctor.sourcePath);
-    const stageRoot = normalizeFsPath(xmlDoctor.stagePath);
-    const roots = [];
-    if (sourceRoot && fsExists(sourceRoot)) roots.push(sourceRoot);
-    if (stageRoot && fsExists(stageRoot) && stageRoot !== sourceRoot) roots.push(stageRoot);
-    if (!roots.length) return memory;
+  async function authoritativeFuncSymbols() {
+    const memory = memoryFuncSymbols();
+    const inspector = { functions: [], basicFunctions: {} };
+    try {
+      const data = await inspectXmlDocument();
+      for (const item of data?.items || []) {
+        if (String(item?.type || "") !== "Func" && !/^\s*Func\b/i.test(String(item?.content || ""))) continue;
+        const parsed = extractFuncFromRawXml(item) || {
+          name: String(item?.name || "").trim(),
+          params: String(item?.detail?.parameters || ""),
+          body: String(item?.content || ""),
+        };
+        if (!parsed.name || !/^\s*Func\b/i.test(parsed.body)) continue;
+        inspector.basicFunctions[parsed.name] = { params: parsed.params, body: parsed.body };
+        if (!inspector.functions.includes(parsed.name)) inspector.functions.push(parsed.name);
+      }
+    } catch (error) {
+      console.warn("No se pudieron leer Func desde Document Inspector", error);
+    }
 
-    pyodide.globals.set("wasm_xpe_symbol_roots", roots);
-    const payload = await pyodide.runPythonAsync(`
-import json
-import xml.etree.ElementTree as ET
-from pathlib import Path
-from xml_scanner import local_name
-
-try:
-    roots = list(wasm_xpe_symbol_roots.to_py())
-except Exception:
-    roots = [str(wasm_xpe_symbol_roots)]
-functions = []
-basic_functions = {}
-for raw_root in roots:
-    root_path = Path(str(raw_root))
-    if not root_path.exists():
-        continue
-    for xml_file in root_path.rglob("*.xml"):
-        try:
-            xml_root = ET.parse(xml_file).getroot()
-        except Exception:
-            continue
-        for element in xml_root.iter():
-            if local_name(element.tag) != "e":
-                continue
-            name = ""
-            params = ""
-            value = ""
-            for child in element:
-                lname = local_name(child.tag)
-                if lname == "n":
-                    name = (child.text or "").strip()
-                elif lname == "p":
-                    params = child.text or ""
-                elif lname == "v":
-                    value = child.text or ""
-            if not name:
-                continue
-            symbol_type = element.attrib.get("t", "")
-            is_program = symbol_type in {"6", "7"} or value.lstrip().startswith(("Func", "Prgm"))
-            if not is_program:
-                continue
-            if name not in functions:
-                functions.append(name)
-            if symbol_type == "6" or value.lstrip().startswith("Func"):
-                basic_functions[name] = {"params": params, "body": value}
-json.dumps({"functions": functions, "basicFunctions": basic_functions})
-`);
-    const disk = JSON.parse(payload);
-    return {
-      functions: Array.from(new Set([...(disk.functions || []), ...(memory.functions || [])])),
-      basicFunctions: {
-        ...(disk.basicFunctions || {}),
-        ...(memory.basicFunctions || {}),
-      },
-    };
+    const basicFunctions = { ...inspector.basicFunctions, ...memory.basicFunctions };
+    const functions = Array.from(new Set([...inspector.functions, ...memory.functions]));
+    return { functions, basicFunctions };
   }
 
-  function mergePreviewSymbols(base = {}, project = {}) {
+  function mergePreviewSymbols(base = {}, project = {}, authoritative = false) {
+    const projectFunctions = project?.functions || [];
+    const projectBasic = project?.basicFunctions || {};
     return {
       ...(base || {}),
-      functions: Array.from(new Set([...(base?.functions || []), ...(project?.functions || [])])),
-      basicFunctions: {
-        ...(base?.basicFunctions || {}),
-        ...(project?.basicFunctions || {}),
-      },
+      functions: Array.from(new Set([...(base?.functions || []), ...projectFunctions])),
+      basicFunctions: authoritative && Object.keys(projectBasic).length
+        ? { ...projectBasic }
+        : { ...(base?.basicFunctions || {}), ...projectBasic },
     };
   }
 
   loadLuaPreviewSymbols = async function (item, sourceOverride = null) {
-    const base = await oldLoadLuaPreviewSymbols(stageAwarePreviewItem(item), sourceOverride);
-    return mergePreviewSymbols(base, await loadProjectBasicFunctions());
+    const base = await oldLoadLuaPreviewSymbols(item, sourceOverride);
+    const project = await authoritativeFuncSymbols();
+    return mergePreviewSymbols(base, project, true);
   };
 
   createLovePreviewNspireRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
-    const project = await loadProjectBasicFunctions();
-    const merged = mergePreviewSymbols(symbols, project);
-    const linked = Object.keys(merged.basicFunctions || {});
-    if (linked.length && logEl) appendPreviewLog(logEl, `TI Func enlazadas: ${linked.join(", ")}`);
-    else if (logEl) appendPreviewLog(logEl, "TI Func enlazadas: 0");
+    const project = await authoritativeFuncSymbols();
+    const merged = mergePreviewSymbols(symbols, project, true);
+    const linked = Object.entries(merged.basicFunctions || {}).map(([name, def]) => {
+      const params = String(def?.params || "").trim();
+      return `${name}(${params})`;
+    });
+    if (logEl) appendPreviewLog(logEl, `TI Func enlazadas: ${linked.length ? linked.join(", ") : "0"}`);
     return oldCreateLovePreviewNspireRuntime(code, ctx, canvas, logEl, merged);
   };
 
   createNewXmlProject = async function () {
-    const s = await settingsModal({name:"nuevo",documentType:"Prgm",libraryAccess:"LibPub",parameters:""}, "New document");
-    if (!s) return;
+    const settings = await programSettingsModal({
+      name: "nuevo", documentType: "Prgm", libraryAccess: "LibPub", parameters: "",
+    }, t("newXmlProject"));
+    if (!settings) return;
     await oldNew();
     if (!xmlDoctor.current) await scanXmlPrograms();
-    await applySettings(s, true);
-    xmlLog(`Documento creado como ${s.documentType}: ${s.name}.`);
+    await applyFreshSettings(settings);
+    xmlLog(`Documento creado como ${settings.documentType}: ${settings.name}.`);
   };
 
   addProgramEditorToStage = async function () {
-    const s = await settingsModal({name:uniqueName(),documentType:"Prgm",libraryAccess:"LibPub",parameters:""}, "Add Program Editor", true);
-    if (!s) return null;
-    if (xmlDoctor.current && !xmlDoctor.embedded) await persist();
+    const settings = await programSettingsModal({
+      name: uniqueName(), documentType: "Prgm", libraryAccess: "LibPub", parameters: "",
+    }, t("addProgramEditorWidget"), true);
+    if (!settings) return null;
+    if (xmlDoctor.current && !xmlDoctor.embedded) await persistCurrentProgram();
     await oldAdd();
     if (!xmlDoctor.current) await scanXmlPrograms();
-    await applySettings(s, true);
-    xmlLog(`ProgramEditor agregado como ${s.documentType}: ${s.name}.`);
+    await applyFreshSettings(settings);
+    xmlLog(`ProgramEditor agregado como ${settings.documentType}: ${settings.name}.`);
     return xmlDoctor.current;
   };
 
   openDocumentInspector = async function () {
-    if (xmlDoctor.current && !xmlDoctor.embedded) await persist();
+    if (xmlDoctor.current && !xmlDoctor.embedded) await persistCurrentProgram();
     return oldInspector();
   };
 
@@ -334,22 +300,18 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions})
 
   codeBox()?.addEventListener("input", syncCode);
 
-  // Document settings intentionally uses app.js's original listener/modal.
-  // This restores the previous document-form layout instead of replacing it
-  // with the compact modal used by the New/Add flows above.
-
   document.querySelector("#xml-programs")?.addEventListener("change", (event) => {
     event.preventDefault();
     event.stopImmediatePropagation();
     const next = Number(event.target.value);
     const previous = xmlDoctor.current?.index;
     (async () => {
-      if (xmlDoctor.current && !xmlDoctor.embedded && previous !== next) await persist();
+      if (xmlDoctor.current && !xmlDoctor.embedded && previous !== next) await persistCurrentProgram();
       oldSelect(next);
-    })().catch((e) => {
+    })().catch((error) => {
       if (previous != null) event.target.value = String(previous);
-      xmlLog(`ERROR guardando antes de cambiar: ${e.message}`);
-      console.error(e);
+      xmlLog(`ERROR guardando antes de cambiar: ${error.message}`);
+      console.error(error);
     });
   }, true);
 })();
