@@ -8,7 +8,7 @@
   const PDFJS_VERSION = "3.11.174";
   const PDFJS_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.min.js`;
   const PDFJS_WORKER_URL = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${PDFJS_VERSION}/pdf.worker.min.js`;
-  const PDF_PAGE_LIMIT = 30;
+  const PDF_PAGE_WARNING = 30;
   const PDF_TARGET_WIDTH = 720;
   const PDF_MAX_SCALE = 1.6;
 
@@ -23,6 +23,16 @@
     } catch (_error) {
       console.info(message);
     }
+  }
+
+  function ensureImageGalleryModule() {
+    if (document.querySelector('script[data-tns-image-gallery="1"]')) return;
+    const script = document.createElement("script");
+    script.src = "./image-gallery.js?v=20260826-image-gallery-v1";
+    script.async = true;
+    script.dataset.tnsImageGallery = "1";
+    script.addEventListener("error", () => console.warn("No se pudo cargar image-gallery.js."), { once: true });
+    document.head.append(script);
   }
 
   function getAddImageFn() {
@@ -217,9 +227,9 @@
   }
 
   function resolvePdfPageCount(totalPages, fileName) {
-    if (totalPages <= PDF_PAGE_LIMIT) return totalPages;
-    const message = `El PDF "${fileName}" tiene ${totalPages} páginas.\n\nImportar muchas páginas puede crear un TNS muy grande y consumir bastante memoria.\n\nAceptar: importar las primeras ${PDF_PAGE_LIMIT} páginas.\nCancelar: no importar este PDF.`;
-    return window.confirm(message) ? PDF_PAGE_LIMIT : 0;
+    if (totalPages <= PDF_PAGE_WARNING) return totalPages;
+    const message = `El PDF "${fileName}" tiene ${totalPages} páginas.\n\nImportar todas puede crear un TNS muy grande y consumir bastante memoria.\n\nAceptar: importar las ${totalPages} páginas.\nCancelar: no importar este PDF.`;
+    return window.confirm(message) ? totalPages : 0;
   }
 
   async function importPdf(file, button) {
@@ -339,6 +349,7 @@
   }, true);
 
   const install = () => {
+    ensureImageGalleryModule();
     ensurePdfButton();
     const observer = new MutationObserver(() => ensurePdfButton());
     if (document.body) observer.observe(document.body, { childList: true, subtree: true });
