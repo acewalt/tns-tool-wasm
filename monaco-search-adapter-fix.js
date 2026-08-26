@@ -57,6 +57,8 @@
     if (!api || api[PATCH_FLAG]) return false;
     api[PATCH_FLAG] = true;
 
+    // First adapt the public editor factories to the textarea-like contract
+    // used by the search panel.
     for (const name of ["createLuaEditor", "createTextEditor", "createPythonEditor", "createTiEditor"]) {
       const original = api[name];
       if (typeof original !== "function") continue;
@@ -64,6 +66,19 @@
         return augmentAdapter(original.apply(this, args));
       };
     }
+
+    // createPythonEditor/createTiEditor in the Monaco bundle call the lexical
+    // createTextEditor directly, so the search decorator on api.createTextEditor
+    // would otherwise be bypassed. Route both through the decorated public
+    // factory so Lua, TI-Basic/XML and Python get the exact same search rail.
+    api.createPythonEditor = function (container, options = {}) {
+      return api.createTextEditor(container, { ...options, language: "python" });
+    };
+
+    api.createTiEditor = function (container, options = {}) {
+      return api.createTextEditor(container, { ...options, language: "ti-basic" });
+    };
+
     return true;
   }
 
