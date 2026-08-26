@@ -292,3 +292,88 @@ function callEvent(_event) {
     global.__tnsDocumentEnvironmentActive = true;
   });
 })();
+
+// love-project-compat installs extra table-object methods globally after the
+// LuaJS hardening step. Those fallbacks are useful for LÖVE Image/Texture/etc.,
+// but a TI ScriptApp must keep ordinary Lua table semantics. Some old programs
+// also expose plain JS arrays/objects through compatibility helpers; treat
+// those as 1-based Lua containers instead of letting lua_rawget dereference a
+// missing `uints` field.
+(function installTnsTiTableAccessCompatibility() {
+  if (typeof window === 'undefined') return;
+  var schedule = typeof queueMicrotask === 'function'
+    ? queueMicrotask
+    : function (fn) { Promise.resolve().then(fn); };
+
+  schedule(function () {
+    var global = window;
+    var root = global.G && global.G.str;
+    if (!root || root.love) return;
+
+    function isLuaJsTable(value) {
+      return !!(value && typeof value === 'object' && (
+        value.str !== undefined || value.uints !== undefined || value.floats !== undefined ||
+        value.bool !== undefined || value.bools !== undefined || value.objs !== undefined ||
+        value.arraymode !== undefined
+      ));
+    }
+
+    function directContainerGet(table, key) {
+      if (Array.isArray(table)) {
+        if (typeof key === 'number' && Number.isInteger(key)) return table[key - 1];
+        return table[key];
+      }
+      if (table && typeof table === 'object' && !isLuaJsTable(table)) {
+        if (Object.prototype.hasOwnProperty.call(table, key)) return table[key];
+        if (typeof key === 'number' && Object.prototype.hasOwnProperty.call(table, key - 1)) return table[key - 1];
+      }
+      return undefined;
+    }
+
+    var tableGet = global.lua_tableget;
+    if (typeof tableGet === 'function' && !tableGet.__tnsTiSafeAccess) {
+      var safeTableGet = function (table, key) {
+        if (table == null || table === false || key == null) return null;
+        var direct = directContainerGet(table, key);
+        if (direct !== undefined) return direct;
+        try {
+          return tableGet(table, key);
+        } catch (error) {
+          var message = String(error && error.message || error || '');
+          if (/Cannot read properties of (?:undefined|null)|Table is null|Unable to index key|Unsupported key for table|Table index is nil/.test(message)) {
+            direct = directContainerGet(table, key);
+            return direct === undefined ? null : direct;
+          }
+          throw error;
+        }
+      };
+      safeTableGet.__tnsTiSafeAccess = true;
+      safeTableGet.__tnsTiBaseTableGet = tableGet;
+      global.lua_tableget = safeTableGet;
+      try { lua_tableget = safeTableGet; } catch (_error) {}
+    }
+
+    var rawGet = global.lua_rawget;
+    if (typeof rawGet === 'function' && !rawGet.__tnsTiSafeAccess) {
+      var safeRawGet = function (table, key) {
+        if (table == null || table === false || key == null) return null;
+        var direct = directContainerGet(table, key);
+        if (direct !== undefined) return direct;
+        try {
+          return rawGet(table, key);
+        } catch (error) {
+          var message = String(error && error.message || error || '');
+          if (/Cannot read properties of (?:undefined|null)|Table is null|Unsupported key for table|Table index is nil/.test(message)) {
+            direct = directContainerGet(table, key);
+            return direct === undefined ? null : direct;
+          }
+          throw error;
+        }
+      };
+      safeRawGet.__tnsTiSafeAccess = true;
+      safeRawGet.__tnsTiBaseRawGet = rawGet;
+      global.lua_rawget = safeRawGet;
+      try { lua_rawget = safeRawGet; } catch (_error) {}
+    }
+  });
+})();
