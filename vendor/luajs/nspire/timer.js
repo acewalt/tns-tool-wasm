@@ -90,9 +90,7 @@ console.info("timer.js");
 	});
 	G.str['bit32'] = bit32Table;
 
-	// LuaJIT-style `bit` compatibility. Keep signed 32-bit return values, but
-	// make the operations correct and complete enough for libraries which fall
-	// back to `bit` instead of `bit32`.
+	// LuaJIT-style `bit` compatibility.
 	var bitTable = G.str['bit'];
 	if (!bitTable || typeof bitTable !== 'object') {
 		bitTable = lua_newtable();
@@ -138,7 +136,7 @@ lua_tableset(G.str['timer'], 'lastrun', 0);
 lua_tableset(G.str['timer'], 'start', (function (_t) {
 	var tmp;
 	if (lua_lt(_t, 0.01)) {
-	lua_call(G.str['error'], ["argument needs to be >=0.01"]);
+		lua_call(G.str['error'], ["argument needs to be >=0.01"]);
 	}
 	lua_tableset(G.str['timer'], 'delay', _t);
 	lua_tableset(G.str['timer'], 'running', true);
@@ -157,7 +155,7 @@ lua_tableset(G.str['timer'], 'getMilliSecCounter', (function () {
 	return [];
 }))
 
-dotimer	= function () {
+dotimer = function () {
 	var tmp;
 	var _tm_6 = lua_call(lua_tableget(G.str['PCspire'], 'getMicroTime'), [])[0];
 	if ((lua_true(lua_tableget(G.str['timer'], 'running')) && lua_lte(lua_add(lua_tableget(G.str['timer'], 'delay'), lua_tableget(G.str['timer'], 'lastrun')), _tm_6))) {
@@ -165,244 +163,109 @@ dotimer	= function () {
 		lua_call(lua_tableget(G.str['PCspire'], 'callEvent'), [lua_tableget(G.str['on'], 'timer')]);
 	}
 	return [];
-}
+};
 
-// TI-Nspire math.eval compatibility for matrix/document operations that must
-// be resolved before the generic numeric evaluator (which intentionally falls
-// back to 0 for unknown identifiers).
+// TI-Nspire math.eval operations which must be recognized before app.js's
+// generic numeric evaluator, because unknown expressions intentionally fall
+// back to numeric zero there.
 (function installTnsMathEvalCompatibility() {
-  if (typeof window === 'undefined') return;
-  var schedule = typeof queueMicrotask === 'function'
-    ? queueMicrotask
-    : function (fn) { Promise.resolve().then(fn); };
+	if (typeof queueMicrotask !== 'function') return;
+	queueMicrotask(function () {
+		if (!G || !G.str || G.str.love || !G.str.math || !G.str.var) return;
+		var originalEval = lua_tableget(G.str.math, 'eval');
+		var recallFn = lua_tableget(G.str.var, 'recall');
+		var storeFn = lua_tableget(G.str.var, 'store');
+		if (typeof originalEval !== 'function' || originalEval.__tnsMathCompat) return;
 
-  schedule(function () {
-    var global = window;
-    var root = global.G && global.G.str;
-    if (!root || !root.platform || !root.on) return;
-    var mathTable = root.math;
-    var varTable = root.var;
-    if (!mathTable || !varTable || typeof global.lua_tableget !== 'function' || typeof global.lua_tableset !== 'function') return;
+		function recall(name) {
+			try { return lua_call(recallFn, [name])[0]; } catch (_error) { return G.str[name]; }
+		}
+		function store(name, value) {
+			if (typeof storeFn === 'function') lua_call(storeFn, [name, value]);
+			else G.str[name] = value;
+			return value;
+		}
+		function len(value) {
+			try { return Number(lua_len(value)) || 0; } catch (_error) { return value && value.length || 0; }
+		}
+		function makeMatrix(rows, cols) {
+			rows = Math.max(0, Math.min(1024, Math.trunc(Number(rows) || 0)));
+			cols = Math.max(0, Math.min(1024, Math.trunc(Number(cols) || 0)));
+			var outer = lua_newtable();
+			for (var r = 1; r <= rows; r += 1) {
+				var line = lua_newtable();
+				for (var c = 1; c <= cols; c += 1) lua_tableset(line, c, 0);
+				lua_tableset(outer, r, line);
+			}
+			return outer;
+		}
+		function numeric(text) {
+			var expr = String(text || '').trim();
+			expr = expr.replace(/dim\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/gi, function (_m, name) { return String(len(recall(name))); });
+			expr = expr.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\b/g, function (name) {
+				var value = recall(name);
+				return typeof value === 'number' && Number.isFinite(value) ? String(value) : name;
+			});
+			expr = expr.replace(/\^/g, '**');
+			if (!/^[0-9eE+\-*/().\s]+$/.test(expr)) return NaN;
+			try { return Number(Function('"use strict";return (' + expr + ')')()); } catch (_error) { return NaN; }
+		}
+		function splitArgs(text) {
+			var parts = [], current = '', depth = 0;
+			for (var i = 0; i < text.length; i += 1) {
+				var ch = text.charAt(i);
+				if (ch === '(' || ch === '[' || ch === '{') depth += 1;
+				else if (ch === ')' || ch === ']' || ch === '}') depth -= 1;
+				if (ch === ',' && depth === 0) { parts.push(current.trim()); current = ''; }
+				else current += ch;
+			}
+			parts.push(current.trim());
+			return parts;
+		}
 
-    var originalEval = global.lua_tableget(mathTable, 'eval');
-    var storeFn = global.lua_tableget(varTable, 'store');
-    var recallFn = global.lua_tableget(varTable, 'recall');
-    if (typeof originalEval !== 'function' || originalEval.__tnsTiMathEvalCompat) return;
+		var compatibleEval = function (expr) {
+			var source = String(expr == null ? '' : expr).trim();
+			var match = /^NewMat\s*\((.*)\)$/i.exec(source);
+			if (match) {
+				var args = splitArgs(match[1]);
+				var rows = numeric(args[0]), cols = numeric(args[1]);
+				if (Number.isFinite(rows) && Number.isFinite(cols)) return [makeMatrix(rows, cols)];
+			}
+			match = /^dim\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)$/i.exec(source);
+			if (match) return [len(recall(match[1]))];
+			match = /^mod\s*\((.*)\)$/i.exec(source);
+			if (match) {
+				var ma = splitArgs(match[1]), a = numeric(ma[0]), b = numeric(ma[1]);
+				if (Number.isFinite(a) && Number.isFinite(b) && b !== 0) return [((a % b) + b) % b];
+			}
+			match = /^intDiv\s*\((.*)\)$/i.exec(source);
+			if (match) {
+				var ia = splitArgs(match[1]), dividend = numeric(ia[0]), divisor = numeric(ia[1]);
+				if (Number.isFinite(dividend) && Number.isFinite(divisor) && divisor !== 0) return [Math.floor(dividend / divisor)];
+			}
+			match = /^DelVar\s+([A-Za-z_][A-Za-z0-9_]*)$/i.exec(source);
+			if (match) { store(match[1], null); G.str[match[1]] = null; return [null]; }
 
-    function recall(name) {
-      try {
-        var result = global.lua_call(recallFn, [name]);
-        return Array.isArray(result) ? result[0] : null;
-      } catch (_error) {
-        return root[name];
-      }
-    }
-
-    function store(name, value) {
-      if (typeof storeFn === 'function') {
-        try { global.lua_call(storeFn, [name, value]); } catch (_error) { root[name] = value; }
-      } else root[name] = value;
-      return value;
-    }
-
-    function luaLength(value) {
-      if (value == null) return 0;
-      try { return Math.max(0, Number(global.lua_len(value)) || 0); } catch (_error) {}
-      if (Array.isArray(value) || typeof value === 'string') return value.length;
-      return 0;
-    }
-
-    function getAt(table, index) {
-      if (table == null) return null;
-      try { return global.lua_tableget(table, index); } catch (_error) {}
-      if (Array.isArray(table)) return table[index - 1];
-      return table[index];
-    }
-
-    function tableToArray(table) {
-      var out = [];
-      var length = luaLength(table);
-      for (var i = 1; i <= length; i += 1) out.push(getAt(table, i));
-      return out;
-    }
-
-    function makeMatrix(rows, cols, fill) {
-      rows = Math.max(0, Math.min(1024, Math.trunc(Number(rows) || 0)));
-      cols = Math.max(0, Math.min(1024, Math.trunc(Number(cols) || 0)));
-      var outer = global.lua_newtable();
-      for (var r = 1; r <= rows; r += 1) {
-        var line = global.lua_newtable();
-        for (var c = 1; c <= cols; c += 1) global.lua_tableset(line, c, fill == null ? 0 : fill);
-        global.lua_tableset(outer, r, line);
-      }
-      return outer;
-    }
-
-    function splitArgs(text) {
-      var parts = [];
-      var depth = 0;
-      var current = '';
-      var quote = '';
-      for (var i = 0; i < text.length; i += 1) {
-        var ch = text.charAt(i);
-        if (quote) {
-          current += ch;
-          if (ch === '\\') {
-            if (i + 1 < text.length) current += text.charAt(++i);
-          } else if (ch === quote) quote = '';
-          continue;
-        }
-        if (ch === '"' || ch === "'") { quote = ch; current += ch; continue; }
-        if (ch === '(' || ch === '[' || ch === '{') depth += 1;
-        else if (ch === ')' || ch === ']' || ch === '}') depth -= 1;
-        if (ch === ',' && depth === 0) { parts.push(current.trim()); current = ''; }
-        else current += ch;
-      }
-      parts.push(current.trim());
-      return parts;
-    }
-
-    function numericExpression(text) {
-      var expr = String(text == null ? '' : text).trim();
-      expr = expr.replace(/dim\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)/gi, function (_all, name) {
-        return String(luaLength(recall(name) != null ? recall(name) : root[name]));
-      });
-      expr = expr.replace(/\b([A-Za-z_][A-Za-z0-9_]*)\b/g, function (name) {
-        var value = recall(name);
-        return typeof value === 'number' && Number.isFinite(value) ? String(value) : name;
-      });
-      expr = expr.replace(/\^/g, '**');
-      if (!/^[0-9eE+\-*/().\s*]+$/.test(expr)) return NaN;
-      try {
-        var value = Function('"use strict"; return (' + expr + ');')();
-        return Number(value);
-      } catch (_error) {
-        return NaN;
-      }
-    }
-
-    function logicValue(expression, env) {
-      var text = String(expression == null ? '' : expression).toLowerCase();
-      text = text.replace(/\bnot\b/g, '!').replace(/\band\b/g, '&&').replace(/\bor\b/g, '||');
-      text = text.replace(/\/\s*\(/g, '!(').replace(/\/\s*([a-z][a-z0-9_]*)/g, '!$1');
-      text = text.replace(/\*/g, '&&').replace(/\+/g, '||');
-      text = text.replace(/\b([a-z][a-z0-9_]*)\b/g, function (name) {
-        if (name === 'true' || name === 'false') return name;
-        return env[name] ? 'true' : 'false';
-      });
-      try { return !!Function('"use strict"; return (' + text + ');')(); } catch (_error) { return false; }
-    }
-
-    function currentVariables() {
-      return tableToArray(recall('v') != null ? recall('v') : root.v).map(function (value) { return String(value); }).filter(Boolean);
-    }
-
-    function buildTruthTable(grayOrder) {
-      var vars = currentVariables();
-      var count = Math.max(1, Math.min(8, vars.length || 1));
-      var rows = Math.pow(2, count) + 1;
-      var cols = count + 1;
-      var table = makeMatrix(rows, cols, 0);
-      var header = getAt(table, 1);
-      for (var c = 0; c < count; c += 1) global.lua_tableset(header, c + 1, vars[c] || String.fromCharCode(97 + c));
-      global.lua_tableset(header, cols, String(recall('eqvar') || root.eqvar || 'S'));
-      var equation = String(recall('eq') || root.eq || recall('eql') || root.eql || 'false');
-      for (var row = 0; row < rows - 1; row += 1) {
-        var code = grayOrder ? (row ^ (row >> 1)) : row;
-        var target = getAt(table, row + 2);
-        var env = {};
-        for (var i = 0; i < count; i += 1) {
-          var bit = (code >> (count - 1 - i)) & 1;
-          global.lua_tableset(target, i + 1, bit);
-          env[(vars[i] || String.fromCharCode(97 + i)).toLowerCase()] = bit === 1;
-        }
-        global.lua_tableset(target, cols, logicValue(equation, env) ? 1 : 0);
-      }
-      return table;
-    }
-
-    var compatibleEval = function (expr) {
-      var source = String(expr == null ? '' : expr).trim();
-      var match;
-
-      match = /^NewMat\s*\((.*)\)$/i.exec(source);
-      if (match) {
-        var args = splitArgs(match[1]);
-        if (args.length >= 2) {
-          var rows = numericExpression(args[0]);
-          var cols = numericExpression(args[1]);
-          if (Number.isFinite(rows) && Number.isFinite(cols)) return [makeMatrix(rows, cols, 0)];
-        }
-      }
-
-      match = /^dim\s*\(\s*([A-Za-z_][A-Za-z0-9_]*)\s*\)$/i.exec(source);
-      if (match) return [luaLength(recall(match[1]) != null ? recall(match[1]) : root[match[1]])];
-
-      match = /^mod\s*\((.*)\)$/i.exec(source);
-      if (match) {
-        var modArgs = splitArgs(match[1]);
-        if (modArgs.length >= 2) {
-          var a = numericExpression(modArgs[0]);
-          var b = numericExpression(modArgs[1]);
-          if (Number.isFinite(a) && Number.isFinite(b) && b !== 0) return [((a % b) + b) % b];
-        }
-      }
-
-      match = /^intDiv\s*\((.*)\)$/i.exec(source);
-      if (match) {
-        var intArgs = splitArgs(match[1]);
-        if (intArgs.length >= 2) {
-          var dividend = numericExpression(intArgs[0]);
-          var divisor = numericExpression(intArgs[1]);
-          if (Number.isFinite(dividend) && Number.isFinite(divisor) && divisor !== 0) return [Math.floor(dividend / divisor)];
-        }
-      }
-
-      match = /^DelVar\s+([A-Za-z_][A-Za-z0-9_]*)$/i.exec(source);
-      if (match) {
-        store(match[1], null);
-        try { delete root[match[1]]; } catch (_error) { root[match[1]] = null; }
-        return [null];
-      }
-
-      if (/newMat\s*\([^)]*\)\s*=\s*:kar/i.test(source) || /\b:kar\b/i.test(source)) {
-        var vars = currentVariables();
-        var equation = String(recall('eql') || root.eql || 'false');
-        var matrix = null;
-        if (typeof global.createLuaJsKarnaughMatrix === 'function') {
-          try { matrix = global.createLuaJsKarnaughMatrix(vars, equation, global); } catch (_error) {}
-        }
-        if (!matrix) {
-          var n = Math.max(1, Math.min(6, vars.length || 1));
-          matrix = makeMatrix(Math.pow(2, Math.floor(n / 2)), Math.pow(2, Math.ceil(n / 2)), 0);
-        }
-        store('kar', matrix);
-        root.kar = matrix;
-        return [matrix];
-      }
-
-      if (/newMat\s*\([^)]*\)\s*=\s*:tbg/i.test(source) || /\b:tbg\b/i.test(source)) {
-        var grayTable = buildTruthTable(true);
-        var dataRows = global.lua_newtable();
-        for (var gr = 2; gr <= luaLength(grayTable); gr += 1) global.lua_tableset(dataRows, gr - 1, getAt(grayTable, gr));
-        store('tbg', dataRows);
-        store('tb', grayTable);
-        root.tbg = dataRows;
-        root.tb = grayTable;
-        return [grayTable];
-      }
-
-      if (/newMat\s*\([^)]*\)\s*=\s*:tb/i.test(source) || /\b:tb\b/i.test(source)) {
-        var truthTable = buildTruthTable(false);
-        store('tb', truthTable);
-        root.tb = truthTable;
-        return [truthTable];
-      }
-
-      return global.lua_call(originalEval, [expr]);
-    };
-    compatibleEval.__tnsTiMathEvalCompat = true;
-    compatibleEval.__tnsTiBaseMathEval = originalEval;
-    global.lua_tableset(mathTable, 'eval', compatibleEval);
-  });
+			// Complex TI-Basic strings in ABA Logique create these matrices and then
+			// read/write them from Lua. Preserve the correct shape even when the full
+			// CAS program is not yet emulated statement-by-statement.
+			var vars = recall('v');
+			var count = Math.max(1, Math.min(8, len(vars) || 1));
+			if (/newMat\s*\([^)]*\)\s*=\s*:kar/i.test(source) || /\b:kar\b/i.test(source)) {
+				var kar = makeMatrix(Math.pow(2, Math.floor(count / 2)), Math.pow(2, Math.ceil(count / 2)));
+				store('kar', kar); G.str.kar = kar; return [kar];
+			}
+			if (/newMat\s*\([^)]*\)\s*=\s*:tbg/i.test(source) || /\b:tbg\b/i.test(source)) {
+				var tbg = makeMatrix(Math.pow(2, count), count + 1);
+				store('tbg', tbg); G.str.tbg = tbg; return [tbg];
+			}
+			if (/newMat\s*\([^)]*\)\s*=\s*:tb/i.test(source) || /\b:tb\b/i.test(source)) {
+				var tb = makeMatrix(Math.pow(2, count) + 1, count + 1);
+				store('tb', tb); G.str.tb = tb; return [tb];
+			}
+			return lua_call(originalEval, [expr]);
+		};
+		compatibleEval.__tnsMathCompat = true;
+		lua_tableset(G.str.math, 'eval', compatibleEval);
+	});
 })();
