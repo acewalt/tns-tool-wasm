@@ -2,7 +2,7 @@
   "use strict";
   if (window.__tnsXmlProgramEditorFix) return;
   window.__tnsXmlProgramEditorFix = true;
-  window.__tnsXmlProgramEditorFixVersion = 3;
+  window.__tnsXmlProgramEditorFixVersion = 4;
 
   const oldNew = createNewXmlProject;
   const oldAdd = addProgramEditorToStage;
@@ -170,98 +170,147 @@
     return normalizeFuncSyntaxReport(await oldRunXmlSyntax());
   };
 
-  function extractFuncFromRawXml(item) {
-    const raw = String(item?.raw_xml || "").trim();
-    if (!raw) return null;
-    try {
-      const doc = new DOMParser().parseFromString(raw, "application/xml");
-      if (doc.querySelector("parsererror")) return null;
-      const root = doc.documentElement;
-      const pick = (local) => Array.from(root.getElementsByTagNameNS("*", local))[0]?.textContent ?? "";
-      const name = String(pick("n") || item?.name || "").trim();
-      const params = String(pick("p") || "");
-      const body = String(pick("v") || item?.content || "");
-      if (!name || !/^\s*Func\b/i.test(body)) return null;
-      return { name, params, body };
-    } catch (_error) {
-      return null;
-    }
+  function currentFuncFallback() {
+    const current = xmlDoctor.current;
+    const box = codeBox();
+    if (!current || !box) return { functions: [], basicFunctions: {}, sources: {} };
+    const name = String(current.program_name || "").trim();
+    const body = String(box.value || current.code || "").replace(/\r\n?/g, "\n");
+    const isFunc = current.document_type === "Func" || /^\s*Func\b/i.test(body);
+    if (!name || !isFunc) return { functions: [], basicFunctions: {}, sources: {} };
+    return {
+      functions: [name],
+      basicFunctions: { [name]: { params: String(current.parameters || ""), body } },
+      sources: { [name]: "editor-memory" },
+    };
   }
 
-  function memoryFuncSymbols() {
-    const basicFunctions = {};
-    const functions = [];
-    for (const item of xmlDoctor.candidates || []) {
-      const name = String(item?.program_name || "").trim();
-      const body = String(item?.code || "");
-      if (name && (item?.document_type === "Func" || /^\s*Func\b/i.test(body))) {
-        basicFunctions[name] = { params: String(item?.parameters || ""), body };
-        functions.push(name);
-      }
-    }
-    if (xmlDoctor.current && codeBox()) {
-      const name = String(xmlDoctor.current.program_name || "").trim();
-      const body = String(codeBox().value || "");
-      if (name && (xmlDoctor.current.document_type === "Func" || /^\s*Func\b/i.test(body))) {
-        basicFunctions[name] = { params: String(xmlDoctor.current.parameters || ""), body };
-        if (!functions.includes(name)) functions.push(name);
-      }
-    }
-    return { functions, basicFunctions };
+  async function readFuncSymbolsFromXml() {
+    const fallback = currentFuncFallback();
+    if (!pyodide) return fallback;
+
+    pyodide.globals.set("wasm_xpe_stage_root", String(xmlDoctor.stagePath || ""));
+    pyodide.globals.set("wasm_xpe_source_root", String(xmlDoctor.sourcePath || ""));
+    const payload = await pyodide.runPythonAsync(`
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+stage_raw = str(wasm_xpe_stage_root or "")
+source_raw = str(wasm_xpe_source_root or "")
+
+def usable(raw):
+    if not raw:
+        return None
+    p = Path(raw)
+    return p if p.exists() else None
+
+# Staging is the edited document and therefore wins completely over the source copy.
+root_path = usable(stage_raw) or usable(source_raw)
+functions = []
+basic_functions = {}
+sources = {}
+
+def xml_files(root):
+    if root is None:
+        return []
+    if root.is_file():
+        return [root] if root.suffix.lower() == ".xml" else []
+    return sorted(root.rglob("*.xml"), key=lambda p: str(p).lower())
+
+for xml_file in xml_files(root_path):
+    try:
+        xml_root = ET.parse(xml_file).getroot()
+    except Exception:
+        continue
+    for element in xml_root.iter():
+        if local_name(element.tag) != "e":
+            continue
+        name = ""
+        params = ""
+        value = ""
+        for child in element:
+            lname = local_name(child.tag)
+            if lname == "n":
+                name = (child.text or "").strip()
+            elif lname == "p":
+                params = child.text or ""
+            elif lname == "v":
+                value = child.text or ""
+        if not name:
+            continue
+        is_func = element.attrib.get("t", "") == "6" or value.lstrip().startswith("Func")
+        if not is_func or not value.lstrip().startswith("Func"):
+            continue
+        if name not in functions:
+            functions.append(name)
+        basic_functions[name] = {"params": params, "body": value}
+        sources[name] = str(xml_file)
+
+json.dumps({
+    "root": str(root_path) if root_path is not None else "",
+    "functions": functions,
+    "basicFunctions": basic_functions,
+    "sources": sources,
+})
+`);
+
+    const disk = JSON.parse(payload);
+    if (Array.isArray(disk.functions) && disk.functions.length) return disk;
+    return fallback;
   }
 
-  async function authoritativeFuncSymbols() {
-    const memory = memoryFuncSymbols();
-    const inspector = { functions: [], basicFunctions: {} };
-    try {
-      const data = await inspectXmlDocument();
-      for (const item of data?.items || []) {
-        if (String(item?.type || "") !== "Func" && !/^\s*Func\b/i.test(String(item?.content || ""))) continue;
-        const parsed = extractFuncFromRawXml(item) || {
-          name: String(item?.name || "").trim(),
-          params: String(item?.detail?.parameters || ""),
-          body: String(item?.content || ""),
-        };
-        if (!parsed.name || !/^\s*Func\b/i.test(parsed.body)) continue;
-        inspector.basicFunctions[parsed.name] = { params: parsed.params, body: parsed.body };
-        if (!inspector.functions.includes(parsed.name)) inspector.functions.push(parsed.name);
-      }
-    } catch (error) {
-      console.warn("No se pudieron leer Func desde Document Inspector", error);
-    }
-
-    const basicFunctions = { ...inspector.basicFunctions, ...memory.basicFunctions };
-    const functions = Array.from(new Set([...inspector.functions, ...memory.functions]));
-    return { functions, basicFunctions };
-  }
-
-  function mergePreviewSymbols(base = {}, project = {}, authoritative = false) {
-    const projectFunctions = project?.functions || [];
-    const projectBasic = project?.basicFunctions || {};
+  function mergePreviewSymbols(base = {}, funcs = {}) {
+    const hasAuthoritativeFuncs = Object.keys(funcs?.basicFunctions || {}).length > 0;
     return {
       ...(base || {}),
-      functions: Array.from(new Set([...(base?.functions || []), ...projectFunctions])),
-      basicFunctions: authoritative && Object.keys(projectBasic).length
-        ? { ...projectBasic }
-        : { ...(base?.basicFunctions || {}), ...projectBasic },
+      functions: Array.from(new Set([...(base?.functions || []), ...(funcs?.functions || [])])),
+      basicFunctions: hasAuthoritativeFuncs
+        ? { ...(funcs.basicFunctions || {}) }
+        : { ...(base?.basicFunctions || {}) },
     };
+  }
+
+  function requestedMathEvalFunctions(code) {
+    const names = [];
+    const text = String(code || "");
+    const regex = /math\.eval\s*\(\s*["']\s*([A-Za-z_][A-Za-z0-9_]*)\s*\(/g;
+    let match;
+    while ((match = regex.exec(text))) {
+      if (!names.includes(match[1])) names.push(match[1]);
+    }
+    return names;
   }
 
   loadLuaPreviewSymbols = async function (item, sourceOverride = null) {
     const base = await oldLoadLuaPreviewSymbols(item, sourceOverride);
-    const project = await authoritativeFuncSymbols();
-    return mergePreviewSymbols(base, project, true);
+    const funcs = await readFuncSymbolsFromXml();
+    return mergePreviewSymbols(base, funcs);
   };
 
   createLovePreviewNspireRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
-    const project = await authoritativeFuncSymbols();
-    const merged = mergePreviewSymbols(symbols, project, true);
+    const funcs = await readFuncSymbolsFromXml();
+    const merged = mergePreviewSymbols(symbols, funcs);
     const linked = Object.entries(merged.basicFunctions || {}).map(([name, def]) => {
       const params = String(def?.params || "").trim();
       return `${name}(${params})`;
     });
-    if (logEl) appendPreviewLog(logEl, `TI Func enlazadas: ${linked.length ? linked.join(", ") : "0"}`);
-    return oldCreateLovePreviewNspireRuntime(code, ctx, canvas, logEl, merged);
+    if (logEl) {
+      appendPreviewLog(logEl, `TI Func XML: ${linked.length ? linked.join(", ") : "0"}`);
+      const requested = requestedMathEvalFunctions(code);
+      if (requested.length) appendPreviewLog(logEl, `TI Func solicitadas por math.eval: ${requested.join(", ")}`);
+    }
+
+    const runtime = await oldCreateLovePreviewNspireRuntime(code, ctx, canvas, logEl, merged);
+
+    if (logEl && linked.length) {
+      const status = Object.keys(merged.basicFunctions || {}).map((name) => (
+        `${name}=${typeof window.G?.str?.[name] === "function" ? "OK" : "MISSING"}`
+      ));
+      appendPreviewLog(logEl, `TI Func runtime: ${status.join(", ")}`);
+    }
+    return runtime;
   };
 
   createNewXmlProject = async function () {
