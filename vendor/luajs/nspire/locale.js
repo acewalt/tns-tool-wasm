@@ -7,13 +7,9 @@ lua_tableset(G.str['locale'], 'name', (function () {
 }))
 
 // Lua 5.1/5.2 select(index, ...) compatibility.
-// The bundled lua.js ships select() as a Not supported stub, but many
-// third-party Lua libraries rely on it for vararg handling.
 G.str['select'] = function (index) {
 	var values = Array.prototype.slice.call(arguments, 1);
-	if (index === '#') {
-		return [values.length];
-	}
+	if (index === '#') return [values.length];
 	var numeric = Number(index);
 	if (!Number.isFinite(numeric) || Math.floor(numeric) !== numeric || numeric === 0) {
 		throw new Error("bad argument #1 to 'select' (index out of range)");
@@ -23,14 +19,12 @@ G.str['select'] = function (index) {
 		start = Math.min(numeric - 1, values.length);
 	} else {
 		start = values.length + numeric;
-		if (start < 0) {
-			throw new Error("bad argument #1 to 'select' (index out of range)");
-		}
+		if (start < 0) throw new Error("bad argument #1 to 'select' (index out of range)");
 	}
 	return values.slice(start);
 };
 
-// Correct a few LuaJS arithmetic/core semantics before third-party projects run.
+// Correct LuaJS arithmetic/core semantics before third-party projects run.
 (function installLuaCoreCompatibility() {
 	function isLuaNumber(value) {
 		if (typeof value === 'number') return !Number.isNaN(value);
@@ -45,13 +39,16 @@ G.str['select'] = function (index) {
 			? value.metatable.str[name]
 			: null;
 	}
+	function diagnosticSuffix() {
+		var history = typeof window !== 'undefined' ? window.__tnsLuaMissingAccessHistory : null;
+		if (!Array.isArray(history) || !history.length) return '';
+		return ' | recent missing Lua accesses: ' + history.slice(-6).join(' -> ');
+	}
 	function binaryArithmetic(left, right, metamethod, operation, label) {
-		if (isLuaNumber(left) && isLuaNumber(right)) {
-			return operation(toLuaNumber(left), toLuaNumber(right));
-		}
+		if (isLuaNumber(left) && isLuaNumber(right)) return operation(toLuaNumber(left), toLuaNumber(right));
 		var handler = meta(left, metamethod) || meta(right, metamethod);
 		if (handler) return lua_rawcall(handler, [left, right])[0];
-		throw new Error(label + ' <' + left + '> and <' + right + '> not supported');
+		throw new Error(label + ' <' + left + '> and <' + right + '> not supported' + diagnosticSuffix());
 	}
 
 	lua_add = function (left, right) {
@@ -81,10 +78,9 @@ G.str['select'] = function (index) {
 		if (isLuaNumber(value)) return -toLuaNumber(value);
 		var handler = meta(value, '__unm');
 		if (handler) return lua_rawcall(handler, [value])[0];
-		throw new Error('Inverting <' + value + '> not supported');
+		throw new Error('Inverting <' + value + '> not supported' + diagnosticSuffix());
 	};
 
-	// Lua assert returns all supplied arguments when the condition is truthy.
 	G.str['assert'] = function () {
 		var args = Array.prototype.slice.call(arguments);
 		var value = args[0];
@@ -95,10 +91,7 @@ G.str['select'] = function (index) {
 	};
 })();
 
-// Binary-safe string and common table helpers. The original LuaJS string.byte
-// implementation is off-by-one, ignores negative indices, and does not advance
-// its loop counter. That makes binary formats (WAD, images, packed data, etc.)
-// decode as zeroes.
+// Binary-safe string and common table helpers.
 (function installLuaStringCompatibility() {
 	var stringTable = G.str['string'];
 	var tableTable = G.str['table'];
@@ -121,9 +114,7 @@ G.str['select'] = function (index) {
 		if (last > length) last = length;
 		if (first > last || first > length || last < 1) return [];
 		var result = [];
-		for (var pos = first; pos <= last; pos += 1) {
-			result.push(s.charCodeAt(pos - 1) & 0xFF);
-		}
+		for (var pos = first; pos <= last; pos += 1) result.push(s.charCodeAt(pos - 1) & 0xFF);
 		return result;
 	});
 
@@ -178,15 +169,12 @@ G.str['select'] = function (index) {
 				continue;
 			}
 			if (ch === '(') {
-				// Lua's empty capture () returns a position, unlike JavaScript. Keep
-				// it as an empty capture and fix the common position case in match().
 				captures += 1;
 				output += '(';
 				continue;
 			}
 			if (ch === ')' || ch === '^' || ch === '$' || ch === '.' || ch === '*' || ch === '+' || ch === '?' || ch === '-') {
-				if (ch === '-') output += '*?';
-				else output += ch;
+				output += ch === '-' ? '*?' : ch;
 				continue;
 			}
 			output += escapeRegexChar(ch);
@@ -200,18 +188,13 @@ G.str['select'] = function (index) {
 		var start = normalizeStringIndex(init, s.length, 1);
 		if (start < 1) start = 1;
 		if (start > s.length + 1) return [null];
-		// Position-only capture used by common trim idioms.
-		if (pattern === '^()%s*$') {
-			return /^\s*$/.test(s.slice(start - 1)) ? [start] : [null];
-		}
+		if (pattern === '^()%s*$') return /^\s*$/.test(s.slice(start - 1)) ? [start] : [null];
 		var translated = luaPatternToRegex(pattern);
 		var regex;
-		try { regex = new RegExp(translated.source); }
-		catch (_error) { return [null]; }
+		try { regex = new RegExp(translated.source); } catch (_error) { return [null]; }
 		var match = regex.exec(s.slice(start - 1));
 		if (!match) return [null];
-		if (match.length > 1) return match.slice(1);
-		return [match[0]];
+		return match.length > 1 ? match.slice(1) : [match[0]];
 	});
 
 	lua_tableset(stringTable, 'find', function (s, pattern, init, plain) {
@@ -226,14 +209,12 @@ G.str['select'] = function (index) {
 		}
 		var translated = luaPatternToRegex(pattern);
 		var regex;
-		try { regex = new RegExp(translated.source); }
-		catch (_error) { return [null]; }
+		try { regex = new RegExp(translated.source); } catch (_error) { return [null]; }
 		var match = regex.exec(chunk);
 		if (!match) return [null];
 		var first = start + match.index;
 		var result = [first, first + match[0].length - 1];
-		if (match.length > 1) result = result.concat(match.slice(1));
-		return result;
+		return match.length > 1 ? result.concat(match.slice(1)) : result;
 	});
 
 	lua_tableset(stringTable, 'gsub', function (s, pattern, replacement, n) {
@@ -241,8 +222,7 @@ G.str['select'] = function (index) {
 		pattern = String(pattern == null ? '' : pattern);
 		var translated = luaPatternToRegex(pattern);
 		var regex;
-		try { regex = new RegExp(translated.source, 'g'); }
-		catch (_error) { return [s, 0]; }
+		try { regex = new RegExp(translated.source, 'g'); } catch (_error) { return [s, 0]; }
 		var limit = n == null ? Infinity : Math.max(0, Math.trunc(Number(n) || 0));
 		var count = 0;
 		var output = s.replace(regex, function () {
@@ -282,8 +262,43 @@ G.str['select'] = function (index) {
 		return [values.join(sep)];
 	});
 
-	// Lua 5.2 exposes table.unpack; keep the Lua 5.1 global unpack as fallback.
-	if (!lua_tableget(tableTable, 'unpack') && G.str['unpack']) {
-		lua_tableset(tableTable, 'unpack', G.str['unpack']);
-	}
+	if (!lua_tableget(tableTable, 'unpack') && G.str['unpack']) lua_tableset(tableTable, 'unpack', G.str['unpack']);
+})();
+
+// Preserve the forgiving TI-Nspire preview, but make missing accesses visible
+// while a LÖVE runtime is active. This records the lookup that produced nil so
+// arithmetic errors can show the actual array index/key instead of only "nil".
+(function installLoveLuaAccessDiagnostics() {
+	if (typeof hardenLuaJsPreviewRuntime !== 'function' || hardenLuaJsPreviewRuntime.__tnsLoveDiagnostics) return;
+	var originalHarden = hardenLuaJsPreviewRuntime;
+	hardenLuaJsPreviewRuntime = function () {
+		var result = originalHarden.apply(this, arguments);
+		if (typeof window === 'undefined' || typeof window.lua_tableget !== 'function' || window.lua_tableget.__tnsLoveDiagnostics) return result;
+		var baseTableGet = window.lua_tableget;
+		var diagnosticTableGet = function (table, key) {
+			var loveActive = !!(window.G && window.G.str && window.G.str.love);
+			var value = baseTableGet(table, key);
+			if (loveActive && value == null) {
+				var history = Array.isArray(window.__tnsLuaMissingAccessHistory) ? window.__tnsLuaMissingAccessHistory : [];
+				var entry;
+				if (table == null || table === false) {
+					entry = 'nil[' + String(key) + ']';
+				} else if (typeof key === 'number') {
+					var len = '?';
+					try { len = String(window.lua_len(table)); } catch (_error) {}
+					entry = 'table[' + key + '] (len=' + len + ')';
+				} else {
+					entry = 'table.' + String(key);
+				}
+				history.push(entry);
+				if (history.length > 12) history.splice(0, history.length - 12);
+				window.__tnsLuaMissingAccessHistory = history;
+			}
+			return value;
+		};
+		diagnosticTableGet.__tnsLoveDiagnostics = true;
+		window.lua_tableget = diagnosticTableGet;
+		return result;
+	};
+	hardenLuaJsPreviewRuntime.__tnsLoveDiagnostics = true;
 })();
