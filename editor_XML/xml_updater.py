@@ -94,6 +94,18 @@ class XMLUpdater:
         return f"Define {visibility}{program_name}({parameters or ''})="
 
     @staticmethod
+    def _program_editor_widget(
+        element: ET.Element,
+        parent_map: dict[ET.Element, ET.Element],
+    ) -> ET.Element | None:
+        current = element
+        while current is not None:
+            if local_name(current.tag) == "wdgt" and current.attrib.get("type") == "TI.ProgramEditor":
+                return current
+            current = parent_map.get(current)
+        return None
+
+    @staticmethod
     def _update_file(
         xml_file: Path,
         program_name: str,
@@ -112,6 +124,22 @@ class XMLUpdater:
         effective_access = XMLUpdater._normalized_library_access(library_access)
         effective_parameters = parameters or ""
 
+        # Identify matching ProgramEditor widgets before changing <pe:name>.
+        # Otherwise a rename (e.g. nuevo -> nueva_func) makes the later
+        # <pe:editor> child look like a different program halfway through the
+        # same update pass.
+        target_editor_ids: set[int] = set()
+        for element in root.iter():
+            if namespace_uri(element.tag) != TI_PROGRAM_EDITOR_NS:
+                continue
+            if local_name(element.tag) not in {"laststoredexpr", "editor"}:
+                continue
+            if XMLScanner._program_editor_name(element, parent_map) != program_name:
+                continue
+            widget = XMLUpdater._program_editor_widget(element, parent_map)
+            if widget is not None:
+                target_editor_ids.add(id(widget))
+
         for element in root.iter():
             if local_name(element.tag) == "v":
                 name = XMLScanner._symbol_name(element, parent_map)
@@ -128,8 +156,8 @@ class XMLUpdater:
                     changed = True
 
             if namespace_uri(element.tag) == TI_PROGRAM_EDITOR_NS and local_name(element.tag) == "laststoredexpr":
-                name = XMLScanner._program_editor_name(element, parent_map)
-                if name == program_name:
+                widget = XMLUpdater._program_editor_widget(element, parent_map)
+                if widget is not None and id(widget) in target_editor_ids:
                     XMLUpdater._update_program_editor_metadata(
                         element,
                         parent_map,
@@ -149,8 +177,8 @@ class XMLUpdater:
                     changed = True
 
             if namespace_uri(element.tag) == TI_PROGRAM_EDITOR_NS and local_name(element.tag) == "editor":
-                name = XMLScanner._program_editor_name(element, parent_map)
-                if name == program_name:
+                widget = XMLUpdater._program_editor_widget(element, parent_map)
+                if widget is not None and id(widget) in target_editor_ids:
                     XMLUpdater._update_program_editor_metadata(
                         element,
                         parent_map,
@@ -215,21 +243,19 @@ class XMLUpdater:
         document_type: str | None,
         library_access: str | None,
     ) -> None:
-        current = element
-        while current is not None:
-            if local_name(current.tag) == "wdgt" and current.attrib.get("type") == "TI.ProgramEditor":
-                for child in current.iter():
-                    if namespace_uri(child.tag) != TI_PROGRAM_EDITOR_NS:
-                        continue
-                    lname = local_name(child.tag)
-                    if lname == "name":
-                        child.text = new_name
-                    elif lname == "type" and document_type in {"Prgm", "Func"}:
-                        child.text = document_type
-                    elif lname == "visibility" and library_access in {"None", "LibPub", "LibPriv"}:
-                        child.text = "" if library_access == "None" else f"{library_access} "
-                return
-            current = parent_map.get(current)
+        widget = XMLUpdater._program_editor_widget(element, parent_map)
+        if widget is None:
+            return
+        for child in widget.iter():
+            if namespace_uri(child.tag) != TI_PROGRAM_EDITOR_NS:
+                continue
+            lname = local_name(child.tag)
+            if lname == "name":
+                child.text = new_name
+            elif lname == "type" and document_type in {"Prgm", "Func"}:
+                child.text = document_type
+            elif lname == "visibility" and library_access in {"None", "LibPub", "LibPriv"}:
+                child.text = "" if library_access == "None" else f"{library_access} "
 
     @staticmethod
     def _build_laststoredexpr(
