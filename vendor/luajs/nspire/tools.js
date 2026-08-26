@@ -1,4 +1,4 @@
-console.info("tools.js")
+console.info("tools.js");
 
 // Compatibility fixes for the LuaJS runtime used by the LÖVE preview.
 // Keep source length/line positions stable whenever possible so parser errors
