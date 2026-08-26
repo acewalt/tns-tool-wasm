@@ -44,8 +44,7 @@
 
   const runtimeCompatSource = String.raw`
 (function installTnsLoveProjectRuntimeCompatibility() {
-  if (typeof window === 'undefined' || window.__tnsLoveProjectRuntimeCompatibilityInstalled) return;
-  window.__tnsLoveProjectRuntimeCompatibilityInstalled = true;
+  if (typeof window === 'undefined') return;
   window.__tnsLuaCurrentVarargs = [];
 
   // lua.js compiles top-level ... references to a JS variable named varargs,
