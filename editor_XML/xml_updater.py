@@ -72,6 +72,28 @@ class XMLUpdater:
         return sorted(target.rglob("*.xml"))
 
     @staticmethod
+    def _effective_document_type(multiline_text: str, document_type: str | None) -> str:
+        if document_type in {"Prgm", "Func"}:
+            return document_type
+        lines = multiline_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+        first = lines[0].lstrip(": ").strip().lower() if lines else ""
+        return "Func" if first == "func" else "Prgm"
+
+    @staticmethod
+    def _normalized_library_access(library_access: str | None) -> str:
+        return library_access if library_access in {"None", "LibPub", "LibPriv"} else "None"
+
+    @staticmethod
+    def _definition_prefix(
+        program_name: str,
+        library_access: str | None,
+        parameters: str | None,
+    ) -> str:
+        access = XMLUpdater._normalized_library_access(library_access)
+        visibility = "" if access == "None" else f"{access} "
+        return f"Define {visibility}{program_name}({parameters or ''})="
+
+    @staticmethod
     def _update_file(
         xml_file: Path,
         program_name: str,
@@ -86,32 +108,63 @@ class XMLUpdater:
         parent_map = {child: parent for parent in root.iter() for child in parent}
         changed = False
         target_name = new_name or program_name
+        effective_type = XMLUpdater._effective_document_type(multiline_text, document_type)
+        effective_access = XMLUpdater._normalized_library_access(library_access)
+        effective_parameters = parameters or ""
 
         for element in root.iter():
             if local_name(element.tag) == "v":
                 name = XMLScanner._symbol_name(element, parent_map)
                 if name == program_name:
-                    XMLUpdater._update_symbol_metadata(element, parent_map, target_name, document_type, library_access, parameters)
+                    XMLUpdater._update_symbol_metadata(
+                        element,
+                        parent_map,
+                        target_name,
+                        effective_type,
+                        effective_access,
+                        effective_parameters,
+                    )
                     element.text = XMLUpdater._serialize_like_existing(multiline_text, element.text or "")
                     changed = True
 
             if namespace_uri(element.tag) == TI_PROGRAM_EDITOR_NS and local_name(element.tag) == "laststoredexpr":
                 name = XMLScanner._program_editor_name(element, parent_map)
-                if name == program_name and element.text:
-                    XMLUpdater._update_program_editor_metadata(element, parent_map, target_name, document_type, library_access)
-                    existing_code = XMLScanner._extract_define_body(element.text) or element.text
+                if name == program_name:
+                    XMLUpdater._update_program_editor_metadata(
+                        element,
+                        parent_map,
+                        target_name,
+                        effective_type,
+                        effective_access,
+                    )
+                    existing = element.text or ""
+                    existing_code = XMLScanner._extract_define_body(existing) or existing
                     new_code = XMLUpdater._serialize_like_existing(multiline_text, existing_code)
-                    element.text = XMLUpdater._replace_define_body(element.text, new_code)
+                    element.text = XMLUpdater._build_laststoredexpr(
+                        target_name,
+                        new_code,
+                        effective_access,
+                        effective_parameters,
+                    )
                     changed = True
 
             if namespace_uri(element.tag) == TI_PROGRAM_EDITOR_NS and local_name(element.tag) == "editor":
                 name = XMLScanner._program_editor_name(element, parent_map)
                 if name == program_name:
-                    XMLUpdater._update_program_editor_metadata(element, parent_map, target_name, document_type, library_access)
+                    XMLUpdater._update_program_editor_metadata(
+                        element,
+                        parent_map,
+                        target_name,
+                        effective_type,
+                        effective_access,
+                    )
                     element.text = XMLUpdater._build_program_editor_tree(
                         target_name,
                         multiline_text,
                         element.text or "",
+                        document_type=effective_type,
+                        library_access=effective_access,
+                        parameters=effective_parameters,
                     )
                     changed = True
 
@@ -133,8 +186,11 @@ class XMLUpdater:
             return
         if document_type in {"Prgm", "Func"}:
             parent.set("t", "6" if document_type == "Func" else "7")
-        if library_access:
-            parent.set("f", {"None": "0", "LibPub": "65536", "LibPriv": "196608"}.get(library_access, parent.attrib.get("f", "0")))
+        if library_access in {"None", "LibPub", "LibPriv"}:
+            parent.set(
+                "f",
+                {"None": "0", "LibPub": "65536", "LibPriv": "196608"}[library_access],
+            )
         name_node = None
         params_node = None
         for child in parent:
@@ -145,7 +201,8 @@ class XMLUpdater:
         if name_node is not None:
             name_node.text = new_name
         if params_node is None:
-            params_node = ET.Element("p")
+            namespace = parent.tag[1:].split("}", 1)[0] if parent.tag.startswith("{") else ""
+            params_node = ET.Element(f"{{{namespace}}}p" if namespace else "p")
             value_index = list(parent).index(value_element)
             parent.insert(value_index, params_node)
         params_node.text = parameters or ""
@@ -169,10 +226,23 @@ class XMLUpdater:
                         child.text = new_name
                     elif lname == "type" and document_type in {"Prgm", "Func"}:
                         child.text = document_type
-                    elif lname == "visibility" and library_access:
+                    elif lname == "visibility" and library_access in {"None", "LibPub", "LibPriv"}:
                         child.text = "" if library_access == "None" else f"{library_access} "
                 return
             current = parent_map.get(current)
+
+    @staticmethod
+    def _build_laststoredexpr(
+        program_name: str,
+        serialized_code: str,
+        library_access: str | None,
+        parameters: str | None,
+    ) -> str:
+        return (
+            XMLUpdater._definition_prefix(program_name, library_access, parameters)
+            + "\n"
+            + serialized_code
+        )
 
     @staticmethod
     def _replace_define_body(original: str, new_code: str) -> str:
@@ -199,46 +269,105 @@ class XMLUpdater:
         xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
 
     @staticmethod
-    def _build_program_editor_tree(program_name: str, multiline_text: str, existing_editor: str) -> str:
+    def _build_program_editor_tree(
+        program_name: str,
+        multiline_text: str,
+        existing_editor: str,
+        document_type: str | None = None,
+        library_access: str | None = None,
+        parameters: str | None = None,
+    ) -> str:
+        effective_type = XMLUpdater._effective_document_type(multiline_text, document_type)
+        access = XMLUpdater._normalized_library_access(library_access)
+        visibility = "" if access == "None" else f"{access} "
+        params = parameters or ""
+        block_name = "0func" if effective_type == "Func" else "0prgm"
+
         root = ET.Element("r2dtotree", {"version": "1"})
         format_manager = XMLUpdater._existing_format_manager(existing_editor)
         root.append(format_manager)
 
         outer = ET.SubElement(root, "node", {"name": "0el", "id0": "7"})
-        ET.SubElement(outer, "leaf", {"name": "0text", "hide": "1", "np": "1", "id0": "7", "pp0": "0"})
+        ET.SubElement(
+            outer,
+            "leaf",
+            {"name": "0text", "hide": "1", "np": "1", "id0": "7", "pp0": "0"},
+        )
         mlstatement = ET.SubElement(outer, "node", {"name": "0mlstatement"})
 
         header = ET.SubElement(mlstatement, "node", {"name": "0el", "id0": "6"})
+        header_label = f"Define {visibility}{program_name}"
         header_text = ET.SubElement(
             header,
             "leaf",
-            {"name": "0text", "readonly": "1", "np": "2", "id0": "6", "pp0": "14", "id1": "0", "pp1": "18"},
+            {
+                "name": "0text",
+                "readonly": "1",
+                "np": "2",
+                "id0": "6",
+                "pp0": str(len("Define ")),
+                "id1": "0",
+                "pp1": str(max(0, len(header_label) - len("Define "))),
+            },
         )
-        header_text.text = f"Define LibPriv {program_name}"
-        open_paren = ET.SubElement(header, "leaf", {"name": "0paren", "id0": "7", "readonly": "1", "data": "0"})
+        header_text.text = header_label
+        open_paren = ET.SubElement(
+            header,
+            "leaf",
+            {"name": "0paren", "id0": "7", "readonly": "1", "data": "0"},
+        )
         open_paren.text = "("
-        ET.SubElement(header, "leaf", {"name": "0text", "np": "1", "id0": "7", "pp0": "0"})
+        parameter_leaf = ET.SubElement(
+            header,
+            "leaf",
+            {"name": "0text", "np": "1", "id0": "7", "pp0": str(len(params))},
+        )
+        parameter_leaf.text = params or None
         close_paren = ET.SubElement(
             header,
             "leaf",
             {"name": "0paren", "id0": "7", "readonly": "1", "data": "2147483648"},
         )
         close_paren.text = ")"
-        equals = ET.SubElement(header, "leaf", {"name": "0text", "readonly": "1", "np": "1", "id0": "6", "pp0": "1"})
+        equals = ET.SubElement(
+            header,
+            "leaf",
+            {"name": "0text", "readonly": "1", "np": "1", "id0": "6", "pp0": "1"},
+        )
         equals.text = "="
 
         program_wrap = ET.SubElement(mlstatement, "node", {"name": "0el", "id0": "6"})
-        program_wrap.tail = None
-        ET.SubElement(program_wrap, "leaf", {"name": "0text", "hide": "1", "np": "1", "id0": "7", "pp0": "0"})
-        prgm = ET.SubElement(program_wrap, "node", {"name": "0prgm", "readonly": "1"})
+        ET.SubElement(
+            program_wrap,
+            "leaf",
+            {"name": "0text", "hide": "1", "np": "1", "id0": "7", "pp0": "0"},
+        )
+        block = ET.SubElement(program_wrap, "node", {"name": block_name, "readonly": "1"})
         header.tail = "\\:"
 
-        for index, line in enumerate(XMLUpdater._program_body_lines(multiline_text)):
-            line_node = ET.SubElement(prgm, "node", {"name": "0el", "id0": "6"})
-            leaf = ET.SubElement(line_node, "leaf", {"name": "0text", "np": "1", "id0": "6", "pp0": str(len(line))})
+        for index, line in enumerate(
+            XMLUpdater._program_body_lines(multiline_text, effective_type)
+        ):
+            line_node = ET.SubElement(block, "node", {"name": "0el", "id0": "6"})
+            leaf = ET.SubElement(
+                line_node,
+                "leaf",
+                {"name": "0text", "np": "1", "id0": "6", "pp0": str(len(line))},
+            )
             if index == 0:
                 ET.SubElement(leaf, "cursor", {"index": "1"})
-            leaf.text = line
+            leaf.text = line or None
+
+        ET.SubElement(
+            program_wrap,
+            "leaf",
+            {"name": "0text", "hide": "1", "np": "1", "id0": "7", "pp0": "0"},
+        )
+        ET.SubElement(
+            outer,
+            "leaf",
+            {"name": "0text", "hide": "1", "np": "1", "id0": "7", "pp0": "0"},
+        )
 
         return ET.tostring(root, encoding="unicode", short_empty_elements=False)
 
@@ -293,10 +422,13 @@ class XMLUpdater:
         return manager
 
     @staticmethod
-    def _program_body_lines(multiline_text: str) -> list[str]:
+    def _program_body_lines(
+        multiline_text: str,
+        document_type: str | None = None,
+    ) -> list[str]:
         lines = multiline_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-        if lines and lines[0].strip().lower() == "prgm":
+        if lines and lines[0].lstrip(": ").strip().lower() in {"prgm", "func"}:
             lines = lines[1:]
-        if lines and lines[-1].strip().lower() == "endprgm":
+        if lines and lines[-1].lstrip(": ").strip().lower() in {"endprgm", "endfunc"}:
             lines = lines[:-1]
         return lines or [""]
