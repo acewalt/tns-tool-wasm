@@ -12,6 +12,7 @@
     <script defer src="./app.js?v=20260825-calculator-mathprint-v3"></script>
     <script defer src="./love-project-compat.js?v=20260826-project-compat-v1"></script>
     <script defer src="./xml-program-editor-fix.js?v=20260826-program-editor-sync-v1"></script>
+    <script defer src="./monaco-search-tools.js?v=20260826-monaco-search-v1"></script>
   </head>
   <body>
     <div id="mouse-glow" class="mouse-glow" aria-hidden="true"></div>
@@ -178,7 +179,7 @@
 
         <section class="panel">
           <h2 data-i18n="buildTitle">2) Crear .tns desde XML</h2>
-          <label><span data-i18n="xmlFolder">Carpeta .tns.xml</span> <input id="build-xml-folder" type="file" webkitdirectory multiple /></label>
+          <label><span data-i18n="xmlFolder">Carpeta .tns.xml</span> <input id="build-xml-folder" type="file" webkitdirectory multiple hidden /></label>
           <button id="build-xml-btn" disabled data-i18n="createTns">Crear TNS</button>
         </section>
       </section>
