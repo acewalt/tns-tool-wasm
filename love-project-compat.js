@@ -1,71 +1,151 @@
 (() => {
   "use strict";
 
-  // Keep the original Expanded view behavior from app.js: it intentionally
-  // changes the logical LÖVE resolution and dispatches love.resize.
-  // locale.js checks this flag before installing its CSS-only zoom override.
+  // The user intentionally wants Expanded view to be a real alternate LÖVE
+  // resolution (800x600 + love.resize), not a CSS-only zoom.
   window.__tnsLovePreviewVisualZoomInstalled = true;
 
-  // GitHub ZIPs frequently contain many nested main.lua files in vendored
-  // libraries, benchmarks and examples. Pick the main.lua whose parent covers
-  // the largest share of the archive instead of whichever */main.lua happens
-  // to be enumerated first.
-  if (typeof window.stripCommonLoveProjectRoot === "function" && !window.stripCommonLoveProjectRoot.__tnsProjectRootFix) {
-    const originalStripCommonLoveProjectRoot = window.stripCommonLoveProjectRoot;
-    const fixedStripCommonLoveProjectRoot = function (files) {
+  function patchLoveProjectRootSelection() {
+    if (typeof window.stripCommonLoveProjectRoot !== "function" || window.stripCommonLoveProjectRoot.__tnsProjectRootFixV2) return;
+    const original = window.stripCommonLoveProjectRoot;
+
+    const fixed = function (files) {
       const normalized = typeof window.normalizeLoveProjectFiles === "function"
         ? window.normalizeLoveProjectFiles(files)
-        : originalStripCommonLoveProjectRoot(files);
-
+        : original(files);
       if (!Array.isArray(normalized) || !normalized.length) return normalized || [];
-      if (normalized.some((file) => String(file.path || "").toLowerCase() === "main.lua")) return normalized;
+
+      const directMain = normalized.find((file) => String(file.path || "").toLowerCase() === "main.lua");
+      if (directMain) {
+        window.__tnsLoveSelectedProjectRoot = "";
+        return normalized;
+      }
 
       const candidates = normalized
         .filter((file) => String(file.path || "").toLowerCase().endsWith("/main.lua"))
         .map((file) => {
           const path = String(file.path || "");
           const prefix = path.slice(0, -"main.lua".length);
+          const lowerPrefix = prefix.toLowerCase();
           const coverage = normalized.reduce((count, entry) => count + (String(entry.path || "").startsWith(prefix) ? 1 : 0), 0);
+          const hasConf = normalized.some((entry) => String(entry.path || "").toLowerCase() === `${lowerPrefix}conf.lua`);
+          const hasReadme = normalized.some((entry) => {
+            const p = String(entry.path || "").toLowerCase();
+            return p === `${lowerPrefix}readme.md` || p === `${lowerPrefix}readme.txt`;
+          });
           const depth = path.split("/").filter(Boolean).length;
-          return { file, path, prefix, coverage, depth };
+          return { path, prefix, coverage, hasConf, hasReadme, depth };
         })
-        .sort((a, b) => b.coverage - a.coverage || a.depth - b.depth || a.path.length - b.path.length || a.path.localeCompare(b.path));
+        .sort((a, b) =>
+          Number(b.hasConf) - Number(a.hasConf) ||
+          b.coverage - a.coverage ||
+          Number(b.hasReadme) - Number(a.hasReadme) ||
+          a.depth - b.depth ||
+          a.path.length - b.path.length ||
+          a.path.localeCompare(b.path)
+        );
 
       if (!candidates.length) return normalized;
       const root = candidates[0];
-      return normalized.map((file) => {
-        const path = String(file.path || "");
-        return path.startsWith(root.prefix) ? { ...file, path: path.slice(root.prefix.length) } : file;
-      });
+      window.__tnsLoveSelectedProjectRoot = root.prefix;
+      return normalized
+        .filter((file) => String(file.path || "").startsWith(root.prefix))
+        .map((file) => ({ ...file, path: String(file.path || "").slice(root.prefix.length) }));
     };
-    fixedStripCommonLoveProjectRoot.__tnsProjectRootFix = true;
-    window.stripCommonLoveProjectRoot = fixedStripCommonLoveProjectRoot;
+
+    fixed.__tnsProjectRootFixV2 = true;
+    window.stripCommonLoveProjectRoot = fixed;
   }
 
+  patchLoveProjectRootSelection();
+
   const runtimeCompatSource = String.raw`
-(function installTnsLoveProjectRuntimeCompatibility() {
+(function installTnsLoveProjectRuntimeCompatibilityV2() {
   if (typeof window === 'undefined') return;
   window.__tnsLuaCurrentVarargs = [];
 
-  // lua.js compiles top-level ... references to a JS variable named varargs,
-  // but the preview previously evaluated chunks without defining it. Inject a
-  // chunk-local snapshot so modules such as STI can use (...) exactly as under
-  // Lua require(), where the first vararg is the module name.
-  if (typeof lua_parser !== 'undefined' && lua_parser && typeof lua_parser.parse === 'function' && !lua_parser.__tnsChunkVarargsInstalled) {
-    var previousParse = lua_parser.parse;
+  function longBracketLevelAt(source, index) {
+    if (source.charAt(index) !== '[') return -1;
+    var cursor = index + 1;
+    var level = 0;
+    while (source.charAt(cursor) === '=') { level += 1; cursor += 1; }
+    return source.charAt(cursor) === '[' ? level : -1;
+  }
+
+  function skipLongBracket(source, index, level) {
+    var close = ']' + new Array(level + 1).join('=') + ']';
+    var end = source.indexOf(close, index + level + 2);
+    return end < 0 ? source.length : end + close.length;
+  }
+
+  // lua.js accepts semicolons in many places but its generated grammar rejects
+  // valid separators around laststat / end in real-world Lua. Outside table
+  // constructors semicolons are optional, so replace only those with spaces.
+  function normalizeStatementSemicolons(source) {
+    source = String(source == null ? '' : source);
+    if (source.indexOf(';') < 0) return source;
+    var output = source.split('');
+    var braceDepth = 0;
+    var index = 0;
+    while (index < source.length) {
+      var ch = source.charAt(index);
+      if (ch === '"' || ch === "'") {
+        var quote = ch;
+        index += 1;
+        while (index < source.length) {
+          var current = source.charAt(index);
+          if (current === '\\') { index += 2; continue; }
+          index += 1;
+          if (current === quote) break;
+        }
+        continue;
+      }
+      if (ch === '-' && source.charAt(index + 1) === '-') {
+        var commentStart = index + 2;
+        var commentLevel = longBracketLevelAt(source, commentStart);
+        if (commentLevel >= 0) index = skipLongBracket(source, commentStart, commentLevel);
+        else {
+          var newline = source.indexOf('\n', commentStart);
+          index = newline < 0 ? source.length : newline + 1;
+        }
+        continue;
+      }
+      if (ch === '[') {
+        var stringLevel = longBracketLevelAt(source, index);
+        if (stringLevel >= 0) { index = skipLongBracket(source, index, stringLevel); continue; }
+      }
+      if (ch === '{') braceDepth += 1;
+      else if (ch === '}') braceDepth = Math.max(0, braceDepth - 1);
+      else if (ch === ';' && braceDepth === 0) output[index] = ' ';
+      index += 1;
+    }
+    return output.join('');
+  }
+
+  if (typeof lua_parser !== 'undefined' && lua_parser && typeof lua_parser.parse === 'function' && !lua_parser.__tnsStatementSemicolonV2) {
+    var parserBeforeSemicolons = lua_parser.parse;
     lua_parser.parse = function (source) {
-      var generated = String(previousParse.call(lua_parser, source));
+      return parserBeforeSemicolons.call(lua_parser, normalizeStatementSemicolons(source));
+    };
+    lua_parser.__tnsStatementSemicolonV2 = true;
+  }
+
+  // lua.js compiles top-level ... to a JS variable called varargs, but chunks
+  // loaded through require previously had no such variable. Keep a chunk-local
+  // snapshot and let require set it to the module name while loading.
+  if (typeof lua_parser !== 'undefined' && lua_parser && typeof lua_parser.parse === 'function' && !lua_parser.__tnsChunkVarargsV2) {
+    var parserBeforeVarargs = lua_parser.parse;
+    lua_parser.parse = function (source) {
+      var generated = String(parserBeforeVarargs.call(lua_parser, source));
       var lines = generated.split('\n');
       var declaration = "var varargs = (typeof window !== 'undefined' && Array.isArray(window.__tnsLuaCurrentVarargs)) ? window.__tnsLuaCurrentVarargs.slice() : [];";
       lines.splice(Math.min(19, lines.length), 0, declaration);
       return lines.join('\n');
     };
-    lua_parser.__tnsChunkVarargsInstalled = true;
+    lua_parser.__tnsChunkVarargsV2 = true;
   }
 
   if (typeof G !== 'undefined' && G && G.str && typeof lua_newtable === 'function' && typeof lua_tableset === 'function') {
-    // Minimal LuaJIT identity table. Browser previews cannot load native
-    // Steam DLLs, but many LÖVE projects inspect jit.os/jit.arch first.
     var jitTable = G.str.jit;
     if (!jitTable || typeof jitTable !== 'object') {
       jitTable = lua_newtable();
@@ -75,10 +155,6 @@
     lua_tableset(jitTable, 'arch', 'x64');
     lua_tableset(jitTable, 'version', 'LuaJIT-compatible browser shim');
 
-    // Minimal FFI shim. cdef is accepted, native libraries return an object
-    // whose SteamAPI_Init reports false, matching BYTEPATH's own graceful
-    // no-Steam path. General native FFI is intentionally not pretended to be
-    // available in a browser.
     var ffiTable = G.str.ffi;
     if (!ffiTable || typeof ffiTable !== 'object') {
       ffiTable = lua_newtable();
@@ -88,6 +164,7 @@
     lua_tableset(ffiTable, 'load', function () {
       var nativeLibrary = lua_newtable();
       lua_tableset(nativeLibrary, 'SteamAPI_Init', function () { return [false]; });
+      lua_tableset(nativeLibrary, 'SteamAPI_RestartAppIfNecessary', function () { return [false]; });
       return [nativeLibrary];
     });
     lua_tableset(ffiTable, 'cast', function (_ctype, value) { return [value]; });
@@ -101,7 +178,7 @@
         size = fixed ? Number(fixed[1]) : 1;
       }
       size = Math.max(1, Math.min(1048576, Math.floor(size)));
-      for (var index = 0; index < size; index += 1) lua_tableset(buffer, index, 0);
+      for (var i = 0; i < size; i += 1) lua_tableset(buffer, i, 0);
       return [buffer];
     });
     lua_tableset(ffiTable, 'string', function (value, length) {
@@ -109,12 +186,9 @@
       return [''];
     });
 
-    // Intercept the require function that app.js installs after the runtime
-    // sources load. Besides supplying built-in LuaJIT modules, this sets the
-    // module-name vararg while the required chunk is compiled/evaluated.
     var requireValue = G.str.require;
     var wrapRequire = function (fn) {
-      if (typeof fn !== 'function' || fn.__tnsProjectRequireWrapper) return fn;
+      if (typeof fn !== 'function' || fn.__tnsProjectRequireWrapperV2) return fn;
       var wrapped = function (moduleName) {
         var key = String(moduleName == null ? '' : moduleName);
         if (key === 'ffi') return [ffiTable];
@@ -123,13 +197,10 @@
         if (key === 'bit32' && G.str.bit32) return [G.str.bit32];
         var previous = window.__tnsLuaCurrentVarargs;
         window.__tnsLuaCurrentVarargs = [key];
-        try {
-          return fn.apply(this, arguments);
-        } finally {
-          window.__tnsLuaCurrentVarargs = previous || [];
-        }
+        try { return fn.apply(this, arguments); }
+        finally { window.__tnsLuaCurrentVarargs = previous || []; }
       };
-      wrapped.__tnsProjectRequireWrapper = true;
+      wrapped.__tnsProjectRequireWrapperV2 = true;
       return wrapped;
     };
 
@@ -144,63 +215,278 @@
       if (requireValue) requireValue = wrapRequire(requireValue);
     }
   }
+})();`;
 
-  // love.system.getOS should identify a browser build as Web. This is what
-  // love.js-targeted projects commonly branch on.
-  if (typeof window.lua_tableset === 'function' && !window.lua_tableset.__tnsLoveWebOsCompat) {
-    var baseTableSet = window.lua_tableset;
-    var compatibleTableSet = function (table, key, value) {
-      if (key === 'getOS' && typeof value === 'function') value = function () { return ['Web']; };
+  function installPostHardenLoveCompatibility() {
+    const w = window;
+    const G = w.G;
+    if (!G || !G.str || typeof w.lua_tableset !== "function" || typeof w.lua_tableget !== "function" || typeof w.lua_newtable !== "function") return;
+    if (w.lua_tableset.__tnsPostHardenLoveCompatV2) return;
+
+    const baseTableSet = w.lua_tableset;
+    const baseTableGet = w.lua_tableget;
+    const filterState = new WeakMap();
+    const wrapState = new WeakMap();
+    const graphicsStates = new WeakMap();
+    const patchedGraphics = new WeakSet();
+    let loveValue = G.str.love;
+    let graphicsTable = null;
+    let systemTable = null;
+    let deprecationOutput = true;
+
+    const stripSelf = (argsLike, table) => {
+      const args = Array.prototype.slice.call(argsLike || []);
+      return args[0] === table ? args.slice(1) : args;
+    };
+    const makeTable = (object) => {
+      const table = w.lua_newtable();
+      for (const [key, value] of Object.entries(object || {})) baseTableSet(table, key, value);
+      return table;
+    };
+    const call = (fn, args = []) => typeof fn === "function" ? w.lua_call(fn, args) : [];
+
+    function getKind(table) {
+      if (!table || typeof table !== "object") return "";
+      try {
+        const kind = baseTableGet(table, "type");
+        return typeof kind === "string" ? kind : "";
+      } catch (_error) {
+        return "";
+      }
+    }
+
+    function patchLove(love) {
+      if (!love || typeof love !== "object") return;
+      baseTableSet(love, "_version", "11.5");
+      baseTableSet(love, "_version_major", 11);
+      baseTableSet(love, "_version_minor", 5);
+      baseTableSet(love, "_version_revision", 0);
+      baseTableSet(love, "_version_codename", "Mysterious Mysteries");
+      baseTableSet(love, "getVersion", function () { return [11, 5, 0, "Mysterious Mysteries"]; });
+      baseTableSet(love, "isVersionCompatible", function () {
+        const args = stripSelf(arguments, love);
+        let major, minor, revision;
+        if (typeof args[0] === "string") {
+          const parts = args[0].split(".");
+          major = Number(parts[0]);
+          minor = Number(parts[1] || 0);
+          revision = Number(parts[2] || 0);
+        } else {
+          major = Number(args[0]);
+          minor = Number(args[1] || 0);
+          revision = Number(args[2] || 0);
+        }
+        const compatible = Number.isFinite(major) && Number.isFinite(minor) && Number.isFinite(revision)
+          && major === 11 && (minor < 5 || (minor === 5 && revision <= 0));
+        return [compatible];
+      });
+      baseTableSet(love, "hasDeprecationOutput", function () { return [deprecationOutput]; });
+      baseTableSet(love, "setDeprecationOutput", function () {
+        const args = stripSelf(arguments, love);
+        deprecationOutput = !!args[0];
+        return [];
+      });
+    }
+
+    function graphicsDimensions(graphics) {
+      try {
+        const fn = baseTableGet(graphics, "getDimensions");
+        const result = call(fn, []);
+        const width = Number(result && result[0]);
+        const height = Number(result && result[1]);
+        if (Number.isFinite(width) && Number.isFinite(height)) return [width, height];
+      } catch (_error) {}
+      return [320, 240];
+    }
+
+    function installGraphicsCompat(graphics) {
+      if (!graphics || typeof graphics !== "object" || patchedGraphics.has(graphics)) return;
+      patchedGraphics.add(graphics);
+      const state = {
+        wireframe: false,
+        meshCullMode: "none",
+        frontFaceWinding: "ccw",
+        depthCompare: null,
+        depthWrite: false,
+        stencilCompare: null,
+        stencilValue: null,
+      };
+      graphicsStates.set(graphics, state);
+
+      baseTableSet(graphics, "getCanvasFormats", function () {
+        return [makeTable({ normal: true, rgba8: true, srgba8: true })];
+      });
+      baseTableSet(graphics, "getImageFormats", function () {
+        return [makeTable({ normal: true, rgba8: true, srgba8: true })];
+      });
+      baseTableSet(graphics, "getSupported", function () {
+        return [makeTable({
+          clampzero: false,
+          lighten: true,
+          multicanvasformats: false,
+          glsl3: false,
+          instancing: false,
+          fullnpot: true,
+          pixelshaderhighp: false,
+          shaderderivatives: false,
+        })];
+      });
+      baseTableSet(graphics, "getTextureTypes", function () {
+        return [makeTable({ "2d": true, array: false, cube: false, volume: false })];
+      });
+      baseTableSet(graphics, "getPixelDimensions", function () {
+        const dims = graphicsDimensions(graphics);
+        const scale = Number(w.devicePixelRatio) || 1;
+        return [Math.round(dims[0] * scale), Math.round(dims[1] * scale)];
+      });
+      baseTableSet(graphics, "getPixelWidth", function () { return [baseTableGet(graphics, "getPixelDimensions")()[0]]; });
+      baseTableSet(graphics, "getPixelHeight", function () { return [baseTableGet(graphics, "getPixelDimensions")()[1]]; });
+      baseTableSet(graphics, "setWireframe", function () {
+        const args = stripSelf(arguments, graphics);
+        state.wireframe = !!args[0];
+        return [];
+      });
+      baseTableSet(graphics, "isWireframe", function () { return [state.wireframe]; });
+      baseTableSet(graphics, "setMeshCullMode", function () {
+        const args = stripSelf(arguments, graphics);
+        state.meshCullMode = args[0] == null ? "none" : String(args[0]);
+        return [];
+      });
+      baseTableSet(graphics, "getMeshCullMode", function () { return [state.meshCullMode]; });
+      baseTableSet(graphics, "setFrontFaceWinding", function () {
+        const args = stripSelf(arguments, graphics);
+        state.frontFaceWinding = args[0] == null ? "ccw" : String(args[0]);
+        return [];
+      });
+      baseTableSet(graphics, "getFrontFaceWinding", function () { return [state.frontFaceWinding]; });
+      baseTableSet(graphics, "setDepthMode", function () {
+        const args = stripSelf(arguments, graphics);
+        if (!args.length || args[0] == null) {
+          state.depthCompare = null;
+          state.depthWrite = false;
+        } else {
+          state.depthCompare = String(args[0]);
+          state.depthWrite = !!args[1];
+        }
+        return [];
+      });
+      baseTableSet(graphics, "getDepthMode", function () { return [state.depthCompare, state.depthWrite]; });
+      baseTableSet(graphics, "getStencilTest", function () { return [state.stencilCompare, state.stencilValue]; });
+      baseTableSet(graphics, "isGammaCorrect", function () { return [false]; });
+    }
+
+    const compatibleTableSet = function (table, key, value) {
+      if (table === loveValue && key === "graphics") {
+        graphicsTable = value;
+        installGraphicsCompat(graphicsTable);
+      }
+      if (table === loveValue && key === "system") systemTable = value;
+      if (table === systemTable && key === "getOS" && typeof value === "function") {
+        value = function () { return ["Web"]; };
+      }
+      if (table === graphicsTable && key === "setStencilTest" && typeof value === "function") {
+        const original = value;
+        value = function () {
+          const state = graphicsStates.get(graphicsTable);
+          const args = stripSelf(arguments, graphicsTable);
+          if (state) {
+            state.stencilCompare = args[0] == null ? null : String(args[0]);
+            state.stencilValue = args[1] == null ? null : Number(args[1]);
+          }
+          return original.apply(this, arguments);
+        };
+      }
       return baseTableSet(table, key, value);
     };
-    compatibleTableSet.__tnsLoveWebOsCompat = true;
-    window.lua_tableset = compatibleTableSet;
-  }
+    compatibleTableSet.__tnsPostHardenLoveCompatV2 = true;
+    w.lua_tableset = compatibleTableSet;
 
-  // Common Texture/Font methods used by real LÖVE projects. app.js already
-  // provides the drawable itself; these fill method-level gaps without lying
-  // about advanced rendering capabilities.
-  if (typeof window.lua_tableget === 'function' && !window.lua_tableget.__tnsLoveFilterCompat) {
-    var baseTableGet = window.lua_tableget;
-    var filters = typeof WeakMap === 'function' ? new WeakMap() : null;
-    var compatibleTableGet = function (table, key) {
-      var value = baseTableGet(table, key);
-      if (value != null || !table || typeof table !== 'object') return value;
-      var kind = null;
-      try { kind = baseTableGet(table, 'type'); } catch (_error) {}
-      var filterable = kind === 'Font' || kind === 'Image' || kind === 'Canvas' || kind === 'Texture';
-      if (!filterable) return value;
-      if (key === 'setFilter') {
+    const compatibleTableGet = function (table, key) {
+      const value = baseTableGet(table, key);
+      if (value != null || !table || typeof table !== "object") return value;
+      const kind = getKind(table);
+      const textureLike = kind === "Image" || kind === "Canvas" || kind === "Texture" || kind === "ArrayImage" || kind === "CubeImage" || kind === "VolumeImage";
+      const filterable = textureLike || kind === "Font";
+
+      if (filterable && key === "setFilter") {
         return function () {
-          var args = Array.prototype.slice.call(arguments);
-          if (args[0] === table) args.shift();
-          if (filters) filters.set(table, [String(args[0] || 'linear'), String(args[1] || args[0] || 'linear'), Number(args[2] || 1)]);
+          const args = stripSelf(arguments, table);
+          filterState.set(table, [String(args[0] || "linear"), String(args[1] || args[0] || "linear"), Number(args[2] || 1)]);
           return [];
         };
       }
-      if (key === 'getFilter') {
-        return function () { return filters && filters.get(table) ? filters.get(table) : ['linear', 'linear', 1]; };
+      if (filterable && key === "getFilter") {
+        return function () { return filterState.get(table) || ["linear", "linear", 1]; };
       }
-      if (key === 'setWrap') return function () { return []; };
-      if (key === 'getWrap') return function () { return ['clamp', 'clamp']; };
+      if (textureLike && key === "setWrap") {
+        return function () {
+          const args = stripSelf(arguments, table);
+          wrapState.set(table, [String(args[0] || "clamp"), String(args[1] || args[0] || "clamp")]);
+          return [];
+        };
+      }
+      if (textureLike && key === "getWrap") {
+        return function () { return wrapState.get(table) || ["clamp", "clamp"]; };
+      }
+      if (textureLike && key === "getDPIScale") return function () { return [1]; };
+      if (textureLike && key === "getPixelDimensions") {
+        return function () {
+          const getDimensions = baseTableGet(table, "getDimensions");
+          const dims = call(getDimensions, [table]);
+          const scale = 1;
+          return [Math.round(Number(dims[0]) * scale), Math.round(Number(dims[1]) * scale)];
+        };
+      }
+      if (textureLike && key === "getPixelWidth") {
+        return function () { return [compatibleTableGet(table, "getPixelDimensions")()[0]]; };
+      }
+      if (textureLike && key === "getPixelHeight") {
+        return function () { return [compatibleTableGet(table, "getPixelDimensions")()[1]]; };
+      }
+      if (textureLike && key === "getTextureType") return function () { return [kind === "ArrayImage" ? "array" : kind === "CubeImage" ? "cube" : kind === "VolumeImage" ? "volume" : "2d"]; };
+      if (textureLike && key === "getFormat") return function () { return ["rgba8"]; };
+      if (textureLike && key === "isReadable") return function () { return [true]; };
+      if (textureLike && key === "getMipmapCount") return function () { return [1]; };
       return value;
     };
-    compatibleTableGet.__tnsLoveFilterCompat = true;
-    window.lua_tableget = compatibleTableGet;
-  }
-})();`;
+    compatibleTableGet.__tnsPostHardenLoveCompatV2 = true;
+    w.lua_tableget = compatibleTableGet;
 
-  if (typeof window.loadLuaJsRuntimeSources === "function" && !window.loadLuaJsRuntimeSources.__tnsProjectCompat) {
-    const originalLoadLuaJsRuntimeSources = window.loadLuaJsRuntimeSources;
-    const compatibleLoadLuaJsRuntimeSources = async function (...args) {
-      const sources = await originalLoadLuaJsRuntimeSources.apply(this, args);
+    const descriptor = Object.getOwnPropertyDescriptor(G.str, "love");
+    if (!descriptor || descriptor.configurable) {
+      Object.defineProperty(G.str, "love", {
+        configurable: true,
+        enumerable: true,
+        get() { return loveValue; },
+        set(value) {
+          loveValue = value;
+          patchLove(value);
+        },
+      });
+    }
+    if (loveValue) patchLove(loveValue);
+  }
+
+  if (typeof window.hardenLuaJsPreviewRuntime === "function" && !window.hardenLuaJsPreviewRuntime.__tnsLovePostHardenV2) {
+    const originalHarden = window.hardenLuaJsPreviewRuntime;
+    const compatibleHarden = function (...args) {
+      const result = originalHarden.apply(this, args);
+      installPostHardenLoveCompatibility();
+      return result;
+    };
+    compatibleHarden.__tnsLovePostHardenV2 = true;
+    window.hardenLuaJsPreviewRuntime = compatibleHarden;
+  }
+
+  if (typeof window.loadLuaJsRuntimeSources === "function" && !window.loadLuaJsRuntimeSources.__tnsProjectCompatV2) {
+    const originalLoad = window.loadLuaJsRuntimeSources;
+    const compatibleLoad = async function (...args) {
+      const sources = await originalLoad.apply(this, args);
       const list = Array.isArray(sources) ? sources.slice() : [];
-      if (!list.some((source) => String(source).includes("installTnsLoveProjectRuntimeCompatibility"))) {
-        list.push(runtimeCompatSource);
-      }
+      if (!list.some((source) => String(source).includes("installTnsLoveProjectRuntimeCompatibilityV2"))) list.push(runtimeCompatSource);
       return list;
     };
-    compatibleLoadLuaJsRuntimeSources.__tnsProjectCompat = true;
-    window.loadLuaJsRuntimeSources = compatibleLoadLuaJsRuntimeSources;
+    compatibleLoad.__tnsProjectCompatV2 = true;
+    window.loadLuaJsRuntimeSources = compatibleLoad;
   }
 })();
