@@ -362,3 +362,83 @@ G.str['select'] = function (index) {
 	lua_parser.parse = function (source) { return previousParse.call(lua_parser, normalize(source)); };
 	lua_parser.__tnsUnaryMinusPrecedenceInstalled = true;
 })();
+
+// Expanded view is a display zoom, not a LÖVE window resize. The previous UI
+// changed canvas.width/height to 800x600 and called love.resize, which changed
+// game semantics and exposed off-screen content. Intercept the size toggle
+// before app.js handles it and scale only the canvas CSS box.
+(function installLovePreviewVisualZoom() {
+	if (typeof window === 'undefined' || typeof document === 'undefined' || window.__tnsLovePreviewVisualZoomInstalled) return;
+	window.__tnsLovePreviewVisualZoomInstalled = true;
+	document.addEventListener('click', function (event) {
+		var target = event.target;
+		var button = target && target.closest ? target.closest('#love-preview-size-toggle') : null;
+		if (!button) return;
+		var backdrop = button.closest('.modal-backdrop') || document;
+		var canvas = backdrop.querySelector('#love-preview-canvas');
+		var stage = backdrop.querySelector('#love-preview-stage');
+		if (!canvas || !stage) return;
+
+		event.preventDefault();
+		event.stopPropagation();
+		event.stopImmediatePropagation();
+
+		var expanded = !stage.classList.contains('expanded-view');
+		stage.classList.toggle('expanded-view', expanded);
+		stage.classList.toggle('calculator-view', !expanded);
+		canvas.classList.toggle('expanded-view', expanded);
+		canvas.classList.toggle('calculator-view', !expanded);
+
+		var logicalWidth = Math.max(1, Number(canvas.width) || 320);
+		var logicalHeight = Math.max(1, Number(canvas.height) || 200);
+		if (expanded) {
+			var scale = Math.min(800 / logicalWidth, 600 / logicalHeight);
+			canvas.style.width = Math.max(1, Math.round(logicalWidth * scale)) + 'px';
+			canvas.style.height = Math.max(1, Math.round(logicalHeight * scale)) + 'px';
+		} else {
+			canvas.style.width = '';
+			canvas.style.height = '';
+		}
+
+		if (typeof t === 'function') button.textContent = t(expanded ? 'lovePreviewCalculatorView' : 'lovePreviewExpandedView');
+		else button.textContent = expanded ? 'Calculator view' : 'Expanded view';
+		button.setAttribute('aria-pressed', String(expanded));
+
+		var logEl = backdrop.querySelector('#love-preview-log');
+		if (logEl && typeof appendPreviewLog === 'function') {
+			var shownWidth = expanded ? parseInt(canvas.style.width, 10) || logicalWidth : logicalWidth;
+			var shownHeight = expanded ? parseInt(canvas.style.height, 10) || logicalHeight : logicalHeight;
+			appendPreviewLog(logEl, 'Display zoom: ' + shownWidth + 'x' + shownHeight + ' (logical ' + logicalWidth + 'x' + logicalHeight + ')');
+		}
+	}, true);
+})();
+
+// Keep held-key state coherent when the browser/tab loses focus. This prevents
+// a physical key from remaining logically pressed after an interrupted keyup.
+(function installLovePreviewKeyboardFocusGuard() {
+	if (typeof window === 'undefined' || typeof document === 'undefined' || window.__tnsLovePreviewKeyboardFocusGuardInstalled) return;
+	window.__tnsLovePreviewKeyboardFocusGuardInstalled = true;
+	var held = new Map();
+	document.addEventListener('keydown', function (event) {
+		if (!event || event.ctrlKey || event.altKey || event.metaKey) return;
+		held.set(event.code || event.key, { key: event.key, code: event.code });
+	}, true);
+	document.addEventListener('keyup', function (event) {
+		if (!event) return;
+		held.delete(event.code || event.key);
+	}, true);
+	function releaseHeldKeys() {
+		if (!held.size) return;
+		var values = Array.from(held.values());
+		held.clear();
+		values.forEach(function (entry) {
+			try {
+				document.dispatchEvent(new KeyboardEvent('keyup', { key: entry.key || '', code: entry.code || '', bubbles: true }));
+			} catch (_error) {}
+		});
+	}
+	window.addEventListener('blur', releaseHeldKeys);
+	document.addEventListener('visibilitychange', function () {
+		if (document.hidden) releaseHeldKeys();
+	});
+})();
