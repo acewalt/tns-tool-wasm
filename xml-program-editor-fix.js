@@ -10,6 +10,7 @@
   const oldRunXmlSyntax = runXmlSyntax;
   const oldRenderXmlAnalysis = renderXmlAnalysis;
   const oldLoadLuaPreviewSymbols = loadLuaPreviewSymbols;
+  const oldCreateLovePreviewNspireRuntime = createLovePreviewNspireRuntime;
   const codeBox = () => document.querySelector("#xml-code");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -98,16 +99,6 @@
     return rescanSelect(settings.name, settings.documentType);
   }
 
-  async function editSettings() {
-    if (!xmlDoctor.current) return;
-    syncCode();
-    const oldName = xmlDoctor.current.program_name || "nuevo";
-    const s = await settingsModal({name: oldName, documentType: xmlDoctor.current.document_type || detectXmlDocumentType(codeBox().value), libraryAccess: xmlDoctor.current.library_access || "None", parameters: xmlDoctor.current.parameters || ""}, "Document settings", true, oldName);
-    if (!s) return;
-    await applySettings(s, false);
-    xmlLog(`Document settings guardados en XML: ${s.name} [${s.documentType}].`);
-  }
-
   function validBareFuncValues() {
     const box = codeBox();
     if (!box || detectXmlDocumentType(box.value) !== "Func") return new Map();
@@ -180,7 +171,7 @@
   }
 
   function stageAwarePreviewItem(item) {
-    if (!item?.file || !xmlDoctor.stagePrepared) return item;
+    if (!item?.file) return item;
     const file = normalizeFsPath(item.file);
     const sourceRoot = normalizeFsPath(xmlDoctor.sourcePath);
     const stageRoot = normalizeFsPath(xmlDoctor.stagePath);
@@ -188,73 +179,127 @@
     if (sourceRoot && (file === sourceRoot || file.startsWith(`${sourceRoot}/`))) {
       const relative = file.slice(sourceRoot.length).replace(/^\/+/, "");
       const candidate = `${stageRoot}/${relative}`;
-      if (fsExists(candidate)) return { ...item, file: candidate };
+      if (fsExists(candidate) && (xmlDoctor.stagePrepared || xmlDoctor.embedded)) return { ...item, file: candidate };
     }
-    const basename = file.split("/").pop();
-    const fallback = basename ? `${stageRoot}/${basename}` : "";
-    return fsExists(fallback) ? { ...item, file: fallback } : item;
+    return item;
+  }
+
+  function candidateProjectSymbols() {
+    const functions = [];
+    const basicFunctions = {};
+    const items = [...(xmlDoctor.candidates || [])];
+    if (xmlDoctor.current && !items.includes(xmlDoctor.current)) items.push(xmlDoctor.current);
+    for (const item of items) {
+      const name = String(item?.program_name || item?.name || "").trim();
+      if (!name) continue;
+      let body = String(item?.code || item?.content || "");
+      let params = String(item?.parameters || "");
+      let type = String(item?.document_type || "");
+      if (item === xmlDoctor.current && codeBox()) {
+        body = String(codeBox().value || body);
+        params = String(xmlDoctor.current?.parameters || params);
+        type = String(xmlDoctor.current?.document_type || type);
+      }
+      const isFunc = type === "Func" || /^\s*Func\b/i.test(body);
+      const isProgram = isFunc || type === "Prgm" || /^\s*Prgm\b/i.test(body);
+      if (!isProgram) continue;
+      if (!functions.includes(name)) functions.push(name);
+      if (isFunc) basicFunctions[name] = { params, body };
+    }
+    return { functions, basicFunctions };
   }
 
   async function loadProjectBasicFunctions() {
-    if (!pyodide) return { functions: [], basicFunctions: {} };
-    const root = normalizeFsPath(xmlDoctor.stagePrepared ? xmlDoctor.stagePath : xmlDoctor.sourcePath);
-    if (!root || !fsExists(root)) return { functions: [], basicFunctions: {} };
-    pyodide.globals.set("wasm_xpe_symbol_root", root);
+    const memory = candidateProjectSymbols();
+    if (!pyodide) return memory;
+    const sourceRoot = normalizeFsPath(xmlDoctor.sourcePath);
+    const stageRoot = normalizeFsPath(xmlDoctor.stagePath);
+    const roots = [];
+    if (sourceRoot && fsExists(sourceRoot)) roots.push(sourceRoot);
+    if (stageRoot && fsExists(stageRoot) && stageRoot !== sourceRoot) roots.push(stageRoot);
+    if (!roots.length) return memory;
+
+    pyodide.globals.set("wasm_xpe_symbol_roots", roots);
     const payload = await pyodide.runPythonAsync(`
 import json
 import xml.etree.ElementTree as ET
 from pathlib import Path
 from xml_scanner import local_name
 
-root_path = Path(wasm_xpe_symbol_root)
+try:
+    roots = list(wasm_xpe_symbol_roots.to_py())
+except Exception:
+    roots = [str(wasm_xpe_symbol_roots)]
 functions = []
 basic_functions = {}
-for xml_file in root_path.rglob("*.xml"):
-    try:
-        xml_root = ET.parse(xml_file).getroot()
-    except Exception:
+for raw_root in roots:
+    root_path = Path(str(raw_root))
+    if not root_path.exists():
         continue
-    for element in xml_root.iter():
-        if local_name(element.tag) != "e":
+    for xml_file in root_path.rglob("*.xml"):
+        try:
+            xml_root = ET.parse(xml_file).getroot()
+        except Exception:
             continue
-        name = ""
-        params = ""
-        value = ""
-        for child in element:
-            lname = local_name(child.tag)
-            if lname == "n":
-                name = (child.text or "").strip()
-            elif lname == "p":
-                params = child.text or ""
-            elif lname == "v":
-                value = child.text or ""
-        if not name:
-            continue
-        symbol_type = element.attrib.get("t", "")
-        is_program = symbol_type in {"6", "7"} or value.lstrip().startswith(("Func", "Prgm"))
-        if not is_program:
-            continue
-        if name not in functions:
-            functions.append(name)
-        if symbol_type == "6" or value.lstrip().startswith("Func"):
-            basic_functions[name] = {"params": params, "body": value}
+        for element in xml_root.iter():
+            if local_name(element.tag) != "e":
+                continue
+            name = ""
+            params = ""
+            value = ""
+            for child in element:
+                lname = local_name(child.tag)
+                if lname == "n":
+                    name = (child.text or "").strip()
+                elif lname == "p":
+                    params = child.text or ""
+                elif lname == "v":
+                    value = child.text or ""
+            if not name:
+                continue
+            symbol_type = element.attrib.get("t", "")
+            is_program = symbol_type in {"6", "7"} or value.lstrip().startswith(("Func", "Prgm"))
+            if not is_program:
+                continue
+            if name not in functions:
+                functions.append(name)
+            if symbol_type == "6" or value.lstrip().startswith("Func"):
+                basic_functions[name] = {"params": params, "body": value}
 json.dumps({"functions": functions, "basicFunctions": basic_functions})
 `);
-    return JSON.parse(payload);
+    const disk = JSON.parse(payload);
+    return {
+      functions: Array.from(new Set([...(disk.functions || []), ...(memory.functions || [])])),
+      basicFunctions: {
+        ...(disk.basicFunctions || {}),
+        ...(memory.basicFunctions || {}),
+      },
+    };
+  }
+
+  function mergePreviewSymbols(base = {}, project = {}) {
+    return {
+      ...(base || {}),
+      functions: Array.from(new Set([...(base?.functions || []), ...(project?.functions || [])])),
+      basicFunctions: {
+        ...(base?.basicFunctions || {}),
+        ...(project?.basicFunctions || {}),
+      },
+    };
   }
 
   loadLuaPreviewSymbols = async function (item, sourceOverride = null) {
     const base = await oldLoadLuaPreviewSymbols(stageAwarePreviewItem(item), sourceOverride);
+    return mergePreviewSymbols(base, await loadProjectBasicFunctions());
+  };
+
+  createLovePreviewNspireRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
     const project = await loadProjectBasicFunctions();
-    const functions = Array.from(new Set([...(base?.functions || []), ...(project.functions || [])]));
-    return {
-      ...(base || {}),
-      functions,
-      basicFunctions: {
-        ...(base?.basicFunctions || {}),
-        ...(project.basicFunctions || {}),
-      },
-    };
+    const merged = mergePreviewSymbols(symbols, project);
+    const linked = Object.keys(merged.basicFunctions || {});
+    if (linked.length && logEl) appendPreviewLog(logEl, `TI Func enlazadas: ${linked.join(", ")}`);
+    else if (logEl) appendPreviewLog(logEl, "TI Func enlazadas: 0");
+    return oldCreateLovePreviewNspireRuntime(code, ctx, canvas, logEl, merged);
   };
 
   createNewXmlProject = async function () {
@@ -289,11 +334,9 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions})
 
   codeBox()?.addEventListener("input", syncCode);
 
-  document.querySelector("#xml-document-btn")?.addEventListener("click", (event) => {
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    editSettings().catch((e) => { xmlLog(`ERROR Document settings: ${e.message}`); console.error(e); });
-  }, true);
+  // Document settings intentionally uses app.js's original listener/modal.
+  // This restores the previous document-form layout instead of replacing it
+  // with the compact modal used by the New/Add flows above.
 
   document.querySelector("#xml-programs")?.addEventListener("change", (event) => {
     event.preventDefault();
