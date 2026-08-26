@@ -7,6 +7,9 @@
   const oldAdd = addProgramEditorToStage;
   const oldInspector = openDocumentInspector;
   const oldSelect = selectXmlProgram;
+  const oldRunXmlSyntax = runXmlSyntax;
+  const oldRenderXmlAnalysis = renderXmlAnalysis;
+  const oldLoadLuaPreviewSymbols = loadLuaPreviewSymbols;
   const codeBox = () => document.querySelector("#xml-code");
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -104,6 +107,155 @@
     await applySettings(s, false);
     xmlLog(`Document settings guardados en XML: ${s.name} [${s.documentType}].`);
   }
+
+  function validBareFuncValues() {
+    const box = codeBox();
+    if (!box || detectXmlDocumentType(box.value) !== "Func") return new Map();
+    const lines = String(box.value || "").replace(/\r\n?/g, "\n").split("\n");
+    const declared = new Set();
+    for (const raw of String(xmlDoctor.current?.parameters || "").split(",")) {
+      const name = raw.trim();
+      if (/^[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*$/.test(name)) declared.add(name);
+    }
+    const valid = new Map();
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index].trim();
+      const bare = /^([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)$/.exec(line);
+      if (bare && declared.has(bare[1])) valid.set(index + 1, bare[1]);
+
+      const local = /^Local\s+(.+)$/i.exec(line);
+      if (local) {
+        for (const rawName of local[1].split(",")) {
+          const name = rawName.trim();
+          if (/^[A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*$/.test(name)) declared.add(name);
+        }
+      }
+      const colonAssign = /^([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*:=/.exec(line);
+      if (colonAssign) declared.add(colonAssign[1]);
+      const arrowAssign = /(?:->|→)\s*([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\s*$/.exec(line);
+      if (arrowAssign) declared.add(arrowAssign[1]);
+      const forVar = /^For\s+([A-Za-z_À-ÿµλσπθΩ][A-Za-z0-9_À-ÿµλσπθΩ]*)\b/i.exec(line);
+      if (forVar) declared.add(forVar[1]);
+    }
+    return valid;
+  }
+
+  function normalizeFuncSyntaxReport(report) {
+    if (!report || !Array.isArray(report.diagnostics)) return report;
+    const valid = validBareFuncValues();
+    if (!valid.size) return report;
+    const originalLength = report.diagnostics.length;
+    report.diagnostics = report.diagnostics.filter((diag) => {
+      const isUnknownCommand = Number(diag?.code) === 410 || String(diag?.code_label || "").toUpperCase() === "E410";
+      if (!isUnknownCommand) return true;
+      const line = Number(diag?.line) || 0;
+      return !valid.has(line);
+    });
+    if (report.diagnostics.length !== originalLength) {
+      report.errors = report.diagnostics.filter((diag) => String(diag?.severity || "").toUpperCase() === "ERROR").length;
+      report.warnings = report.diagnostics.filter((diag) => String(diag?.severity || "").toUpperCase() === "WARNING").length;
+    }
+    return report;
+  }
+
+  renderXmlAnalysis = function (report) {
+    return oldRenderXmlAnalysis(normalizeFuncSyntaxReport(report));
+  };
+
+  runXmlSyntax = async function () {
+    return normalizeFuncSyntaxReport(await oldRunXmlSyntax());
+  };
+
+  function normalizeFsPath(path) {
+    return String(path || "").replace(/\\/g, "/").replace(/\/$/, "");
+  }
+
+  function fsExists(path) {
+    if (!path || !pyodide?.FS) return false;
+    try {
+      return Boolean(pyodide.FS.analyzePath(path).exists);
+    } catch (_error) {
+      return false;
+    }
+  }
+
+  function stageAwarePreviewItem(item) {
+    if (!item?.file || !xmlDoctor.stagePrepared) return item;
+    const file = normalizeFsPath(item.file);
+    const sourceRoot = normalizeFsPath(xmlDoctor.sourcePath);
+    const stageRoot = normalizeFsPath(xmlDoctor.stagePath);
+    if (!stageRoot || file === stageRoot || file.startsWith(`${stageRoot}/`)) return item;
+    if (sourceRoot && (file === sourceRoot || file.startsWith(`${sourceRoot}/`))) {
+      const relative = file.slice(sourceRoot.length).replace(/^\/+/, "");
+      const candidate = `${stageRoot}/${relative}`;
+      if (fsExists(candidate)) return { ...item, file: candidate };
+    }
+    const basename = file.split("/").pop();
+    const fallback = basename ? `${stageRoot}/${basename}` : "";
+    return fsExists(fallback) ? { ...item, file: fallback } : item;
+  }
+
+  async function loadProjectBasicFunctions() {
+    if (!pyodide) return { functions: [], basicFunctions: {} };
+    const root = normalizeFsPath(xmlDoctor.stagePrepared ? xmlDoctor.stagePath : xmlDoctor.sourcePath);
+    if (!root || !fsExists(root)) return { functions: [], basicFunctions: {} };
+    pyodide.globals.set("wasm_xpe_symbol_root", root);
+    const payload = await pyodide.runPythonAsync(`
+import json
+import xml.etree.ElementTree as ET
+from pathlib import Path
+from xml_scanner import local_name
+
+root_path = Path(wasm_xpe_symbol_root)
+functions = []
+basic_functions = {}
+for xml_file in root_path.rglob("*.xml"):
+    try:
+        xml_root = ET.parse(xml_file).getroot()
+    except Exception:
+        continue
+    for element in xml_root.iter():
+        if local_name(element.tag) != "e":
+            continue
+        name = ""
+        params = ""
+        value = ""
+        for child in element:
+            lname = local_name(child.tag)
+            if lname == "n":
+                name = (child.text or "").strip()
+            elif lname == "p":
+                params = child.text or ""
+            elif lname == "v":
+                value = child.text or ""
+        if not name:
+            continue
+        symbol_type = element.attrib.get("t", "")
+        is_program = symbol_type in {"6", "7"} or value.lstrip().startswith(("Func", "Prgm"))
+        if not is_program:
+            continue
+        if name not in functions:
+            functions.append(name)
+        if symbol_type == "6" or value.lstrip().startswith("Func"):
+            basic_functions[name] = {"params": params, "body": value}
+json.dumps({"functions": functions, "basicFunctions": basic_functions})
+`);
+    return JSON.parse(payload);
+  }
+
+  loadLuaPreviewSymbols = async function (item, sourceOverride = null) {
+    const base = await oldLoadLuaPreviewSymbols(stageAwarePreviewItem(item), sourceOverride);
+    const project = await loadProjectBasicFunctions();
+    const functions = Array.from(new Set([...(base?.functions || []), ...(project.functions || [])]));
+    return {
+      ...(base || {}),
+      functions,
+      basicFunctions: {
+        ...(base?.basicFunctions || {}),
+        ...(project.basicFunctions || {}),
+      },
+    };
+  };
 
   createNewXmlProject = async function () {
     const s = await settingsModal({name:"nuevo",documentType:"Prgm",libraryAccess:"LibPub",parameters:""}, "New document");
