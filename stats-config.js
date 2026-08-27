@@ -189,3 +189,48 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   script.dataset.animatedThemeToggle = "true";
   document.head.appendChild(script);
 })();
+
+// Add the voluntary PayPal support note inside the About modal, between
+// Purpose and Development and Interface. Keep it synchronized with the site's
+// Spanish / English / French language selection.
+(() => {
+  const PAYPAL_URL = "https://paypal.me/waltDx";
+  const SUPPORT_TEXT = {
+    es: "Si mi herramienta te resultó útil y quieres apoyar su desarrollo, puedes invitarme un café. ¡Muchas gracias por tu apoyo!",
+    en: "If my tool was useful to you and you'd like to support its development, you can buy me a coffee. Thank you very much for your support!",
+    fr: "Si mon outil vous a été utile et que vous souhaitez soutenir son développement, vous pouvez m'offrir un café. Merci beaucoup pour votre soutien !",
+  };
+
+  function currentLanguage() {
+    const activeLanguage = document.querySelector("#language-buttons button.active[data-lang]")?.dataset.lang;
+    const documentLanguage = String(document.documentElement.lang || "").slice(0, 2).toLowerCase();
+    return activeLanguage || documentLanguage || "es";
+  }
+
+  function injectSupportNote() {
+    const modal = document.querySelector(".about-modal");
+    if (!modal || modal.querySelector('[data-about-support="true"]')) return;
+
+    const headings = modal.querySelectorAll(":scope > h3");
+    const developmentHeading = headings[1];
+    if (!developmentHeading) return;
+
+    const paragraph = document.createElement("p");
+    paragraph.dataset.aboutSupport = "true";
+    paragraph.className = "about-support-note";
+    paragraph.append(document.createTextNode(`${SUPPORT_TEXT[currentLanguage()] || SUPPORT_TEXT.es} `));
+
+    const link = document.createElement("a");
+    link.href = PAYPAL_URL;
+    link.target = "_blank";
+    link.rel = "noopener noreferrer";
+    link.textContent = PAYPAL_URL;
+    paragraph.append(link);
+
+    developmentHeading.before(paragraph);
+  }
+
+  const observer = new MutationObserver(injectSupportNote);
+  observer.observe(document.body, { childList: true, subtree: true });
+  injectSupportNote();
+})();
