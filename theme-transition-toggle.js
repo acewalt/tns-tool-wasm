@@ -23,31 +23,31 @@
     style.id = STYLE_ID;
     style.textContent = `
       .header-actions .tns-theme-toggle {
-        width: 56px !important;
-        min-width: 56px !important;
-        height: 56px !important;
-        min-height: 56px !important;
+        width: 36px !important;
+        min-width: 36px !important;
+        height: 36px !important;
+        min-height: 36px !important;
         padding: 0 !important;
         align-self: center;
         display: grid !important;
         place-items: center;
         position: relative;
         overflow: hidden;
-        border: 0 !important;
+        border: 1px solid var(--line) !important;
         border-radius: 50% !important;
         background: #ffffff !important;
         color: #111827 !important;
         line-height: 1 !important;
         cursor: pointer;
-        box-shadow: 0 0 50px 20px rgba(0, 0, 0, 0.10) !important;
+        box-shadow: none !important;
         transform: none;
         isolation: isolate;
       }
 
       .header-actions .tns-theme-toggle:hover {
-        background: #ffffff !important;
-        transform: translateY(-1px) scale(1.035) !important;
-        box-shadow: 0 0 52px 20px rgba(0, 0, 0, 0.12) !important;
+        background: #f8fafc !important;
+        transform: translateY(-1px) !important;
+        box-shadow: 0 8px 20px rgba(15, 23, 42, 0.10) !important;
       }
 
       .header-actions .tns-theme-toggle:active {
@@ -64,8 +64,8 @@
         grid-row: 1 / 1;
         display: grid;
         place-items: center;
-        width: 32px;
-        height: 32px;
+        width: 22px;
+        height: 22px;
         line-height: .1;
         transition: transform 500ms cubic-bezier(.2, .8, .2, 1), opacity 350ms ease;
         will-change: transform;
@@ -73,8 +73,8 @@
 
       .tns-theme-icon svg {
         display: block;
-        width: 32px;
-        height: 32px;
+        width: 22px;
+        height: 22px;
       }
 
       .tns-theme-icon--moon {

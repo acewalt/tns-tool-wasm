@@ -36,8 +36,8 @@
 }
 
 *::-webkit-scrollbar {
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
 }
 
 *::-webkit-scrollbar-track {
@@ -321,12 +321,13 @@ body.drop-target-active .click-burst-layer {
 }
 
 .theme-button {
-  width: 46px;
-  height: 34px;
-  min-width: 46px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 50%;
   background: #fff;
   color: #172033;
   display: grid;
@@ -2245,11 +2246,11 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .monaco-code-host .monaco-scrollable-element > .scrollbar.vertical {
-  width: 16px !important;
+  width: 26px !important;
 }
 
 .monaco-code-host .monaco-scrollable-element > .scrollbar.horizontal {
-  height: 16px !important;
+  height: 26px !important;
 }
 
 .editor-wrap.monaco-enabled > pre,
@@ -2920,8 +2921,8 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   }
 
   .language-buttons button {
-    width: 36px;
-    height: 30px;
+    width: 34px;
+    height: 34px;
   }
 
   .about-button {
@@ -2931,9 +2932,10 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   }
 
   .theme-button {
-    width: 36px;
-    height: 30px;
-    min-width: 36px;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
     padding: 0;
     font-size: 18px;
   }

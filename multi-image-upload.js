@@ -4,7 +4,7 @@
   if (!document.querySelector('link[data-header-controls-compact="true"]')) {
     const headerControlsStyle = document.createElement("link");
     headerControlsStyle.rel = "stylesheet";
-    headerControlsStyle.href = "./header-controls-compact.css?v=20260827-header-controls-v2";
+    headerControlsStyle.href = "./header-controls-compact.css?v=20260827-header-controls-v3";
     headerControlsStyle.dataset.headerControlsCompact = "true";
     document.head.appendChild(headerControlsStyle);
   }

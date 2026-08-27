@@ -185,7 +185,7 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   if (document.querySelector('script[data-animated-theme-toggle="true"]')) return;
 
   const script = document.createElement("script");
-  script.src = "./theme-transition-toggle.js?v=20260827-theme-reveal-v1";
+  script.src = "./theme-transition-toggle.js?v=20260827-theme-reveal-v2";
   script.dataset.animatedThemeToggle = "true";
   document.head.appendChild(script);
 })();
