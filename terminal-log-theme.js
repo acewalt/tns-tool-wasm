@@ -79,8 +79,8 @@
     return null;
   }
 
-  function wrapLuaLogs(root = document) {
-    const headings = root.querySelectorAll?.("h1, h2, h3, h4, h5, h6") || [];
+  function wrapLuaLogs() {
+    const headings = document.querySelectorAll("h1, h2, h3, h4, h5, h6");
 
     headings.forEach((heading) => {
       const text = normalizeText(heading.textContent);
@@ -91,21 +91,27 @@
     });
   }
 
-  function scan(root = document) {
+  function scan() {
     wrapStaticLogs();
-    wrapLuaLogs(root);
+    wrapLuaLogs();
   }
 
   function start() {
-    scan(document);
+    scan();
 
+    let scanQueued = false;
     const observer = new MutationObserver((mutations) => {
-      for (const mutation of mutations) {
-        for (const node of mutation.addedNodes) {
-          if (!(node instanceof HTMLElement)) continue;
-          scan(node);
-        }
-      }
+      const hasNewElements = mutations.some((mutation) =>
+        Array.from(mutation.addedNodes).some((node) => node instanceof HTMLElement)
+      );
+
+      if (!hasNewElements || scanQueued) return;
+
+      scanQueued = true;
+      requestAnimationFrame(() => {
+        scanQueued = false;
+        scan();
+      });
     });
 
     observer.observe(document.body, {
