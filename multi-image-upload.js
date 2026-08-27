@@ -21,4 +21,11 @@
     homeDropScript.dataset.homeDropImport = "true";
     document.head.appendChild(homeDropScript);
   }
+
+  if (!document.querySelector('script[data-lua-drop-progress="true"]')) {
+    const luaProgressScript = document.createElement("script");
+    luaProgressScript.src = "./lua-drop-progress.js?v=20260827-lua-drop-progress-v1";
+    luaProgressScript.dataset.luaDropProgress = "true";
+    document.head.appendChild(luaProgressScript);
+  }
 })();
