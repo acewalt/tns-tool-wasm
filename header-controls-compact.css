@@ -34,6 +34,34 @@
   line-height: 1;
 }
 
+/* Theme-aware artwork treatment.
+   Only the purple/red TNS artwork shown in the header/sidebar/home hero is
+   tone-inverted in light mode. Dark mode stays exactly as the source PNGs. */
+.shell-header > img[src$="tns_icon.png"],
+.launcher-icon[src$="Syntax_doctor_XML.png"],
+.launcher-icon[src$="TNS_normal.png"],
+.home-hero > img[src$="TNS_new.png"] {
+  filter: none;
+  transition:
+    filter 480ms cubic-bezier(.22, 1, .36, 1),
+    opacity 360ms ease;
+  will-change: filter;
+}
+
+[data-theme="light"] .shell-header > img[src$="tns_icon.png"],
+[data-theme="light"] .launcher-icon[src$="Syntax_doctor_XML.png"],
+[data-theme="light"] .launcher-icon[src$="TNS_normal.png"],
+[data-theme="light"] .home-hero > img[src$="TNS_new.png"] {
+  filter: invert(1) hue-rotate(180deg) brightness(.94) contrast(1.08);
+}
+
+[data-theme="dark"] .shell-header > img[src$="tns_icon.png"],
+[data-theme="dark"] .launcher-icon[src$="Syntax_doctor_XML.png"],
+[data-theme="dark"] .launcher-icon[src$="TNS_normal.png"],
+[data-theme="dark"] .home-hero > img[src$="TNS_new.png"] {
+  filter: none;
+}
+
 @media (max-width: 720px) {
   .language-buttons button {
     width: 34px;
@@ -49,5 +77,14 @@
     width: 40px;
     min-width: 40px;
     height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shell-header > img[src$="tns_icon.png"],
+  .launcher-icon[src$="Syntax_doctor_XML.png"],
+  .launcher-icon[src$="TNS_normal.png"],
+  .home-hero > img[src$="TNS_new.png"] {
+    transition-duration: .01ms;
   }
 }
