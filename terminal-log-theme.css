@@ -1,12 +1,15 @@
 @import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap");
 
 .terminal-log-window {
+  display: flex;
+  flex-direction: column;
   width: 100%;
   min-width: 0;
+  min-height: 0;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 9px;
-  background: rgba(18, 18, 20, 0.86);
+  background: rgba(0, 0, 0, 0.48);
   box-shadow: 0 12px 34px rgba(0, 0, 0, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.025);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
@@ -17,6 +20,7 @@
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
+  flex: 0 0 auto;
   min-height: 32px;
   padding: 0 10px;
   background: linear-gradient(145deg, #2b2b2d, #18181a);
@@ -84,12 +88,13 @@
 
 .terminal-log-body {
   display: flex;
+  flex: 1 1 auto;
   flex-direction: column;
   min-height: 150px;
   padding: 10px 10px 11px;
   background:
     radial-gradient(circle at 16% 8%, rgba(0, 255, 174, 0.035), transparent 30%),
-    rgba(0, 0, 0, 0.48);
+    #050607;
   border-top: 1px solid rgba(255, 255, 255, 0.025);
 }
 
@@ -136,6 +141,7 @@
 
 .terminal-log-window #log,
 .terminal-log-window #xml-log,
+.terminal-log-window #py-log,
 .terminal-log-window pre[data-terminal-log="true"] {
   flex: 1 1 auto;
   width: 100%;
@@ -179,6 +185,7 @@
 .doctor-side .terminal-log-body,
 .lua-side .terminal-log-body,
 .lua-doctor-side .terminal-log-body {
+  flex: 1 1 auto;
   min-height: 146px;
 }
 
@@ -223,6 +230,7 @@
 
   .terminal-log-window #log,
   .terminal-log-window #xml-log,
+  .terminal-log-window #py-log,
   .terminal-log-window pre[data-terminal-log="true"] {
     font-size: 11px;
   }
