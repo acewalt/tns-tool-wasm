@@ -19,7 +19,6 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   `;
   statsRoot.appendChild(totalCard);
 
-  // Keep the three counters balanced on narrower screens.
   const style = document.createElement("style");
   style.textContent = `
     @media (max-width: 860px) {
@@ -84,9 +83,6 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
     });
   }
 
-  // Reuse the requests app.js already makes. Cloning the response does not
-  // create another HTTP request; it only lets this small header extension
-  // read totalVisitors from the same JSON response.
   const nativeFetch = window.fetch.bind(window);
   window.fetch = async (...args) => {
     const response = await nativeFetch(...args);
@@ -127,20 +123,43 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
 })();
 
 // Show a blurred, animated three-step progress overlay while images/PDF pages
-// are being converted into TI-Nspire image cards. It follows the real XML log
-// and reuses the existing continuous calculator image gallery when finished.
+// are being converted into TI-Nspire image cards.
 (() => {
   if (document.querySelector('script[data-import-progress-stepper="true"]')) return;
 
   const progressScript = document.createElement("script");
-  progressScript.src = "./import-progress-stepper.js?v=20260827-import-stepper-v2";
+  progressScript.src = "./import-progress-stepper.js?v=20260827-import-stepper-v5";
   progressScript.dataset.importProgressStepper = "true";
   document.head.appendChild(progressScript);
 })();
 
-// Give Syntax Doctor -> File -> +Page -> Add PDF its own deterministic import
-// route. The previous button relied on the generic delegated media handler,
-// which could import the PDF without consistently driving the progress overlay.
+// The progress stepper uses the XML log as an event stream. When that log is
+// truly empty on the very first import, its first mutation used to become the
+// observer baseline and the initial "Carga..." / "PDF: abriendo..." event was
+// swallowed. Prime the empty log with one invisible blank line as soon as the
+// user starts any media import, before the file picker returns a selection.
+(() => {
+  const MEDIA_BUTTON_IDS = new Set([
+    "file-page-add-image",
+    "file-page-add-pdf",
+    "file-page-add-pdf-syntax-v2",
+    "add-image-widget",
+    "add-pdf-widget",
+  ]);
+
+  window.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest("button") : null;
+    if (!button?.id || !MEDIA_BUTTON_IDS.has(button.id)) return;
+
+    const xmlLog = document.querySelector("#xml-log");
+    if (!xmlLog || xmlLog.textContent !== "") return;
+
+    xmlLog.textContent = "\n";
+  }, true);
+})();
+
+// Legacy compatibility route. The unified media controller owns the actual PDF
+// import behavior, but this wrapper remains harmless for older cached markup.
 (() => {
   if (document.querySelector('script[data-syntax-pdf-import="true"]')) return;
 
@@ -150,9 +169,7 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   document.head.appendChild(script);
 })();
 
-// Keep Document Inspector -> +Page -> Add image in sync with the Syntax Doctor
-// multi-image workflow. This overrides only that inspector action and keeps the
-// same XML-log progress protocol, animated stepper and refreshed inspector.
+// Legacy compatibility route for older cached inspector markup.
 (() => {
   if (document.querySelector('script[data-inspector-image-batch-sync="true"]')) return;
 
