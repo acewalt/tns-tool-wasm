@@ -67,21 +67,25 @@ async function incrementCounter(db, name, amount = 1) {
   return Number(row?.value || 0);
 }
 
-async function getVisitorsForDate(db, visitDate) {
+async function getVisitorStats(db, visitDate) {
   const row = await db.prepare(`
-    SELECT COUNT(*) AS value
+    SELECT
+      SUM(CASE WHEN visit_date = ? THEN 1 ELSE 0 END) AS visitors_today,
+      COUNT(DISTINCT visitor_id) AS total_visitors
     FROM daily_visitors
-    WHERE visit_date = ?
   `).bind(visitDate).first();
-  return Number(row?.value || 0);
+
+  return {
+    visitorsToday: Number(row?.visitors_today || 0),
+    totalVisitors: Number(row?.total_visitors || 0),
+  };
 }
 
 async function readStats(db) {
   const visitDate = todayKey();
-  return {
-    documentsGenerated: await getCounter(db, "documents_generated"),
-    visitorsToday: await getVisitorsForDate(db, visitDate),
-  };
+  const documentsGenerated = await getCounter(db, "documents_generated");
+  const { visitorsToday, totalVisitors } = await getVisitorStats(db, visitDate);
+  return { documentsGenerated, visitorsToday, totalVisitors };
 }
 
 async function handleRequest(request, env) {
@@ -103,8 +107,8 @@ async function handleRequest(request, env) {
 
   if (request.method === "POST" && url.pathname === "/api/generated") {
     const documentsGenerated = await incrementCounter(env.DB, "documents_generated", 1);
-    const visitorsToday = await getVisitorsForDate(env.DB, todayKey());
-    return jsonResponse({ documentsGenerated, visitorsToday }, 200, origin);
+    const { visitorsToday, totalVisitors } = await getVisitorStats(env.DB, todayKey());
+    return jsonResponse({ documentsGenerated, visitorsToday, totalVisitors }, 200, origin);
   }
 
   if (request.method === "POST" && url.pathname === "/api/visit") {
@@ -118,9 +122,9 @@ async function handleRequest(request, env) {
       INSERT OR IGNORE INTO daily_visitors (visit_date, visitor_id)
       VALUES (?, ?)
     `).bind(visitDate, visitorId).run();
-    const visitorsToday = await getVisitorsForDate(env.DB, visitDate);
+    const { visitorsToday, totalVisitors } = await getVisitorStats(env.DB, visitDate);
     const documentsGenerated = await getCounter(env.DB, "documents_generated");
-    return jsonResponse({ documentsGenerated, visitorsToday }, 200, origin);
+    return jsonResponse({ documentsGenerated, visitorsToday, totalVisitors }, 200, origin);
   }
 
   if (request.method === "GET" && url.pathname === "/") {
