@@ -464,11 +464,17 @@ Graph parsing and expression compatibility are still experimental and will conti
 
 ### Current limitations and planned work
 
-The following features are not yet implemented or are still planned:
+Recent image and PDF workflow additions are now implemented:
 
-- PDF import into TNS documents
-- batch / multi-select image import
-- automatically creating one image card per selected image
+- PDF import into TNS documents. Each PDF page is rendered as an image and passed through the same `Add Image` pipeline.
+- batch / multi-select image import.
+- automatic creation of one image card and one `pageN.BMP` resource per selected image.
+- PDFs with more than 30 pages show a size/memory warning; if confirmed, all pages can be imported instead of being truncated to 30.
+- when a document contains more than one image, the `Images: N` summary in `Document Inspector` becomes clickable and opens a continuous calculator-style gallery of all image resources.
+- each image in the gallery can still be opened individually with the existing image viewer.
+
+Remaining planned or incomplete areas include:
+
 - broader XLSX compatibility
 - more TI-Nspire page/widget types
 - more complete Graphs support
@@ -477,7 +483,7 @@ The following features are not yet implemented or are still planned:
 - improved LÖVE → TI-Nspire conversion
 - more accurate calculator previews where possible
 
-A future batch-image workflow is expected to support a selection such as:
+The batch-image workflow now supports selecting multiple files such as:
 
 ```text
 image1.png
@@ -486,7 +492,7 @@ image3.png
 image4.bmp
 ```
 
-and automatically generate:
+and automatically generates separate image cards/resources such as:
 
 ```text
 Card 1 → page0.BMP
@@ -496,6 +502,8 @@ Card 4 → page3.BMP
 ```
 
 without requiring a separate `Add Image` operation for each file.
+
+PDF import follows the same image-card model: each imported PDF page becomes its own image resource/card and can be reviewed together from the `Images: N` gallery.
 
 
 ## Credits
