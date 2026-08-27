@@ -3,6 +3,8 @@
 
   const IMAGE_BUTTON_ID = "file-page-add-image";
   const PDF_BUTTON_ID = "file-page-add-pdf";
+  const INSPECTOR_IMAGE_BUTTON_ID = "add-image-widget";
+  const INSPECTOR_PDF_BUTTON_ID = "add-pdf-widget";
   const IMAGE_ACCEPT = "image/bmp,image/png,image/jpeg,.bmp,.png,.jpg,.jpeg";
   const PDF_ACCEPT = "application/pdf,.pdf";
   const PDFJS_VERSION = "3.11.174";
@@ -275,8 +277,6 @@
           log(`ERROR PDF página ${pageNumber}: ${error?.message || error}`);
         }
 
-        // Cede un frame al navegador entre páginas para no bloquear la UI,
-        // especialmente importante en iPhone/iPad.
         await new Promise((resolve) => requestAnimationFrame(() => resolve()));
       }
 
@@ -294,19 +294,41 @@
     }
   }
 
+  function reopenDocumentInspector(backdrop) {
+    if (!backdrop?.isConnected) return;
+    const reopen = () => {
+      if (typeof openDocumentInspector === "function") {
+        Promise.resolve(openDocumentInspector()).catch((error) => {
+          log(`ERROR refrescando Document Inspector: ${error?.message || error}`);
+        });
+      }
+    };
+    if (typeof closeModal === "function") closeModal(backdrop, reopen);
+    else {
+      backdrop.remove();
+      reopen();
+    }
+  }
+
   function openPdfPicker(button) {
     const input = makePicker(PDF_ACCEPT, false);
     const cleanup = () => input.remove();
+    const inspectorBackdrop = button.id === INSPECTOR_PDF_BUTTON_ID
+      ? button.closest(".modal-backdrop")
+      : null;
 
     input.addEventListener("change", async () => {
       const file = input.files?.[0] || null;
+      let finished = false;
       try {
         if (!file) return;
         await importPdf(file, button);
+        finished = true;
       } catch (error) {
         log(`ERROR importando PDF: ${error?.message || error}`);
       } finally {
         cleanup();
+        if (finished && inspectorBackdrop) reopenDocumentInspector(inspectorBackdrop);
       }
     }, { once: true });
 
@@ -314,19 +336,24 @@
     input.click();
   }
 
-  function ensurePdfButton() {
-    if (document.getElementById(PDF_BUTTON_ID)) return true;
-    const imageButton = document.getElementById(IMAGE_BUTTON_ID);
+  function ensurePdfButtonAfter(imageButtonId, pdfButtonId) {
+    if (document.getElementById(pdfButtonId)) return true;
+    const imageButton = document.getElementById(imageButtonId);
     if (!imageButton?.parentElement) return false;
 
     const button = document.createElement("button");
     button.type = "button";
-    button.id = PDF_BUTTON_ID;
+    button.id = pdfButtonId;
     button.className = imageButton.className || "menu-action";
     button.textContent = "Agregar PDF";
     button.title = "Convierte cada página del PDF a imagen y crea una card por página";
     imageButton.insertAdjacentElement("afterend", button);
     return true;
+  }
+
+  function ensurePdfButtons() {
+    ensurePdfButtonAfter(IMAGE_BUTTON_ID, PDF_BUTTON_ID);
+    ensurePdfButtonAfter(INSPECTOR_IMAGE_BUTTON_ID, INSPECTOR_PDF_BUTTON_ID);
   }
 
   document.addEventListener("click", (event) => {
@@ -339,7 +366,7 @@
       return;
     }
 
-    const pdfButton = event.target.closest?.(`#${PDF_BUTTON_ID}`);
+    const pdfButton = event.target.closest?.(`#${PDF_BUTTON_ID}, #${INSPECTOR_PDF_BUTTON_ID}`);
     if (pdfButton && !pdfButton.disabled) {
       event.preventDefault();
       event.stopPropagation();
@@ -350,8 +377,8 @@
 
   const install = () => {
     ensureImageGalleryModule();
-    ensurePdfButton();
-    const observer = new MutationObserver(() => ensurePdfButton());
+    ensurePdfButtons();
+    const observer = new MutationObserver(() => ensurePdfButtons());
     if (document.body) observer.observe(document.body, { childList: true, subtree: true });
   };
 
