@@ -107,20 +107,20 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   };
 })();
 
-// Load the terminal-style skin for the main Log, XML Log and dynamically
-// created Lua Log without touching their existing IDs or update logic.
+// Load the terminal-style skin for the main, XML, PY and dynamically created
+// Lua logs without touching their existing IDs or update logic.
 (() => {
   if (!document.querySelector('link[data-terminal-log-theme="true"]')) {
     const themeLink = document.createElement("link");
     themeLink.rel = "stylesheet";
-    themeLink.href = "./terminal-log-theme.css?v=20260827-terminal-v1";
+    themeLink.href = "./terminal-log-theme.css?v=20260827-terminal-v2";
     themeLink.dataset.terminalLogTheme = "true";
     document.head.appendChild(themeLink);
   }
 
   if (!document.querySelector('script[data-terminal-log-theme="true"]')) {
     const themeScript = document.createElement("script");
-    themeScript.src = "./terminal-log-theme.js?v=20260827-terminal-v1";
+    themeScript.src = "./terminal-log-theme.js?v=20260827-terminal-v2";
     themeScript.dataset.terminalLogTheme = "true";
     document.head.appendChild(themeScript);
   }
