@@ -137,3 +137,15 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   progressScript.dataset.importProgressStepper = "true";
   document.head.appendChild(progressScript);
 })();
+
+// Keep Document Inspector -> +Page -> Add image in sync with the Syntax Doctor
+// multi-image workflow. This overrides only that inspector action and keeps the
+// same XML-log progress protocol, animated stepper and refreshed inspector.
+(() => {
+  if (document.querySelector('script[data-inspector-image-batch-sync="true"]')) return;
+
+  const script = document.createElement("script");
+  script.src = "./inspector-image-batch-sync.js?v=20260827-inspector-image-batch-v1";
+  script.dataset.inspectorImageBatchSync = "true";
+  document.head.appendChild(script);
+})();
