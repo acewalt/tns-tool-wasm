@@ -30,6 +30,46 @@
   box-sizing: border-box;
 }
 
+* {
+  scrollbar-width: auto;
+  scrollbar-color: #94a3b8 transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: #94a3b8;
+  background-clip: content-box;
+  border: 4px solid transparent;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+  background-clip: content-box;
+}
+
+[data-theme="dark"] * {
+  scrollbar-color: #7f8ca3 transparent;
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-thumb {
+  background: #7f8ca3;
+  background-clip: content-box;
+}
+
+[data-theme="dark"] *::-webkit-scrollbar-thumb:hover {
+  background: #a7b2c4;
+  background-clip: content-box;
+}
+
 body {
   margin: 0;
   background: var(--bg);
@@ -281,15 +321,28 @@ body.drop-target-active .click-burst-layer {
 }
 
 .theme-button {
-  width: 100%;
-  min-width: 150px;
-  padding: 8px 14px;
-  background: var(--button-bg);
-  color: var(--button-text);
+  width: 46px;
+  height: 34px;
+  min-width: 46px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  color: #172033;
+  display: grid;
+  place-items: center;
+  font-size: 20px;
+  line-height: 1;
+  box-shadow: none;
 }
 
 .theme-button:hover {
-  background: var(--button-hover);
+  background: #f8fafc;
+}
+
+[data-theme="dark"] .theme-button {
+  background: #f8fafc;
+  color: #172033;
 }
 
 .layout {
@@ -2156,7 +2209,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   border: 1px solid var(--line);
   border-radius: 10px;
   overflow: hidden;
-  background: linear-gradient(180deg, #f8fbff, #eef5ff);
+  background: #fff;
   height: 560px;
 }
 
@@ -2164,9 +2217,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   position: relative;
   height: 560px;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 16px 16px, rgb(37 99 235 / 4%) 0 1px, transparent 1px) 0 0 / 18px 18px,
-    linear-gradient(180deg, #f8fbff, #eef5ff);
+  background: #fff;
 }
 
 .monaco-code-host {
@@ -2191,6 +2242,14 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .monaco-code-host .monaco-editor .codicon-folding-collapsed,
 .monaco-code-host .monaco-editor .cldr {
   opacity: 1 !important;
+}
+
+.monaco-code-host .monaco-scrollable-element > .scrollbar.vertical {
+  width: 16px !important;
+}
+
+.monaco-code-host .monaco-scrollable-element > .scrollbar.horizontal {
+  height: 16px !important;
 }
 
 .editor-wrap.monaco-enabled > pre,
@@ -2865,11 +2924,18 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     height: 30px;
   }
 
-  .about-button,
-  .theme-button {
+  .about-button {
     min-width: 116px;
     padding: 8px 10px;
     font-size: 13px;
+  }
+
+  .theme-button {
+    width: 36px;
+    height: 30px;
+    min-width: 36px;
+    padding: 0;
+    font-size: 18px;
   }
 
   .layout {

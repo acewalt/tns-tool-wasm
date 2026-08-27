@@ -13,7 +13,7 @@
     style.textContent = `
       .tns-monaco-search-host { position: relative !important; }
       .tns-monaco-search-rail {
-        position:absolute; z-index:35; top:6px; right:6px; width:38px;
+        position:absolute; z-index:35; top:6px; right:30px; width:38px;
         display:flex; flex-direction:column; align-items:center; gap:6px; pointer-events:auto;
       }
       .tns-monaco-search-toggle {
@@ -24,7 +24,7 @@
       .tns-monaco-search-toggle:hover, .tns-monaco-search-toggle.active { background:#1d4f7a; border-color:#65a9e8; }
       .tns-monaco-search-toggle svg { width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; }
       .tns-monaco-search-panel {
-        position:absolute; z-index:34; top:6px; right:49px; width:min(330px,calc(100% - 66px));
+        position:absolute; z-index:34; top:6px; right:73px; width:min(330px,calc(100% - 92px));
         max-height:calc(100% - 12px); overflow:hidden; border:1px solid rgba(71,94,128,.7);
         border-radius:10px; background:rgba(9,18,34,.98); color:#d7e5f7;
         box-shadow:0 14px 38px rgba(0,0,0,.42); display:flex; flex-direction:column;

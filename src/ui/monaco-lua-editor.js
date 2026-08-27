@@ -26,13 +26,13 @@ function installEditorUiTweaks() {
   style.textContent = `
     /* Keep the floating search control clear of Monaco's vertical scrollbar. */
     .tns-monaco-search-rail {
-      right: 18px !important;
+      right: 30px !important;
     }
 
     /* Move the expanded search panel with the button so both stay aligned. */
     .tns-monaco-search-panel {
-      right: 61px !important;
-      width: min(330px, calc(100% - 78px)) !important;
+      right: 73px !important;
+      width: min(330px, calc(100% - 92px)) !important;
     }
   `;
   document.head.append(style);
@@ -256,6 +256,12 @@ export function createTextEditor(container, options = {}) {
     renderWhitespace: "selection",
     overviewRulerBorder: false,
     fixedOverflowWidgets: true,
+    scrollbar: {
+      verticalScrollbarSize: 16,
+      horizontalScrollbarSize: 16,
+      arrowSize: 12,
+      useShadows: false,
+    },
     contextmenu: true,
     wordWrap: "off",
     ...options.editorOptions,
