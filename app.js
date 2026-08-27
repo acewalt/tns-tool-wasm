@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-27-click-burst";
+const SOURCE_VERSION = "2026-08-27-click-burst-green";
 
 const I18N = {
   es: {
@@ -1311,7 +1311,7 @@ function wireClickBurst() {
     ".lua-editor-wrap",
     "[data-click-burst='off']"
   ].join(",");
-  const colors = ["#b7f34d", "#8de62a", "#2dd4bf", "#60a5fa", "#ff5fb9"];
+  const colors = ["#b7f34d", "#a3f12f", "#8de62a", "#d9ff7a"];
 
   document.addEventListener("pointerdown", (event) => {
     if (event.button !== 0 || event.defaultPrevented) return;
@@ -1338,6 +1338,7 @@ function wireClickBurst() {
       particle.style.top = `${y}px`;
       particle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
       particle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+      particle.style.setProperty("--rotation", `${angle}rad`);
       particle.style.setProperty("--burst-color", colors[index % colors.length]);
       particle.style.setProperty("--delay", `${index * 10}ms`);
       layer.append(particle);
