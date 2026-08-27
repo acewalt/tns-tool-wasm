@@ -102,7 +102,7 @@
       if (failed.length) {
         log(`Carga múltiple terminada: ${added}/${files.length} imágenes agregadas; ${failed.length} con error.`);
       } else {
-        log(`Carga múltiple terminada: ${added} imágenes agregadas, una card por imagen.`);
+        log(`Carga múltiple terminada: ${added}/${files.length} imágenes agregadas; 0 con error.`);
       }
     } finally {
       button.textContent = originalText;
@@ -284,7 +284,7 @@
       if (failed.length) {
         log(`PDF terminado: ${added}/${pagesToImport} páginas agregadas como cards; ${failed.length} con error.`);
       } else {
-        log(`PDF terminado: ${added} páginas agregadas, una card por página.`);
+        log(`PDF terminado: ${added}/${pagesToImport} páginas agregadas como cards; 0 con error.`);
       }
     } finally {
       try { await pdf?.destroy?.(); } catch (_error) {}
