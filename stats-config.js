@@ -76,6 +76,13 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
     attributes: true,
     attributeFilter: ["lang"],
   });
+  if (languageButtons) {
+    languageObserver.observe(languageButtons, {
+      attributes: true,
+      subtree: true,
+      attributeFilter: ["class"],
+    });
+  }
 
   // Reuse the requests app.js already makes. Cloning the response does not
   // create another HTTP request; it only lets this small header extension
