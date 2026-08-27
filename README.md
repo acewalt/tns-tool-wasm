@@ -4,6 +4,8 @@ TNS Tool WASM is an experimental browser-based toolkit for TI-Nspire workflows.
 
 It runs directly in the browser with Pyodide/WebAssembly and JavaScript, so it can decode, inspect, edit, validate, and rebuild TI-Nspire-related files without requiring the original command-line workflow.
 
+ ![New](docs/images/+page.png)
+
 ## Live Demo
 
 https://acewalt.github.io/tns-tool-wasm/
@@ -14,6 +16,7 @@ https://acewalt.github.io/tns-tool-wasm/
 
 If you found this helpful and would like to support its development, you can buy me a coffee. Thank you so much for your support!
 https://paypal.me/waltDx
+
 Si esto te resulto util y quieres apoyar su desarrollo, puedes invitarme un cafe. Muchas gracias por tu apoyo!
 
 
@@ -263,6 +266,10 @@ The inspector and `+Page` menu were also adjusted for smaller/mobile layouts.
 - JPG / JPEG
 - BMP
 - GIF
+- PDF
+
+ 
+  ![img](docs/images/img.gif)
 
 Imported images are converted into the TI-Nspire image-resource format used by the tested ScriptApp documents.
 
@@ -465,7 +472,7 @@ Graph parsing and expression compatibility are still experimental and will conti
 ### Current limitations and planned work
 
 Recent image and PDF workflow additions are now implemented:
-
+![pdf](docs/images/pdf.gif)
 - PDF import into TNS documents. Each PDF page is rendered as an image and passed through the same `Add Image` pipeline.
 - batch / multi-select image import.
 - automatic creation of one image card and one `pageN.BMP` resource per selected image.
