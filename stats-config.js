@@ -125,3 +125,15 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
     document.head.appendChild(themeScript);
   }
 })();
+
+// Show a blurred, animated three-step progress overlay while images/PDF pages
+// are being converted into TI-Nspire image cards. It follows the real XML log
+// and reuses the existing continuous calculator image gallery when finished.
+(() => {
+  if (document.querySelector('script[data-import-progress-stepper="true"]')) return;
+
+  const progressScript = document.createElement("script");
+  progressScript.src = "./import-progress-stepper.js?v=20260827-import-stepper-v1";
+  progressScript.dataset.importProgressStepper = "true";
+  document.head.appendChild(progressScript);
+})();
