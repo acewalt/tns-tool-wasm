@@ -1,6 +1,14 @@
 (() => {
   "use strict";
 
+  if (!document.querySelector('link[data-header-controls-compact="true"]')) {
+    const headerControlsStyle = document.createElement("link");
+    headerControlsStyle.rel = "stylesheet";
+    headerControlsStyle.href = "./header-controls-compact.css?v=20260827-header-controls-v1";
+    headerControlsStyle.dataset.headerControlsCompact = "true";
+    document.head.appendChild(headerControlsStyle);
+  }
+
   if (!document.querySelector('script[data-media-import-controller="true"]')) {
     const mediaScript = document.createElement("script");
     mediaScript.src = "./media-import-controller.js?v=20260827-media-import-v3";
