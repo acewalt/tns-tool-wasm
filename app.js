@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-25-calculator-mathprint-v3";
+const SOURCE_VERSION = "2026-08-27-click-burst";
 
 const I18N = {
   es: {
@@ -1286,6 +1286,64 @@ function wireMouseGlow() {
   window.addEventListener("pointerleave", () => {
     glow.style.opacity = "0";
   });
+}
+
+function wireClickBurst() {
+  if (document.body?.dataset.clickBurstReady === "1") return;
+  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  document.body.dataset.clickBurstReady = "1";
+
+  const layer = document.createElement("div");
+  layer.className = "click-burst-layer";
+  layer.setAttribute("aria-hidden", "true");
+  document.body.append(layer);
+
+  const skipSelector = [
+    "input",
+    "textarea",
+    "select",
+    "option",
+    "[contenteditable='true']",
+    ".monaco-editor",
+    ".code-shell",
+    ".editor-wrap",
+    ".lua-code-shell",
+    ".lua-editor-wrap",
+    "[data-click-burst='off']"
+  ].join(",");
+  const colors = ["#b7f34d", "#8de62a", "#2dd4bf", "#60a5fa", "#ff5fb9"];
+
+  document.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0 || event.defaultPrevented) return;
+    if (document.body.classList.contains("drop-target-active")) return;
+    const target = event.target;
+    if (target instanceof Element && target.closest(skipSelector)) return;
+
+    const x = event.clientX;
+    const y = event.clientY;
+    const ring = document.createElement("span");
+    ring.className = "click-burst-ring";
+    ring.style.left = `${x}px`;
+    ring.style.top = `${y}px`;
+    layer.append(ring);
+    ring.addEventListener("animationend", () => ring.remove(), { once: true });
+
+    const baseAngle = Math.random() * Math.PI * 2;
+    for (let index = 0; index < 8; index += 1) {
+      const angle = baseAngle + (Math.PI * 2 * index) / 8 + (Math.random() - 0.5) * 0.35;
+      const distance = 18 + Math.random() * 22;
+      const particle = document.createElement("span");
+      particle.className = "click-burst-dot";
+      particle.style.left = `${x}px`;
+      particle.style.top = `${y}px`;
+      particle.style.setProperty("--dx", `${Math.cos(angle) * distance}px`);
+      particle.style.setProperty("--dy", `${Math.sin(angle) * distance}px`);
+      particle.style.setProperty("--burst-color", colors[index % colors.length]);
+      particle.style.setProperty("--delay", `${index * 10}ms`);
+      layer.append(particle);
+      particle.addEventListener("animationend", () => particle.remove(), { once: true });
+    }
+  }, { capture: true, passive: true });
 }
 
 function closeToolMenus(except = null) {
@@ -17887,6 +17945,7 @@ function wireEvents() {
   wireDropZone();
   wireGlobalFileDropGuard();
   wireMouseGlow();
+  wireClickBurst();
 }
 
 applyLanguage(language);
@@ -17897,4 +17956,3 @@ initPyodideRuntime().catch((err) => {
   if (statusEl) statusEl.textContent = "Error";
   log(`ERROR inicializando WASM: ${err.stack || err.message}`);
 });
-
