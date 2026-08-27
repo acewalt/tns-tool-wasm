@@ -37,7 +37,15 @@
 
 *::-webkit-scrollbar {
   width: 24px;
-  height: 24px;
+  height: 12px;
+}
+
+*::-webkit-scrollbar:vertical {
+  width: 24px;
+}
+
+*::-webkit-scrollbar:horizontal {
+  height: 12px;
 }
 
 *::-webkit-scrollbar-track {
@@ -49,6 +57,11 @@
   background-clip: content-box;
   border: 4px solid transparent;
   border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:horizontal {
+  border-top-width: 3px;
+  border-bottom-width: 3px;
 }
 
 *::-webkit-scrollbar-thumb:hover {
@@ -2250,7 +2263,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .monaco-code-host .monaco-scrollable-element > .scrollbar.horizontal {
-  height: 26px !important;
+  height: 12px !important;
 }
 
 .editor-wrap.monaco-enabled > pre,

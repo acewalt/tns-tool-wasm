@@ -1,6 +1,6 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-27-stats-header";
+const SOURCE_VERSION = "2026-08-27-menu-i18n-scrollbar";
 
 const I18N = {
   es: {
@@ -40,7 +40,10 @@ const I18N = {
     openPython: "Ver Python",
     editPython: "Editar Python",
     addPythonWidget: "Agregar Python",
-    addPage: "+Page",
+    addPage: "+ Pagina",
+    addPdfWidget: "Agregar PDF",
+    addPdfWidgetTitle: "Convierte cada pagina del PDF a imagen y crea una card por pagina.",
+    addPdfUnavailable: "Agregar PDF aun no esta implementado en este flujo. Usa Agregar imagen o importa paginas ya convertidas a imagen.",
     addSpreadsheetWidget: "Agregar listas y hojas de cálculo",
     addProgramEditorWidget: "Agregar editor de programas",
     programEditorWidgetAdded: "Editor de programas agregado como nueva card.",
@@ -309,7 +312,10 @@ const I18N = {
     openPython: "View Python",
     editPython: "Edit Python",
     addPythonWidget: "Add Python",
-    addPage: "+Page",
+    addPage: "+ Page",
+    addPdfWidget: "Add PDF",
+    addPdfWidgetTitle: "Convert each PDF page to an image and create one card per page.",
+    addPdfUnavailable: "Add PDF is not implemented in this flow yet. Use Add image or import pages already converted to images.",
     addSpreadsheetWidget: "Add Lists & Spreadsheet",
     addProgramEditorWidget: "Add Program Editor",
     programEditorWidgetAdded: "Program Editor added as a new card.",
@@ -574,7 +580,10 @@ const I18N = {
     openPython: "Voir Python",
     editPython: "Editer Python",
     addPythonWidget: "Ajouter Python",
-    addPage: "+Page",
+    addPage: "+ Page",
+    addPdfWidget: "Ajouter PDF",
+    addPdfWidgetTitle: "Convertit chaque page du PDF en image et cree une carte par page.",
+    addPdfUnavailable: "Ajouter PDF n'est pas encore implemente dans ce flux. Utilisez Ajouter image ou importez des pages deja converties en images.",
     addSpreadsheetWidget: "Ajouter listes et feuille de calcul",
     addProgramEditorWidget: "Ajouter éditeur de programmes",
     programEditorWidgetAdded: "Éditeur de programmes ajouté comme nouvelle carte.",
@@ -1163,6 +1172,9 @@ function applyLanguage(nextLanguage = language) {
   }
   for (const element of document.querySelectorAll("[data-i18n-placeholder]")) {
     element.setAttribute("placeholder", t(element.dataset.i18nPlaceholder));
+  }
+  for (const element of document.querySelectorAll("[data-i18n-title]")) {
+    element.setAttribute("title", t(element.dataset.i18nTitle));
   }
   for (const button of document.querySelectorAll("#language-buttons button")) {
     button.classList.toggle("active", button.dataset.lang === language);
@@ -18074,6 +18086,7 @@ function wireEvents() {
   document.querySelector("#file-page-add-notepad").addEventListener("click", () => addPageFromFileMenu("notepad").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-graph").addEventListener("click", () => addPageFromFileMenu("graph").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-calculator").addEventListener("click", () => addPageFromFileMenu("calculator").catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  document.querySelector("#file-page-add-pdf")?.addEventListener("click", () => xmlLog(t("addPdfUnavailable")));
   document.querySelector("#xml-programs").addEventListener("change", (event) => selectXmlProgram(event.target.value));
   document.querySelector("#xml-code").addEventListener("input", () => {
     xmlDoctor.embedded = false;
