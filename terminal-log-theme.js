@@ -59,9 +59,11 @@
   function wrapStaticLogs() {
     const mainLog = document.querySelector("#log");
     const xmlLog = document.querySelector("#xml-log");
+    const pyLog = document.querySelector("#py-log");
 
     if (mainLog) buildTerminal(mainLog, "Main Log");
     if (xmlLog) buildTerminal(xmlLog, "XML Log");
+    if (pyLog) buildTerminal(pyLog, "PY Log");
   }
 
   function findFollowingPre(heading) {
