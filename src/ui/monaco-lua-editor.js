@@ -13,10 +13,30 @@ globalThis.MonacoEnvironment = {
 
 const DARK_THEME = "tns-lua-dark";
 const LIGHT_THEME = "tns-lua-light";
+const EDITOR_UI_STYLE_ID = "tns-monaco-editor-ui-tweaks";
 let themesDefined = false;
 let luaDefined = false;
 let pythonDefined = false;
 let tiDefined = false;
+
+function installEditorUiTweaks() {
+  if (document.getElementById(EDITOR_UI_STYLE_ID)) return;
+  const style = document.createElement("style");
+  style.id = EDITOR_UI_STYLE_ID;
+  style.textContent = `
+    /* Keep the floating search control clear of Monaco's vertical scrollbar. */
+    .tns-monaco-search-rail {
+      right: 18px !important;
+    }
+
+    /* Move the expanded search panel with the button so both stay aligned. */
+    .tns-monaco-search-panel {
+      right: 61px !important;
+      width: min(330px, calc(100% - 78px)) !important;
+    }
+  `;
+  document.head.append(style);
+}
 
 function registerLanguageOnce(id, definition) {
   if (!monaco.languages.getLanguages().some((language) => language.id === id)) {
@@ -159,28 +179,31 @@ function defineThemes() {
     base: "vs",
     inherit: true,
     rules: [
-      { token: "keyword", foreground: "0f766e", fontStyle: "bold" },
-      { token: "comment", foreground: "64748b", fontStyle: "italic" },
-      { token: "string", foreground: "15803d" },
-      { token: "number", foreground: "c2410c" },
-      { token: "operator", foreground: "9333ea" },
-      { token: "delimiter", foreground: "1e40af" },
-      { token: "identifier", foreground: "0f172a" },
-      { token: "type", foreground: "0369a1" },
+      // Palette inspired by the TI-Nspire Program Editor references: blue
+      // commands/keywords, red literals/operators and dark variable names.
+      { token: "keyword", foreground: "0000cc", fontStyle: "" },
+      { token: "comment", foreground: "008000", fontStyle: "italic" },
+      { token: "string", foreground: "c00000" },
+      { token: "string.invalid", foreground: "c00000" },
+      { token: "number", foreground: "c00000" },
+      { token: "operator", foreground: "c00000" },
+      { token: "delimiter", foreground: "111111" },
+      { token: "identifier", foreground: "111111" },
+      { token: "type", foreground: "0050b3" },
     ],
     colors: {
-      "editor.background": "#f8fbff",
-      "editor.foreground": "#0f172a",
-      "editorLineNumber.foreground": "#64748b",
-      "editorLineNumber.activeForeground": "#0f172a",
-      "editorGutter.background": "#f8fbff",
+      "editor.background": "#ffffff",
+      "editor.foreground": "#111111",
+      "editorLineNumber.foreground": "#687386",
+      "editorLineNumber.activeForeground": "#111111",
+      "editorGutter.background": "#ffffff",
       "editorGutter.foldingControlForeground": "#2563eb",
-      "editor.selectionBackground": "#bfdbfe",
-      "editor.inactiveSelectionBackground": "#dbeafe",
-      "editorCursor.foreground": "#0f766e",
-      "editor.lineHighlightBackground": "#eaf2ff",
-      "editorIndentGuide.background1": "#cbd5e1",
-      "scrollbarSlider.background": "#94a3b880",
+      "editor.selectionBackground": "#cfe3ff",
+      "editor.inactiveSelectionBackground": "#e6f0ff",
+      "editorCursor.foreground": "#111111",
+      "editor.lineHighlightBackground": "#f5f8fc",
+      "editorIndentGuide.background1": "#d8dee8",
+      "scrollbarSlider.background": "#94a3b866",
       "scrollbarSlider.hoverBackground": "#64748b80",
       "scrollbarSlider.activeBackground": "#47556980",
     },
@@ -204,6 +227,7 @@ function severityFor(level) {
 }
 
 export function createTextEditor(container, options = {}) {
+  installEditorUiTweaks();
   defineThemes();
   const language = options.language || "lua";
   defineLanguage(language);
