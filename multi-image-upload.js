@@ -82,8 +82,10 @@
     const failed = [];
 
     try {
-      await ensureProject();
+      // Emit the first progress event immediately after file selection so the
+      // blurred stepper appears while project setup is still running.
       log(`Carga múltiple de imágenes: ${files.length} archivo(s).`);
+      await ensureProject();
 
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
@@ -237,7 +239,6 @@
   async function importPdf(file, button) {
     if (pdfBusy || !file) return;
     const addImage = getAddImageFn();
-    const pdfjs = await loadPdfJs();
 
     pdfBusy = true;
     const originalText = button.textContent;
@@ -248,9 +249,11 @@
     const failed = [];
 
     try {
-      await ensureProject();
+      // Start the visible progress state before project setup / PDF.js loading.
       button.textContent = "Abriendo PDF...";
       log(`PDF: abriendo ${file.name}...`);
+      await ensureProject();
+      const pdfjs = await loadPdfJs();
 
       const data = new Uint8Array(await file.arrayBuffer());
       const task = pdfjs.getDocument({ data });
