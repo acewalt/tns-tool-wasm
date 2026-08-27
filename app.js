@@ -1,11 +1,13 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-27-click-burst-green";
+const SOURCE_VERSION = "2026-08-27-stats-header";
 
 const I18N = {
   es: {
     about: "Acerca de",
     subtitle: "Port web experimental usando Pyodide/WebAssembly.",
+    statsTnsGenerated: "TNS generados",
+    statsVisitorsToday: "visitantes hoy",
     homeWelcome: "Bienvenido a TNS Tool WASM",
     homeSubtitle: "Selecciona una herramienta del panel izquierdo o arrastra un archivo para comenzar.",
     homeDropTitle: "Arrastra y suelta archivos aqui",
@@ -273,6 +275,8 @@ const I18N = {
   en: {
     about: "About",
     subtitle: "Experimental web port using Pyodide/WebAssembly.",
+    statsTnsGenerated: "TNS generated",
+    statsVisitorsToday: "visitors today",
     homeWelcome: "Welcome to TNS Tool WASM",
     homeSubtitle: "Select a tool from the left panel or drag a file to begin.",
     homeDropTitle: "Drag and drop files here",
@@ -536,6 +540,8 @@ const I18N = {
   fr: {
     about: "\u00c0 propos",
     subtitle: "Port web experimental avec Pyodide/WebAssembly.",
+    statsTnsGenerated: "TNS generes",
+    statsVisitorsToday: "visiteurs aujourd'hui",
     homeWelcome: "Bienvenue dans TNS Tool WASM",
     homeSubtitle: "Selectionnez un outil dans le panneau de gauche ou glissez un fichier pour commencer.",
     homeDropTitle: "Glissez-deposez les fichiers ici",
@@ -956,6 +962,148 @@ function severityLabel(severity) {
   return SEVERITY_LABELS[language]?.[severity] || severity;
 }
 
+const STATS_API_BASE_URL = String(window.TNS_TOOL_STATS_API_BASE_URL || "").replace(/\/+$/, "");
+const STATS_TIMEOUT_MS = 3500;
+const STATS_VISITOR_ID_STORAGE_KEY = "tns-tool-stats-visitor-id";
+const STATS_VISIT_DATE_STORAGE_KEY = "tns-tool-stats-visit-date";
+const statsState = {
+  documentsGenerated: null,
+  visitorsToday: null,
+};
+
+function statsUrl(path) {
+  if (!STATS_API_BASE_URL) return "";
+  return `${STATS_API_BASE_URL}${path}`;
+}
+
+function parseStatNumber(value) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : null;
+}
+
+function formatStatNumber(value) {
+  const number = parseStatNumber(value);
+  if (number === null) return "-";
+  return new Intl.NumberFormat(language || "es").format(number);
+}
+
+function updateStatsUi(nextStats = {}) {
+  if (Object.prototype.hasOwnProperty.call(nextStats, "documentsGenerated")) {
+    statsState.documentsGenerated = parseStatNumber(nextStats.documentsGenerated);
+  }
+  if (Object.prototype.hasOwnProperty.call(nextStats, "visitorsToday")) {
+    statsState.visitorsToday = parseStatNumber(nextStats.visitorsToday);
+  }
+  const generatedEl = document.querySelector("#stats-documents-generated");
+  const visitorsEl = document.querySelector("#stats-visitors-today");
+  if (generatedEl) generatedEl.textContent = formatStatNumber(statsState.documentsGenerated);
+  if (visitorsEl) visitorsEl.textContent = formatStatNumber(statsState.visitorsToday);
+}
+
+async function fetchStatsJson(path, options = {}) {
+  const url = statsUrl(path);
+  if (!url) return null;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), STATS_TIMEOUT_MS);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      cache: "no-store",
+      signal: controller.signal,
+      headers: {
+        Accept: "application/json",
+        ...(options.headers || {}),
+      },
+    });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return await response.json();
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function normalizeStatsPayload(payload) {
+  return {
+    documentsGenerated: payload?.documentsGenerated ?? payload?.documents_generated,
+    visitorsToday: payload?.visitorsToday ?? payload?.visitors_today,
+  };
+}
+
+async function loadSiteStats() {
+  if (!STATS_API_BASE_URL) {
+    updateStatsUi();
+    return;
+  }
+  try {
+    const payload = await fetchStatsJson("/api/stats");
+    if (payload) updateStatsUi(normalizeStatsPayload(payload));
+  } catch (error) {
+    console.warn("Stats API unavailable:", error);
+    updateStatsUi();
+  }
+}
+
+function createStatsVisitorId() {
+  if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
+  const bytes = new Uint8Array(16);
+  globalThis.crypto.getRandomValues(bytes);
+  return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function getStatsVisitorId() {
+  try {
+    const existing = localStorage.getItem(STATS_VISITOR_ID_STORAGE_KEY);
+    if (existing && /^[A-Za-z0-9_-]{16,80}$/.test(existing)) return existing;
+    const visitorId = createStatsVisitorId();
+    localStorage.setItem(STATS_VISITOR_ID_STORAGE_KEY, visitorId);
+    return visitorId;
+  } catch (error) {
+    console.warn("Stats visitor ID unavailable:", error);
+    return "";
+  }
+}
+
+async function recordTodayVisit() {
+  if (!STATS_API_BASE_URL) return;
+  const today = new Date().toISOString().slice(0, 10);
+  const visitorId = getStatsVisitorId();
+  if (!visitorId) return;
+  try {
+    if (localStorage.getItem(STATS_VISIT_DATE_STORAGE_KEY) === today) return;
+  } catch (_) {
+    // The D1 unique key remains the authoritative duplicate guard.
+  }
+  try {
+    const payload = await fetchStatsJson("/api/visit", {
+      method: "POST",
+      keepalive: true,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ visitorId }),
+    });
+    if (payload) {
+      updateStatsUi(normalizeStatsPayload(payload));
+      try {
+        localStorage.setItem(STATS_VISIT_DATE_STORAGE_KEY, today);
+      } catch (_) {}
+    }
+  } catch (error) {
+    console.warn("Stats visit API unavailable:", error);
+  }
+}
+
+async function recordSuccessfulTnsGeneration() {
+  if (!STATS_API_BASE_URL) return;
+  try {
+    const payload = await fetchStatsJson("/api/generated", {
+      method: "POST",
+      keepalive: true,
+    });
+    if (payload) updateStatsUi(normalizeStatsPayload(payload));
+  } catch (error) {
+    console.warn("Stats generated API unavailable:", error);
+  }
+}
+
 const PYTHON_FILES = [
   "tnstools.py",
   "tns_method13.py",
@@ -1027,6 +1175,7 @@ function applyLanguage(nextLanguage = language) {
     if (statusEl && statusEl.classList.contains("ready")) {
       statusEl.textContent = t("ready");
     }
+    updateStatsUi();
 }
 
 function applyTheme(nextTheme = theme) {
@@ -9924,7 +10073,9 @@ from pathlib import Path
 from tnstools import build_tns_from_xml
 build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_xml_tns_output))
 `);
-  downloadBytes(outputName, pyodide.FS.readFile(`/work/${outputName}`));
+  const outputBytes = pyodide.FS.readFile(`/work/${outputName}`);
+  void recordSuccessfulTnsGeneration();
+  downloadBytes(outputName, outputBytes);
 }
 
 function xmlDoctorTnsOutputName() {
@@ -17210,7 +17361,9 @@ from pathlib import Path
 from tnstools import build_tns_from_xml
 build_tns_from_xml(Path("/work/xml_in"), Path("/work/output.tns"))
 `);
-  downloadBytes("salida.tns", pyodide.FS.readFile("/work/output.tns"));
+  const outputBytes = pyodide.FS.readFile("/work/output.tns");
+  void recordSuccessfulTnsGeneration();
+  downloadBytes("salida.tns", outputBytes);
   log("TNS descargado.");
 }
 
@@ -17243,7 +17396,9 @@ import code_to_tns
 code = Path("/work/python/code.py").read_text(encoding="utf-8")
 code_to_tns.build_tns(Path("/work/python/plantilla.tns"), code, Path("/work/python/output.tns"))
 `);
-  downloadBytes("python_program.tns", pyodide.FS.readFile("/work/python/output.tns"));
+  const outputBytes = pyodide.FS.readFile("/work/python/output.tns");
+  void recordSuccessfulTnsGeneration();
+  downloadBytes("python_program.tns", outputBytes);
   log("Python Program TNS descargado.");
 }
 
@@ -17953,6 +18108,8 @@ applyLanguage(language);
 applyTheme(theme);
 initializeStaticCodeEditors();
 wireEvents();
+void loadSiteStats();
+void recordTodayVisit();
 initPyodideRuntime().catch((err) => {
   if (statusEl) statusEl.textContent = "Error";
   log(`ERROR inicializando WASM: ${err.stack || err.message}`);

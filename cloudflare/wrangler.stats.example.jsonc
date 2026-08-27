@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "tns-tool-stats",
+  "main": "./tns-tool-stats-worker.js",
+  "compatibility_date": "2026-08-27",
+  "compatibility_flags": ["nodejs_compat"],
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "tns_tool_stats",
+      "database_id": "PASTE_D1_DATABASE_ID_HERE"
+    }
+  ]
+}

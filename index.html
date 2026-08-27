@@ -4,12 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20260825-calculator-mathprint-v3" />
+    <link rel="stylesheet" href="./styles.css?v=20260827-stats-header" />
     <link rel="stylesheet" href="./dist/monaco-lua-editor.css?v=20260823-love-preview-experiment" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script type="module" src="./dist/monaco-lua-editor.js?v=20260823-love-preview-experiment"></script>
-    <script defer src="./app.js?v=20260825-calculator-mathprint-v3"></script>
+    <script defer src="./stats-config.js?v=20260827-stats-header"></script>
+    <script defer src="./app.js?v=20260827-stats-header"></script>
     <script defer src="./love-project-compat.js?v=20260826-project-compat-v1"></script>
     <script defer src="./xml-program-editor-fix.js?v=20260826-program-editor-sync-v1"></script>
     <script defer src="./monaco-search-tools.js?v=20260826-monaco-search-v1"></script>
@@ -23,6 +24,16 @@
       <div>
         <h1>TNS Tool WASM</h1>
         <p data-i18n="subtitle">Port web experimental usando Pyodide/WebAssembly.</p>
+      </div>
+      <div id="site-stats" class="site-stats" aria-live="polite">
+        <div class="site-stat">
+          <strong id="stats-documents-generated">-</strong>
+          <span data-i18n="statsTnsGenerated">TNS generados</span>
+        </div>
+        <div class="site-stat">
+          <strong id="stats-visitors-today">-</strong>
+          <span data-i18n="statsVisitorsToday">visitantes hoy</span>
+        </div>
       </div>
       <div class="header-actions">
         <div id="language-buttons" class="language-buttons" aria-label="Idioma">

@@ -331,6 +331,12 @@ function installLuaJsCompatibilityPatches(global, state) {
   const originalLen = global.lua_len;
   global.lua_rawget = (table, key) => {
     if (table == null || table === false || key === undefined || key === null) return null;
+    if (typeof key === "object") {
+      const objectKeys = Array.isArray(table.objs) ? table.objs : [];
+      for (const entry of objectKeys) {
+        if (Array.isArray(entry) && entry[0] === key) return entry[1];
+      }
+    }
     try {
       return originalRawGet(table, key);
     } catch (error) {
