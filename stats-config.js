@@ -149,3 +149,14 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   script.dataset.inspectorImageBatchSync = "true";
   document.head.appendChild(script);
 })();
+
+// Replace the old instant theme button with a circular moon/sun toggle and a
+// page-wide circular reveal using the View Transitions API (with a fallback).
+(() => {
+  if (document.querySelector('script[data-animated-theme-toggle="true"]')) return;
+
+  const script = document.createElement("script");
+  script.src = "./theme-transition-toggle.js?v=20260827-theme-reveal-v1";
+  script.dataset.animatedThemeToggle = "true";
+  document.head.appendChild(script);
+})();
