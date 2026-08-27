@@ -133,9 +133,21 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   if (document.querySelector('script[data-import-progress-stepper="true"]')) return;
 
   const progressScript = document.createElement("script");
-  progressScript.src = "./import-progress-stepper.js?v=20260827-import-stepper-v1";
+  progressScript.src = "./import-progress-stepper.js?v=20260827-import-stepper-v2";
   progressScript.dataset.importProgressStepper = "true";
   document.head.appendChild(progressScript);
+})();
+
+// Give Syntax Doctor -> File -> +Page -> Add PDF its own deterministic import
+// route. The previous button relied on the generic delegated media handler,
+// which could import the PDF without consistently driving the progress overlay.
+(() => {
+  if (document.querySelector('script[data-syntax-pdf-import="true"]')) return;
+
+  const script = document.createElement("script");
+  script.src = "./syntax-pdf-import.js?v=20260827-syntax-pdf-v2";
+  script.dataset.syntaxPdfImport = "true";
+  document.head.appendChild(script);
 })();
 
 // Keep Document Inspector -> +Page -> Add image in sync with the Syntax Doctor
