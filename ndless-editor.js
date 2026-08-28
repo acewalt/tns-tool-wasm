@@ -20,16 +20,17 @@
   function card(label,value,help=""){return `<div class="ndless-editor-card"><label>${esc(label)}</label><div class="ndless-editor-mono">${esc(value)}</div>${help?`<small>${esc(help)}</small>`:""}</div>`;}
   function notice(text,type="info"){return `<div class="ndless-workspace-notice ${type}">${esc(text)}</div>`;}
   function risk(level){return `<span class="ndless-risk ndless-risk-${level.toLowerCase()}">${level}</span>`;}
+  function updateChangeCount(){const el=$('[data-change-count]');if(el)el.textContent=String(current?.patches?.length||0);}
 
   function recordPatch(domain,offset,newBytes,label,riskLevel="ADVANCED"){
     const target=domain==="physical"?current.adapter.containerBytes:current.adapter.workingBytes;
     const original=clone(target.subarray(offset,offset+newBytes.length));
     if(domain==="physical")current.adapter.patchContainer(offset,newBytes);else current.adapter.patchWorking(offset,newBytes);
     current.patches.push({id:++current.patchId,domain,offset,original,newBytes:clone(newBytes),label,risk:riskLevel});
-    current.analysis=null;current.selectedInstruction=null;current.lastBuild=null;
+    current.analysis=null;current.selectedInstruction=null;current.lastBuild=null;updateChangeCount();
   }
-  function revertPatch(id){const p=current.patches.find(x=>x.id===id);if(!p)return;try{if(p.domain==="physical")current.adapter.patchContainer(p.offset,p.original);else current.adapter.patchWorking(p.offset,p.original);current.patches=current.patches.filter(x=>x.id!==id);current.analysis=null;current.lastBuild=null;renderCurrent();}catch(e){alert(e.message);}}
-  function revertAll(){for(const p of [...current.patches].reverse()){try{if(p.domain==="physical")current.adapter.patchContainer(p.offset,p.original);else current.adapter.patchWorking(p.offset,p.original);}catch(_){}}current.patches=[];current.analysis=null;current.selectedInstruction=null;current.lastBuild=null;renderCurrent();}
+  function revertPatch(id){const p=current.patches.find(x=>x.id===id);if(!p)return;try{if(p.domain==="physical")current.adapter.patchContainer(p.offset,p.original);else current.adapter.patchWorking(p.offset,p.original);current.patches=current.patches.filter(x=>x.id!==id);current.analysis=null;current.lastBuild=null;updateChangeCount();renderCurrent();}catch(e){alert(e.message);}}
+  function revertAll(){for(const p of [...current.patches].reverse()){try{if(p.domain==="physical")current.adapter.patchContainer(p.offset,p.original);else current.adapter.patchWorking(p.offset,p.original);}catch(_){}}current.patches=[];current.analysis=null;current.selectedInstruction=null;current.lastBuild=null;updateChangeCount();renderCurrent();}
 
   function hydrateAnalysis(raw){
     const instructions=raw.instructions||[],functions=raw.functions||[],cfgCache=new Map(),pseudoCache=new Map();
@@ -48,10 +49,10 @@
     current.analysisMode=mode;current.analysisProgress={phase:"Starting",progress:0.03};renderCodeLoading();
     const model=current.adapter.model;
     current.analysisPromise=new Promise((resolve,reject)=>{
-      const fallback=()=>{setTimeout(()=>{try{const result=window.NdlessAnalysis.analyze(model,{mode,maxInstructions:250000,maxFunctions:4000,maxCallEdges:12000});current.analysis=result;current.analysisPromise=null;resolve(result);renderPanel("code");}catch(e){current.analysisPromise=null;reject(e);renderCodeError(e.message);}},0);};
+      const fallback=()=>{setTimeout(()=>{try{const safeMode=mode==="full"?"reachable":mode;const result=window.NdlessAnalysis.analyze(model,{mode:safeMode,maxInstructions:75000,maxFunctions:2500,maxCallEdges:6000});if(mode==="full")result.warnings=[...(result.warnings||[]),"Full scan is disabled when Web Worker support is unavailable; Smart analysis was used instead."];current.analysis=result;current.analysisPromise=null;resolve(result);renderPanel("code");}catch(e){current.analysisPromise=null;reject(e);renderCodeError(e.message);}},0);};
       if(typeof Worker!=="function"){fallback();return;}
       try{
-        const worker=new Worker("ndless-analysis-worker.js?v=20260828-workspace-v1");current.worker=worker;
+        const worker=new Worker("ndless-analysis-worker.js?v=20260828-workspace-v3");current.worker=worker;
         worker.onmessage=e=>{const msg=e.data||{};if(msg.type==="progress"){current.analysisProgress={phase:msg.phase,progress:msg.progress};renderCodeLoading();return;}if(msg.type==="result"){worker.terminate();current.worker=null;current.analysis=hydrateAnalysis(msg.result);current.analysisPromise=null;resolve(current.analysis);renderPanel("code");return;}if(msg.type==="error"){worker.terminate();current.worker=null;current.analysisPromise=null;reject(new Error(msg.message));renderCodeError(msg.message);}};
         worker.onerror=()=>{try{worker.terminate();}catch(_){}current.worker=null;current.analysisPromise=null;fallback();};
         worker.postMessage({type:"analyze",mode,maxInstructions:250000,maxFunctions:4000,maxCallEdges:12000,model:{codeStart:model.codeStart,codeEnd:model.codeEnd,runtimeBase:model.runtimeBase,entry:model.entry,fileOffsetBase:model.fileOffsetBase,containerOffsetBase:model.containerOffsetBase},image:model.image.buffer.slice(model.image.byteOffset,model.image.byteOffset+model.image.byteLength)});
@@ -87,8 +88,8 @@
   const panels={summary:summaryPanel,code:codePanel,data:dataPanel,changes:changesPanel,relocations:relocationsPanel,hex:hexPanel,metadata:metadataPanel,structure:structurePanel,export:exportPanel};
   function activePanel(){return current?.activePanel||"summary";}
   function renderCurrent(){renderPanel(activePanel());}
-  function renderPanel(name){if(!current)return;current.activePanel=name;const p=$(".ndless-workspace-content");if(!p)return;p.innerHTML=panels[name]();$$('[data-nav]').forEach(b=>b.classList.toggle("active",b.dataset.nav===name));bindPanel(name,p);}
-  function renderCodeLoading(){if(current?.activePanel!=="code")return;const p=$(".ndless-workspace-content");if(p&&!current.analysis)p.innerHTML=codePanel();}
+  function renderPanel(name){if(!current)return;current.activePanel=name;const p=$(".ndless-workspace-content");if(!p)return;p.innerHTML=panels[name]();$$('[data-nav]').forEach(b=>b.classList.toggle("active",b.dataset.nav===name));updateChangeCount();bindPanel(name,p);}
+  function renderCodeLoading(){if(current?.activePanel!=="code")return;const p=$(".ndless-workspace-content");if(p&&!current.analysis){p.innerHTML=codePanel();bindPanel("code",p);}}
   function renderCodeError(message){if(current?.activePanel!=="code")return;const p=$(".ndless-workspace-content");if(p)p.innerHTML=`${notice(message,"error")}<button data-retry-analysis>Retry analysis</button>`;bindPanel("code",p);}
 
   function bindPanel(name,p){
@@ -104,13 +105,12 @@
       $$('[data-ins]',p).forEach(b=>b.addEventListener("click",()=>{current.selectedInstruction=Number(b.dataset.ins);current.codeView="disasm";renderPanel("code");}));
       $$('[data-code-view]',p).forEach(b=>b.addEventListener("click",()=>{current.codeView=b.dataset.codeView;renderPanel("code");}));
       $$('[data-call-target]',p).forEach(b=>b.addEventListener("click",()=>{const target=Number(b.dataset.callTarget),fn=current.analysis.functions.find(f=>f.address===target);if(fn){current.selectedFunction=fn.address;current.selectedInstruction=target;current.codeView="disasm";renderPanel("code");}}));
-      $('[data-patch-selected]',p)?.addEventListener("click",()=>{const ins=selectedIns();try{const vals=parseBytes($('[data-patch-bytes]',p).value,4);recordPatch("working",ins.imageOffset,vals,`Patch instruction ${hex(ins.address)}`,"ADVANCED");current.selectedFunction=fnAddressFor(ins.address);renderPanel("code");}catch(e){alert(e.message);}});
+      $('[data-patch-selected]',p)?.addEventListener("click",()=>{const ins=selectedIns(),keepFn=current.selectedFunction;try{const vals=parseBytes($('[data-patch-bytes]',p).value,4);recordPatch("working",ins.imageOffset,vals,`Patch instruction ${hex(ins.address)}`,"ADVANCED");current.selectedFunction=keepFn;renderPanel("code");}catch(e){alert(e.message);}});
     }
     if(name==="hex"){$('[data-hex-offset]',p)?.addEventListener("change",e=>{try{current.hexOffset=parseOffset(e.target.value);renderPanel("hex");}catch(_){}});$('[data-apply-hex]',p)?.addEventListener("click",()=>{const st=$('[data-hex-status]',p);try{const domain=$('[data-hex-domain]',p).value,off=parseOffset($('[data-hex-offset]',p).value),vals=parseBytes($('[data-hex-bytes]',p).value);recordPatch(domain,off,vals,"Raw hex patch","ADVANCED");current.hexOffset=off;renderPanel("hex");}catch(e){st.textContent=e.message;}});}
     if(name==="changes"){$$('[data-revert]',p).forEach(b=>b.addEventListener("click",()=>revertPatch(Number(b.dataset.revert))));$('[data-revert-all]',p)?.addEventListener("click",revertAll);}
     if(name==="export"){$('[data-validate]',p)?.addEventListener("click",()=>validateAndBuild(p));$('[data-export]',p)?.addEventListener("click",exportTns);}
   }
-  function fnAddressFor(addr){const an=current.analysis;return an?.functions.find(f=>addr>=f.address&&addr<f.end)?.address??an?.functions[0]?.address??current.adapter.entry;}
   function applyMetadata(p){const st=$('[data-meta-status]',p);try{$$('[data-meta-string]',p).forEach(i=>current.adapter.patchMetaString(Number(i.dataset.metaString),i.value));$$('[data-meta-number]',p).forEach(i=>{if(i.value!=="")current.adapter.patchMetaValue(Number(i.dataset.metaNumber),i.value);});st.textContent="Metadata updated.";current.lastBuild=null;}catch(e){st.textContent=e.message;}}
 
   async function validateAndBuild(panel=null){const st=panel?$('[data-export-status]',panel):null;try{if(st)st.textContent="Validating…";const built=await current.adapter.build();current.lastBuild=built;if(st)st.textContent=`Validation passed · output ${built.bytes.length} B.`;if(panel)renderPanel("export");return built;}catch(e){if(st)st.textContent=`Validation failed: ${e.message}`;current.lastBuild=null;return null;}}
