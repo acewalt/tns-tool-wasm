@@ -1,0 +1,206 @@
+/* File-tree layout adapted from the user's Uiverse reference by ashif_6672,
+   scoped to the Ndless workspace so it cannot affect the rest of TNS Tool. */
+.ndless-project-file-list{
+  display:block!important;
+  padding:8px 7px 10px!important;
+}
+
+.ndless-project-flat-entry{
+  display:none!important;
+}
+
+.ndless-project-tree,
+.ndless-project-tree *{
+  box-sizing:border-box;
+}
+
+.ndless-project-tree{
+  width:100%;
+  min-width:0;
+  color:#c7d4e3;
+  font-size:12px;
+}
+
+.ndless-project-tree ul{
+  list-style:none;
+  padding:0;
+  margin:0;
+}
+
+.ndless-project-tree .ndless-tree-children{
+  margin-left:10px;
+  padding-left:10px;
+  border-left:1px solid #2b3b50;
+}
+
+.ndless-tree-item{
+  position:relative;
+  margin-top:2px;
+  min-width:0;
+}
+
+.ndless-project-tree .ndless-tree-children>.ndless-tree-item::before{
+  content:"";
+  position:absolute;
+  left:-10px;
+  top:14px;
+  width:10px;
+  height:1px;
+  background:#2b3b50;
+  pointer-events:none;
+}
+
+.ndless-tree-label,
+.ndless-tree-file{
+  width:100%;
+  height:30px;
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:4px 7px;
+  border:0;
+  border-radius:6px;
+  background:transparent;
+  color:#b9c8d9;
+  cursor:pointer;
+  text-align:left;
+  font:600 12px/1.2 Inter,system-ui,sans-serif;
+  transition:background-color .14s ease,color .14s ease,transform .14s ease;
+  user-select:none;
+  min-width:0;
+}
+
+.ndless-tree-label:hover,
+.ndless-tree-file:hover{
+  background:#152238;
+  color:#edf6ff;
+}
+
+.ndless-tree-file.is-selected{
+  background:#123943;
+  color:#cffdf8;
+  font-weight:750;
+}
+
+.ndless-tree-label>span,
+.ndless-tree-file>span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  flex:1;
+}
+
+.ndless-tree-file small{
+  flex:none;
+  font-size:7px;
+  letter-spacing:.08em;
+  color:#6f839b;
+  font-weight:800;
+}
+
+.ndless-tree-file.is-selected small{
+  color:#82bbb8;
+}
+
+.ndless-tree-icon{
+  width:15px;
+  height:15px;
+  flex:none;
+  color:#73869d;
+}
+
+.ndless-tree-label.is-open{
+  color:#d8e6f4;
+}
+
+.ndless-tree-label.is-open>.ndless-tree-icon{
+  color:#9bb0c7;
+}
+
+.ndless-tree-folder-open{display:none}
+.ndless-tree-label.is-open .ndless-tree-folder-open{display:block}
+.ndless-tree-label.is-open .ndless-tree-folder-closed{display:none}
+
+.ndless-tree-children-wrapper{
+  display:grid;
+  grid-template-rows:0fr;
+  transition:grid-template-rows .18s ease;
+}
+
+.ndless-tree-children-wrapper>.ndless-tree-children{
+  overflow:hidden;
+}
+
+.ndless-tree-children-wrapper.is-open{
+  grid-template-rows:1fr;
+}
+
+/* Compact adaptation of the user's red Uiverse delete button. */
+.ndless-project-section-head .ndless-project-delete-action{
+  width:30px!important;
+  height:30px!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  color:#fff!important;
+  border:1px solid rgba(251,113,133,.58)!important;
+  border-radius:8px!important;
+  background:linear-gradient(135deg,#fb7185,#e11d48 52%,#be123c)!important;
+  box-shadow:0 5px 13px rgba(190,18,60,.2)!important;
+  transition:transform .16s ease,box-shadow .16s ease,filter .16s ease!important;
+}
+
+.ndless-project-section-head .ndless-project-delete-action svg{
+  width:16px;
+  height:16px;
+}
+
+.ndless-project-section-head .ndless-project-delete-action:hover{
+  transform:scale(1.055);
+  box-shadow:0 7px 18px rgba(225,29,72,.32)!important;
+  filter:saturate(1.08);
+}
+
+.ndless-project-section-head .ndless-project-delete-action:active{
+  transform:scale(.97);
+}
+
+.ndless-sdk-dialog label>small{
+  color:#71869e;
+  font-size:9px;
+  line-height:1.35;
+}
+
+[data-theme="light"] .ndless-project-tree{
+  color:#334155;
+}
+[data-theme="light"] .ndless-project-tree .ndless-tree-children{
+  border-left-color:#d8e0e8;
+}
+[data-theme="light"] .ndless-project-tree .ndless-tree-children>.ndless-tree-item::before{
+  background:#d8e0e8;
+}
+[data-theme="light"] .ndless-tree-label,
+[data-theme="light"] .ndless-tree-file{
+  color:#475569;
+}
+[data-theme="light"] .ndless-tree-label:hover,
+[data-theme="light"] .ndless-tree-file:hover{
+  background:#eef3f7;
+  color:#172033;
+}
+[data-theme="light"] .ndless-tree-file.is-selected{
+  background:#dceff1;
+  color:#0f5964;
+}
+[data-theme="light"] .ndless-tree-icon{
+  color:#718096;
+}
+[data-theme="light"] .ndless-tree-file.is-selected small{
+  color:#4d8388;
+}
+
+@media(max-width:850px){
+  .ndless-tree-label,.ndless-tree-file{height:28px;padding-inline:6px}
+}
