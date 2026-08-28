@@ -79,6 +79,7 @@ jobs:
           node --check ndless-zehn.js
           node --check ndless-project-core.js
           node --check ndless-project-core-enhancements.js
+          node --check ndless-project-folder-build.js
           node --check ndless-project-workspace.js
           node --check ndless-project-sdk-enhancements.js
           node --check ndless-project-sdk-enhancements-v2.js
