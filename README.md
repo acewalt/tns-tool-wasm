@@ -209,6 +209,8 @@ Recent development has expanded TNS Tool WASM beyond program editing into a broa
 
 ### `+Page` system
 
+ ![New](docs/images/+page.png)
+
 A new `+Page` workflow can add pages directly to the current TI-Nspire document.
 
 Current page types include:
