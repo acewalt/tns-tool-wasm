@@ -72,10 +72,8 @@
     for(const ins of rows){
       if(branchTargets.has(ins.address))emit(`label_${hex(ins.address).slice(2)}:`,ins.address,"label");
       const m=baseMnemonic(ins),rd=REGS[ins.rd]||`r${ins.rd}`,rn=REGS[ins.rn]||`r${ins.rn}`,op=operandExpression(ins);
-      if(m==="push"||m==="pop"||m==="stmia"||m==="stmdb"||m==="ldmia"||m==="ldmdb"){
-        if(ins.return)emit("  return arg0;",ins.address,"return");
-        continue;
-      }
+      if(ins.return){emit("  return arg0;",ins.address,"return");continue;}
+      if(m==="push"||m==="pop"||m==="stmia"||m==="stmdb"||m==="ldmia"||m==="ldmdb")continue;
       if(m==="mov"||m==="mvn"){
         emit(`  ${rd} = ${m==="mvn"?`~(${op})`:op};`,ins.address,"assign");
         continue;
@@ -95,7 +93,6 @@
         emit(`  arg0 = ${target}(arg0, arg1, arg2, arg3);`,ins.address,"call");
         continue;
       }
-      if(ins.return){emit("  return arg0;",ins.address,"return");continue;}
       if(ins.flow==="conditional-branch"){
         emit(`  if (${conditionExpression(ins.condition,lastCompare)}) goto label_${hex(ins.target).slice(2)};`,ins.address,"branch");
         continue;
