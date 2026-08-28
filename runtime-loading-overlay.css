@@ -1,0 +1,188 @@
+#tns-runtime-loading-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  display: grid;
+  place-items: center;
+  background: rgba(3, 10, 20, 0.34);
+  -webkit-backdrop-filter: blur(11px) saturate(0.78) brightness(0.72);
+  backdrop-filter: blur(11px) saturate(0.78) brightness(0.72);
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    background 680ms cubic-bezier(0.22, 1, 0.36, 1),
+    -webkit-backdrop-filter 760ms cubic-bezier(0.22, 1, 0.36, 1),
+    backdrop-filter 760ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 760ms;
+}
+
+html.tns-runtime-loading-lock,
+html.tns-runtime-loading-lock body {
+  overflow: hidden !important;
+}
+
+#tns-runtime-loading-overlay.is-ready {
+  opacity: 0;
+  background: rgba(3, 10, 20, 0);
+  -webkit-backdrop-filter: blur(0) saturate(1) brightness(1);
+  backdrop-filter: blur(0) saturate(1) brightness(1);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.tns-runtime-loader-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 18px;
+  padding: 22px 28px;
+  min-width: 250px;
+  transform: translateY(-2px) scale(1);
+  opacity: 1;
+  transition:
+    transform 620ms cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 420ms ease;
+}
+
+#tns-runtime-loading-overlay.is-ready .tns-runtime-loader-shell {
+  transform: translateY(-8px) scale(0.965);
+  opacity: 0;
+}
+
+.tns-runtime-loader-mark {
+  position: relative;
+  width: 116px;
+  height: 116px;
+  display: grid;
+  place-items: center;
+}
+
+.tns-runtime-loader-mark svg {
+  position: absolute;
+  inset: 0;
+  width: 116px;
+  height: 116px;
+  overflow: visible;
+}
+
+.tns-runtime-loader-orbit,
+.tns-runtime-loader-dash {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  transform-origin: 58px 58px;
+}
+
+.tns-runtime-loader-orbit {
+  stroke-width: 7;
+  animation:
+    tnsRuntimeSpinDashArray 2s ease-in-out infinite,
+    tnsRuntimeSpin 8s ease-in-out infinite,
+    tnsRuntimeDashOffset 2s linear infinite;
+}
+
+.tns-runtime-loader-dash {
+  stroke-width: 4;
+  opacity: 0.9;
+  animation:
+    tnsRuntimeDashArray 2s ease-in-out infinite,
+    tnsRuntimeDashOffset 2s linear infinite;
+}
+
+.tns-runtime-loader-core {
+  width: 70px;
+  height: 70px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  background:
+    linear-gradient(145deg, rgba(169, 255, 65, 0.16), rgba(72, 214, 103, 0.08)),
+    rgba(8, 20, 34, 0.9);
+  border: 1px solid rgba(169, 255, 65, 0.34);
+  box-shadow:
+    0 0 0 1px rgba(174, 255, 78, 0.08),
+    0 0 30px rgba(132, 240, 54, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.tns-runtime-loader-core::before {
+  content: "TNS";
+  font: 800 16px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  letter-spacing: 0.08em;
+  color: #baff55;
+  text-shadow: 0 0 14px rgba(166, 255, 67, 0.42);
+}
+
+.tns-runtime-loader-brand {
+  font: 800 27px/1.05 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: -0.025em;
+  color: #f4f8ff;
+  text-shadow: 0 3px 24px rgba(0, 0, 0, 0.32);
+}
+
+.tns-runtime-loader-brand span {
+  color: #a9ff3f;
+}
+
+.tns-runtime-loader-status {
+  margin-top: -8px;
+  font: 600 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(222, 236, 248, 0.64);
+}
+
+.tns-runtime-loader-status::after {
+  content: "";
+  display: inline-block;
+  width: 1.5em;
+  text-align: left;
+  animation: tnsRuntimeDots 1.4s steps(4, end) infinite;
+}
+
+@keyframes tnsRuntimeDashArray {
+  0% { stroke-dasharray: 0 1 359 0; }
+  50% { stroke-dasharray: 0 359 1 0; }
+  100% { stroke-dasharray: 359 1 0 0; }
+}
+
+@keyframes tnsRuntimeSpinDashArray {
+  0% { stroke-dasharray: 270 90; }
+  50% { stroke-dasharray: 0 360; }
+  100% { stroke-dasharray: 270 90; }
+}
+
+@keyframes tnsRuntimeDashOffset {
+  0% { stroke-dashoffset: 365; }
+  100% { stroke-dashoffset: 5; }
+}
+
+@keyframes tnsRuntimeSpin {
+  0% { transform: rotate(0deg); }
+  12.5%, 25% { transform: rotate(270deg); }
+  37.5%, 50% { transform: rotate(540deg); }
+  62.5%, 75% { transform: rotate(810deg); }
+  87.5%, 100% { transform: rotate(1080deg); }
+}
+
+@keyframes tnsRuntimeDots {
+  0% { content: ""; }
+  25% { content: "."; }
+  50% { content: ".."; }
+  75%, 100% { content: "..."; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tns-runtime-loader-orbit,
+  .tns-runtime-loader-dash,
+  .tns-runtime-loader-status::after {
+    animation-duration: 6s;
+  }
+
+  #tns-runtime-loading-overlay,
+  .tns-runtime-loader-shell {
+    transition-duration: 260ms;
+  }
+}
