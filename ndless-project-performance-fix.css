@@ -1,0 +1,37 @@
+/* Keep Ndless project dialogs lightweight over Monaco. Blurring the entire
+   editor surface causes unnecessary GPU work on lower-end browsers. */
+.ndless-sdk-dialog-overlay,
+.ndless-project-dialog-overlay {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background: rgba(2, 7, 18, .78) !important;
+}
+
+/* Avoid expensive paint effects while native selects/popovers are open. */
+.ndless-sdk-popover,
+.ndless-sdk-dialog,
+.ndless-project-dialog {
+  contain: layout paint;
+}
+
+.ndless-sdk-popover {
+  box-shadow: 0 12px 28px rgba(0,0,0,.28) !important;
+}
+
+.ndless-project-dialog select:disabled {
+  opacity: .72;
+  cursor: default;
+}
+
+/* Keep menus compact; long labels should wrap instead of widening the page. */
+.ndless-sdk-popover button,
+.ndless-project-dialog label,
+.ndless-sdk-dialog label {
+  min-width: 0;
+}
+
+.ndless-sdk-popover button span,
+.ndless-project-dialog p,
+.ndless-sdk-dialog p {
+  overflow-wrap: anywhere;
+}
