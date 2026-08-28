@@ -9,21 +9,16 @@ function makeElf(){
   const names=['','.text','.data','.bss','.symtab','.strtab','.rel.data','.shstrtab'];
   let shstr='\0'; const nameOff={}; for(const n of names.slice(1)){nameOff[n]=shstr.length;shstr+=n+'\0';}
   const strtab='\0foo\0';
-  const text=Uint8Array.from([0x1e,0xff,0x2f,0xe1]); // bx lr
+  const text=Uint8Array.from([0x1e,0xff,0x2f,0xe1]);
   const data=Uint8Array.from([0,0,0,0]);
   const sym=new Uint8Array(32); const sv=new DataView(sym.buffer);
-  sv.setUint32(16,1,true); // name foo
-  sv.setUint32(20,0,true); // value
-  sv.setUint32(24,4,true); // size
-  sym[28]=(1<<4)|2; // global function
-  sv.setUint16(30,1,true); // .text
-  const rel=new Uint8Array(8); const rv=new DataView(rel.buffer); rv.setUint32(0,4,true); rv.setUint32(4,(1<<8)|2,true); // R_ARM_ABS32
+  sv.setUint32(16,1,true); sv.setUint32(20,0,true); sv.setUint32(24,4,true);
+  sym[28]=(1<<4)|2; sv.setUint16(30,1,true);
+  const rel=new Uint8Array(8); const rv=new DataView(rel.buffer); rv.setUint32(0,4,true); rv.setUint32(4,(1<<8)|2,true);
   const shstrBytes=new TextEncoder().encode(shstr), strBytes=new TextEncoder().encode(strtab);
   const payloads=[null,text,data,null,sym,strBytes,rel,shstrBytes];
   let off=52; const offsets=[];
-  for(let i=0;i<payloads.length;i++){
-    const p=payloads[i]; if(!p){offsets[i]=0;continue;} off=align(off,4); offsets[i]=off; off+=p.length;
-  }
+  for(let i=0;i<payloads.length;i++){const p=payloads[i];if(!p){offsets[i]=0;continue;}off=align(off,4);offsets[i]=off;off+=p.length;}
   const shoff=align(off,4), shnum=8, total=shoff+shnum*40;
   const bytes=new Uint8Array(total); const v=new DataView(bytes.buffer);
   bytes.set([0x7f,0x45,0x4c,0x46,1,1,1,0],0);
@@ -46,6 +41,10 @@ const parsedElf=globalThis.NdlessElf32.parse(elfBytes);
 assert.equal(parsedElf.header.machine,40);
 assert.equal(parsedElf.sectionByName('.text').address,0);
 assert.equal(parsedElf.relocations.length,1);
+assert.equal(parsedElf.relocations[0].type,2);
+assert.equal(parsedElf.relocations[0].symbolIndex,1);
+assert.equal(parsedElf.relocations[0].relocatedSection?.name,'.data');
+assert.equal(parsedElf.relocations[0].symbol?.sectionIndex,1);
 
 const built=await globalThis.NdlessZehnBuilder.buildFromElf(elfBytes,{name:'browser-test',author:'TNS Tool WASM',compress:false});
 assert.ok(built.bytes instanceof Uint8Array);
@@ -54,6 +53,7 @@ assert.ok(zehn?.valid,'generated Zehn should parse');
 assert.equal(zehn.header.entryOffset,0);
 assert.equal(zehn.metadata.name,'browser-test');
 assert.equal(zehn.metadata.author,'TNS Tool WASM');
+console.log('DEBUG relocation', JSON.stringify({elf:parsedElf.relocations.map(r=>({type:r.type,offset:r.offset,symbol:r.symbolIndex,section:r.relocatedSection?.name,shndx:r.symbol?.sectionIndex})),stats:built.stats,zehn:zehn.relocs.map(r=>({type:r.type,data:r.data,raw:r.raw}))}));
 assert.equal(zehn.relocs.filter(r=>r.type===0).length,1);
 assert.equal(zehn.relocs.find(r=>r.type===0).data,4);
 assert.equal(built.stats.executableSize,8);
