@@ -3,304 +3,78 @@
 
   let lastTnsFile = null;
   let current = null;
+  const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+  const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const hex=(n,w=8)=>n==null?"—":`0x${(Number(n)>>>0).toString(16).toUpperCase().padStart(w,"0")}`;
+  const bytesHex=a=>Array.from(a||[],b=>b.toString(16).padStart(2,"0").toUpperCase()).join(" ");
+  const fmtBytes=n=>n<1024?`${n} B`:n<1048576?`${(n/1024).toFixed(1)} KB`:`${(n/1048576).toFixed(2)} MB`;
+  function rememberFile(file){if(file&&/\.tns$/i.test(file.name||""))lastTnsFile=file;}
+  window.addEventListener("change",e=>{const i=e.target;if(i instanceof HTMLInputElement)rememberFile(i.files?.[0]);},true);
+  window.addEventListener("drop",e=>rememberFile(Array.from(e.dataTransfer?.files||[]).find(f=>/\.tns$/i.test(f.name||""))),true);
+  const candidateFile=()=>lastTnsFile||$("#xml-tns-file")?.files?.[0]||$("#decode-file")?.files?.[0]||null;
 
-  const $ = (sel, root = document) => root.querySelector(sel);
-  const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
-  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-  const hex = (n, w = 8) => `0x${(Number(n) >>> 0).toString(16).toUpperCase().padStart(w, "0")}`;
-  const clamp24 = (n) => Math.max(0, Math.min(0xFFFFFF, Number(n) || 0));
+  function card(label,value,help=""){return `<div class="ndless-editor-card"><label>${esc(label)}</label><div class="ndless-editor-mono">${esc(value)}</div>${help?`<div class="ndless-editor-help">${esc(help)}</div>`:""}</div>`;}
+  function warning(text,cls=""){return `<div class="ndless-editor-warning ${cls}">${esc(text)}</div>`;}
+  function risk(level,text){return `<div class="ndless-editor-risk"><span class="ndless-editor-risk-${level.toLowerCase()}">${level}</span><p>${esc(text)}</p></div>`;}
 
-  function rememberFile(file) {
-    if (file && /\.tns$/i.test(file.name || "")) lastTnsFile = file;
+  function overviewPanel(){const a=current.adapter,r=a.result;return `<div class="ndless-editor-grid">${card("File",r.file.name)}${card("Type",a.typeLabel)}${card("Format",a.formatLabel)}${card("Architecture",a.architecture)}${card(a.entryLabel,hex(a.entry))}${card("Compression",a.compression)}${card("Original size",`${fmtBytes(a.originalSize)} (${a.originalSize} B)`)}${card("Relocations",a.relocations.length)}</div><div class="ndless-editor-risk-grid" style="margin-top:14px">${risk("SAFE","Metadata and same-size string/constant patches.")}${risk("ADVANCED","ARM instruction and raw hex patches. Offsets must be checked carefully.")}${risk("EXPERT","Compression, structural rebuild, resizing and relocation-sensitive changes.")}</div>`;}
+
+  function mapTable(){const rows=current.adapter.memoryMap();if(!rows.length)return warning("No reliable memory map is available for this format.");return `<div class="ndless-editor-strings"><table class="ndless-editor-table"><thead><tr><th>Region</th><th>Domain</th><th>Start</th><th>End / size</th></tr></thead><tbody>${rows.map(x=>`<tr><td>${esc(x.name)}</td><td><span class="ndless-editor-badge">${esc(x.domain)}</span></td><td class="ndless-editor-mono">${x.domain==="stored"?hex(x.fileStart):x.runtimeStart!=null?hex(x.runtimeStart):"—"}</td><td class="ndless-editor-mono">${x.size!=null?`${x.size} B`:x.domain==="stored"?(x.fileEnd==null?"EOF":hex(x.fileEnd)):hex(x.runtimeEnd)}</td></tr>`).join("")}</tbody></table></div>`;}
+  function structurePanel(){const a=current.adapter,r=a.result;let header="";if(a.format==="zehn"){const h=r.header;header=`<div class="ndless-editor-grid">${card("Header file offset",hex(h.offset))}${card("Zehn file size",`${h.fileSize} B`)}${card("alloc_size",`${h.allocSize} B`)}${card("entry_offset",hex(h.entryOffset))}${card("reloc_count",h.relocCount)}${card("flag_count",h.flagCount)}${card("extra_size",`${h.extraSize} B`)}</div>`;}else if(a.format==="bflt"){const h=r.header;header=`<div class="ndless-editor-grid">${card("Header size","64 B")}${card("Revision",h.rev)}${card("Entry",hex(h.entry))}${card("data_start",hex(h.dataStart))}${card("data_end",hex(h.dataEnd))}${card("bss_end",hex(h.bssEnd))}${card("stack_size",`${h.stackSize} B`)}${card("reloc_start",hex(h.relocStart))}${card("reloc_count",h.relocCount)}${card("flags",hex(h.flags))}</div>`;}else header=`<div class="ndless-editor-grid">${card("Signature","PRG\\0")}${card("Known startup offset",hex(4))}${card("Startup","legacy crt0")}</div>${warning("PRG legacy does not provide a rich section header. Entry point, relocation count and named sections are not fabricated.")}`;return `<h3>Header / Structure</h3>${header}<h3 style="margin-top:20px">Stored file vs runtime memory</h3>${mapTable()}`;}
+
+  function metadataPanel(){const a=current.adapter;if(a.format!=="zehn")return warning("This format does not expose Zehn metadata flags. No metadata fields are invented.");const m=a.result.metadata;
+    const str=(label,key,type)=>`<div class="ndless-editor-card"><label>${esc(label)}</label><input class="ndless-editor-input" data-meta-string="${type}" value="${esc(m[key]??"")}"><div class="ndless-editor-help">SAFE · existing extra_data string only; UTF-8 must fit the original reserved bytes.</div></div>`;
+    const num=(label,key,type)=>`<div class="ndless-editor-card"><label>${esc(label)}</label><input class="ndless-editor-input" type="number" min="0" max="16777215" data-meta-number="${type}" value="${m[key]??""}"></div>`;
+    const bool=(label,key,type)=>`<div class="ndless-editor-card"><label>${esc(label)}</label><div class="ndless-editor-check"><input type="checkbox" data-meta-bool="${type}" ${m[key]?"checked":""} ${m[key]==null?"disabled":""}><span>${m[key]==null?"Flag not present":"Enabled"}</span></div></div>`;
+    return `<div class="ndless-editor-grid">${str("Application name","name",8)}${str("Author","author",9)}${str("Notice","notice",11)}${num("Executable version","version",10)}${num("Ndless minimum","ndlessMin",0)}${num("Ndless maximum","ndlessMax",1)}${num("Revision minimum","ndlessRevisionMin",2)}${num("Revision maximum","ndlessRevisionMax",3)}${bool("CX / CM","runsOnColor",4)}${bool("Clickpad","runsOnClickpad",5)}${bool("Touchpad","runsOnTouchpad",6)}${bool("32 MB","runsOn32MB",7)}${bool("HW-W","runsOnHww",12)}${bool("lcd_blit","usesLcdBlit",13)}</div><div class="ndless-editor-status" data-meta-status></div>`;}
+
+  function collectData(){const a=current.adapter,strings=[],nums=[];for(const range of a.stringsRanges)strings.push(...window.NdlessAnalysis.scanStrings(a.workingBytes,range.start,range.end));for(const range of a.dataRanges)nums.push(...window.NdlessAnalysis.scanNumericCandidates(a.workingBytes,range.start,range.end,300));return{strings,nums};}
+  function dataPanel(){const {strings,nums}=collectData();current.strings=strings;const sTable=strings.length?`<div class="ndless-editor-strings"><table class="ndless-editor-table"><thead><tr><th>Kind</th><th>Offset</th><th>Encoding</th><th>Bytes</th><th>Value</th></tr></thead><tbody>${strings.map((r,i)=>`<tr><td>Detected string</td><td class="ndless-editor-mono">${hex(r.offset)}</td><td>${esc(r.encoding||"ASCII")}</td><td>${r.length}</td><td><input class="ndless-editor-input ndless-editor-mono" data-string-index="${i}" value="${esc(r.value)}"></td></tr>`).join("")}</tbody></table></div>`:warning("No reasonable strings were detected in the format-safe data ranges.");
+    const nTable=nums.length?`<div class="ndless-editor-strings" style="margin-top:14px"><table class="ndless-editor-table"><thead><tr><th>Kind</th><th>Offset</th><th>Candidate value</th><th>Raw word</th></tr></thead><tbody>${nums.map(r=>`<tr><td>${esc(r.kind)}</td><td class="ndless-editor-mono">${hex(r.offset)}</td><td class="ndless-editor-mono">${esc(typeof r.value==="number"?Number(r.value).toPrecision(8):r.value)}</td><td class="ndless-editor-mono">${hex(r.raw)}</td></tr>`).join("")}</tbody></table></div>`:"";
+    return `${warning("Values below are detected candidates, not recovered original variable names or types.")}<h3>Strings</h3>${sTable}<div class="ndless-editor-status" data-string-status></div><h3 style="margin-top:20px">Constants / raw data candidates</h3>${nTable}`;}
+
+  function ensureAnalysis(){if(!current.analysis)current.analysis=window.NdlessAnalysis.analyze(current.adapter.model);return current.analysis;}
+  function functionSelect(){const an=ensureAnalysis();return `<select class="ndless-editor-input" data-function-select>${an.functions.map(f=>`<option value="${f.address}" ${f.address===current.selectedFunction?"selected":""}>${esc(f.name)} · ${hex(f.address)}</option>`).join("")}</select>`;}
+  function codePanel(){const a=current.adapter,an=ensureAnalysis();if(current.selectedFunction==null)current.selectedFunction=an.functions[0]?.address??a.entry;const fn=an.functions.find(f=>f.address===current.selectedFunction)||an.functions[0];const cfg=fn?an.cfg.get(fn.address):null;const pseudo=fn?an.pseudocode.get(fn.address):"";const ins=an.instructions.slice(0,4000);
+    const fTable=`<div class="ndless-editor-strings"><table class="ndless-editor-table"><thead><tr><th>Name</th><th>Runtime address</th><th>End (heuristic)</th></tr></thead><tbody>${an.functions.slice(0,1000).map(f=>`<tr data-jump-function="${f.address}"><td><button class="ndless-editor-link" type="button">${esc(f.name)}</button></td><td class="ndless-editor-mono">${hex(f.address)}</td><td class="ndless-editor-mono">${hex(f.end)}</td></tr>`).join("")}</tbody></table></div>`;
+    const dTable=`<div class="ndless-editor-strings ndless-editor-disassembly"><table class="ndless-editor-table"><thead><tr><th>Runtime</th><th>Container</th><th>File</th><th>Bytes</th><th>ARM</th></tr></thead><tbody>${ins.map(i=>`<tr data-ins-address="${i.address}"><td class="ndless-editor-mono">${hex(i.address)}</td><td class="ndless-editor-mono">${hex(i.containerOffset)}</td><td class="ndless-editor-mono">${hex(i.fileOffset)}</td><td class="ndless-editor-mono">${bytesHex(i.bytes)}</td><td class="ndless-editor-mono">${esc(i.text)}${i.comment?` <span class="ndless-editor-comment">; ${esc(i.comment)}</span>`:""}</td></tr>`).join("")}</tbody></table></div>${an.instructions.length>ins.length?warning(`Showing the first ${ins.length} instructions of ${an.instructions.length} decoded instructions.`):""}`;
+    const cfgText=cfg?.blocks?.length?cfg.blocks.map(b=>{const edges=cfg.edges.filter(e=>e.from===b.start);return `Block ${hex(b.start)}\n${edges.map(e=>`${e.type.padEnd(13)} → ${e.to==null?"return":hex(e.to)}`).join("\n")}`;}).join("\n\n"):"No basic blocks available.";
+    const calls=an.callGraph.edges.filter(e=>!fn||e.from===fn.address);const callText=calls.length?calls.map(e=>`${e.fromName} → ${e.toName}  @ ${hex(e.at)}`).join("\n"):"No internal BL/BLX call edges detected for this function.";
+    return `${warning("ARM analysis is heuristic. It does not recover original C/C++, symbols, comments, variable names or class structure.")}<div class="ndless-editor-code-toolbar"><div><label>Function</label>${functionSelect()}</div><div><label>Patch instruction bytes (ADVANCED)</label><div class="ndless-editor-inline"><input class="ndless-editor-input ndless-editor-mono" data-arm-address value="${hex(fn?.address??a.entry)}"><input class="ndless-editor-input ndless-editor-mono" data-arm-bytes placeholder="00 00 A0 E3"><button class="ndless-editor-button" data-arm-patch>Patch 4 bytes</button></div></div></div><h3>Functions</h3>${fTable}<h3>ARM Disassembly</h3>${dTable}<div class="ndless-editor-two"><section><h3>Control Flow</h3><pre class="ndless-editor-codebox">${esc(cfgText)}</pre></section><section><h3>Call Graph</h3><pre class="ndless-editor-codebox">${esc(callText)}</pre></section></div><h3>C-like pseudocode (heuristic)</h3><pre class="ndless-editor-codebox">${esc(pseudo)}</pre><div class="ndless-editor-status" data-code-status></div>`;}
+
+  function relocPanel(){const a=current.adapter,rows=a.relocations;if(!rows.length)return warning("No relocation records are present or safely derivable for this file.");if(a.format==="zehn")return `${warning("Relocation editing is disabled. ADD_BASE, ADD_BASE_GOT, SET_ZERO, FILE_COMPRESSED and UNALIGNED_RELOC are preserved.")}<div class="ndless-editor-strings"><table class="ndless-editor-table"><thead><tr><th>#</th><th>Type</th><th>Offset/data</th><th>Raw</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.index}</td><td>${esc(r.name)}</td><td class="ndless-editor-mono">${hex(r.data,6)}</td><td class="ndless-editor-mono">${hex(r.raw)}</td></tr>`).join("")}</tbody></table></div>`;return `${warning("bFLT relocation records are read as big-endian 32-bit offsets from the logical flat image. Free editing is disabled until relocation-aware resizing is supported.")}<div class="ndless-editor-strings"><table class="ndless-editor-table"><thead><tr><th>#</th><th>Address / offset</th><th>Region</th></tr></thead><tbody>${rows.map(r=>`<tr><td>${r.index}</td><td class="ndless-editor-mono">${hex(r.address)}</td><td>${esc(r.region)}</td></tr>`).join("")}</tbody></table></div>`;}
+
+  function bytesPreview(bytes,center=0,radius=160){const start=Math.max(0,center-radius),end=Math.min(bytes.length,center+radius),lines=[];for(let off=start-(start%16);off<end;off+=16){const c=bytes.subarray(off,Math.min(off+16,bytes.length)),hs=Array.from(c,b=>b.toString(16).padStart(2,"0")).join(" "),ascii=Array.from(c,b=>b>=32&&b<=126?String.fromCharCode(b):".").join("");lines.push(`${off.toString(16).padStart(8,"0")}  ${hs.padEnd(47," ")}  ${ascii}`);}return lines.join("\n");}
+  function binaryPanel(){return `${warning("ADVANCED: physical file offsets, container/logical offsets and runtime ARM addresses are different concepts. Choose the patch target explicitly.")}<div class="ndless-editor-grid"><div class="ndless-editor-card"><label>Patch target</label><select class="ndless-editor-input" data-hex-domain><option value="working">Working logical image / container offset</option><option value="physical">Physical .tns file offset</option></select></div><div class="ndless-editor-card"><label>Offset</label><input class="ndless-editor-input ndless-editor-mono" data-hex-offset value="0x0"></div><div class="ndless-editor-card"><label>Bytes</label><input class="ndless-editor-input ndless-editor-mono" data-hex-bytes placeholder="E3 A0 00 0A"></div></div><div style="margin:12px 0"><button class="ndless-editor-button" data-apply-hex>Apply same-size patch</button></div><div class="ndless-editor-two"><section><h3>Working / logical image</h3><textarea class="ndless-editor-hex" readonly data-working-preview>${esc(bytesPreview(current.adapter.workingBytes,0))}</textarea></section><section><h3>Physical .tns</h3><textarea class="ndless-editor-hex" readonly data-physical-preview>${esc(bytesPreview(current.adapter.containerBytes,0))}</textarea></section></div><div class="ndless-editor-status" data-hex-status></div>`;}
+
+  function rebuildPanel(){const a=current.adapter,b=current.lastBuild;return `${warning("EXPERT: compressed containers are rebuilt from the logical working image. Structural resizing remains blocked; compression ratio may change the physical file size.")}<div class="ndless-editor-grid">${card("Format",a.formatLabel)}${card("Compression",a.compression)}${card("Original physical size",`${a.originalSize} B`)}${card("Current rebuilt size",b?`${b.bytes.length} B`:"Validate / Rebuild to calculate")}</div><div style="margin-top:14px"><button class="ndless-editor-button" data-rebuild-now>Validate / Rebuild</button></div><div class="ndless-editor-status" data-rebuild-status></div>`;}
+
+  const panels={overview:overviewPanel,structure:structurePanel,metadata:metadataPanel,code:codePanel,data:dataPanel,relocations:relocPanel,binary:binaryPanel,rebuild:rebuildPanel};
+  function renderPanel(name){const p=$(`.ndless-editor-panel[data-panel="${name}"]`);if(!p)return;p.innerHTML=panels[name]();bindPanel(name,p);}
+
+  function parseBytes(text,exact=null){const parts=String(text||"").trim().split(/[\s,]+/).filter(Boolean);if(exact!=null&&parts.length!==exact)throw new Error(`Exactly ${exact} bytes are required.`);if(!parts.length)throw new Error("Enter hexadecimal bytes.");return new Uint8Array(parts.map(p=>{if(!/^[0-9a-fA-F]{2}$/.test(p))throw new Error(`Invalid byte: ${p}`);return parseInt(p,16);}));}
+  function parseOffset(text){const s=String(text).trim(),n=/^0x/i.test(s)?parseInt(s,16):parseInt(s,10);if(!Number.isFinite(n)||n<0)throw new Error("Invalid offset/address.");return n;}
+  function refreshAnalysis(){current.analysis=null;current.selectedFunction=null;}
+
+  function bindPanel(name,p){
+    if(name==="metadata"){$$('[data-meta-string]',p).forEach(i=>i.addEventListener("change",()=>applyMetadata(p)));$$('[data-meta-number]',p).forEach(i=>i.addEventListener("change",()=>applyMetadata(p)));$$('[data-meta-bool]',p).forEach(i=>i.addEventListener("change",()=>applyMetadata(p)));}
+    if(name==="data"){$$('[data-string-index]',p).forEach(i=>i.addEventListener("change",()=>{const row=current.strings[Number(i.dataset.stringIndex)],status=$('[data-string-status]',p);try{const enc=new TextEncoder().encode(i.value);if(enc.length>row.length)throw new Error(`Maximum ${row.length} bytes; new text uses ${enc.length}.`);const patch=new Uint8Array(row.length+(row.nullTerminated?1:0));patch.set(enc);current.adapter.patchWorking(row.offset,patch);status.textContent=`SAFE patch applied at working offset ${hex(row.offset)}.`;refreshAnalysis();}catch(e){status.textContent=e.message;i.value=row.value;}}));}
+    if(name==="code"){$('[data-function-select]',p)?.addEventListener("change",e=>{current.selectedFunction=Number(e.target.value);renderPanel("code");});$$('[data-jump-function]',p).forEach(r=>r.addEventListener("click",()=>{current.selectedFunction=Number(r.dataset.jumpFunction);renderPanel("code");}));$('[data-arm-patch]',p)?.addEventListener("click",()=>{const st=$('[data-code-status]',p);try{const addr=parseOffset($('[data-arm-address]',p).value),vals=parseBytes($('[data-arm-bytes]',p).value,4),off=current.adapter.model.runtimeToImage(addr);if(off==null)throw new Error("Runtime address is outside the working image.");current.adapter.patchWorking(off,vals);refreshAnalysis();st.textContent=`ADVANCED ARM patch applied at runtime ${hex(addr)} / image offset ${hex(off)}.`;renderPanel("code");}catch(e){st.textContent=e.message;}});}
+    if(name==="binary"){$('[data-apply-hex]',p)?.addEventListener("click",()=>{const st=$('[data-hex-status]',p);try{const off=parseOffset($('[data-hex-offset]',p).value),vals=parseBytes($('[data-hex-bytes]',p).value),domain=$('[data-hex-domain]',p).value;if(domain==="physical")current.adapter.patchContainer(off,vals);else current.adapter.patchWorking(off,vals);refreshAnalysis();st.textContent=`${vals.length} byte(s) patched in ${domain} domain at ${hex(off)}.`;$('[data-working-preview]',p).value=bytesPreview(current.adapter.workingBytes,off);$('[data-physical-preview]',p).value=bytesPreview(current.adapter.containerBytes,off);}catch(e){st.textContent=e.message;}});}
+    if(name==="rebuild")$('[data-rebuild-now]',p)?.addEventListener("click",()=>validateAndBuild(p));
+  }
+  function applyMetadata(p){const st=$('[data-meta-status]',p);try{$$('[data-meta-string]',p).forEach(i=>current.adapter.patchMetaString(Number(i.dataset.metaString),i.value));$$('[data-meta-number]',p).forEach(i=>{if(i.value!=="")current.adapter.patchMetaValue(Number(i.dataset.metaNumber),i.value);});$$('[data-meta-bool]',p).forEach(i=>{if(!i.disabled)current.adapter.patchMetaValue(Number(i.dataset.metaBool),i.checked?1:0);});st.textContent="SAFE metadata patch applied to the working container.";}catch(e){st.textContent=e.message;}}
+
+  async function validateAndBuild(panel=null){const st=panel?$('[data-rebuild-status]',panel):$('[data-editor-global-status]');try{if(st)st.textContent="Validating and rebuilding…";const built=await current.adapter.build();current.lastBuild=built;if(st)st.textContent=`Validation OK · ${current.adapter.formatLabel} · output ${built.bytes.length} B.`;if(panel)renderPanel("rebuild");return built;}catch(e){if(st)st.textContent=`Validation failed: ${e.message}`;current.lastBuild=null;return null;}}
+  async function exportTns(){const built=await validateAndBuild();if(!built)return;const blob=new Blob([built.bytes],{type:"application/octet-stream"}),url=URL.createObjectURL(blob),a=document.createElement("a"),name=current.result.file.name||"program.tns";a.href=url;a.download=name.replace(/\.tns$/i,"-edited.tns");document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+
+  async function openEditor(file=candidateFile()){
+    if(!file)return alert("No .tns file is available to edit.");rememberFile(file);const detector=window.NdlessFormatDetector;if(!detector?.inspectFile)return alert("Ndless format detector is not available.");const result=await detector.inspectFile(file);if(!result?.valid||result.family!=="ndless")return alert("This file is not a valid supported Ndless container.");const adapter=await window.NdlessRebuilder.createAdapter(result);current={result,adapter,analysis:null,selectedFunction:null,strings:[],lastBuild:null};
+    $("#ndless-editor-overlay")?.remove();const o=document.createElement("div");o.id="ndless-editor-overlay";o.className="ndless-editor-overlay";const tabs=[["overview","Overview"],["structure","Structure"],["metadata","Metadata"],["code","Code"],["data","Data"],["relocations","Relocations"],["binary","Binary"],["rebuild","Rebuild"]];o.innerHTML=`<section class="ndless-editor"><div class="ndless-editor-head"><div><h2>Edit Ndless</h2><small>${esc(file.name)} · ${esc(adapter.typeLabel)} · ${esc(adapter.formatLabel)} · ARM</small></div><button class="ndless-editor-close" type="button">×</button></div><div class="ndless-editor-tabs">${tabs.map(([id,l],i)=>`<button class="ndless-editor-tab ${i===0?"active":""}" data-tab="${id}">${l}</button>`).join("")}</div><div class="ndless-editor-body">${tabs.map(([id],i)=>`<section class="ndless-editor-panel ${i===0?"active":""}" data-panel="${id}"></section>`).join("")}</div><div class="ndless-editor-actions"><div class="ndless-editor-status" data-editor-global-status></div><div class="ndless-editor-actions-group"><button class="ndless-editor-button" data-validate>Validate</button><button class="ndless-editor-button primary" data-export>Export edited TNS</button></div></div></section>`;document.body.appendChild(o);renderPanel("overview");
+    const close=()=>o.remove();$(".ndless-editor-close",o).addEventListener("click",close);o.addEventListener("click",e=>{if(e.target===o)close();});$$('[data-tab]',o).forEach(t=>t.addEventListener("click",()=>{$$('[data-tab]',o).forEach(x=>x.classList.toggle("active",x===t));$$('[data-panel]',o).forEach(x=>x.classList.toggle("active",x.dataset.panel===t.dataset.tab));renderPanel(t.dataset.tab);}));$('[data-validate]',o).addEventListener("click",()=>validateAndBuild());$('[data-export]',o).addEventListener("click",exportTns);
   }
 
-  window.addEventListener("change", (event) => {
-    const input = event.target;
-    if (input instanceof HTMLInputElement) rememberFile(input.files?.[0]);
-  }, true);
-
-  window.addEventListener("drop", (event) => {
-    const files = Array.from(event.dataTransfer?.files || []);
-    rememberFile(files.find(file => /\.tns$/i.test(file.name || "")));
-  }, true);
-
-  function candidateFile() {
-    return lastTnsFile || $("#xml-tns-file")?.files?.[0] || $("#decode-file")?.files?.[0] || null;
-  }
-
-  function computeLayout(result) {
-    const h = result.header;
-    const relocStart = h.offset + 32;
-    const flagStart = relocStart + h.relocCount * 4;
-    const extraStart = flagStart + h.flagCount * 4;
-    const execStart = extraStart + h.extraSize;
-    return { relocStart, flagStart, extraStart, execStart, zehnEnd: h.offset + h.fileSize };
-  }
-
-  function writePackedData(bytes, offset, type, data) {
-    const d = clamp24(data);
-    bytes[offset] = type & 0xFF;
-    bytes[offset + 1] = d & 0xFF;
-    bytes[offset + 2] = (d >>> 8) & 0xFF;
-    bytes[offset + 3] = (d >>> 16) & 0xFF;
-  }
-
-  function utf8Bytes(text) {
-    return new TextEncoder().encode(String(text ?? ""));
-  }
-
-  function cStringCapacity(bytes, start, end) {
-    let i = start;
-    while (i < end && bytes[i] !== 0) i += 1;
-    return Math.max(0, i - start);
-  }
-
-  function patchCString(bytes, start, end, value) {
-    const encoded = utf8Bytes(value);
-    const capacity = cStringCapacity(bytes, start, end);
-    if (encoded.length > capacity) throw new Error(`El texto ocupa ${encoded.length} bytes y el espacio disponible es ${capacity}. En esta versión segura no se cambia el tamaño del bloque.`);
-    bytes.fill(0, start, Math.min(end, start + capacity + 1));
-    bytes.set(encoded, start);
-  }
-
-  function findFlag(result, type) {
-    const index = result.flags.findIndex(flag => flag.type === type);
-    return index < 0 ? null : { flag: result.flags[index], index };
-  }
-
-  function patchFlagValue(type, value) {
-    const entry = findFlag(current.result, type);
-    if (!entry) throw new Error(`El flag ${type} no existe en este Zehn; esta primera versión modifica flags existentes sin reestructurar la tabla.`);
-    writePackedData(current.bytes, current.layout.flagStart + entry.index * 4, type, value);
-  }
-
-  function patchFlagString(type, value) {
-    const entry = findFlag(current.result, type);
-    if (!entry) throw new Error(`El campo no existe en este Zehn; no se puede añadir todavía sin reconstruir extra_data.`);
-    const start = current.layout.extraStart + entry.flag.data;
-    patchCString(current.bytes, start, current.layout.extraStart + current.result.header.extraSize, value);
-  }
-
-  function scanStrings(bytes, start, end, minLen = 4) {
-    const rows = [];
-    let i = start;
-    while (i < end) {
-      const s = i;
-      while (i < end && bytes[i] >= 32 && bytes[i] <= 126) i += 1;
-      const len = i - s;
-      if (len >= minLen) {
-        const value = String.fromCharCode(...bytes.subarray(s, i));
-        rows.push({ offset: s, length: len, value });
-      }
-      i = Math.max(i + 1, s + 1);
-      if (rows.length >= 1200) break;
-    }
-    return rows;
-  }
-
-  function bytesPreview(bytes, center = 0, radius = 128) {
-    const start = Math.max(0, center - radius);
-    const end = Math.min(bytes.length, center + radius);
-    const lines = [];
-    for (let off = start - (start % 16); off < end; off += 16) {
-      const chunk = bytes.subarray(off, Math.min(off + 16, bytes.length));
-      const hs = Array.from(chunk, b => b.toString(16).padStart(2, "0")).join(" ");
-      const ascii = Array.from(chunk, b => b >= 32 && b <= 126 ? String.fromCharCode(b) : ".").join("");
-      lines.push(`${off.toString(16).padStart(8,"0")}  ${hs.padEnd(47," ")}  ${ascii}`);
-    }
-    return lines.join("\n");
-  }
-
-  function overviewPanel() {
-    const { result, layout, bytes } = current;
-    const h = result.header;
-    return `<div class="ndless-editor-grid">
-      ${card("Archivo", result.file.name)}${card("Formato", `Zehn v${h.version}`)}
-      ${card("Arquitectura", "ARM / Ndless native")}${card("Entry point", hex(h.entryOffset))}
-      ${card("Zehn offset", hex(h.offset))}${card("Executable data", hex(layout.execStart))}
-      ${card("Zehn size", `${h.fileSize} bytes`)}${card("TNS size", `${bytes.length} bytes`)}
-      ${card("Relocations", h.relocCount)}${card("Flags", h.flagCount)}
-      ${card("Extra data", `${h.extraSize} bytes`)}${card("Compression", result.compressed ? "zlib / FILE_COMPRESSED" : "No")}
-    </div>
-    <div class="ndless-editor-warning" style="margin-top:14px">La exportación conserva el loader y todo el archivo original. Solo se sustituyen los bytes que edites. Los cambios de tamaño estructural se bloquean en esta versión para no corromper offsets o relocations.</div>`;
-  }
-
-  function card(label, value) {
-    return `<div class="ndless-editor-card"><label>${esc(label)}</label><div class="ndless-editor-mono">${esc(value)}</div></div>`;
-  }
-
-  function metadataPanel() {
-    const m = current.result.metadata;
-    const str = (label, key, type) => `<div class="ndless-editor-card"><label>${esc(label)}</label><input class="ndless-editor-input" data-meta-string="${type}" value="${esc(m[key] ?? "")}"><div class="ndless-editor-help">Se permite modificar mientras el UTF-8 no supere el espacio reservado original.</div></div>`;
-    const num = (label, key, type) => `<div class="ndless-editor-card"><label>${esc(label)}</label><input class="ndless-editor-input" type="number" min="0" max="16777215" data-meta-number="${type}" value="${m[key] ?? ""}"></div>`;
-    const bool = (label, key, type) => `<div class="ndless-editor-card"><label>${esc(label)}</label><div class="ndless-editor-check"><input type="checkbox" data-meta-bool="${type}" ${m[key] ? "checked" : ""} ${m[key] == null ? "disabled" : ""}><span>${m[key] == null ? "Flag no presente" : "Habilitado"}</span></div></div>`;
-    return `<div class="ndless-editor-grid">
-      ${str("Application name", "name", 8)}${str("Author", "author", 9)}${str("Notice", "notice", 11)}
-      ${num("Executable version", "version", 10)}${num("Ndless minimum", "ndlessMin", 0)}${num("Ndless maximum", "ndlessMax", 1)}
-      ${num("Revision minimum", "ndlessRevisionMin", 2)}${num("Revision maximum", "ndlessRevisionMax", 3)}
-      ${bool("CX / CM", "runsOnColor", 4)}${bool("Clickpad", "runsOnClickpad", 5)}${bool("Touchpad", "runsOnTouchpad", 6)}${bool("32 MB", "runsOn32MB", 7)}${bool("HW-W", "runsOnHww", 12)}${bool("lcd_blit", "usesLcdBlit", 13)}
-    </div><div class="ndless-editor-status" data-meta-status></div>`;
-  }
-
-  function stringsPanel() {
-    if (current.result.compressed) return `<div class="ndless-editor-warning">Este Zehn marca el executable data como comprimido. Para no mostrar falsos positivos sobre bytes comprimidos, Strings/Data queda en modo protegido hasta integrar inflate/rebuild zlib. Metadata y Binary siguen disponibles.</div>`;
-    const rows = scanStrings(current.bytes, current.layout.execStart, current.layout.zehnEnd);
-    current.strings = rows;
-    if (!rows.length) return `<div class="ndless-editor-code-placeholder">No se detectaron strings ASCII de 4+ caracteres en executable data.</div>`;
-    return `<div class="ndless-editor-warning" style="margin-bottom:12px">Puedes reemplazar strings por textos de igual o menor longitud en bytes. No cambiaremos el tamaño del ejecutable.</div><div class="ndless-editor-strings"><table class="ndless-editor-table"><thead><tr><th>Offset</th><th>Bytes</th><th>String</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td class="ndless-editor-mono">${hex(r.offset)}</td><td>${r.length}</td><td><input class="ndless-editor-input ndless-editor-mono" data-string-index="${i}" value="${esc(r.value)}"></td></tr>`).join("")}</tbody></table></div><div class="ndless-editor-status" data-string-status></div>`;
-  }
-
-  function relocPanel() {
-    const rows = current.result.relocs;
-    return `<div class="ndless-editor-warning" style="margin-bottom:12px">Relocations se muestran completas. La edición de la tabla se deja bloqueada por ahora porque un valor inválido puede impedir que Ndless cargue el ejecutable.</div><div class="ndless-editor-strings"><table class="ndless-editor-table"><thead><tr><th>#</th><th>Tipo</th><th>Data / offset</th><th>Raw</th></tr></thead><tbody>${rows.map((r,i)=>`<tr><td>${i}</td><td><span class="ndless-editor-badge">${esc(r.name)}</span></td><td class="ndless-editor-mono">${hex(r.data,6)}</td><td class="ndless-editor-mono">${hex(r.raw)}</td></tr>`).join("")}</tbody></table></div>`;
-  }
-
-  function codePanel() {
-    return `<div class="ndless-editor-code-placeholder"><strong>ARM Code / Functions</strong><br><br>La imagen ejecutable y el entry point ya están localizados. Esta pestaña queda preparada para integrar el desensamblador ARM y CFG sin mezclarlo con un falso “source C original”.</div>`;
-  }
-
-  function binaryPanel() {
-    return `<div class="ndless-editor-grid"><div class="ndless-editor-card"><label>Offset absoluto</label><input class="ndless-editor-input ndless-editor-mono" data-hex-offset value="${hex(current.result.header.offset)}"><div class="ndless-editor-help">Acepta decimal o 0xHEX.</div></div><div class="ndless-editor-card"><label>Bytes a escribir</label><input class="ndless-editor-input ndless-editor-mono" data-hex-bytes placeholder="E3 A0 00 0A"><div class="ndless-editor-help">Hexadecimal separado por espacios. No inserta ni elimina bytes.</div></div></div><div style="margin:12px 0"><button class="ndless-editor-button" data-apply-hex>Aplicar patch</button></div><textarea class="ndless-editor-hex" readonly data-hex-preview>${esc(bytesPreview(current.bytes, current.result.header.offset))}</textarea><div class="ndless-editor-status" data-hex-status></div>`;
-  }
-
-  function renderPanel(name) {
-    const panel = $(`.ndless-editor-panel[data-panel="${name}"]`);
-    if (!panel) return;
-    const html = name === "overview" ? overviewPanel() : name === "metadata" ? metadataPanel() : name === "strings" ? stringsPanel() : name === "code" ? codePanel() : name === "relocations" ? relocPanel() : binaryPanel();
-    panel.innerHTML = html;
-    bindPanel(name, panel);
-  }
-
-  function bindPanel(name, panel) {
-    if (name === "metadata") {
-      $$('[data-meta-string]', panel).forEach(input => input.addEventListener("change", () => applyMetadata(panel)));
-      $$('[data-meta-number]', panel).forEach(input => input.addEventListener("change", () => applyMetadata(panel)));
-      $$('[data-meta-bool]', panel).forEach(input => input.addEventListener("change", () => applyMetadata(panel)));
-    }
-    if (name === "strings") {
-      $$('[data-string-index]', panel).forEach(input => input.addEventListener("change", () => {
-        const row = current.strings[Number(input.dataset.stringIndex)];
-        const enc = utf8Bytes(input.value);
-        const status = $('[data-string-status]', panel);
-        try {
-          if (enc.length > row.length) throw new Error(`Máximo ${row.length} bytes; el nuevo texto usa ${enc.length}.`);
-          current.bytes.fill(0, row.offset, row.offset + row.length);
-          current.bytes.set(enc, row.offset);
-          if (status) status.textContent = `Patch aplicado en ${hex(row.offset)}.`;
-        } catch (e) { if (status) status.textContent = e.message; input.value = row.value; }
-      }));
-    }
-    if (name === "binary") {
-      $('[data-apply-hex]', panel)?.addEventListener("click", () => applyHexPatch(panel));
-      $('[data-hex-offset]', panel)?.addEventListener("change", () => refreshHexPreview(panel));
-    }
-  }
-
-  function applyMetadata(panel) {
-    const status = $('[data-meta-status]', panel);
-    try {
-      $$('[data-meta-string]', panel).forEach(input => patchFlagString(Number(input.dataset.metaString), input.value));
-      $$('[data-meta-number]', panel).forEach(input => { if (input.value !== "") patchFlagValue(Number(input.dataset.metaNumber), input.value); });
-      $$('[data-meta-bool]', panel).forEach(input => { if (!input.disabled) patchFlagValue(Number(input.dataset.metaBool), input.checked ? 1 : 0); });
-      if (status) status.textContent = "Metadata aplicada a la copia de trabajo. Exporta para guardar un nuevo .tns.";
-    } catch (e) { if (status) status.textContent = e.message; }
-  }
-
-  function parseOffset(value) {
-    const text = String(value).trim();
-    const n = /^0x/i.test(text) ? parseInt(text,16) : parseInt(text,10);
-    if (!Number.isFinite(n) || n < 0 || n >= current.bytes.length) throw new Error("Offset fuera del archivo.");
-    return n;
-  }
-
-  function applyHexPatch(panel) {
-    const status = $('[data-hex-status]', panel);
-    try {
-      const off = parseOffset($('[data-hex-offset]', panel).value);
-      const raw = $('[data-hex-bytes]', panel).value.trim();
-      if (!raw) throw new Error("Escribe al menos un byte hexadecimal.");
-      const parts = raw.split(/[\s,]+/).filter(Boolean);
-      const values = parts.map(p => { if (!/^[0-9a-fA-F]{2}$/.test(p)) throw new Error(`Byte inválido: ${p}`); return parseInt(p,16); });
-      if (off + values.length > current.bytes.length) throw new Error("El patch excede el tamaño del archivo.");
-      current.bytes.set(values, off);
-      if (status) status.textContent = `${values.length} byte(s) escritos en ${hex(off)}.`;
-      refreshHexPreview(panel, off);
-    } catch (e) { if (status) status.textContent = e.message; }
-  }
-
-  function refreshHexPreview(panel, explicit) {
-    try {
-      const off = explicit ?? parseOffset($('[data-hex-offset]', panel).value);
-      $('[data-hex-preview]', panel).value = bytesPreview(current.bytes, off);
-    } catch (_) {}
-  }
-
-  function exportTns() {
-    const blob = new Blob([current.bytes], { type: "application/octet-stream" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    const original = current.result.file.name || "program.tns";
-    a.href = url;
-    a.download = original.replace(/\.tns$/i, "-edited.tns");
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-  }
-
-  function validateWorkingCopy() {
-    const parsed = window.TnsNdlessInspector?.findZehn?.(current.bytes);
-    const el = $('[data-editor-global-status]');
-    if (!parsed?.valid) { if (el) el.textContent = "Validación: la estructura Zehn ya no es válida."; return false; }
-    if (el) el.textContent = `Validación: Zehn v${parsed.header.version} válido · ${parsed.header.flagCount} flags · ${parsed.header.relocCount} relocations.`;
-    return true;
-  }
-
-  async function openEditor(file = candidateFile()) {
-    if (!file) return alert("No hay un archivo .tns disponible para editar.");
-    rememberFile(file);
-    const inspector = window.TnsNdlessInspector;
-    if (!inspector?.inspectFile) return alert("El Inspector Ndless todavía no está disponible.");
-    const result = await inspector.inspectFile(file);
-    if (!result?.valid) return alert("El archivo no contiene un Zehn Ndless válido.");
-    current = { result, bytes: new Uint8Array(result.bytes), layout: computeLayout(result), strings: [] };
-
-    $("#ndless-editor-overlay")?.remove();
-    const overlay = document.createElement("div");
-    overlay.id = "ndless-editor-overlay";
-    overlay.className = "ndless-editor-overlay";
-    overlay.innerHTML = `<section class="ndless-editor"><div class="ndless-editor-head"><div><h2>Edit Ndless</h2><small>${esc(file.name)} · Zehn v${result.header.version} · ARM</small></div><button class="ndless-editor-close" type="button">×</button></div><div class="ndless-editor-tabs">${[["overview","Overview"],["metadata","Metadata"],["strings","Strings / Data"],["code","ARM Code"],["relocations","Relocations"],["binary","Binary / Hex"]].map(([id,label],i)=>`<button class="ndless-editor-tab ${i===0?"active":""}" data-tab="${id}">${label}</button>`).join("")}</div><div class="ndless-editor-body">${["overview","metadata","strings","code","relocations","binary"].map((id,i)=>`<section class="ndless-editor-panel ${i===0?"active":""}" data-panel="${id}"></section>`).join("")}</div><div class="ndless-editor-actions"><div class="ndless-editor-status" data-editor-global-status></div><div class="ndless-editor-actions-group"><button class="ndless-editor-button" data-validate>Validate</button><button class="ndless-editor-button primary" data-export>Export edited TNS</button></div></div></section>`;
-    document.body.appendChild(overlay);
-    renderPanel("overview");
-
-    const close = () => overlay.remove();
-    $(".ndless-editor-close", overlay).addEventListener("click", close);
-    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
-    $$('[data-tab]', overlay).forEach(tab => tab.addEventListener("click", () => {
-      $$('[data-tab]', overlay).forEach(x => x.classList.toggle("active", x === tab));
-      $$('[data-panel]', overlay).forEach(x => x.classList.toggle("active", x.dataset.panel === tab.dataset.tab));
-      renderPanel(tab.dataset.tab);
-    }));
-    $('[data-validate]', overlay).addEventListener("click", validateWorkingCopy);
-    $('[data-export]', overlay).addEventListener("click", () => { if (validateWorkingCopy()) exportTns(); });
-  }
-
-  function installInspectorButton() {
-    const overlay = $("#ndless-inspector-overlay");
-    const head = overlay && $(".ndless-head", overlay);
-    if (!head || $(".ndless-edit-btn", head)) return;
-    if (!$(".ndless-body .ndless-grid", overlay)) return;
-    const close = $(".ndless-close", head);
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "ndless-edit-btn";
-    btn.textContent = "Edit Ndless";
-    btn.addEventListener("click", () => openEditor());
-    if (close) head.insertBefore(btn, close); else head.appendChild(btn);
-  }
-
-  new MutationObserver(installInspectorButton).observe(document.documentElement, { childList: true, subtree: true });
-  installInspectorButton();
-
-  window.TnsNdlessEditor = Object.freeze({ open: openEditor, getLastFile: () => lastTnsFile });
+  function installInspectorButton(){const o=$("#ndless-inspector-overlay"),head=o&&$(".ndless-head",o);if(!head||$(".ndless-edit-btn",head)||!$(".ndless-body",o))return;const close=$(".ndless-close",head),btn=document.createElement("button");btn.type="button";btn.className="ndless-edit-btn";btn.textContent="Edit Ndless";btn.addEventListener("click",()=>openEditor());if(close)head.insertBefore(btn,close);else head.appendChild(btn);}
+  new MutationObserver(installInspectorButton).observe(document.documentElement,{childList:true,subtree:true});installInspectorButton();
+  window.TnsNdlessEditor=Object.freeze({open:openEditor,getLastFile:()=>lastTnsFile,getCurrent:()=>current});
 })();
