@@ -1,0 +1,257 @@
+/* Ndless project SDK-inspired controls. */
+#xml-doctor-panel.ndless-project-mode.collapsed {
+  display: none !important;
+}
+
+.ndless-project-topbar {
+  gap: 12px;
+}
+
+.ndless-sdk-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.ndless-project-actions {
+  margin-left: 0 !important;
+}
+
+.ndless-sdk-menu {
+  position: relative;
+}
+
+.ndless-sdk-trigger {
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  background: #111b2f;
+  color: #dbeafe;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ndless-sdk-trigger:hover,
+.ndless-sdk-trigger:focus-visible {
+  border-color: #0ea5a8;
+  background: #13243a;
+  outline: none;
+}
+
+.ndless-sdk-popover {
+  position: absolute;
+  z-index: 1200;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 230px;
+  display: none;
+  padding: 6px;
+  border: 1px solid #334155;
+  border-radius: 11px;
+  background: #0b1323;
+  box-shadow: 0 18px 45px rgba(0,0,0,.35);
+}
+
+.ndless-sdk-popover.open {
+  display: grid;
+  gap: 3px;
+}
+
+.ndless-sdk-popover button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: #dbeafe;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.ndless-sdk-popover button:hover,
+.ndless-sdk-popover button:focus-visible {
+  background: #13233b;
+  outline: none;
+}
+
+.ndless-sdk-popover small {
+  display: block;
+  padding: 8px 10px 6px;
+  color: #8fa7c4;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.ndless-sdk-tools {
+  width: 280px;
+}
+
+.ndless-sdk-tools kbd {
+  color: #7f9ab9;
+  font: 11px/1.2 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  white-space: nowrap;
+}
+
+.ndless-sdk-dialog-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 3000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2, 7, 18, .68);
+  backdrop-filter: blur(5px);
+}
+
+.ndless-sdk-dialog {
+  width: min(460px, 100%);
+  padding: 18px;
+  border: 1px solid #334155;
+  border-radius: 16px;
+  background: #0f192b;
+  color: #e5eefc;
+  box-shadow: 0 24px 70px rgba(0,0,0,.45);
+}
+
+.ndless-sdk-dialog header,
+.ndless-sdk-dialog footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ndless-sdk-dialog header {
+  margin-bottom: 16px;
+}
+
+.ndless-sdk-dialog header small {
+  color: #7f9ab9;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+
+.ndless-sdk-dialog h3 {
+  margin: 3px 0 0;
+  font-size: 20px;
+}
+
+.ndless-sdk-dialog header > button {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  background: transparent;
+  color: #dbeafe;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.ndless-sdk-dialog label {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0;
+  color: #aebfd5;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ndless-sdk-dialog input,
+.ndless-sdk-dialog select {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 11px;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  background: #0b1323;
+  color: #eef5ff;
+  font: inherit;
+}
+
+.ndless-sdk-dialog p {
+  margin: 12px 0 18px;
+  color: #8fa7c4;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ndless-sdk-dialog footer {
+  justify-content: flex-end;
+}
+
+.ndless-sdk-dialog footer button {
+  padding: 9px 14px;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  background: #111b2f;
+  color: #dbeafe;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ndless-sdk-dialog footer button.primary {
+  border-color: #0e8f91;
+  background: #0b555b;
+}
+
+html[data-theme="light"] .ndless-sdk-trigger,
+html[data-theme="light"] .ndless-sdk-popover,
+html[data-theme="light"] .ndless-sdk-dialog,
+html[data-theme="light"] .ndless-sdk-dialog input,
+html[data-theme="light"] .ndless-sdk-dialog select,
+html[data-theme="light"] .ndless-sdk-dialog footer button {
+  border-color: #c8d3e0;
+  background: #ffffff;
+  color: #172033;
+}
+
+html[data-theme="light"] .ndless-sdk-trigger:hover,
+html[data-theme="light"] .ndless-sdk-popover button:hover,
+html[data-theme="light"] .ndless-sdk-popover button:focus-visible {
+  background: #eef5fb;
+}
+
+html[data-theme="light"] .ndless-sdk-popover small,
+html[data-theme="light"] .ndless-sdk-tools kbd,
+html[data-theme="light"] .ndless-sdk-dialog p,
+html[data-theme="light"] .ndless-sdk-dialog label,
+html[data-theme="light"] .ndless-sdk-dialog header small {
+  color: #607086;
+}
+
+@media (max-width: 1080px) {
+  .ndless-project-topbar {
+    flex-wrap: wrap;
+  }
+  .ndless-sdk-controls {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+  }
+  .ndless-project-actions {
+    margin-left: auto !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .ndless-sdk-controls {
+    overflow-x: auto;
+  }
+  .ndless-sdk-popover {
+    left: 0;
+    right: auto;
+  }
+}
