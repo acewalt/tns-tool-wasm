@@ -46,7 +46,9 @@ jobs:
           node --check ndless-tns-inspector.js
           node --check ndless-zehn.js
       - name: Ndless synthetic tests
-        run: node tests/ndless-formats.test.js
+        run: |
+          node tests/ndless-formats.test.js
+          node tests/ndless-reachable.test.js
       - name: General smoke tests
         run: node tests/smoke.test.js
       - name: CLI e2e tests
