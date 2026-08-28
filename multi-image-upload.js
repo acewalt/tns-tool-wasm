@@ -18,7 +18,7 @@
 
   if (!document.querySelector('script[data-monaco-ti-reference-theme="true"]')) {
     const tiReferenceThemeScript = document.createElement("script");
-    tiReferenceThemeScript.src = "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v1";
+    tiReferenceThemeScript.src = "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v2";
     tiReferenceThemeScript.dataset.monacoTiReferenceTheme = "true";
     document.head.appendChild(tiReferenceThemeScript);
   }
