@@ -51,6 +51,13 @@
     document.head.appendChild(sidebarTitleI18nScript);
   }
 
+  if (!document.querySelector('script[data-inspector-page-menu-i18n="true"]')) {
+    const inspectorPageMenuI18nScript = document.createElement("script");
+    inspectorPageMenuI18nScript.src = "./inspector-page-menu-i18n.js?v=20260827-inspector-page-i18n-v1";
+    inspectorPageMenuI18nScript.dataset.inspectorPageMenuI18n = "true";
+    document.head.appendChild(inspectorPageMenuI18nScript);
+  }
+
   if (!document.querySelector('link[data-image-editor-style="true"]')) {
     const imageEditorStyle = document.createElement("link");
     imageEditorStyle.rel = "stylesheet";
