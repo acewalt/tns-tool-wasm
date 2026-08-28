@@ -1,0 +1,45 @@
+/* Ndless project mode replaces the Syntax Doctor editing grid instead of
+   rendering below it. The normal doctor grid is restored when the project
+   workspace closes. */
+#xml-doctor-panel.ndless-project-mode {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: calc(100vh - 150px) !important;
+  overflow: hidden !important;
+}
+
+#xml-doctor-panel.ndless-project-mode > .doctor-toolbar {
+  flex: 0 0 auto !important;
+}
+
+#xml-doctor-panel.ndless-project-mode > .doctor-grid {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+#xml-doctor-panel.ndless-project-mode > .ndless-project-workspace {
+  flex: 1 1 auto !important;
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+}
+
+#xml-doctor-panel.ndless-project-mode .ndless-project-body {
+  min-height: 0 !important;
+  flex: 1 1 auto !important;
+}
+
+@media (max-width: 850px) {
+  #xml-doctor-panel.ndless-project-mode {
+    min-height: calc(100vh - 125px) !important;
+    overflow: visible !important;
+  }
+}
