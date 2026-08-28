@@ -1,4 +1,4 @@
-name: Ndless checks
+name: TNS structured checks
 
 on:
   push:
@@ -6,7 +6,12 @@ on:
     paths:
       - 'ndless-*.js'
       - 'ndless-*.css'
+      - 'tns-*.js'
+      - 'content-pack-*.js'
+      - 'content-pack-*.css'
+      - 'nzp-*.js'
       - 'tests/ndless-*.test.js'
+      - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
       - 'index.html'
       - '.github/workflows/ndless-checks.yml'
@@ -14,7 +19,12 @@ on:
     paths:
       - 'ndless-*.js'
       - 'ndless-*.css'
+      - 'tns-*.js'
+      - 'content-pack-*.js'
+      - 'content-pack-*.css'
+      - 'nzp-*.js'
       - 'tests/ndless-*.test.js'
+      - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
       - 'index.html'
       - '.github/workflows/ndless-checks.yml'
@@ -35,6 +45,11 @@ jobs:
         run: python -m pip install --disable-pip-version-check pycryptodome
       - name: Syntax check
         run: |
+          node --check tns-container-registry.js
+          node --check tns-universal-detector.js
+          node --check tns-type-detection-progress.js
+          node --check nzp-content-format.js
+          node --check content-pack-editor.js
           node --check ndless-analysis.js
           node --check ndless-analysis-worker.js
           node --check ndless-arm-decoder.js
@@ -46,6 +61,8 @@ jobs:
           node --check ndless-rebuilder.js
           node --check ndless-tns-inspector.js
           node --check ndless-zehn.js
+      - name: Structured content tests
+        run: node tests/custom-content-formats.test.js
       - name: Ndless synthetic tests
         run: |
           node tests/ndless-formats.test.js
