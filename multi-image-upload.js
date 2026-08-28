@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20260828-ndless-project-v5";
+  const V="20260828-ndless-project-v6";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
@@ -43,6 +43,7 @@
   ensureStyle('link[data-ndless-project-sdk-enhancements-style="true"]', `./ndless-project-sdk-enhancements.css?v=${V}`, "ndlessProjectSdkEnhancementsStyle");
   ensureStyle('link[data-ndless-project-performance-fix-style="true"]', `./ndless-project-performance-fix.css?v=${V}`, "ndlessProjectPerformanceFixStyle");
   ensureStyle('link[data-ndless-project-file-tree-style="true"]', `./ndless-project-file-tree.css?v=${V}`, "ndlessProjectFileTreeStyle");
+  ensureStyle('link[data-ndless-build-ui-style="true"]', `./ndless-build-ui.css?v=${V}`, "ndlessBuildUiStyle");
   ensureStyle('link[data-content-pack-editor-style="true"]', `./content-pack-editor.css?v=${V}`, "contentPackEditorStyle");
   ensureStyle('link[data-structured-content-editor-style="true"]', `./structured-content-editor.css?v=${V}`, "structuredContentEditorStyle");
   ensureStyle('link[data-nvp-editor-style="true"]', `./nvp-editor.css?v=${V}`, "nvpEditorStyle");
@@ -59,6 +60,8 @@
     .then(() => loadScript('script[data-nvp-editor="true"]', `./nvp-editor.js?v=${V}`, "nvpEditor"))
     .then(() => loadScript('script[data-container-editor-bindings="true"]', `./container-editor-bindings.js?v=${V}`, "containerEditorBindings"))
     .then(() => loadScript('script[data-ndless-zehn="true"]', `./ndless-zehn.js?v=${V}`, "ndlessZehn"))
+    .then(() => loadScript('script[data-ndless-elf32="true"]', `./ndless-elf32.js?v=${V}`, "ndlessElf32"))
+    .then(() => loadScript('script[data-ndless-zehn-builder="true"]', `./ndless-zehn-builder.js?v=${V}`, "ndlessZehnBuilder"))
     .then(() => loadScript('script[data-ndless-bflt="true"]', `./ndless-bflt.js?v=${V}`, "ndlessBflt"))
     .then(() => loadScript('script[data-ndless-prg="true"]', `./ndless-prg.js?v=${V}`, "ndlessPrg"))
     .then(() => loadScript('script[data-ndless-format-detector="true"]', `./ndless-format-detector.js?v=${V}`, "ndlessFormatDetector"))
@@ -77,7 +80,9 @@
     .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
     .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=${V}`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
-    .then(() => loadScript('script[data-ndless-project-file-tree="true"]', `./ndless-project-file-tree.js?v=${V}`, "ndlessProjectFileTree"));
+    .then(() => loadScript('script[data-ndless-project-file-tree="true"]', `./ndless-project-file-tree.js?v=${V}`, "ndlessProjectFileTree"))
+    .then(() => loadScript('script[data-ndless-build-manager="true"]', `./ndless-build-manager.js?v=${V}`, "ndlessBuildManager"))
+    .then(() => loadScript('script[data-ndless-build-ui="true"]', `./ndless-build-ui.js?v=${V}`, "ndlessBuildUi"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
