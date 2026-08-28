@@ -1,0 +1,155 @@
+name: Build Ndless ARM web toolchain
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-ndless-arm-web-toolchain.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ndless-arm-web-toolchain
+  cancel-in-progress: false
+
+env:
+  LLVM_VERSION: '18.1.8'
+  TOOLCHAIN_TAG: 'ndless-arm-toolchain-v1'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install native LLVM helpers and Ninja
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ninja-build cmake xz-utils llvm-18-dev clang-18 lld-18
+          test -x /usr/lib/llvm-18/bin/llvm-tblgen
+
+      - name: Set up Emscripten
+        uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 3.1.64
+          actions-cache-folder: emsdk-cache
+
+      - name: Download LLVM source
+        run: |
+          mkdir -p build/llvm-src
+          curl -L --fail --retry 3 \
+            "https://github.com/llvm/llvm-project/releases/download/llvmorg-${LLVM_VERSION}/llvm-project-${LLVM_VERSION}.src.tar.xz" \
+            -o build/llvm-project.tar.xz
+          tar -xf build/llvm-project.tar.xz -C build/llvm-src --strip-components=1
+
+      - name: Configure LLVM for WebAssembly with ARM backend
+        run: |
+          mkdir -p build/llvm-wasm
+          cd build/llvm-wasm
+          emcmake cmake ../llvm-src/llvm -G Ninja \
+            -DCMAKE_BUILD_TYPE=MinSizeRel \
+            -DLLVM_ENABLE_PROJECTS='clang;lld' \
+            -DLLVM_TARGETS_TO_BUILD=ARM \
+            -DLLVM_NATIVE_TOOL_DIR=/usr/lib/llvm-18/bin \
+            -DLLVM_ENABLE_THREADS=OFF \
+            -DLLVM_ENABLE_ZLIB=OFF \
+            -DLLVM_ENABLE_ZSTD=OFF \
+            -DLLVM_ENABLE_LIBXML2=OFF \
+            -DLLVM_ENABLE_TERMINFO=OFF \
+            -DLLVM_ENABLE_LIBEDIT=OFF \
+            -DLLVM_INCLUDE_TESTS=OFF \
+            -DLLVM_INCLUDE_EXAMPLES=OFF \
+            -DLLVM_INCLUDE_BENCHMARKS=OFF \
+            -DLLVM_INCLUDE_DOCS=OFF \
+            -DLLVM_ENABLE_BINDINGS=OFF \
+            -DCLANG_ENABLE_STATIC_ANALYZER=OFF \
+            -DCLANG_ENABLE_ARCMT=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS='-sMODULARIZE=1 -sEXPORT_NAME=LLVMTool -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sEXPORTED_RUNTIME_METHODS=FS,callMain -sINVOKE_RUN=0 -sEXIT_RUNTIME=1 -sENVIRONMENT=web,worker,node'
+
+      - name: Build clang and lld WebAssembly
+        run: |
+          ninja -C build/llvm-wasm clang lld
+          test -f build/llvm-wasm/bin/clang.js
+          test -f build/llvm-wasm/bin/clang.wasm
+          test -f build/llvm-wasm/bin/lld.js
+          test -f build/llvm-wasm/bin/lld.wasm
+
+      - name: Assemble split release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=build/ndless-arm-toolchain
+          mkdir -p "$out"
+          cp build/llvm-wasm/bin/clang.js "$out/clang.js"
+          cp build/llvm-wasm/bin/lld.js "$out/lld.js"
+
+          # Resizable WASM memories can expose resizable ArrayBuffers; copy before TextDecoder.
+          sed -i 's/UTF8Decoder.decode(heapOrArray.subarray(idx,endPtr))/UTF8Decoder.decode(heapOrArray.slice(idx,endPtr))/g' "$out/clang.js" "$out/lld.js" || true
+
+          split_tool() {
+            tool="$1"
+            src="build/llvm-wasm/bin/$tool.wasm"
+            prefix="$out/$tool.wasm.part"
+            rm -f "$prefix"*
+            split -b 20m -d -a 3 "$src" "$prefix"
+          }
+          split_tool clang
+          split_tool lld
+
+          python3 - <<'PY'
+          import hashlib, json, pathlib, os
+          root = pathlib.Path('build/ndless-arm-toolchain')
+          tools = {}
+          for tool in ('clang','lld'):
+              js = root / f'{tool}.js'
+              parts = sorted(root.glob(f'{tool}.wasm.part*'))
+              tools[tool] = {
+                  'js': js.name,
+                  'jsSha256': hashlib.sha256(js.read_bytes()).hexdigest(),
+                  'wasmParts': [p.name for p in parts],
+                  'wasmSha256': hashlib.sha256(b''.join(p.read_bytes() for p in parts)).hexdigest(),
+                  'wasmBytes': sum(p.stat().st_size for p in parts),
+              }
+          manifest = {
+              'version': 1,
+              'llvmVersion': os.environ['LLVM_VERSION'],
+              'targetBackends': ['ARM'],
+              'targetTriple': 'arm-none-eabi',
+              'cpu': 'arm926ej-s',
+              'tools': tools,
+          }
+          (root/'toolchain.json').write_text(json.dumps(manifest, indent=2)+'\n')
+          PY
+          ls -lh "$out"
+
+      - name: Smoke test generated clang.wasm under Node
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const path = 'build/ndless-arm-toolchain';
+          const m = JSON.parse(fs.readFileSync(path + '/toolchain.json','utf8'));
+          if (!m.targetBackends.includes('ARM')) throw new Error('ARM backend missing from manifest');
+          if (!m.tools.clang.wasmParts.length || !m.tools.lld.wasmParts.length) throw new Error('tool parts missing');
+          console.log('manifest ok', m.llvmVersion, m.targetTriple, m.cpu);
+          NODE
+
+      - name: Publish versioned toolchain release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$TOOLCHAIN_TAG" >/dev/null 2>&1; then
+            gh release delete "$TOOLCHAIN_TAG" --yes --cleanup-tag
+          fi
+          gh release create "$TOOLCHAIN_TAG" \
+            --title 'Ndless ARM Web Toolchain v1' \
+            --notes 'LLVM/Clang + LLD compiled to WebAssembly with LLVM_TARGETS_TO_BUILD=ARM for TNS Tool WASM. Generated from upstream LLVM under its license.'
+          gh release upload "$TOOLCHAIN_TAG" build/ndless-arm-toolchain/* --clobber
+
+      - name: Upload CI artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ndless-arm-web-toolchain
+          path: build/ndless-arm-toolchain
+          retention-days: 14
