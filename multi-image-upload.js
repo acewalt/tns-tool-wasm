@@ -36,4 +36,11 @@
     luaProgressScript.dataset.luaDropProgress = "true";
     document.head.appendChild(luaProgressScript);
   }
+
+  if (!document.querySelector('script[data-import-progress-i18n="true"]')) {
+    const importProgressI18nScript = document.createElement("script");
+    importProgressI18nScript.src = "./import-progress-i18n.js?v=20260827-import-i18n-v1";
+    importProgressI18nScript.dataset.importProgressI18n = "true";
+    document.head.appendChild(importProgressI18nScript);
+  }
 })();
