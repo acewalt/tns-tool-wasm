@@ -272,3 +272,34 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   observer.observe(document.body, { childList: true, subtree: true });
   injectAboutExtras();
 })();
+
+// Improve text-link contrast inside the About modal in dark mode. This also
+// overrides the browser's low-contrast default visited-link purple without
+// changing the GitHub / LinkedIn pill buttons.
+(() => {
+  if (document.querySelector('style[data-about-dark-link-contrast="true"]')) return;
+
+  const style = document.createElement("style");
+  style.dataset.aboutDarkLinkContrast = "true";
+  style.textContent = `
+    [data-theme="dark"] .about-modal p a,
+    [data-theme="dark"] .about-modal p a:visited,
+    [data-theme="dark"] .about-modal li a,
+    [data-theme="dark"] .about-modal li a:visited {
+      color: #7dd3fc;
+      text-decoration-color: rgba(125, 211, 252, 0.7);
+      text-underline-offset: 2px;
+    }
+
+    [data-theme="dark"] .about-modal p a:hover,
+    [data-theme="dark"] .about-modal p a:focus-visible,
+    [data-theme="dark"] .about-modal li a:hover,
+    [data-theme="dark"] .about-modal li a:focus-visible {
+      color: #bae6fd;
+      text-decoration: underline;
+      text-decoration-thickness: 2px;
+      text-decoration-color: currentColor;
+    }
+  `;
+  document.head.appendChild(style);
+})();
