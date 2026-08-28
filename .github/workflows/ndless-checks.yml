@@ -79,6 +79,7 @@ jobs:
           node --check ndless-zehn.js
           node --check ndless-project-core.js
           node --check ndless-project-workspace.js
+          node --check ndless-project-sdk-enhancements.js
       - name: Structured content tests
         run: node tests/custom-content-formats.test.js
       - name: Ndless synthetic tests
