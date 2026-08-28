@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20260828-ndless-project-v3";
+  const V="20260828-ndless-project-v4";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
@@ -41,6 +41,7 @@
   ensureStyle('link[data-ndless-project-workspace-style="true"]', `./ndless-project-workspace.css?v=${V}`, "ndlessProjectWorkspaceStyle");
   ensureStyle('link[data-ndless-project-layout-fix-style="true"]', `./ndless-project-layout-fix.css?v=${V}`, "ndlessProjectLayoutFixStyle");
   ensureStyle('link[data-ndless-project-sdk-enhancements-style="true"]', `./ndless-project-sdk-enhancements.css?v=${V}`, "ndlessProjectSdkEnhancementsStyle");
+  ensureStyle('link[data-ndless-project-performance-fix-style="true"]', `./ndless-project-performance-fix.css?v=${V}`, "ndlessProjectPerformanceFixStyle");
   ensureStyle('link[data-content-pack-editor-style="true"]', `./content-pack-editor.css?v=${V}`, "contentPackEditorStyle");
   ensureStyle('link[data-structured-content-editor-style="true"]', `./structured-content-editor.css?v=${V}`, "structuredContentEditorStyle");
   ensureStyle('link[data-nvp-editor-style="true"]', `./nvp-editor.css?v=${V}`, "nvpEditorStyle");
@@ -71,8 +72,9 @@
     .then(() => loadScript('script[data-ndless-friendly-editor="true"]', `./ndless-friendly-editor.js?v=${V}`, "ndlessFriendlyEditor"))
     .then(() => loadScript('script[data-ndless-inspector-editor-link="true"]', `./ndless-inspector-editor-link.js?v=${V}`, "ndlessInspectorEditorLink"))
     .then(() => loadScript('script[data-ndless-project-core="true"]', `./ndless-project-core.js?v=${V}`, "ndlessProjectCore"))
+    .then(() => loadScript('script[data-ndless-project-core-enhancements="true"]', `./ndless-project-core-enhancements.js?v=${V}`, "ndlessProjectCoreEnhancements"))
     .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=${V}`, "ndlessProjectWorkspace"))
-    .then(() => loadScript('script[data-ndless-project-sdk-enhancements="true"]', `./ndless-project-sdk-enhancements.js?v=${V}`, "ndlessProjectSdkEnhancements"));
+    .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
