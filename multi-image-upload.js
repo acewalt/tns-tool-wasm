@@ -30,13 +30,15 @@
     });
   }
 
-  const V="20260828-structured-content-v1";
+  const V="20260828-structured-content-v2";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
   ensureStyle('link[data-ndless-tns-inspector-style="true"]', `./ndless-tns-inspector.css?v=${V}`, "ndlessTnsInspectorStyle");
   ensureStyle('link[data-ndless-editor-style="true"]', `./ndless-editor.css?v=${V}`, "ndlessEditorStyle");
   ensureStyle('link[data-content-pack-editor-style="true"]', `./content-pack-editor.css?v=${V}`, "contentPackEditorStyle");
+  ensureStyle('link[data-structured-content-editor-style="true"]', `./structured-content-editor.css?v=${V}`, "structuredContentEditorStyle");
+  ensureStyle('link[data-nvp-editor-style="true"]', `./nvp-editor.css?v=${V}`, "nvpEditorStyle");
   ensureStyle('link[data-image-editor-style="true"]', "./image-editor.css?v=20260827-image-editor-v1", "imageEditorStyle");
 
   loadScript('script[data-runtime-loading-overlay="true"]', "./runtime-loading-overlay.js?v=20260827-runtime-loader-v3", "runtimeLoadingOverlay").catch(console.error);
@@ -44,7 +46,11 @@
 
   const tnsChain = loadScript('script[data-tns-container-registry="true"]', `./tns-container-registry.js?v=${V}`, "tnsContainerRegistry")
     .then(() => loadScript('script[data-nzp-content-format="true"]', `./nzp-content-format.js?v=${V}`, "nzpContentFormat"))
+    .then(() => loadScript('script[data-nvp-video-format="true"]', `./nvp-video-format.js?v=${V}`, "nvpVideoFormat"))
     .then(() => loadScript('script[data-content-pack-editor="true"]', `./content-pack-editor.js?v=${V}`, "contentPackEditor"))
+    .then(() => loadScript('script[data-structured-content-editor="true"]', `./structured-content-editor.js?v=${V}`, "structuredContentEditor"))
+    .then(() => loadScript('script[data-nvp-editor="true"]', `./nvp-editor.js?v=${V}`, "nvpEditor"))
+    .then(() => loadScript('script[data-container-editor-bindings="true"]', `./container-editor-bindings.js?v=${V}`, "containerEditorBindings"))
     .then(() => loadScript('script[data-ndless-zehn="true"]', `./ndless-zehn.js?v=${V}`, "ndlessZehn"))
     .then(() => loadScript('script[data-ndless-bflt="true"]', `./ndless-bflt.js?v=${V}`, "ndlessBflt"))
     .then(() => loadScript('script[data-ndless-prg="true"]', `./ndless-prg.js?v=${V}`, "ndlessPrg"))
