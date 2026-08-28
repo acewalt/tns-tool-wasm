@@ -82,6 +82,7 @@ jobs:
           node --check ndless-project-workspace.js
           node --check ndless-project-sdk-enhancements.js
           node --check ndless-project-sdk-enhancements-v2.js
+          node --check ndless-project-file-tree.js
       - name: Structured content tests
         run: node tests/custom-content-formats.test.js
       - name: Ndless synthetic tests
@@ -91,6 +92,7 @@ jobs:
           node tests/ndless-friendly.test.js
           node tests/ndless-export-roundtrip.test.js
           node tests/ndless-project.test.js
+          node tests/ndless-project-tree.test.js
       - name: General smoke tests
         run: node tests/smoke.test.js
       - name: CLI e2e tests
