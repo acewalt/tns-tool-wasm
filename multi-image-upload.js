@@ -31,6 +31,21 @@
     document.head.appendChild(headerControlsStyle);
   }
 
+  if (!document.querySelector('link[data-ndless-tns-inspector-style="true"]')) {
+    const ndlessStyle = document.createElement("link");
+    ndlessStyle.rel = "stylesheet";
+    ndlessStyle.href = "./ndless-tns-inspector.css?v=20260828-ndless-inspector-v1";
+    ndlessStyle.dataset.ndlessTnsInspectorStyle = "true";
+    document.head.appendChild(ndlessStyle);
+  }
+
+  if (!document.querySelector('script[data-ndless-tns-inspector="true"]')) {
+    const ndlessScript = document.createElement("script");
+    ndlessScript.src = "./ndless-tns-inspector.js?v=20260828-ndless-inspector-v1";
+    ndlessScript.dataset.ndlessTnsInspector = "true";
+    document.head.appendChild(ndlessScript);
+  }
+
   if (!document.querySelector('script[data-media-import-controller="true"]')) {
     const mediaScript = document.createElement("script");
     mediaScript.src = "./media-import-controller.js?v=20260827-media-import-v3";
