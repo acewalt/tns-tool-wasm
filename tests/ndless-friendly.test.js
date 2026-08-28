@@ -14,7 +14,7 @@ assert.equal(decoded.rd,4);
 assert.equal(decoded.operand2.immediate,100);
 assert.deepEqual(Array.from(core.wordBytesLE(patched)),[patched&255,(patched>>>8)&255,(patched>>>16)&255,(patched>>>24)&255]);
 
-assert.equal(core.encodeArmImmediate(0xFF),core.encodeArmImmediate(0xFF));
+assert.equal(core.encodeArmImmediate(0xFF)?.bits,0xFF);
 assert.ok(core.encodeArmImmediate(0x80000000),"rotated ARM immediate should be encodable");
 assert.equal(core.encodeArmImmediate(0x12345678),null,"arbitrary 32-bit constant must be rejected instead of silently truncating");
 
