@@ -309,6 +309,9 @@ page2.BMP
 
 Image ScriptApps use API level `2.3` so `_R.IMG` resources are available.
 
+![img](docs/images/contview.jpeg)
+![img](docs/images/editimg.jpeg)
+
 ### Image Viewer and Calculator View
 
 The image viewer can decode and display the tested TI-Nspire resource format directly in the browser.
