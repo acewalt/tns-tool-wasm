@@ -15,7 +15,7 @@
     <script defer src="./xml-program-editor-fix.js?v=20260826-program-editor-sync-v1"></script>
     <script defer src="./monaco-search-tools.js?v=20260827-editor-ui-polish-v2"></script>
     <script defer src="./monaco-search-adapter-fix.js?v=20260826-monaco-search-adapter-v1"></script>
-    <script defer src="./multi-image-upload.js?v=20260828-ndless-build-tns-v6"></script>
+    <script defer src="./multi-image-upload.js?v=20260828-ndless-workspace-v4"></script>
   </head>
   <body>
     <div id="mouse-glow" class="mouse-glow" aria-hidden="true"></div>
@@ -222,32 +222,44 @@
             <h2>Syntax Doctor PY</h2>
             <button id="py-doctor-save-btn" disabled data-i18n="saveBlock">Guardar bloque</button>
             <button id="py-doctor-download-btn" disabled data-i18n="downloadPy">Descargar .py</button>
+            <button id="py-doctor-syntax-btn" disabled data-i18n="runSyntax">Ejecutar sintaxis</button>
+            <button id="py-doctor-preview-btn" disabled data-i18n="previewPy">Preview PY</button>
+            <button id="py-doctor-autofix-btn" disabled>Auto Fix</button>
+            <button id="py-doctor-changes-btn" disabled data-i18n="showChanges">Mostrar cambios</button>
+            <span id="py-line-label">Linea: 1 Col: 1 Total: 1</span>
           </div>
           <div class="doctor-grid">
             <div class="code-shell">
-              <div id="py-doctor-line-numbers" class="line-numbers">1</div>
-              <div id="py-doctor-editor-wrap" class="editor-wrap">
-                <pre id="py-doctor-highlight" aria-hidden="true"></pre>
-                <textarea id="py-doctor-code" spellcheck="false" disabled></textarea>
+              <div id="py-line-numbers" class="line-numbers">1</div>
+              <div id="py-code-wrap" class="editor-wrap">
+                <pre id="py-highlight" aria-hidden="true"></pre>
+                <textarea id="py-code" spellcheck="false" disabled></textarea>
               </div>
             </div>
             <aside class="doctor-side">
-              <h3 data-i18n="analysisSummary">Resumen de analisis</h3>
+              <h3>Resumen de analisis</h3>
               <div class="summary-row">
-                <div class="summary error"><img src="./icon/error.png" alt="" /><strong id="py-doctor-errors">0</strong><span data-i18n="errors">Errores</span></div>
-                <div class="summary warning"><img src="./icon/advertencia.png" alt="" /><strong id="py-doctor-warnings">0</strong><span data-i18n="warnings">Advertencias</span></div>
-                <div class="summary info"><img src="./icon/perfecto.png" alt="" /><strong id="py-doctor-info">0</strong><span data-i18n="info">Informacion</span></div>
+                <div class="summary error"><img src="./icon/error.png" alt="" /><strong id="py-errors">0</strong><span data-i18n="errors">Errores</span></div>
+                <div class="summary warning"><img src="./icon/advertencia.png" alt="" /><strong id="py-warnings">0</strong><span data-i18n="warnings">Advertencias</span></div>
+                <div class="summary info"><img src="./icon/perfecto.png" alt="" /><strong id="py-info">0</strong><span data-i18n="info">Informacion</span></div>
               </div>
-              <h3 data-i18n="problemList">Lista de problemas</h3>
+              <h3>Lista de problemas</h3>
               <table class="problem-table">
-                <thead><tr><th data-i18n="type">Tipo</th><th data-i18n="line">Linea</th><th data-i18n="description">Descripcion</th></tr></thead>
-                <tbody id="py-doctor-problems"></tbody>
+                <thead>
+                  <tr><th data-i18n="type">Tipo</th><th data-i18n="line">Linea</th><th data-i18n="description">Descripcion</th></tr>
+                </thead>
+                <tbody id="py-problems"></tbody>
               </table>
               <h3>Log PY</h3>
-              <pre id="py-doctor-log" class="mini-log"></pre>
+              <pre id="py-log" class="mini-log"></pre>
             </aside>
           </div>
         </section>
+      </section>
+
+      <section class="panel log-panel">
+        <h2>Log</h2>
+        <pre id="log"></pre>
       </section>
     </main>
   </body>
