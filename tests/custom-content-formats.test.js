@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 globalThis.window=globalThis;
 await import("../tns-container-registry.js");
 await import("../nzp-content-format.js");
+await import("../nvp-video-format.js");
 
 function u16(v,o,n){new DataView(v.buffer).setUint16(o,n,true)}
 function i16(v,o,n){new DataView(v.buffer).setInt16(o,n,true)}
@@ -16,6 +17,11 @@ function makeNzp(){
   o+=24;b[o]=5;
   const sp=22+28+72;b.set(strings,sp);o=sp+strings.length;u16(b,o,0xf800);u16(b,o+2,0x07e0);b.set([0,1,0,1],o+4);return b;
 }
+function makeNvp(){
+  const b=new Uint8Array(48+24+64);b.set([0x4e,0x56,0x50,0x31],0);u16(b,4,11);u16(b,6,1);u16(b,8,320);u16(b,10,240);u16(b,12,0);u16(b,14,30);u16(b,16,320);u16(b,18,180);u16(b,20,24);u16(b,22,1);u16(b,24,128*1024);u16(b,26,24);u32(b,28,2);u32(b,32,1);u32(b,36,0);u32(b,40,48);u32(b,44,0);
+  const o=48;u32(b,o,72);u32(b,o+4,64);u32(b,o+8,64);u32(b,o+12,0);u32(b,o+16,2);u32(b,o+20,0);return b;
+}
+
 const bytes=makeNzp();
 const result=window.TnsContainerRegistry.detect(bytes,{name:"story.tns"});
 assert.equal(result.family,"custom-container");
@@ -37,8 +43,21 @@ assert.equal(session.validate().valid,true);
 session.revertAll();
 assert.deepEqual(session.workingBytes,bytes);
 
+const nvpBytes=makeNvp();
+const nvp=window.TnsContainerRegistry.detect(nvpBytes,{name:"opening.nvp.tns"});
+assert.equal(nvp.family,"custom-container");
+assert.equal(nvp.format,"nvp");
+assert.equal(nvp.kind,"video-stream");
+assert.equal(nvp.header.version,11);
+assert.equal(nvp.header.videoWidth,320);
+assert.equal(nvp.header.videoHeight,180);
+assert.equal(nvp.header.frameCount,2);
+assert.equal(nvp.chunks.length,1);
+assert.equal(nvp.fps,24);
+assert.equal(window.TnsNvpFormat.createSession(nvp).validate().valid,true);
+
 window.TnsContainerRegistry.register({id:"synthetic-pack",label:"Synthetic",priority:5,detect:b=>b[0]===0x41&&b[1]===0x42,parse:b=>({valid:true,bytes:b,marker:"ok"})});
 const generic=window.TnsContainerRegistry.detect(new Uint8Array([0x41,0x42,1]));
 assert.equal(generic.format,"synthetic-pack");
 assert.equal(generic.marker,"ok");
-console.log("PASS generic TNS container registry and NZP content pack parser/editor session");
+console.log("PASS generic TNS container registry, NZP content pack and NVP video parsers");
