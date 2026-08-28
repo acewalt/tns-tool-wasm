@@ -10,6 +10,11 @@ It runs directly in the browser with Pyodide/WebAssembly and JavaScript, so it c
 
 https://acewalt.github.io/tns-tool-wasm/
 
+## Feedback
+
+Bug reports, questions, suggestions, and test files are welcome.
+https://github.com/acewalt/tns-tool-wasm/discussions/2
+
 ## Video Demo
 
 [Watch the demo on YouTube](https://youtu.be/ahgmAFpDRj8)
@@ -198,9 +203,6 @@ Do not open `index.html` with `file://`, because browsers block the `fetch()` ca
 - The browser cannot write directly to local Windows paths, so files are handled through upload and download.
 - A fully offline version would need bundled Pyodide, JSZip, and runtime assets.
 
-## Feedback
-
-Bug reports, questions, suggestions, and test files are welcome.
 
 
 ## Current Page, Resource, And Preview Updates
