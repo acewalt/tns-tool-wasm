@@ -9,7 +9,6 @@
   const FLAG = Object.freeze({ NDLESS_VERSION_MIN:0, NDLESS_VERSION_MAX:1, NDLESS_REVISION_MIN:2, NDLESS_REVISION_MAX:3, RUNS_ON_COLOR:4, RUNS_ON_CLICKPAD:5, RUNS_ON_TOUCHPAD:6, RUNS_ON_32MB:7, EXECUTABLE_NAME:8, EXECUTABLE_AUTHOR:9, EXECUTABLE_VERSION:10, EXECUTABLE_NOTICE:11, RUNS_ON_HWW:12, USES_LCD_BLIT:13 });
 
   const elfApi = () => globalThis.NdlessElf32;
-  const asBytes = input => input instanceof Uint8Array ? input : new Uint8Array(input || 0);
   const align4 = n => (n + 3) & ~3;
 
   function packed(type, data) {
@@ -89,19 +88,19 @@
     let unalignedMarker = false;
     for (const section of elf.sections) {
       if (section.type !== C.SHT_REL) continue;
-      const relocated = section.relocatedSection;
+      const relocated = elf.sections[section.info] || section.relocations?.[0]?.relocatedSection || null;
       if (!relocated || (relocated.flags & C.SHF_ALLOC) === 0) continue;
       const undefined = undefinedByTable.get(section.link) || new Set();
       for (const entry of section.relocations || []) {
         if (undefined.has(entry.symbolIndex)) {
-          if (entry.type === 26 && got) { // R_ARM_GOT_BREL: undo relocation of undefined GOT entry.
+          if (entry.type === 26 && got) {
             const gotEntryOffset = readU32LE(exec, entry.offset);
             const target = (gotAddress + gotEntryOffset) >>> 0;
             if (target <= MAX24) undoRelocs.add(target);
           }
           continue;
         }
-        if (entry.type !== 2 && entry.type !== 38) continue; // R_ARM_ABS32 / R_ARM_TARGET1
+        if (entry.type !== 2 && entry.type !== 38) continue;
         if (entry.offset > MAX24) throw new Error(`Relocation 0x${entry.offset.toString(16)} exceeds Zehn range.`);
         if ((entry.offset & 3) && !unalignedMarker) {
           relocEntries.push({ type: REL.UNALIGNED_RELOC, data: 0 });
