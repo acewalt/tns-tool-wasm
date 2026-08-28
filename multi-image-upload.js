@@ -50,4 +50,48 @@
     sidebarTitleI18nScript.dataset.sidebarTitleI18n = "true";
     document.head.appendChild(sidebarTitleI18nScript);
   }
+
+  if (!document.querySelector('link[data-image-editor-style="true"]')) {
+    const imageEditorStyle = document.createElement("link");
+    imageEditorStyle.rel = "stylesheet";
+    imageEditorStyle.href = "./image-editor.css?v=20260827-image-editor-v1";
+    imageEditorStyle.dataset.imageEditorStyle = "true";
+    document.head.appendChild(imageEditorStyle);
+  }
+
+  function loadImageEditorScript(selector, src, datasetKey) {
+    const existing = document.querySelector(selector);
+    if (existing) {
+      if (existing.dataset.loaded === "1") return Promise.resolve();
+      return new Promise((resolve) => {
+        const finish = () => resolve();
+        existing.addEventListener("load", finish, { once: true });
+        existing.addEventListener("error", finish, { once: true });
+        setTimeout(finish, 1500);
+      });
+    }
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = false;
+      script.dataset[datasetKey] = "true";
+      script.addEventListener("load", () => { script.dataset.loaded = "1"; resolve(); }, { once: true });
+      script.addEventListener("error", resolve, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
+  loadImageEditorScript(
+    'script[data-image-editor-i18n="true"]',
+    "./image-editor-i18n.js?v=20260827-image-editor-v1",
+    "imageEditorI18n"
+  ).then(() => loadImageEditorScript(
+    'script[data-image-editor-core="true"]',
+    "./image-editor-core.js?v=20260827-image-editor-v1",
+    "imageEditorCore"
+  )).then(() => loadImageEditorScript(
+    'script[data-image-editor-hooks="true"]',
+    "./image-editor-hooks.js?v=20260827-image-editor-v1",
+    "imageEditorHooks"
+  )).catch((error) => console.error("Image editor loader:", error));
 })();
