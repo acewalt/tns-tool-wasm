@@ -43,4 +43,11 @@
     importProgressI18nScript.dataset.importProgressI18n = "true";
     document.head.appendChild(importProgressI18nScript);
   }
+
+  if (!document.querySelector('script[data-sidebar-title-i18n="true"]')) {
+    const sidebarTitleI18nScript = document.createElement("script");
+    sidebarTitleI18nScript.src = "./sidebar-title-i18n.js?v=20260827-sidebar-title-i18n-v1";
+    sidebarTitleI18nScript.dataset.sidebarTitleI18n = "true";
+    document.head.appendChild(sidebarTitleI18nScript);
+  }
 })();
