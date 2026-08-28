@@ -16,6 +16,13 @@
     document.head.appendChild(runtimeLoadingScript);
   }
 
+  if (!document.querySelector('script[data-monaco-ti-reference-theme="true"]')) {
+    const tiReferenceThemeScript = document.createElement("script");
+    tiReferenceThemeScript.src = "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v1";
+    tiReferenceThemeScript.dataset.monacoTiReferenceTheme = "true";
+    document.head.appendChild(tiReferenceThemeScript);
+  }
+
   if (!document.querySelector('link[data-header-controls-compact="true"]')) {
     const headerControlsStyle = document.createElement("link");
     headerControlsStyle.rel = "stylesheet";
