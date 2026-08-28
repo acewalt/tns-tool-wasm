@@ -36,9 +36,9 @@ html.tns-runtime-loading-lock body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 28px 34px;
-  min-width: 430px;
+  gap: 16px;
+  padding: 36px 44px;
+  min-width: 560px;
   transform: translateY(-4px) scale(1);
   opacity: 1;
   transition:
@@ -53,18 +53,18 @@ html.tns-runtime-loading-lock body {
 
 .tns-runtime-loader-mark {
   position: relative;
-  width: 160px;
-  height: 160px;
+  width: 220px;
+  height: 220px;
   display: grid;
   place-items: center;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .tns-runtime-loader-mark svg {
   position: absolute;
   inset: 0;
-  width: 160px;
-  height: 160px;
+  width: 220px;
+  height: 220px;
   overflow: visible;
 }
 
@@ -78,7 +78,7 @@ html.tns-runtime-loading-lock body {
 
 .tns-runtime-loader-orbit {
   stroke-width: 9;
-  filter: drop-shadow(0 0 8px rgba(148, 255, 65, 0.22));
+  filter: drop-shadow(0 0 10px rgba(148, 255, 65, 0.26));
   animation:
     tnsRuntimeSpinDashArray 2s ease-in-out infinite,
     tnsRuntimeSpin 8s ease-in-out infinite,
@@ -88,16 +88,16 @@ html.tns-runtime-loading-lock body {
 .tns-runtime-loader-dash {
   stroke-width: 5;
   opacity: 0.94;
-  filter: drop-shadow(0 0 6px rgba(179, 255, 79, 0.16));
+  filter: drop-shadow(0 0 8px rgba(179, 255, 79, 0.2));
   animation:
     tnsRuntimeDashArray 2s ease-in-out infinite,
     tnsRuntimeDashOffset 2s linear infinite;
 }
 
 .tns-runtime-loader-core {
-  width: 96px;
-  height: 96px;
-  border-radius: 28px;
+  width: 132px;
+  height: 132px;
+  border-radius: 38px;
   display: grid;
   place-items: center;
   background:
@@ -106,71 +106,71 @@ html.tns-runtime-loading-lock body {
   border: 1px solid rgba(169, 255, 65, 0.36);
   box-shadow:
     0 0 0 1px rgba(174, 255, 78, 0.08),
-    0 0 42px rgba(132, 240, 54, 0.2),
+    0 0 56px rgba(132, 240, 54, 0.24),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .tns-runtime-loader-core::before {
   content: "TNS";
-  font: 900 22px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font: 900 30px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   letter-spacing: 0.09em;
   color: #c3ff59;
-  text-shadow: 0 0 18px rgba(166, 255, 67, 0.5);
+  text-shadow: 0 0 22px rgba(166, 255, 67, 0.55);
 }
 
 /* Animated wordmark inspired by the original Uiverse YOU loader: the letters
    themselves carry the moving stroke instead of being a static label. */
 .tns-runtime-loader-wordmark {
-  width: 390px;
-  height: 76px;
+  width: 520px;
+  height: 102px;
   overflow: visible;
-  margin-top: -4px;
+  margin-top: -5px;
 }
 
 .tns-runtime-word-fill,
 .tns-runtime-word-stroke {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  font-size: 50px;
+  font-size: 64px;
   font-weight: 900;
-  letter-spacing: -1.8px;
+  letter-spacing: -2.2px;
 }
 
 .tns-runtime-word-fill {
   fill: url(#tns-runtime-word-gradient);
-  filter: drop-shadow(0 5px 18px rgba(0, 0, 0, 0.34));
+  filter: drop-shadow(0 7px 22px rgba(0, 0, 0, 0.36));
 }
 
 .tns-runtime-word-stroke {
   fill: transparent;
   stroke: #b8ff4a;
-  stroke-width: 1.8;
+  stroke-width: 2.1;
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-dasharray: 0 1 359 0;
   stroke-dashoffset: 365;
-  opacity: 0.85;
-  filter: drop-shadow(0 0 6px rgba(162, 255, 59, 0.38));
+  opacity: 0.88;
+  filter: drop-shadow(0 0 8px rgba(162, 255, 59, 0.42));
   animation:
     tnsRuntimeWordDashArray 2s ease-in-out infinite,
     tnsRuntimeWordDashOffset 2s linear infinite;
 }
 
 .tns-runtime-loader-status-row {
-  width: 390px;
+  width: 520px;
   display: flex;
   justify-content: center;
   align-items: center;
-  margin-top: -8px;
-  min-height: 22px;
+  margin-top: -10px;
+  min-height: 28px;
 }
 
 .tns-runtime-loader-status-copy {
   position: relative;
   display: inline-block;
-  font: 700 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  letter-spacing: 0.14em;
+  font: 700 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  letter-spacing: 0.15em;
   text-transform: uppercase;
-  color: rgba(226, 238, 248, 0.66);
+  color: rgba(226, 238, 248, 0.7);
   text-align: center;
   white-space: nowrap;
 }
@@ -186,13 +186,13 @@ html.tns-runtime-loading-lock body {
 .tns-runtime-loader-dots::after {
   content: "";
   position: absolute;
-  left: 5px;
-  top: -0.68em;
-  width: 1.7em;
+  left: 6px;
+  top: -0.7em;
+  width: 1.8em;
   text-align: left;
-  font: 700 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font: 700 15px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   letter-spacing: 0.08em;
-  color: rgba(226, 238, 248, 0.66);
+  color: rgba(226, 238, 248, 0.7);
   animation: tnsRuntimeDots 1.4s steps(4, end) infinite;
 }
 
@@ -244,6 +244,27 @@ html.tns-runtime-loading-lock body {
     min-width: 0;
     width: min(92vw, 430px);
     padding-inline: 16px;
+    gap: 12px;
+  }
+
+  .tns-runtime-loader-mark {
+    width: 150px;
+    height: 150px;
+  }
+
+  .tns-runtime-loader-mark svg {
+    width: 150px;
+    height: 150px;
+  }
+
+  .tns-runtime-loader-core {
+    width: 90px;
+    height: 90px;
+    border-radius: 27px;
+  }
+
+  .tns-runtime-loader-core::before {
+    font-size: 20px;
   }
 
   .tns-runtime-loader-wordmark,
@@ -258,6 +279,11 @@ html.tns-runtime-loading-lock body {
   .tns-runtime-word-fill,
   .tns-runtime-word-stroke {
     font-size: 45px;
+  }
+
+  .tns-runtime-loader-status-copy,
+  .tns-runtime-loader-dots::after {
+    font-size: 12px;
   }
 }
 
