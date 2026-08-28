@@ -243,6 +243,9 @@
       const filename = String(name.value || "").trim().replace(/[\\/:*?"<>|]+/g, "_");
       if (!filename) return;
       if (p.files[filename] != null) { alert("File already exists."); return; }
+      const original = window.__NdlessProjectOriginalApi || window.NdlessProjectWorkspace;
+      disposeAuxiliaryEditor();
+      original?.closeProject?.(true);
       p.files[filename] = item.starter;
       p.activeFile = filename;
       p.settings ||= {}; p.settings.languageOverrides ||= {};
