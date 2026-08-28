@@ -103,9 +103,20 @@
     const v = new DataView(logical.buffer, logical.byteOffset, logical.byteLength);
     const relocs = [];
     for (let i = 0; i < h.relocCount; i += 1) {
-      const address = v.getUint32(h.relocStart + i * 4, false);
-      const region = address < h.dataStart ? ".text" : address < h.dataEnd ? ".data" : address < h.bssEnd ? ".bss" : "outside-known-regions";
-      relocs.push({ index: i, address, containerOffset: address, runtimeAddress: address, region });
+      const raw = v.getUint32(h.relocStart + i * 4, false);
+      const targetAddress = HEADER_SIZE + raw;
+      const region = targetAddress < h.dataStart ? ".text" : targetAddress < h.dataEnd ? ".data" : targetAddress < h.bssEnd ? ".bss" : "outside-known-regions";
+      relocs.push({
+        index: i,
+        raw,
+        relocationOffset: raw,
+        targetAddress,
+        address: targetAddress,
+        containerOffset: targetAddress,
+        runtimeAddress: targetAddress,
+        tableEntryOffset: h.relocStart + i * 4,
+        region,
+      });
     }
     return relocs;
   }

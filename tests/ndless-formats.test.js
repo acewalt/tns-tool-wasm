@@ -49,7 +49,7 @@ function makeBflt(flags = 0x0002) {
   putU32BE(bytes, 40, 0);
   // Real ARM words from the SDK helloworld startup.
   bytes.set([0xF0, 0x4F, 0x2D, 0xE9, 0x04, 0xD0, 0x8F, 0xE5, 0x57, 0x0C, 0x00, 0xEB, 0xF0, 0x8F, 0xBD, 0xE8], 64);
-  putU32BE(bytes, 112, 100);
+  putU32BE(bytes, 112, 40);
   return bytes;
 }
 
@@ -104,9 +104,8 @@ const prg = new Uint8Array([0x50, 0x52, 0x47, 0x00, 0xF0, 0x4F, 0x2D, 0xE9, 0, 0
 assert.equal(window.NdlessFormatDetector.detect(prg).format, "prg");
 const accidentalPrg = new Uint8Array([0x50, 0x52, 0x47, 0x00, 1, 2, 3, 4, 5, 6, 7, 8]);
 const accidentalPrgResult = window.NdlessFormatDetector.detect(accidentalPrg);
-assert.equal(accidentalPrgResult.format, "prg");
-assert.equal(accidentalPrgResult.valid, false);
-assert.equal(accidentalPrgResult.malformed, true);
+assert.equal(accidentalPrgResult.format, "unknown");
+assert.equal(accidentalPrgResult.family, "unknown");
 
 // bFLT v4 big-endian header, memory ranges and relocation entry.
 const bfltBytes = makeBflt();
@@ -123,7 +122,11 @@ assert.equal(bflt.header.relocCount, 1);
 assert.equal(bflt.header.flags, 0x2);
 const enrichedBflt = await window.NdlessBflt.enrich(bfltBytes, bflt);
 assert.equal(enrichedBflt.relocs.length, 1);
-assert.equal(enrichedBflt.relocs[0].address, 100);
+assert.equal(enrichedBflt.relocs[0].raw, 40);
+assert.equal(enrichedBflt.relocs[0].relocationOffset, 40);
+assert.equal(enrichedBflt.relocs[0].targetAddress, 104);
+assert.equal(enrichedBflt.relocs[0].address, 104);
+assert.equal(enrichedBflt.relocs[0].tableEntryOffset, 112);
 assert.equal(enrichedBflt.relocs[0].region, ".data");
 
 // Zehn false-positive regression: the four signature bytes alone are not malformed.
@@ -171,7 +174,10 @@ const analysis = window.NdlessAnalysis.analyze({
   runtimeToImage: address => address >= 0 && address < bfltBytes.length ? address : null,
 });
 assert.equal(analysis.functions[0].name, "entry");
+assert.equal(analysis.decodedInstructionCount, 4);
+assert.equal(analysis.instructionsForFunction(64).length, 4);
 assert.ok(analysis.cfg.get(64)?.blocks.length >= 1);
+assert.ok(analysis.cfgForFunction(64)?.blocks.length >= 1);
 assert.match(analysis.pseudocode.get(64), /C|entry|return|sub_/i);
 
 // Zehn zlib working image and physical-size-changing rebuild round trip.

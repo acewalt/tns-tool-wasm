@@ -9,9 +9,7 @@
   function parse(bytesInput) {
     const bytes = asBytes(bytesInput);
     if (bytes.length < 8 || !match(bytes, SIGNATURE)) return null;
-    if (!match(bytes, LEGACY_STARTUP, 4)) {
-      return { valid: false, malformed: true, family: "ndless", format: "prg", typeLabel: "Ndless Legacy", reason: "legacy-startup-not-recognized" };
-    }
+    if (!match(bytes, LEGACY_STARTUP, 4)) return null;
     return {
       valid: true, family: "ndless", format: "prg", formatLabel: "PRG", typeLabel: "Ndless Legacy", architecture: "ARM",
       signature: "PRG\\0", startup: "legacy crt0", startupOffset: 4, physicalSize: bytes.length,
