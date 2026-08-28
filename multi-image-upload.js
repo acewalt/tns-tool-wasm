@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20260828-ndless-project-v1";
+  const V="20260828-ndless-project-v2";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
@@ -39,6 +39,7 @@
   ensureStyle('link[data-ndless-friendly-editor-style="true"]', `./ndless-friendly-editor.css?v=${V}`, "ndlessFriendlyEditorStyle");
   ensureStyle('link[data-ndless-friendly-layout-fix-style="true"]', `./ndless-friendly-layout-fix.css?v=${V}`, "ndlessFriendlyLayoutFixStyle");
   ensureStyle('link[data-ndless-project-workspace-style="true"]', `./ndless-project-workspace.css?v=${V}`, "ndlessProjectWorkspaceStyle");
+  ensureStyle('link[data-ndless-project-layout-fix-style="true"]', `./ndless-project-layout-fix.css?v=${V}`, "ndlessProjectLayoutFixStyle");
   ensureStyle('link[data-content-pack-editor-style="true"]', `./content-pack-editor.css?v=${V}`, "contentPackEditorStyle");
   ensureStyle('link[data-structured-content-editor-style="true"]', `./structured-content-editor.css?v=${V}`, "structuredContentEditorStyle");
   ensureStyle('link[data-nvp-editor-style="true"]', `./nvp-editor.css?v=${V}`, "nvpEditorStyle");
@@ -52,7 +53,7 @@
     .then(() => loadScript('script[data-nvp-video-format="true"]', `./nvp-video-format.js?v=${V}`, "nvpVideoFormat"))
     .then(() => loadScript('script[data-content-pack-editor="true"]', `./content-pack-editor.js?v=${V}`, "contentPackEditor"))
     .then(() => loadScript('script[data-structured-content-editor="true"]', `./structured-content-editor.js?v=${V}`, "structuredContentEditor"))
-    .then(() => loadScript('script[data-nvp-editor="true"]', `./nvp-editor.js?v=${V}`, "nvpEditor"))
+    .then(() => loadScript('script[data-nvp-editor="true"]', `./nvp-editor.js?v=${V}`, "nvpVideoEditor"))
     .then(() => loadScript('script[data-container-editor-bindings="true"]', `./container-editor-bindings.js?v=${V}`, "containerEditorBindings"))
     .then(() => loadScript('script[data-ndless-zehn="true"]', `./ndless-zehn.js?v=${V}`, "ndlessZehn"))
     .then(() => loadScript('script[data-ndless-bflt="true"]', `./ndless-bflt.js?v=${V}`, "ndlessBflt"))
