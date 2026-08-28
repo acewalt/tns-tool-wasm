@@ -86,6 +86,24 @@
     };
   }
 
+  function browserCompatibility(project) {
+    if (project?.language === "asm") return { ok:true };
+    if (project?.settings?.browserFreestanding) return { ok:true };
+    const source = Object.entries(project?.files || {})
+      .filter(([name]) => /\.(?:c|cc|cpp|cxx|S|s)$/i.test(name))
+      .map(([,text]) => String(text || ""))
+      .join("\n");
+    if (!/#\s*include\s*[<"]/m.test(source) && !/\b(?:printf|puts|malloc|free|clrscr|wait_key_pressed|SDL_|nSDL_|nio_)\b/.test(source)) {
+      return { ok:true };
+    }
+    return {
+      ok:false,
+      code:"FULL_SDK_SYSROOT_REQUIRED",
+      message:"This project uses SDK/libc APIs that the current browser-freestanding provider does not mount yet.",
+      details:"Create a Modern Zehn project with the “Browser minimal (freestanding)” template, or continue using Download project ZIP + the external Ndless SDK for <os.h>, newlib, nSDL and other libraries. The browser builder will not fake those symbols.",
+    };
+  }
+
   async function build(project, options = {}) {
     const started = performance.now();
     const onProgress = options.onProgress || (()=>{});
@@ -94,6 +112,8 @@
     if (project.target !== "zehn-modern") {
       return { ok:false, stage:"preparing", diagnostics:[], code:"TARGET_NOT_IMPLEMENTED", message:"Browser Build TNS currently supports Modern Zehn first. Legacy bFLT remains available through the external r903 SDK while its browser linker is being ported." };
     }
+    const compatibility = browserCompatibility(project);
+    if (!compatibility.ok) return { ok:false, stage:"preparing", diagnostics:[], ...compatibility };
 
     try {
       await prepare({ onProgress, signal: options.signal });
@@ -161,5 +181,5 @@
   function artifact() { return lastArtifact; }
   function dispose() { resetWorker(); lastArtifact = null; }
 
-  window.NdlessBuildManager = Object.freeze({ prepare, build, download, artifact, dispose });
+  window.NdlessBuildManager = Object.freeze({ prepare, build, download, artifact, dispose, browserCompatibility });
 })();
