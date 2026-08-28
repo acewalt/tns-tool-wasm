@@ -58,6 +58,13 @@
     document.head.appendChild(inspectorPageMenuI18nScript);
   }
 
+  if (!document.querySelector('script[data-inspector-summary-filter="true"]')) {
+    const inspectorSummaryFilterScript = document.createElement("script");
+    inspectorSummaryFilterScript.src = "./inspector-summary-filter.js?v=20260827-summary-filter-v1";
+    inspectorSummaryFilterScript.dataset.inspectorSummaryFilter = "true";
+    document.head.appendChild(inspectorSummaryFilterScript);
+  }
+
   if (!document.querySelector('link[data-image-editor-style="true"]')) {
     const imageEditorStyle = document.createElement("link");
     imageEditorStyle.rel = "stylesheet";
