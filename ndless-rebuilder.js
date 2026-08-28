@@ -9,9 +9,10 @@
   function cStringCapacity(bytes,start,end){let i=start;while(i<end&&bytes[i]!==0)i++;return Math.max(0,i-start);}
   function patchCString(bytes,start,end,value,capacity=null){const enc=encoder.encode(String(value??"")),cap=capacity==null?cStringCapacity(bytes,start,end):capacity;if(enc.length>cap)throw new Error(`Text uses ${enc.length} bytes; reserved capacity is ${cap}.`);bytes.fill(0,start,Math.min(end,start+cap+1));bytes.set(enc,start);}
   function patchRange(bytes,offset,values){const v=asBytes(values);if(!Number.isInteger(offset)||offset<0||offset+v.length>bytes.length)throw new Error("Patch range is outside the working image.");bytes.set(v,offset);}
+  function equalBytes(a,b){const x=asBytes(a),y=asBytes(b);if(x.length!==y.length)return false;for(let i=0;i<x.length;i+=1)if(x[i]!==y[i])return false;return true;}
 
   async function createZehn(result){
-    const container=clone(result.bytes),working=await window.NdlessZehn.inflateExecutable(container,result),h=result.header,l=result.layout;
+    const container=clone(result.bytes),working=await window.NdlessZehn.inflateExecutable(container,result),originalWorking=clone(working),h=result.header,l=result.layout;
     const metadataCapacities=new Map();
     for(const f of result.flags||[]){if([8,9,11].includes(f.type)){const start=l.extraStart+f.data;if(start>=l.extraStart&&start<l.extraEnd)metadataCapacities.set(f.type,cStringCapacity(container,start,l.extraEnd));}}
     const adapter={format:"zehn",formatLabel:result.formatLabel,typeLabel:result.typeLabel,architecture:"ARM",result,containerBytes:container,workingBytes:working,originalSize:container.length,
@@ -23,7 +24,15 @@
       patchContainer:(off,vals)=>{const v=asBytes(vals);patchRange(container,off,v);if(!result.compressed&&off>=l.execStart&&off+v.length<=l.containerEnd)patchRange(working,off-l.execStart,v);},
       patchMetaString(type,value){const f=result.flags.find(x=>x.type===type);if(!f)throw new Error("Metadata field is not present; adding new Zehn flags is not enabled.");const start=l.extraStart+f.data,cap=metadataCapacities.get(type);patchCString(container,start,l.extraEnd,value,cap);},
       patchMetaValue(type,value){const f=result.flags.find(x=>x.type===type);if(!f)throw new Error("Zehn flag is not present.");writePackedData(container,l.flagStart+f.index*4,type,value);},
-      async validate(){const reparsed=window.NdlessZehn.findZehn(container);if(!reparsed?.valid)throw new Error("Zehn metadata/container validation failed.");return window.NdlessZehn.rebuild(container,reparsed,working);},
+      async validate(){
+        const reparsed=window.NdlessZehn.findZehn(container);
+        if(!reparsed?.valid)throw new Error("Zehn metadata/container validation failed.");
+        // Metadata-only and no-op exports do not need to touch the stored zlib
+        // executable. Keeping it byte-for-byte avoids harmless compression-size
+        // drift and makes export -> reimport easier to reason about.
+        if(equalBytes(working,originalWorking))return{bytes:clone(container),parsed:reparsed,preservedStoredExecutable:true};
+        return window.NdlessZehn.rebuild(container,reparsed,working);
+      },
       async build(){return this.validate();},
     };return adapter;
   }
@@ -52,5 +61,5 @@
 
   async function createAdapter(result){if(!result?.valid||result.family!=="ndless")throw new Error("A valid Ndless result is required.");if(result.format==="zehn")return createZehn(result);if(result.format==="bflt")return createBflt(result);if(result.format==="prg")return createPrg(result);throw new Error(`Unsupported Ndless format: ${result.format}`);}
 
-  window.NdlessRebuilder=Object.freeze({createAdapter,patchRange,patchCString});
+  window.NdlessRebuilder=Object.freeze({createAdapter,patchRange,patchCString,equalBytes});
 })();
