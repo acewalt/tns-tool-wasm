@@ -32,24 +32,25 @@
 
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
-  ensureStyle('link[data-tns-type-progress-style="true"]', "./tns-type-detection-progress.css?v=20260828-ndless-workspace-v4", "tnsTypeProgressStyle");
-  ensureStyle('link[data-ndless-tns-inspector-style="true"]', "./ndless-tns-inspector.css?v=20260828-ndless-workspace-v4", "ndlessTnsInspectorStyle");
-  ensureStyle('link[data-ndless-editor-style="true"]', "./ndless-editor.css?v=20260828-ndless-workspace-v4", "ndlessEditorStyle");
+  ensureStyle('link[data-tns-type-progress-style="true"]', "./tns-type-detection-progress.css?v=20260828-ndless-workspace-v5", "tnsTypeProgressStyle");
+  ensureStyle('link[data-ndless-tns-inspector-style="true"]', "./ndless-tns-inspector.css?v=20260828-ndless-workspace-v5", "ndlessTnsInspectorStyle");
+  ensureStyle('link[data-ndless-editor-style="true"]', "./ndless-editor.css?v=20260828-ndless-workspace-v5", "ndlessEditorStyle");
   ensureStyle('link[data-image-editor-style="true"]', "./image-editor.css?v=20260827-image-editor-v1", "imageEditorStyle");
 
   loadScript('script[data-runtime-loading-overlay="true"]', "./runtime-loading-overlay.js?v=20260827-runtime-loader-v3", "runtimeLoadingOverlay").catch(console.error);
   loadScript('script[data-monaco-ti-reference-theme="true"]', "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v3", "monacoTiReferenceTheme").catch(console.error);
 
-  const ndlessChain = loadScript('script[data-ndless-zehn="true"]', "./ndless-zehn.js?v=20260828-ndless-workspace-v4", "ndlessZehn")
-    .then(() => loadScript('script[data-ndless-bflt="true"]', "./ndless-bflt.js?v=20260828-ndless-workspace-v4", "ndlessBflt"))
-    .then(() => loadScript('script[data-ndless-prg="true"]', "./ndless-prg.js?v=20260828-ndless-workspace-v4", "ndlessPrg"))
-    .then(() => loadScript('script[data-ndless-format-detector="true"]', "./ndless-format-detector.js?v=20260828-ndless-workspace-v4", "ndlessFormatDetector"))
-    .then(() => loadScript('script[data-tns-type-progress="true"]', "./tns-type-detection-progress.js?v=20260828-ndless-workspace-v4", "tnsTypeProgress"))
-    .then(() => loadScript('script[data-ndless-tns-inspector="true"]', "./ndless-tns-inspector.js?v=20260828-ndless-workspace-v4", "ndlessTnsInspector"))
-    .then(() => loadScript('script[data-ndless-arm-decoder="true"]', "./ndless-arm-decoder.js?v=20260828-ndless-workspace-v4", "ndlessArmDecoder"))
-    .then(() => loadScript('script[data-ndless-analysis="true"]', "./ndless-analysis.js?v=20260828-ndless-workspace-v4", "ndlessAnalysis"))
-    .then(() => loadScript('script[data-ndless-rebuilder="true"]', "./ndless-rebuilder.js?v=20260828-ndless-workspace-v4", "ndlessRebuilder"))
-    .then(() => loadScript('script[data-ndless-editor="true"]', "./ndless-editor.js?v=20260828-ndless-workspace-v4", "ndlessEditor"));
+  const ndlessChain = loadScript('script[data-ndless-zehn="true"]', "./ndless-zehn.js?v=20260828-ndless-workspace-v5", "ndlessZehn")
+    .then(() => loadScript('script[data-ndless-bflt="true"]', "./ndless-bflt.js?v=20260828-ndless-workspace-v5", "ndlessBflt"))
+    .then(() => loadScript('script[data-ndless-prg="true"]', "./ndless-prg.js?v=20260828-ndless-workspace-v5", "ndlessPrg"))
+    .then(() => loadScript('script[data-ndless-format-detector="true"]', "./ndless-format-detector.js?v=20260828-ndless-workspace-v5", "ndlessFormatDetector"))
+    .then(() => loadScript('script[data-tns-type-progress="true"]', "./tns-type-detection-progress.js?v=20260828-ndless-workspace-v5", "tnsTypeProgress"))
+    .then(() => loadScript('script[data-ndless-tns-inspector="true"]', "./ndless-tns-inspector.js?v=20260828-ndless-workspace-v5", "ndlessTnsInspector"))
+    .then(() => loadScript('script[data-ndless-arm-decoder="true"]', "./ndless-arm-decoder.js?v=20260828-ndless-workspace-v5", "ndlessArmDecoder"))
+    .then(() => loadScript('script[data-ndless-analysis="true"]', "./ndless-analysis.js?v=20260828-ndless-workspace-v5", "ndlessAnalysis"))
+    .then(() => loadScript('script[data-ndless-rebuilder="true"]', "./ndless-rebuilder.js?v=20260828-ndless-workspace-v5", "ndlessRebuilder"))
+    .then(() => loadScript('script[data-ndless-editor="true"]', "./ndless-editor.js?v=20260828-ndless-workspace-v5", "ndlessEditor"))
+    .then(() => loadScript('script[data-ndless-inspector-editor-link="true"]', "./ndless-inspector-editor-link.js?v=20260828-ndless-workspace-v5", "ndlessInspectorEditorLink"));
   window.NdlessRuntimeReady = ndlessChain;
   ndlessChain.catch(error => console.error("Ndless runtime loader:", error));
 
