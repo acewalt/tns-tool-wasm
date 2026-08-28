@@ -53,7 +53,7 @@
     .then(() => loadScript('script[data-nvp-video-format="true"]', `./nvp-video-format.js?v=${V}`, "nvpVideoFormat"))
     .then(() => loadScript('script[data-content-pack-editor="true"]', `./content-pack-editor.js?v=${V}`, "contentPackEditor"))
     .then(() => loadScript('script[data-structured-content-editor="true"]', `./structured-content-editor.js?v=${V}`, "structuredContentEditor"))
-    .then(() => loadScript('script[data-nvp-editor="true"]', `./nvp-editor.js?v=${V}`, "nvpVideoEditor"))
+    .then(() => loadScript('script[data-nvp-editor="true"]', `./nvp-editor.js?v=${V}`, "nvpEditor"))
     .then(() => loadScript('script[data-container-editor-bindings="true"]', `./container-editor-bindings.js?v=${V}`, "containerEditorBindings"))
     .then(() => loadScript('script[data-ndless-zehn="true"]', `./ndless-zehn.js?v=${V}`, "ndlessZehn"))
     .then(() => loadScript('script[data-ndless-bflt="true"]', `./ndless-bflt.js?v=${V}`, "ndlessBflt"))
