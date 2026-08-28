@@ -31,6 +31,22 @@
     document.head.appendChild(headerControlsStyle);
   }
 
+  if (!document.querySelector('link[data-tns-type-progress-style="true"]')) {
+    const tnsTypeProgressStyle = document.createElement("link");
+    tnsTypeProgressStyle.rel = "stylesheet";
+    tnsTypeProgressStyle.href = "./tns-type-detection-progress.css?v=20260828-tns-type-progress-v1";
+    tnsTypeProgressStyle.dataset.tnsTypeProgressStyle = "true";
+    document.head.appendChild(tnsTypeProgressStyle);
+  }
+
+  if (!document.querySelector('script[data-tns-type-progress="true"]')) {
+    const tnsTypeProgressScript = document.createElement("script");
+    tnsTypeProgressScript.src = "./tns-type-detection-progress.js?v=20260828-tns-type-progress-v1";
+    tnsTypeProgressScript.async = false;
+    tnsTypeProgressScript.dataset.tnsTypeProgress = "true";
+    document.head.appendChild(tnsTypeProgressScript);
+  }
+
   if (!document.querySelector('link[data-ndless-tns-inspector-style="true"]')) {
     const ndlessStyle = document.createElement("link");
     ndlessStyle.rel = "stylesheet";
@@ -42,6 +58,7 @@
   if (!document.querySelector('script[data-ndless-tns-inspector="true"]')) {
     const ndlessScript = document.createElement("script");
     ndlessScript.src = "./ndless-tns-inspector.js?v=20260828-ndless-inspector-v1";
+    ndlessScript.async = false;
     ndlessScript.dataset.ndlessTnsInspector = "true";
     document.head.appendChild(ndlessScript);
   }
