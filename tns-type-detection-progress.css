@@ -273,6 +273,39 @@
   color: #ffc46c;
 }
 
+.tns-type-progress-result-fields {
+  display: grid;
+  gap: 5px;
+  min-width: 185px;
+}
+
+.tns-type-progress-result-fields > div {
+  display: grid;
+  grid-template-columns: 62px minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.tns-type-progress-result-fields em {
+  color: #7086a2;
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.tns-type-progress-result-fields strong {
+  color: #b9ff70;
+  font-size: 12px;
+  font-weight: 900;
+  text-align: right;
+}
+
+.tns-type-progress-result.warning .tns-type-progress-result-fields strong {
+  color: #ffc46c;
+}
+
 @keyframes tnsTypeProgressIn {
   0% { opacity: 0; transform: translateY(30px) scale(.9); }
   65% { opacity: 1; transform: translateY(-5px) scale(1.02); }
@@ -296,6 +329,7 @@
   .tns-type-progress-circle { width: 40px; height: 40px; }
   .tns-type-progress-line { left: 19px; top: 39px; }
   .tns-type-progress-topline { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .tns-type-progress-result { align-items: flex-start; }
 }
 
 @media (prefers-reduced-motion: reduce) {
