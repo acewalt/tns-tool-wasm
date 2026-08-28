@@ -77,6 +77,11 @@ jobs:
           node --check ndless-rebuilder.js
           node --check ndless-tns-inspector.js
           node --check ndless-zehn.js
+          node --check ndless-elf32.js
+          node --check ndless-zehn-builder.js
+          node --check ndless-build-worker.js
+          node --check ndless-build-manager.js
+          node --check ndless-build-ui.js
           node --check ndless-project-core.js
           node --check ndless-project-core-enhancements.js
           node --check ndless-project-folder-build.js
@@ -94,6 +99,7 @@ jobs:
           node tests/ndless-export-roundtrip.test.js
           node tests/ndless-project.test.js
           node tests/ndless-project-tree.test.js
+          node tests/ndless-zehn-builder.test.js
       - name: General smoke tests
         run: node tests/smoke.test.js
       - name: CLI e2e tests
