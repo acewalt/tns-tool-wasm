@@ -30,13 +30,14 @@
     });
   }
 
-  const V="20260828-ndless-friendly-v1";
+  const V="20260828-ndless-friendly-v2";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
   ensureStyle('link[data-ndless-tns-inspector-style="true"]', `./ndless-tns-inspector.css?v=${V}`, "ndlessTnsInspectorStyle");
   ensureStyle('link[data-ndless-editor-style="true"]', `./ndless-editor.css?v=${V}`, "ndlessEditorStyle");
   ensureStyle('link[data-ndless-friendly-editor-style="true"]', `./ndless-friendly-editor.css?v=${V}`, "ndlessFriendlyEditorStyle");
+  ensureStyle('link[data-ndless-friendly-layout-fix-style="true"]', `./ndless-friendly-layout-fix.css?v=${V}`, "ndlessFriendlyLayoutFixStyle");
   ensureStyle('link[data-content-pack-editor-style="true"]', `./content-pack-editor.css?v=${V}`, "contentPackEditorStyle");
   ensureStyle('link[data-structured-content-editor-style="true"]', `./structured-content-editor.css?v=${V}`, "structuredContentEditorStyle");
   ensureStyle('link[data-nvp-editor-style="true"]', `./nvp-editor.css?v=${V}`, "nvpEditorStyle");
