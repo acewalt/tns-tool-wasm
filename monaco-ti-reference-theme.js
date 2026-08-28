@@ -58,13 +58,14 @@
       ],
       builtins: [
         "approx", "string", "sqrt", "cos", "sin", "tan", "ln", "log", "abs",
-        "when", "nSolve", "solve", "factor", "expand", "clrio",
+        "when", "nSolve", "solve", "factor", "expand",
       ],
       tokenizer: {
         root: [
           [/\/\/.*$/, "comment.ti"],
           [/"([^"\\]|\\.)*$/, "string.invalid.ti"],
           [/"/, "string.ti", "@string"],
+          [/\bclrio\b/i, "builtin.italic.ti"],
           [/[A-Za-z_][A-Za-z0-9_]*/, {
             cases: {
               "@keywords": "keyword.ti",
@@ -74,7 +75,8 @@
           }],
           [/\d+(?:\.\d+)?(?:e[+-]?\d+)?/i, "number.ti"],
           [/[→:=+\-*/^=<>&·√πΣΔ]/, "operator.ti"],
-          [/[()[\],]/, "delimiter.ti"],
+          [/,/, "separator.ti"],
+          [/[()[\]]/, "delimiter.ti"],
         ],
         string: [
           [/[^\\"]+/, "string.ti"],
@@ -110,11 +112,17 @@
         { token: "string.invalid.ti", foreground: "FF0000" },
         // Comments stay in the same TI green family.
         { token: "comment.ti", foreground: "20801C", fontStyle: "italic" },
-        // Functions, variables, values, operators, commas and brackets are black.
+        // ClrIO is rendered as the calculator reference: black and italic.
+        { token: "builtin.italic.ti", foreground: "111111", fontStyle: "italic" },
+        // Other built-ins and plain identifiers remain black.
         { token: "builtin.ti", foreground: "111111" },
         { token: "identifier.ti", foreground: "111111" },
         { token: "number.ti", foreground: "111111" },
-        { token: "operator.ti", foreground: "111111" },
+        // Operators such as /, =, →, &, +, -, * and : are pure red.
+        { token: "operator.ti", foreground: "FF0000" },
+        // Commas are also pure red, matching the TI reference.
+        { token: "separator.ti", foreground: "FF0000" },
+        // Parentheses and brackets stay black; Monaco bracket-pair coloring is disabled below.
         { token: "delimiter.ti", foreground: "111111" },
       ],
       colors: {
@@ -151,8 +159,6 @@
 
   function tuneEditor(editor) {
     if (!isTiModel(editor?.getModel?.())) return;
-    // The reference uses plain black punctuation. Monaco's bracket-pair
-    // colorization otherwise paints parentheses blue/yellow independently of tokens.
     editor.updateOptions?.({
       bracketPairColorization: { enabled: false },
       guides: { bracketPairs: false, bracketPairsHorizontal: false },
@@ -208,8 +214,6 @@
       monaco.editor[PATCH_FLAG] = true;
     }
 
-    // Also listen to Monaco's marker-change event. This catches diagnostics that
-    // existed before this patch loaded and any code path that bypasses our wrapper.
     if (!monaco.editor[MARKER_LISTENER_FLAG] && typeof monaco.editor.onDidChangeMarkers === "function") {
       monaco.editor.onDidChangeMarkers((resources) => {
         for (const resource of resources || []) {
@@ -246,7 +250,6 @@
       monaco.editor.setTheme("tns-lua-light");
     }
 
-    // Apply punctuation/error styling to editors already open when this script loads.
     window.setTimeout(() => refreshAllTiEditors(monaco), 0);
     return true;
   }
