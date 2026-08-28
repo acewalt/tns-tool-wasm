@@ -69,6 +69,8 @@ jobs:
           node --check ndless-arm-decoder.js
           node --check ndless-bflt.js
           node --check ndless-editor.js
+          node --check ndless-friendly-core.js
+          node --check ndless-friendly-editor.js
           node --check ndless-format-detector.js
           node --check ndless-inspector-editor-link.js
           node --check ndless-prg.js
@@ -81,6 +83,7 @@ jobs:
         run: |
           node tests/ndless-formats.test.js
           node tests/ndless-reachable.test.js
+          node tests/ndless-friendly.test.js
           node tests/ndless-export-roundtrip.test.js
       - name: General smoke tests
         run: node tests/smoke.test.js
