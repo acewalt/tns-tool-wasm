@@ -1,5 +1,8 @@
-const assert = require('assert');
-const core = require('../ndless-project-core.js');
+import assert from 'node:assert/strict';
+await import('../ndless-project-core.js');
+const core = globalThis.NdlessProjectCore;
+
+assert.ok(core, 'NdlessProjectCore should be exposed globally');
 
 const legacy = core.createProject({ name: 'My App', language: 'c', template: 'basic', target: 'bflt-r903' });
 assert.equal(legacy.name, 'My-App');
