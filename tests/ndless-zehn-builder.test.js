@@ -53,7 +53,6 @@ assert.ok(zehn?.valid,'generated Zehn should parse');
 assert.equal(zehn.header.entryOffset,0);
 assert.equal(zehn.metadata.name,'browser-test');
 assert.equal(zehn.metadata.author,'TNS Tool WASM');
-console.log('DEBUG relocation', JSON.stringify({elf:parsedElf.relocations.map(r=>({type:r.type,offset:r.offset,symbol:r.symbolIndex,section:r.relocatedSection?.name,shndx:r.symbol?.sectionIndex})),stats:built.stats,zehn:zehn.relocs.map(r=>({type:r.type,data:r.data,raw:r.raw}))}));
 assert.equal(zehn.relocs.filter(r=>r.type===0).length,1);
 assert.equal(zehn.relocs.find(r=>r.type===0).data,4);
 assert.equal(built.stats.executableSize,8);
