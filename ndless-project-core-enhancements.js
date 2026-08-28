@@ -14,19 +14,25 @@
 
   const ARM_MAIN = `.syntax unified\n.arm\n.text\n\n.global main\n.type main, %function\nmain:\n    mov r0, #0\n    bx lr\n.size main, .-main\n`;
   const ARM_HELPER = `.syntax unified\n.arm\n.text\n\n.global ndless_helper\n.type ndless_helper, %function\nndless_helper:\n    bx lr\n.size ndless_helper, .-ndless_helper\n`;
+  const BROWSER_C = `/* Browser-buildable freestanding Ndless starter.\n * No SDK/newlib calls are used in this minimal target.\n */\n\nint main(void) {\n    return 0;\n}\n`;
+  const BROWSER_CPP = `/* Browser-buildable freestanding Ndless C++ starter.\n * Keep exceptions/RTTI disabled for the minimal browser provider.\n */\n\nclass App {\npublic:\n    int run() { return 0; }\n};\n\nint main(void) {\n    App app;\n    return app.run();\n}\n`;
 
   const languageLabel = language => PROJECT_LANGUAGES[language]?.label || (language === "cpp" ? "C++" : "C");
 
   function enhancedReadme(project) {
     const target = base.TARGETS[project.target]?.label || project.target;
-    return `# ${project.name}\n\nThis project was created by TNS Tool WASM.\n\nTarget: ${target}\nLanguage: ${languageLabel(project.language)}\n\n## Build\n\nOpen a terminal with the matching Ndless SDK toolchain in PATH, then run:\n\nmake\n\nThe browser preview is source-aware and intentionally limited. The real .tns must be built with the ARM Ndless toolchain.\n`;
+    const browser = !!project.settings?.browserFreestanding;
+    return `# ${project.name}\n\nThis project was created by TNS Tool WASM.\n\nTarget: ${target}\nLanguage: ${languageLabel(project.language)}\n\n## Browser Build TNS\n\n${browser ? "This project uses the freestanding browser-compatible starter. Open the Build tab and press **Build TNS**. The browser build produces ARM ELF32 and packages it as Modern Zehn when the lazy compiler exposes an ARM backend." : "The standard SDK templates may use <os.h>, newlib, nSDL or other Ndless libraries. Those still require the full SDK sysroot. Use the **Browser minimal (freestanding)** template for the current in-browser Modern Zehn provider."}\n\n## External SDK build\n\nOpen a terminal with the matching Ndless SDK toolchain in PATH, then run:\n\nmake\n\nThe Quick Preview is source-aware and intentionally limited; it is not an emulator.\n`;
   }
 
   function createProject(options = {}) {
     const mode = PROJECT_LANGUAGES[options.language] ? options.language : "c";
     const baseLanguage = mode === "cpp" ? "cpp" : "c";
-    const project = base.createProject({ ...options, language: baseLanguage });
+    const browserMinimal = options.template === "browser-minimal";
+    const project = base.createProject({ ...options, language: baseLanguage, template: browserMinimal ? "basic" : options.template });
     project.language = mode;
+    project.settings ||= {};
+    project.settings.browserFreestanding = browserMinimal || mode === "asm";
 
     if (mode === "asm") {
       for (const name of Object.keys(project.files)) {
@@ -35,10 +41,17 @@
       project.files["main.S"] = ARM_MAIN;
       project.activeFile = "main.S";
       project.template = "asm-minimal";
-    } else if (mode === "mixed") {
-      project.files["helper.S"] = ARM_HELPER;
-      if (!/\.(?:c|cpp|cc|cxx)$/i.test(project.activeFile || "")) {
-        project.activeFile = Object.keys(project.files).find(name => /\.(?:c|cpp|cc|cxx)$/i.test(name)) || "main.c";
+    } else {
+      if (browserMinimal) {
+        const main = Object.keys(project.files).find(name => /\.(?:c|cpp|cc|cxx)$/i.test(name));
+        if (main) project.files[main] = mode === "cpp" ? BROWSER_CPP : BROWSER_C;
+        project.template = "browser-minimal";
+      }
+      if (mode === "mixed") {
+        project.files["helper.S"] = ARM_HELPER;
+        if (!/\.(?:c|cpp|cc|cxx)$/i.test(project.activeFile || "")) {
+          project.activeFile = Object.keys(project.files).find(name => /\.(?:c|cpp|cc|cxx)$/i.test(name)) || "main.c";
+        }
       }
     }
 
@@ -83,6 +96,7 @@
   function manifest(project) {
     const parsed = JSON.parse(base.manifest(project));
     parsed.language = project.language;
+    parsed.settings = project.settings || {};
     return JSON.stringify(parsed, null, 2);
   }
 
@@ -101,6 +115,8 @@
     if (PROJECT_LANGUAGES[meta?.language]) project.language = meta.language;
     else if (hasAsm && hasC) project.language = "mixed";
     else if (hasAsm) project.language = "asm";
+    project.settings ||= {};
+    if (meta?.settings && typeof meta.settings === "object") project.settings = { ...project.settings, ...meta.settings };
     refreshGeneratedFiles(project);
     return project;
   }
@@ -109,6 +125,8 @@
     ...base,
     __projectModesV2: true,
     PROJECT_LANGUAGES,
+    BROWSER_C,
+    BROWSER_CPP,
     languageLabel,
     createProject,
     refreshGeneratedFiles,
