@@ -1,6 +1,21 @@
 (() => {
   "use strict";
 
+  if (!document.querySelector('link[data-runtime-loading-overlay-style="true"]')) {
+    const runtimeLoadingStyle = document.createElement("link");
+    runtimeLoadingStyle.rel = "stylesheet";
+    runtimeLoadingStyle.href = "./runtime-loading-overlay.css?v=20260827-runtime-loader-v1";
+    runtimeLoadingStyle.dataset.runtimeLoadingOverlayStyle = "true";
+    document.head.appendChild(runtimeLoadingStyle);
+  }
+
+  if (!document.querySelector('script[data-runtime-loading-overlay="true"]')) {
+    const runtimeLoadingScript = document.createElement("script");
+    runtimeLoadingScript.src = "./runtime-loading-overlay.js?v=20260827-runtime-loader-v1";
+    runtimeLoadingScript.dataset.runtimeLoadingOverlay = "true";
+    document.head.appendChild(runtimeLoadingScript);
+  }
+
   if (!document.querySelector('link[data-header-controls-compact="true"]')) {
     const headerControlsStyle = document.createElement("link");
     headerControlsStyle.rel = "stylesheet";
