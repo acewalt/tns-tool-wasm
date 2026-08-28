@@ -7,6 +7,84 @@
   const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: "base" });
   let opening = false;
 
+  const I18N = {
+    es: {
+      images: "Imágenes",
+      image: "imagen",
+      imagesPlural: "imágenes",
+      currentImage: "imagen actual",
+      currentImages: "imágenes actuales",
+      continuousView: "vista calculadora continua",
+      viewIndividual: "Ver individual",
+      loadingImage: "Cargando imagen…",
+      close: "Cerrar",
+      imageFallback: "Imagen",
+      ariaView: "Ver {count} {noun} en vista calculadora continua",
+      titleView: "Ver {count} {noun} de corrido",
+      pyodideUnavailable: "Pyodide FS no está disponible.",
+      rendererUnavailable: "El renderer de imágenes no está disponible.",
+      imagePathMissing: "La imagen no tiene una ruta de recurso.",
+      inspectorUnavailable: "El inspector de documento no está disponible.",
+    },
+    en: {
+      images: "Images",
+      image: "image",
+      imagesPlural: "images",
+      currentImage: "current image",
+      currentImages: "current images",
+      continuousView: "continuous calculator view",
+      viewIndividual: "View individually",
+      loadingImage: "Loading image…",
+      close: "Close",
+      imageFallback: "Image",
+      ariaView: "View {count} {noun} in continuous calculator view",
+      titleView: "View {count} {noun} continuously",
+      pyodideUnavailable: "Pyodide FS is not available.",
+      rendererUnavailable: "The image renderer is not available.",
+      imagePathMissing: "The image does not have a resource path.",
+      inspectorUnavailable: "The document inspector is not available.",
+    },
+    fr: {
+      images: "Images",
+      image: "image",
+      imagesPlural: "images",
+      currentImage: "image actuelle",
+      currentImages: "images actuelles",
+      continuousView: "vue calculatrice continue",
+      viewIndividual: "Voir individuellement",
+      loadingImage: "Chargement de l’image…",
+      close: "Fermer",
+      imageFallback: "Image",
+      ariaView: "Voir {count} {noun} en vue calculatrice continue",
+      titleView: "Voir {count} {noun} à la suite",
+      pyodideUnavailable: "Pyodide FS n’est pas disponible.",
+      rendererUnavailable: "Le moteur de rendu d’images n’est pas disponible.",
+      imagePathMissing: "L’image n’a pas de chemin de ressource.",
+      inspectorUnavailable: "L’inspecteur de document n’est pas disponible.",
+    },
+  };
+
+  function currentLanguage() {
+    const saved = String(localStorage.getItem("tns-tool-language") || "").toLowerCase();
+    if (I18N[saved]) return saved;
+    const htmlLang = String(document.documentElement.lang || "").slice(0, 2).toLowerCase();
+    if (I18N[htmlLang]) return htmlLang;
+    const browserLang = String(navigator.language || navigator.userLanguage || "en").slice(0, 2).toLowerCase();
+    return I18N[browserLang] ? browserLang : "en";
+  }
+
+  function t(key, vars = {}) {
+    const lang = currentLanguage();
+    let text = I18N[lang]?.[key] || I18N.en[key] || key;
+    for (const [name, value] of Object.entries(vars)) text = text.replaceAll(`{${name}}`, String(value));
+    return text;
+  }
+
+  function imageNoun(count, current = false) {
+    if (current) return count === 1 ? t("currentImage") : t("currentImages");
+    return count === 1 ? t("image") : t("imagesPlural");
+  }
+
   function globalValue(name) {
     if (Object.prototype.hasOwnProperty.call(window, name) && window[name] != null) return window[name];
     try { return (0, eval)(name); } catch (_error) { return null; }
@@ -93,10 +171,10 @@
   async function readImageCanvas(item) {
     const pyodide = globalValue("pyodide");
     const renderer = globalValue("renderImageBytesToCanvas");
-    if (!pyodide?.FS?.readFile) throw new Error("Pyodide FS no está disponible.");
-    if (typeof renderer !== "function") throw new Error("El renderer de imágenes no está disponible.");
+    if (!pyodide?.FS?.readFile) throw new Error(t("pyodideUnavailable"));
+    if (typeof renderer !== "function") throw new Error(t("rendererUnavailable"));
     const path = item?.detail?.image_file || item?.file || "";
-    if (!path) throw new Error("La imagen no tiene una ruta de recurso.");
+    if (!path) throw new Error(t("imagePathMissing"));
     return renderer(pyodide.FS.readFile(path), item?.name || path);
   }
 
@@ -119,11 +197,11 @@
         <div class="tns-image-gallery-item-head">
           <div class="tns-image-gallery-item-name">
             <span class="tns-image-gallery-index">${i + 1} / ${images.length}</span>
-            <span class="tns-image-gallery-filename">${escapeHtml(item?.name || `Imagen ${i + 1}`)}</span>
+            <span class="tns-image-gallery-filename">${escapeHtml(item?.name || `${t("imageFallback")} ${i + 1}`)}</span>
           </div>
-          <button type="button" class="tns-image-gallery-open-one green-tool-button">Ver individual</button>
+          <button type="button" class="tns-image-gallery-open-one green-tool-button">${t("viewIndividual")}</button>
         </div>
-        <div class="tns-image-gallery-stage"><div class="tns-image-gallery-loading">Cargando imagen…</div></div>`;
+        <div class="tns-image-gallery-stage"><div class="tns-image-gallery-loading">${t("loadingImage")}</div></div>`;
       list.append(article);
       article.querySelector(".tns-image-gallery-open-one")?.addEventListener("click", () => {
         const showImage = globalValue("showImageModal");
@@ -151,20 +229,20 @@
     try {
       document.querySelector(`.${BACKDROP_CLASS}`)?.remove();
       const inspect = globalValue("inspectXmlDocument");
-      if (typeof inspect !== "function") throw new Error("El inspector de documento no está disponible.");
+      if (typeof inspect !== "function") throw new Error(t("inspectorUnavailable"));
       const images = imageItems(await inspect());
       if (!images.length) return;
 
       const backdrop = document.createElement("div");
       backdrop.className = `modal-backdrop ${BACKDROP_CLASS}`;
       backdrop.innerHTML = `
-        <div class="modal tns-image-gallery-modal" role="dialog" aria-modal="true" aria-label="Vista calculadora continua">
+        <div class="modal tns-image-gallery-modal" role="dialog" aria-modal="true" aria-label="${escapeHtml(t("continuousView"))}">
           <div class="tns-image-gallery-header">
             <div class="tns-image-gallery-heading">
-              <h2>Images: ${images.length}</h2>
-              <p>${images.length} ${images.length === 1 ? "imagen" : "imágenes"} · vista calculadora continua</p>
+              <h2>${t("images")}: ${images.length}</h2>
+              <p>${images.length} ${imageNoun(images.length)} · ${t("continuousView")}</p>
             </div>
-            <button type="button" class="tns-image-gallery-close">Cerrar</button>
+            <button type="button" class="tns-image-gallery-close">${t("close")}</button>
           </div>
           <div class="tns-image-gallery-scroll"><div class="tns-image-gallery-list"></div></div>
         </div>`;
@@ -174,7 +252,7 @@
       const list = backdrop.querySelector(".tns-image-gallery-list");
       if (expectedCount && expectedCount !== images.length) {
         const p = backdrop.querySelector(".tns-image-gallery-heading p");
-        if (p) p.textContent = `${images.length} ${images.length === 1 ? "imagen actual" : "imágenes actuales"} · vista calculadora continua`;
+        if (p) p.textContent = `${images.length} ${imageNoun(images.length, true)} · ${t("continuousView")}`;
       }
       await renderItems(list, images);
     } catch (error) {
@@ -185,7 +263,7 @@
   }
 
   function parseImageCount(text) {
-    const match = /^\s*Images\s*:\s*(\d+)\s*$/i.exec(String(text || ""));
+    const match = /^\s*(?:Images|Imágenes)\s*:\s*(\d+)\s*$/i.exec(String(text || ""));
     return match ? Number(match[1]) : null;
   }
 
@@ -195,9 +273,9 @@
     element.classList.add(CHIP_CLASS);
     element.setAttribute("role", "button");
     element.setAttribute("tabindex", "0");
-    const noun = count === 1 ? "imagen" : "imágenes";
-    element.setAttribute("aria-label", `Ver ${count} ${noun} en vista calculadora continua`);
-    element.setAttribute("title", `Ver ${count} ${noun} de corrido`);
+    const noun = imageNoun(count);
+    element.setAttribute("aria-label", t("ariaView", { count, noun }));
+    element.setAttribute("title", t("titleView", { count, noun }));
     const activate = (event) => {
       event?.preventDefault?.();
       event?.stopPropagation?.();
