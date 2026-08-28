@@ -63,6 +63,22 @@
     document.head.appendChild(ndlessScript);
   }
 
+  if (!document.querySelector('link[data-ndless-editor-style="true"]')) {
+    const ndlessEditorStyle = document.createElement("link");
+    ndlessEditorStyle.rel = "stylesheet";
+    ndlessEditorStyle.href = "./ndless-editor.css?v=20260828-ndless-editor-v1";
+    ndlessEditorStyle.dataset.ndlessEditorStyle = "true";
+    document.head.appendChild(ndlessEditorStyle);
+  }
+
+  if (!document.querySelector('script[data-ndless-editor="true"]')) {
+    const ndlessEditorScript = document.createElement("script");
+    ndlessEditorScript.src = "./ndless-editor.js?v=20260828-ndless-editor-v1";
+    ndlessEditorScript.async = false;
+    ndlessEditorScript.dataset.ndlessEditor = "true";
+    document.head.appendChild(ndlessEditorScript);
+  }
+
   if (!document.querySelector('script[data-media-import-controller="true"]')) {
     const mediaScript = document.createElement("script");
     mediaScript.src = "./media-import-controller.js?v=20260827-media-import-v3";
