@@ -77,6 +77,8 @@ jobs:
           node --check ndless-rebuilder.js
           node --check ndless-tns-inspector.js
           node --check ndless-zehn.js
+          node --check ndless-project-core.js
+          node --check ndless-project-workspace.js
       - name: Structured content tests
         run: node tests/custom-content-formats.test.js
       - name: Ndless synthetic tests
@@ -85,6 +87,7 @@ jobs:
           node tests/ndless-reachable.test.js
           node tests/ndless-friendly.test.js
           node tests/ndless-export-roundtrip.test.js
+          node tests/ndless-project.test.js
       - name: General smoke tests
         run: node tests/smoke.test.js
       - name: CLI e2e tests
