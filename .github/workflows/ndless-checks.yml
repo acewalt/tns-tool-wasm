@@ -9,7 +9,12 @@ on:
       - 'tns-*.js'
       - 'content-pack-*.js'
       - 'content-pack-*.css'
+      - 'structured-content-*.js'
+      - 'structured-content-*.css'
+      - 'container-editor-bindings.js'
       - 'nzp-*.js'
+      - 'nvp-*.js'
+      - 'nvp-*.css'
       - 'tests/ndless-*.test.js'
       - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
@@ -22,7 +27,12 @@ on:
       - 'tns-*.js'
       - 'content-pack-*.js'
       - 'content-pack-*.css'
+      - 'structured-content-*.js'
+      - 'structured-content-*.css'
+      - 'container-editor-bindings.js'
       - 'nzp-*.js'
+      - 'nvp-*.js'
+      - 'nvp-*.css'
       - 'tests/ndless-*.test.js'
       - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
@@ -49,7 +59,11 @@ jobs:
           node --check tns-universal-detector.js
           node --check tns-type-detection-progress.js
           node --check nzp-content-format.js
+          node --check nvp-video-format.js
           node --check content-pack-editor.js
+          node --check structured-content-editor.js
+          node --check nvp-editor.js
+          node --check container-editor-bindings.js
           node --check ndless-analysis.js
           node --check ndless-analysis-worker.js
           node --check ndless-arm-decoder.js
