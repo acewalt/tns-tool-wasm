@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "build:monaco": "vite build --config vite.monaco.config.js && node scripts/trim-generated-trailing-whitespace.mjs dist/monaco-lua-editor.js",
-    "test": "node tests/ndless-formats.test.js && node tests/ndless-sdk-fixtures.test.js && node tests/smoke.test.js && node tests/e2e.test.js",
+    "test": "node tests/ndless-formats.test.js && node tests/ndless-reachable.test.js && node tests/ndless-sdk-fixtures.test.js && node tests/smoke.test.js && node tests/e2e.test.js",
     "test:ndless-sdk": "node tests/ndless-sdk-fixtures.test.js",
     "tns-tool": "node cli/tns-tool.js",
     "lua-test": "node cli/lua-test.js",
