@@ -56,7 +56,7 @@
   function validateAssembly(sources) {
     const errors = [], warnings = [];
     const text = sources.map(([, source]) => String(source)).join("\n");
-    if (!/\b(?:\.global|\.globl)\s+main\b/i.test(text) || !/^\s*main\s*:/mi.test(text)) {
+    if (!/(?:^|\s)(?:\.global|\.globl)\s+main\b/im.test(text) || !/^\s*main\s*:/mi.test(text)) {
       errors.push("ARM Assembly project needs a global main label.");
     }
     if (!/\.arm\b/i.test(text)) warnings.push("No .arm directive was detected.");
