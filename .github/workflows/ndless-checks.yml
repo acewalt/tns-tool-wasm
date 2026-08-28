@@ -41,6 +41,7 @@ jobs:
           node --check ndless-bflt.js
           node --check ndless-editor.js
           node --check ndless-format-detector.js
+          node --check ndless-inspector-editor-link.js
           node --check ndless-prg.js
           node --check ndless-rebuilder.js
           node --check ndless-tns-inspector.js
