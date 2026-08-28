@@ -74,6 +74,7 @@
     .then(() => loadScript('script[data-ndless-inspector-editor-link="true"]', `./ndless-inspector-editor-link.js?v=${V}`, "ndlessInspectorEditorLink"))
     .then(() => loadScript('script[data-ndless-project-core="true"]', `./ndless-project-core.js?v=${V}`, "ndlessProjectCore"))
     .then(() => loadScript('script[data-ndless-project-core-enhancements="true"]', `./ndless-project-core-enhancements.js?v=${V}`, "ndlessProjectCoreEnhancements"))
+    .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
     .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=${V}`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
     .then(() => loadScript('script[data-ndless-project-file-tree="true"]', `./ndless-project-file-tree.js?v=${V}`, "ndlessProjectFileTree"));
@@ -87,7 +88,7 @@
     ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20260827-home-drop-v1", "homeDropImport"],
     ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20260827-lua-drop-progress-v1", "luaDropProgress"],
     ['script[data-import-progress-i18n="true"]', "./import-progress-i18n.js?v=20260827-import-i18n-v1", "importProgressI18n"],
-    ['script[data-sidebar-title-i18n="true"]', "./sidebar-title-i18n.js?v=20260827-sidebar-i18n-v1", "sidebarTitleI18n"],
+    ['script[data-sidebar-title-i18n="true"]', "./sidebar-title-i18n.js?v=20260827-sidebar-title-i18n-v1", "sidebarTitleI18n"],
     ['script[data-inspector-page-menu-i18n="true"]', "./inspector-page-menu-i18n.js?v=20260827-inspector-page-i18n-v1", "inspectorPageMenuI18n"],
     ['script[data-inspector-summary-filter="true"]', "./inspector-summary-filter.js?v=20260827-summary-filter-v1", "inspectorSummaryFilter"],
   ];
