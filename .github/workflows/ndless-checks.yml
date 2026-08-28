@@ -1,0 +1,48 @@
+name: Ndless checks
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ndless-*.js'
+      - 'ndless-*.css'
+      - 'tests/ndless-*.test.js'
+      - 'multi-image-upload.js'
+      - 'index.html'
+      - '.github/workflows/ndless-checks.yml'
+  pull_request:
+    paths:
+      - 'ndless-*.js'
+      - 'ndless-*.css'
+      - 'tests/ndless-*.test.js'
+      - 'multi-image-upload.js'
+      - 'index.html'
+      - '.github/workflows/ndless-checks.yml'
+
+jobs:
+  node:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax check
+        run: |
+          node --check ndless-analysis.js
+          node --check ndless-analysis-worker.js
+          node --check ndless-arm-decoder.js
+          node --check ndless-bflt.js
+          node --check ndless-editor.js
+          node --check ndless-format-detector.js
+          node --check ndless-prg.js
+          node --check ndless-rebuilder.js
+          node --check ndless-tns-inspector.js
+          node --check ndless-zehn.js
+      - name: Ndless synthetic tests
+        run: node tests/ndless-formats.test.js
+      - name: General smoke tests
+        run: node tests/smoke.test.js
+      - name: CLI e2e tests
+        run: node tests/e2e.test.js
