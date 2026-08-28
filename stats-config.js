@@ -190,15 +190,32 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   document.head.appendChild(script);
 })();
 
-// Add the voluntary PayPal support note inside the About modal, between
+// Add support and feedback information inside the About modal, between
 // Purpose and Development and Interface. Keep it synchronized with the site's
 // Spanish / English / French language selection.
 (() => {
   const PAYPAL_URL = "https://paypal.me/waltDx";
+  const DISCUSSION_URL = "https://github.com/acewalt/tns-tool-wasm/discussions/2";
+
   const SUPPORT_TEXT = {
     es: "Si mi herramienta te resultó útil y quieres apoyar su desarrollo, puedes invitarme un café. ¡Muchas gracias por tu apoyo!",
     en: "If my tool was useful to you and you'd like to support its development, you can buy me a coffee. Thank you very much for your support!",
     fr: "Si mon outil vous a été utile et que vous souhaitez soutenir son développement, vous pouvez m'offrir un café. Merci beaucoup pour votre soutien !",
+  };
+
+  const FEEDBACK_TEXT = {
+    es: {
+      title: "Feedback",
+      body: "Los reportes de errores, preguntas, sugerencias y archivos de prueba son bienvenidos.",
+    },
+    en: {
+      title: "Feedback",
+      body: "Bug reports, questions, suggestions, and test files are welcome.",
+    },
+    fr: {
+      title: "Feedback",
+      body: "Les rapports de bugs, questions, suggestions et fichiers de test sont les bienvenus.",
+    },
   };
 
   function currentLanguage() {
@@ -207,30 +224,51 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
     return activeLanguage || documentLanguage || "es";
   }
 
-  function injectSupportNote() {
+  function injectAboutExtras() {
     const modal = document.querySelector(".about-modal");
-    if (!modal || modal.querySelector('[data-about-support="true"]')) return;
+    if (!modal || modal.querySelector('[data-about-extras="true"]')) return;
 
     const headings = modal.querySelectorAll(":scope > h3");
     const developmentHeading = headings[1];
     if (!developmentHeading) return;
 
-    const paragraph = document.createElement("p");
-    paragraph.dataset.aboutSupport = "true";
-    paragraph.className = "about-support-note";
-    paragraph.append(document.createTextNode(`${SUPPORT_TEXT[currentLanguage()] || SUPPORT_TEXT.es} `));
+    const lang = currentLanguage();
+    const feedback = FEEDBACK_TEXT[lang] || FEEDBACK_TEXT.es;
+    const fragment = document.createDocumentFragment();
 
-    const link = document.createElement("a");
-    link.href = PAYPAL_URL;
-    link.target = "_blank";
-    link.rel = "noopener noreferrer";
-    link.textContent = PAYPAL_URL;
-    paragraph.append(link);
+    const supportParagraph = document.createElement("p");
+    supportParagraph.dataset.aboutExtras = "true";
+    supportParagraph.dataset.aboutSupport = "true";
+    supportParagraph.className = "about-support-note";
+    supportParagraph.append(document.createTextNode(`${SUPPORT_TEXT[lang] || SUPPORT_TEXT.es} `));
 
-    developmentHeading.before(paragraph);
+    const paypalLink = document.createElement("a");
+    paypalLink.href = PAYPAL_URL;
+    paypalLink.target = "_blank";
+    paypalLink.rel = "noopener noreferrer";
+    paypalLink.textContent = PAYPAL_URL;
+    supportParagraph.append(paypalLink);
+    fragment.append(supportParagraph);
+
+    const feedbackHeading = document.createElement("h3");
+    feedbackHeading.textContent = feedback.title;
+    fragment.append(feedbackHeading);
+
+    const feedbackParagraph = document.createElement("p");
+    feedbackParagraph.append(document.createTextNode(`${feedback.body} `));
+
+    const discussionLink = document.createElement("a");
+    discussionLink.href = DISCUSSION_URL;
+    discussionLink.target = "_blank";
+    discussionLink.rel = "noopener noreferrer";
+    discussionLink.textContent = DISCUSSION_URL;
+    feedbackParagraph.append(discussionLink);
+    fragment.append(feedbackParagraph);
+
+    developmentHeading.before(fragment);
   }
 
-  const observer = new MutationObserver(injectSupportNote);
+  const observer = new MutationObserver(injectAboutExtras);
   observer.observe(document.body, { childList: true, subtree: true });
-  injectSupportNote();
+  injectAboutExtras();
 })();
