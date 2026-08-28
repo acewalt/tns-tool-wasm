@@ -1,181 +1,73 @@
 (() => {
   "use strict";
 
-  if (!document.querySelector('link[data-runtime-loading-overlay-style="true"]')) {
-    const runtimeLoadingStyle = document.createElement("link");
-    runtimeLoadingStyle.rel = "stylesheet";
-    runtimeLoadingStyle.href = "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3";
-    runtimeLoadingStyle.dataset.runtimeLoadingOverlayStyle = "true";
-    document.head.appendChild(runtimeLoadingStyle);
+  function ensureStyle(selector, href, dataKey) {
+    if (document.querySelector(selector)) return;
+    const link = document.createElement("link");
+    link.rel = "stylesheet";
+    link.href = href;
+    link.dataset[dataKey] = "true";
+    document.head.appendChild(link);
   }
 
-  if (!document.querySelector('script[data-runtime-loading-overlay="true"]')) {
-    const runtimeLoadingScript = document.createElement("script");
-    runtimeLoadingScript.src = "./runtime-loading-overlay.js?v=20260827-runtime-loader-v3";
-    runtimeLoadingScript.dataset.runtimeLoadingOverlay = "true";
-    document.head.appendChild(runtimeLoadingScript);
-  }
-
-  if (!document.querySelector('script[data-monaco-ti-reference-theme="true"]')) {
-    const tiReferenceThemeScript = document.createElement("script");
-    tiReferenceThemeScript.src = "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v3";
-    tiReferenceThemeScript.dataset.monacoTiReferenceTheme = "true";
-    document.head.appendChild(tiReferenceThemeScript);
-  }
-
-  if (!document.querySelector('link[data-header-controls-compact="true"]')) {
-    const headerControlsStyle = document.createElement("link");
-    headerControlsStyle.rel = "stylesheet";
-    headerControlsStyle.href = "./header-controls-compact.css?v=20260827-header-controls-v3";
-    headerControlsStyle.dataset.headerControlsCompact = "true";
-    document.head.appendChild(headerControlsStyle);
-  }
-
-  if (!document.querySelector('link[data-tns-type-progress-style="true"]')) {
-    const tnsTypeProgressStyle = document.createElement("link");
-    tnsTypeProgressStyle.rel = "stylesheet";
-    tnsTypeProgressStyle.href = "./tns-type-detection-progress.css?v=20260828-tns-type-progress-v1";
-    tnsTypeProgressStyle.dataset.tnsTypeProgressStyle = "true";
-    document.head.appendChild(tnsTypeProgressStyle);
-  }
-
-  if (!document.querySelector('script[data-tns-type-progress="true"]')) {
-    const tnsTypeProgressScript = document.createElement("script");
-    tnsTypeProgressScript.src = "./tns-type-detection-progress.js?v=20260828-tns-type-progress-v1";
-    tnsTypeProgressScript.async = false;
-    tnsTypeProgressScript.dataset.tnsTypeProgress = "true";
-    document.head.appendChild(tnsTypeProgressScript);
-  }
-
-  if (!document.querySelector('link[data-ndless-tns-inspector-style="true"]')) {
-    const ndlessStyle = document.createElement("link");
-    ndlessStyle.rel = "stylesheet";
-    ndlessStyle.href = "./ndless-tns-inspector.css?v=20260828-ndless-inspector-v1";
-    ndlessStyle.dataset.ndlessTnsInspectorStyle = "true";
-    document.head.appendChild(ndlessStyle);
-  }
-
-  if (!document.querySelector('script[data-ndless-tns-inspector="true"]')) {
-    const ndlessScript = document.createElement("script");
-    ndlessScript.src = "./ndless-tns-inspector.js?v=20260828-ndless-inspector-v1";
-    ndlessScript.async = false;
-    ndlessScript.dataset.ndlessTnsInspector = "true";
-    document.head.appendChild(ndlessScript);
-  }
-
-  if (!document.querySelector('link[data-ndless-editor-style="true"]')) {
-    const ndlessEditorStyle = document.createElement("link");
-    ndlessEditorStyle.rel = "stylesheet";
-    ndlessEditorStyle.href = "./ndless-editor.css?v=20260828-ndless-editor-v1";
-    ndlessEditorStyle.dataset.ndlessEditorStyle = "true";
-    document.head.appendChild(ndlessEditorStyle);
-  }
-
-  if (!document.querySelector('script[data-ndless-editor="true"]')) {
-    const ndlessEditorScript = document.createElement("script");
-    ndlessEditorScript.src = "./ndless-editor.js?v=20260828-ndless-editor-v1";
-    ndlessEditorScript.async = false;
-    ndlessEditorScript.dataset.ndlessEditor = "true";
-    document.head.appendChild(ndlessEditorScript);
-  }
-
-  if (!document.querySelector('script[data-media-import-controller="true"]')) {
-    const mediaScript = document.createElement("script");
-    mediaScript.src = "./media-import-controller.js?v=20260827-media-import-v3";
-    mediaScript.dataset.mediaImportController = "true";
-    document.head.appendChild(mediaScript);
-  }
-
-  if (!document.querySelector('script[data-drag-drop-ui="true"]')) {
-    const dragUiScript = document.createElement("script");
-    dragUiScript.src = "./drag-drop-ui.js?v=20260827-drag-drop-v1";
-    dragUiScript.dataset.dragDropUi = "true";
-    document.head.appendChild(dragUiScript);
-  }
-
-  if (!document.querySelector('script[data-home-drop-import="true"]')) {
-    const homeDropScript = document.createElement("script");
-    homeDropScript.src = "./home-drop-import.js?v=20260827-home-drop-v1";
-    homeDropScript.dataset.homeDropImport = "true";
-    document.head.appendChild(homeDropScript);
-  }
-
-  if (!document.querySelector('script[data-lua-drop-progress="true"]')) {
-    const luaProgressScript = document.createElement("script");
-    luaProgressScript.src = "./lua-drop-progress.js?v=20260827-lua-drop-progress-v1";
-    luaProgressScript.dataset.luaDropProgress = "true";
-    document.head.appendChild(luaProgressScript);
-  }
-
-  if (!document.querySelector('script[data-import-progress-i18n="true"]')) {
-    const importProgressI18nScript = document.createElement("script");
-    importProgressI18nScript.src = "./import-progress-i18n.js?v=20260827-import-i18n-v1";
-    importProgressI18nScript.dataset.importProgressI18n = "true";
-    document.head.appendChild(importProgressI18nScript);
-  }
-
-  if (!document.querySelector('script[data-sidebar-title-i18n="true"]')) {
-    const sidebarTitleI18nScript = document.createElement("script");
-    sidebarTitleI18nScript.src = "./sidebar-title-i18n.js?v=20260827-sidebar-title-i18n-v1";
-    sidebarTitleI18nScript.dataset.sidebarTitleI18n = "true";
-    document.head.appendChild(sidebarTitleI18nScript);
-  }
-
-  if (!document.querySelector('script[data-inspector-page-menu-i18n="true"]')) {
-    const inspectorPageMenuI18nScript = document.createElement("script");
-    inspectorPageMenuI18nScript.src = "./inspector-page-menu-i18n.js?v=20260827-inspector-page-i18n-v1";
-    inspectorPageMenuI18nScript.dataset.inspectorPageMenuI18n = "true";
-    document.head.appendChild(inspectorPageMenuI18nScript);
-  }
-
-  if (!document.querySelector('script[data-inspector-summary-filter="true"]')) {
-    const inspectorSummaryFilterScript = document.createElement("script");
-    inspectorSummaryFilterScript.src = "./inspector-summary-filter.js?v=20260827-summary-filter-v1";
-    inspectorSummaryFilterScript.dataset.inspectorSummaryFilter = "true";
-    document.head.appendChild(inspectorSummaryFilterScript);
-  }
-
-  if (!document.querySelector('link[data-image-editor-style="true"]')) {
-    const imageEditorStyle = document.createElement("link");
-    imageEditorStyle.rel = "stylesheet";
-    imageEditorStyle.href = "./image-editor.css?v=20260827-image-editor-v1";
-    imageEditorStyle.dataset.imageEditorStyle = "true";
-    document.head.appendChild(imageEditorStyle);
-  }
-
-  function loadImageEditorScript(selector, src, datasetKey) {
+  function loadScript(selector, src, dataKey) {
     const existing = document.querySelector(selector);
     if (existing) {
-      if (existing.dataset.loaded === "1") return Promise.resolve();
-      return new Promise((resolve) => {
-        const finish = () => resolve();
-        existing.addEventListener("load", finish, { once: true });
-        existing.addEventListener("error", finish, { once: true });
-        setTimeout(finish, 1500);
+      if (existing.dataset.loaded === "1" || existing.readyState === "complete") return Promise.resolve(existing);
+      return new Promise((resolve, reject) => {
+        existing.addEventListener("load", () => resolve(existing), { once: true });
+        existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
       });
     }
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const script = document.createElement("script");
       script.src = src;
       script.async = false;
-      script.dataset[datasetKey] = "true";
-      script.addEventListener("load", () => { script.dataset.loaded = "1"; resolve(); }, { once: true });
-      script.addEventListener("error", resolve, { once: true });
+      script.dataset[dataKey] = "true";
+      script.addEventListener("load", () => { script.dataset.loaded = "1"; resolve(script); }, { once: true });
+      script.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
       document.head.appendChild(script);
     });
   }
 
-  loadImageEditorScript(
-    'script[data-image-editor-i18n="true"]',
-    "./image-editor-i18n.js?v=20260827-image-editor-v1",
-    "imageEditorI18n"
-  ).then(() => loadImageEditorScript(
-    'script[data-image-editor-core="true"]',
-    "./image-editor-core.js?v=20260827-image-editor-v1",
-    "imageEditorCore"
-  )).then(() => loadImageEditorScript(
-    'script[data-image-editor-hooks="true"]',
-    "./image-editor-hooks.js?v=20260827-image-editor-v1",
-    "imageEditorHooks"
-  )).catch((error) => console.error("Image editor loader:", error));
+  ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
+  ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
+  ensureStyle('link[data-tns-type-progress-style="true"]', "./tns-type-detection-progress.css?v=20260828-ndless-multiformat-v2", "tnsTypeProgressStyle");
+  ensureStyle('link[data-ndless-tns-inspector-style="true"]', "./ndless-tns-inspector.css?v=20260828-ndless-multiformat-v2", "ndlessTnsInspectorStyle");
+  ensureStyle('link[data-ndless-editor-style="true"]', "./ndless-editor.css?v=20260828-ndless-multiformat-v2", "ndlessEditorStyle");
+  ensureStyle('link[data-image-editor-style="true"]', "./image-editor.css?v=20260827-image-editor-v1", "imageEditorStyle");
+
+  loadScript('script[data-runtime-loading-overlay="true"]', "./runtime-loading-overlay.js?v=20260827-runtime-loader-v3", "runtimeLoadingOverlay").catch(console.error);
+  loadScript('script[data-monaco-ti-reference-theme="true"]', "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v3", "monacoTiReferenceTheme").catch(console.error);
+
+  // Ndless runtime is intentionally sequential: parsers -> detector/progress -> inspector -> ARM analysis -> adapters/editor.
+  const ndlessChain = loadScript('script[data-ndless-zehn="true"]', "./ndless-zehn.js?v=20260828-ndless-multiformat-v2", "ndlessZehn")
+    .then(() => loadScript('script[data-ndless-bflt="true"]', "./ndless-bflt.js?v=20260828-ndless-multiformat-v2", "ndlessBflt"))
+    .then(() => loadScript('script[data-ndless-prg="true"]', "./ndless-prg.js?v=20260828-ndless-multiformat-v2", "ndlessPrg"))
+    .then(() => loadScript('script[data-ndless-format-detector="true"]', "./ndless-format-detector.js?v=20260828-ndless-multiformat-v2", "ndlessFormatDetector"))
+    .then(() => loadScript('script[data-tns-type-progress="true"]', "./tns-type-detection-progress.js?v=20260828-ndless-multiformat-v2", "tnsTypeProgress"))
+    .then(() => loadScript('script[data-ndless-tns-inspector="true"]', "./ndless-tns-inspector.js?v=20260828-ndless-multiformat-v2", "ndlessTnsInspector"))
+    .then(() => loadScript('script[data-ndless-arm-decoder="true"]', "./ndless-arm-decoder.js?v=20260828-ndless-multiformat-v2", "ndlessArmDecoder"))
+    .then(() => loadScript('script[data-ndless-analysis="true"]', "./ndless-analysis.js?v=20260828-ndless-multiformat-v2", "ndlessAnalysis"))
+    .then(() => loadScript('script[data-ndless-rebuilder="true"]', "./ndless-rebuilder.js?v=20260828-ndless-multiformat-v2", "ndlessRebuilder"))
+    .then(() => loadScript('script[data-ndless-editor="true"]', "./ndless-editor.js?v=20260828-ndless-multiformat-v2", "ndlessEditor"));
+  window.NdlessRuntimeReady = ndlessChain;
+  ndlessChain.catch(error => console.error("Ndless runtime loader:", error));
+
+  const independent = [
+    ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20260827-media-import-v3", "mediaImportController"],
+    ['script[data-drag-drop-ui="true"]', "./drag-drop-ui.js?v=20260827-drag-drop-v1", "dragDropUi"],
+    ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20260827-home-drop-v1", "homeDropImport"],
+    ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20260827-lua-drop-progress-v1", "luaDropProgress"],
+    ['script[data-import-progress-i18n="true"]', "./import-progress-i18n.js?v=20260827-import-i18n-v1", "importProgressI18n"],
+    ['script[data-sidebar-title-i18n="true"]', "./sidebar-title-i18n.js?v=20260827-sidebar-title-i18n-v1", "sidebarTitleI18n"],
+    ['script[data-inspector-page-menu-i18n="true"]', "./inspector-page-menu-i18n.js?v=20260827-inspector-page-i18n-v1", "inspectorPageMenuI18n"],
+    ['script[data-inspector-summary-filter="true"]', "./inspector-summary-filter.js?v=20260827-summary-filter-v1", "inspectorSummaryFilter"],
+  ];
+  independent.forEach(args => loadScript(...args).catch(error => console.error("Runtime loader:", error)));
+
+  loadScript('script[data-image-editor-i18n="true"]', "./image-editor-i18n.js?v=20260827-image-editor-v1", "imageEditorI18n")
+    .then(() => loadScript('script[data-image-editor-core="true"]', "./image-editor-core.js?v=20260827-image-editor-v1", "imageEditorCore"))
+    .then(() => loadScript('script[data-image-editor-hooks="true"]', "./image-editor-hooks.js?v=20260827-image-editor-v1", "imageEditorHooks"))
+    .catch(error => console.error("Image editor loader:", error));
 })();
