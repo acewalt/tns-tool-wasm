@@ -95,6 +95,7 @@ jobs:
           export PATH="$SDK/bin:$ARM/bin:$PATH"
           mkdir -p smoke
           cat > smoke/main.c <<'EOF'
+          #define OLD_SCREEN_API
           #include <stdio.h>
           #include <libndls.h>
           int main(void) {
@@ -195,6 +196,7 @@ jobs:
           set -euo pipefail
           mkdir -p smoke-project
           cat > smoke-project/main.c <<'EOF'
+          #define OLD_SCREEN_API
           #include <stdio.h>
           #include <libndls.h>
           int main(void) {
@@ -368,6 +370,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path smoke-project | Out-Null
           @'
+          #define OLD_SCREEN_API
           #include <stdio.h>
           #include <libndls.h>
           int main(void) {
