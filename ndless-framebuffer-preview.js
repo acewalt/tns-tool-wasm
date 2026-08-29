@@ -143,7 +143,22 @@
     document.querySelectorAll("[data-ndless-project-canvas]").forEach(patchPreviewCanvas);
   }
 
-  root.NdlessFramebufferPreview = Object.freeze({ WIDTH, HEIGHT, BYTE_COUNT, MARKER, detect, extract, rgb565, preview, draw, patchPreviewCanvas, patchVisibleCanvases });
+  const helper = Object.freeze({ WIDTH, HEIGHT, BYTE_COUNT, MARKER, detect, extract, rgb565, preview, draw, patchPreviewCanvas, patchVisibleCanvases });
+  root.NdlessFramebufferPreview = helper;
+
+  const core = root.NdlessProjectCore;
+  if (core && !core.__framebufferPreviewV1 && typeof core.previewFromSource === "function") {
+    const fallback = core.previewFromSource.bind(core);
+    root.NdlessProjectCore = Object.freeze({
+      ...core,
+      __framebufferPreviewV1: true,
+      previewFromSource: source => preview(source, fallback),
+      detectNativeFramebuffer: detect,
+      extractEmbeddedRgb565: extract,
+      rgb565ToRgb: rgb565,
+    });
+  }
+
   patchVisibleCanvases();
   if (typeof MutationObserver !== "undefined" && typeof document !== "undefined") {
     new MutationObserver(patchVisibleCanvases).observe(document.documentElement, { childList: true, subtree: true });
