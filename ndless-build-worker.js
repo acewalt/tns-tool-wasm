@@ -1,16 +1,78 @@
 let sdkPromise = null;
 let clangPackage = null;
+let clangCommand = null;
 let armSupport = null;
 
-const SDK_URL = "https://unpkg.com/@wasmer/sdk@latest/dist/index.mjs";
+const SDK_URL = "https://unpkg.com/@wasmer/sdk@0.10.0/dist/index.mjs";
 
 function progress(stage, message, extra = {}) {
   postMessage({ type: "progress", stage, message, ...extra });
 }
 
 async function loadSdk() {
+  if (self.crossOriginIsolated !== true || typeof SharedArrayBuffer !== "function") {
+    const error = new Error("Browser compiler requires cross-origin isolation (COOP/COEP + SharedArrayBuffer).");
+    error.code = "CROSS_ORIGIN_ISOLATION_REQUIRED";
+    error.details = `crossOriginIsolated=${String(self.crossOriginIsolated)}; SharedArrayBuffer=${typeof SharedArrayBuffer}`;
+    throw error;
+  }
   if (!sdkPromise) sdkPromise = import(SDK_URL).then(async mod => { await mod.init(); return mod; });
   return sdkPromise;
+}
+
+function commandFromPackage(pkg) {
+  const explicit = pkg?.commands?.clang || pkg?.commands?.["clang"];
+  const command = explicit || pkg?.entrypoint;
+  if (!command?.run) {
+    const error = new Error("The Wasmer clang package does not expose a runnable clang command.");
+    error.code = "CLANG_COMMAND_MISSING";
+    throw error;
+  }
+  return command;
+}
+
+function isArmElfObject(bytes) {
+  const b = bytes instanceof Uint8Array ? bytes : new Uint8Array(bytes || 0);
+  if (b.length < 20) return false;
+  if (b[0] !== 0x7f || b[1] !== 0x45 || b[2] !== 0x4c || b[3] !== 0x46) return false;
+  if (b[4] !== 1 || b[5] !== 1) return false; // ELF32, little endian
+  const machine = b[18] | (b[19] << 8);
+  return machine === 40; // EM_ARM
+}
+
+async function probeArmBackend(sdk, command) {
+  const dir = new sdk.Directory();
+  await dir.writeFile("/probe.c", "int ndless_probe(void) { return 0; }\n");
+  const args = [
+    "--target=arm-none-eabi",
+    "-mcpu=arm926ej-s",
+    "-marm",
+    "-Os",
+    "-ffreestanding",
+    "-fno-builtin",
+    "-nostdlib",
+    "-c",
+    "/probe/probe.c",
+    "-o",
+    "/probe/probe.o",
+  ];
+  const instance = await command.run({ args, mount: { "/probe": dir } });
+  const output = await instance.wait();
+  const text = `${output.stdout || ""}${output.stderr ? `\n${output.stderr}` : ""}`.trim();
+  if (!output.ok) {
+    const error = new Error("Browser Clang could not compile an ARM926EJ-S probe.");
+    error.code = "ARM_BACKEND_UNAVAILABLE";
+    error.details = text || `clang probe exited with code ${output.code}`;
+    throw error;
+  }
+  const object = new Uint8Array(await dir.readFile("/probe.o"));
+  if (!isArmElfObject(object)) {
+    const error = new Error("Browser Clang returned an object, but it is not ELF32 ARM.");
+    error.code = "ARM_BACKEND_INVALID_OUTPUT";
+    error.details = `probe.o size=${object.length}`;
+    throw error;
+  }
+  return { objectBytes: object.length, output: text };
 }
 
 async function getClang() {
@@ -18,21 +80,15 @@ async function getClang() {
   if (!clangPackage) {
     progress("preparing", "Downloading browser Clang toolchain…");
     clangPackage = await sdk.Wasmer.fromRegistry("clang/clang");
+    clangCommand = commandFromPackage(clangPackage);
   }
   if (armSupport == null) {
-    progress("preparing", "Checking ARM32 backend…");
-    const proc = await clangPackage.entrypoint.run({ args: ["--print-targets"] });
-    const out = await proc.wait();
-    const text = `${out.stdout || ""}\n${out.stderr || ""}`;
-    armSupport = out.ok && /(^|\s)arm\s+-/im.test(text);
-    if (!armSupport) {
-      const error = new Error("The browser Clang package does not expose the ARM backend required for arm-none-eabi.");
-      error.code = "ARM_BACKEND_UNAVAILABLE";
-      error.details = text.trim();
-      throw error;
-    }
+    progress("preparing", "Compiling ARM32 capability probe…");
+    const probe = await probeArmBackend(sdk, clangCommand);
+    armSupport = true;
+    progress("preparing", `ARM32 compiler ready (${probe.objectBytes} B probe object).`);
   }
-  return { sdk, clang: clangPackage };
+  return { sdk, clang: clangPackage, command: clangCommand };
 }
 
 function safePath(value) {
@@ -113,7 +169,7 @@ function diagnosticsFromText(text) {
 }
 
 async function compileProject(project) {
-  const { sdk, clang } = await getClang();
+  const { sdk, command } = await getClang();
   const dir = new sdk.Directory();
   const files = project?.files || {};
   const sources = Object.keys(files).filter(name => /\.(?:c|cc|cpp|cxx|s|S)$/i.test(name) && !/(^|\/)__ndless_/.test(name));
@@ -140,8 +196,6 @@ async function compileProject(project) {
     "-fno-builtin",
     "-ffunction-sections",
     "-fdata-sections",
-    "-fno-exceptions",
-    "-fno-rtti",
     "-nostdlib",
     "-fuse-ld=lld",
     "-I/project",
@@ -156,7 +210,7 @@ async function compileProject(project) {
   ];
 
   progress("compiling", `Compiling ${sources.length} source file${sources.length === 1 ? "" : "s"} for ARM926EJ-S…`, { current: 0, total: sources.length });
-  const instance = await clang.entrypoint.run({ args, mount: { "/project": dir } });
+  const instance = await command.run({ args, mount: { "/project": dir } });
   const output = await instance.wait();
   const combined = `${output.stdout || ""}${output.stderr ? `\n${output.stderr}` : ""}`.trim();
   if (!output.ok) {
@@ -167,8 +221,14 @@ async function compileProject(project) {
     throw error;
   }
   progress("linking", "ARM ELF linked successfully.");
-  const elf = await dir.readFile(outputName);
-  return { elf: new Uint8Array(elf), logs: combined ? combined.split(/\r?\n/) : [], diagnostics: diagnosticsFromText(combined), sourceCount: sources.length, args };
+  const elf = new Uint8Array(await dir.readFile(outputName));
+  if (!isArmElfObject(elf)) {
+    // Executable ELF keeps the same ELF32/EM_ARM identification as objects.
+    const error = new Error("Linked output is not a valid ELF32 ARM image.");
+    error.code = "LINK_INVALID_ELF";
+    throw error;
+  }
+  return { elf, logs: combined ? combined.split(/\r?\n/) : [], diagnostics: diagnosticsFromText(combined), sourceCount: sources.length, args };
 }
 
 self.onmessage = async event => {
@@ -176,7 +236,7 @@ self.onmessage = async event => {
   try {
     if (action === "prepare") {
       await getClang();
-      postMessage({ type: "result", id, result: { ok: true, armSupport: true } });
+      postMessage({ type: "result", id, result: { ok: true, armSupport: true, crossOriginIsolated: self.crossOriginIsolated === true } });
       return;
     }
     if (action === "build") {
