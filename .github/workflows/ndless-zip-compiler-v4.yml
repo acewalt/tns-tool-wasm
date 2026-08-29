@@ -1,0 +1,104 @@
+name: Ndless ZIP compiler v4 launcher
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/ndless-zip-compiler/NdlessZipCompilerV4.cs'
+      - '.github/workflows/ndless-zip-compiler-v4.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build launcher
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:GITHUB_WORKSPACE 'tools/ndless-zip-compiler'
+          $dist = Join-Path $root 'dist-v4'
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
+          if (-not (Test-Path $csc)) { throw 'csc.exe not found' }
+          & $csc /nologo /optimize+ /target:exe /platform:x64 "/out:$dist\NdlessZipCompiler.exe" /reference:System.dll /reference:System.Core.dll "$root\NdlessZipCompilerV4.cs"
+          if ($LASTEXITCODE -ne 0) { throw "csc failed: $LASTEXITCODE" }
+          & "$dist\NdlessZipCompiler.exe" --self-test
+          if ($LASTEXITCODE -ne 0) { throw "self-test failed: $LASTEXITCODE" }
+
+      - name: Test canonical Zehn rejection and acceptance
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $root = Join-Path $env:GITHUB_WORKSPACE 'tools/ndless-zip-compiler'
+          $dist = Join-Path $root 'dist-v4'
+          $test = Join-Path $env:RUNNER_TEMP 'ndless-zip-v4-test'
+          New-Item -ItemType Directory -Force -Path $test | Out-Null
+          $fakeSource = Join-Path $test 'FakeCompiler.cs'
+          @'
+          using System;
+          using System.IO;
+          internal static class FakeCompiler {
+            static void U32(BinaryWriter w, uint v) { w.Write(v); }
+            static int Main(string[] args) {
+              if (args.Length >= 1 && args[0] == "--status-json") {
+                Console.WriteLine("{\"version\":\"0.2.2\",\"toolchainReady\":true}");
+                return 0;
+              }
+              if (args.Length >= 3 && args[0] == "--build-zip") {
+                using (var fs=File.Create(args[2])) using (var w=new BinaryWriter(fs)) {
+                  w.Write(new byte[]{(byte)'Z',(byte)'e',(byte)'h',(byte)'n'});
+                  U32(w,1); U32(w,38); U32(w,1); U32(w,0); U32(w,0); U32(w,42); U32(w,0);
+                  U32(w,3); // FILE_COMPRESSED/ZLIB, canonical 4 bytes
+                  w.Write((byte)0x78); w.Write((byte)0x9C); // valid zlib CMF/FLG for launcher validation
+                }
+                return 0;
+              }
+              return 2;
+            }
+          }
+          '@ | Set-Content -Encoding UTF8 $fakeSource
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
+          & $csc /nologo /optimize+ /target:exe /platform:x64 "/out:$test\FakeCompiler.exe" $fakeSource
+          if ($LASTEXITCODE -ne 0) { throw 'fake compiler build failed' }
+          New-Item -ItemType Directory -Force (Join-Path $test 'p') | Out-Null
+          'int main(void){return 0;}' | Set-Content -Encoding ASCII (Join-Path $test 'p\main.c')
+          Compress-Archive -Path (Join-Path $test 'p\*') -DestinationPath (Join-Path $test 'project.zip') -Force
+          $env:TNS_TOOL_COMPILER_EXE = Join-Path $test 'FakeCompiler.exe'
+          & "$dist\NdlessZipCompiler.exe" --no-pause (Join-Path $test 'project.zip')
+          if ($LASTEXITCODE -ne 0) { throw 'launcher canonical Zehn validation failed' }
+          if (-not (Test-Path (Join-Path $test 'project.tns'))) { throw 'launcher output missing' }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:GITHUB_WORKSPACE 'tools/ndless-zip-compiler'
+          $dist = Join-Path $root 'dist-v4'
+          Copy-Item "$root\NdlessZipCompilerV4.cs" "$dist\NdlessZipCompiler.cs"
+          @'
+          Ndless ZIP Compiler 2.1.0
+          =========================
+          Arrastra un ZIP de proyecto Ndless sobre NdlessZipCompiler.exe.
+
+          Esta versión usa exclusivamente el compilador Windows v4 / bridge 0.2.2.
+          Corrige el ABI de genzehn en Windows: las entradas Zehn reloc/flag son de 4 bytes.
+          El launcher valida además que el payload calculado comience con una cabecera zlib válida.
+
+          No necesita carpeta sdk.
+          La primera ejecución descarga aproximadamente 262 MB y verifica SHA-256.
+          La salida actual es Modern Zehn .tns.
+          '@ | Set-Content -Encoding UTF8 "$dist\README.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NdlessZipCompiler-v4-Windows-x64
+          path: tools/ndless-zip-compiler/dist-v4/
+          if-no-files-found: error
+          retention-days: 30
