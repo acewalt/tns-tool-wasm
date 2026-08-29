@@ -1,0 +1,109 @@
+name: Build local TNS compiler bridge
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/build-local-compiler-bridge.yml'
+      - 'tools/tns-tool-compiler-bridge/**'
+      - 'ndless-local-bridge.js'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tns-tool-local-compiler-bridge
+  cancel-in-progress: true
+
+env:
+  BRIDGE_TAG: tns-tool-compiler-bridge-v1
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows x64
+            artifact: TNS-Tool-Compiler-Windows-x64
+          - os: ubuntu-24.04
+            name: Linux x64
+            artifact: TNS-Tool-Compiler-Linux-x64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tools/tns-tool-compiler-bridge
+
+      - name: Build bridge
+        run: cargo build --release --manifest-path tools/tns-tool-compiler-bridge/Cargo.toml
+
+      - name: Package Windows bridge
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $stage = 'dist/TNS-Tool-Compiler-Windows-x64'
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item 'tools/tns-tool-compiler-bridge/target/release/tns-tool-compiler-bridge.exe' "$stage/tns-tool-compiler-bridge.exe"
+          Copy-Item 'tools/tns-tool-compiler-bridge/install-windows.ps1' "$stage/install-windows.ps1"
+          Copy-Item 'tools/tns-tool-compiler-bridge/README.md' "$stage/README.md"
+          Compress-Archive -Path "$stage/*" -DestinationPath 'dist/TNS-Tool-Compiler-Windows-x64.zip' -Force
+
+      - name: Package Linux bridge
+        if: runner.os == 'Linux'
+        shell: bash
+        run: |
+          set -euo pipefail
+          stage='dist/TNS-Tool-Compiler-Linux-x64'
+          mkdir -p "$stage"
+          cp tools/tns-tool-compiler-bridge/target/release/tns-tool-compiler-bridge "$stage/tns-tool-compiler-bridge"
+          cp tools/tns-tool-compiler-bridge/install-linux.sh "$stage/install-linux.sh"
+          cp tools/tns-tool-compiler-bridge/README.md "$stage/README.md"
+          chmod +x "$stage/tns-tool-compiler-bridge" "$stage/install-linux.sh"
+          tar -C "$stage" -czf dist/TNS-Tool-Compiler-Linux-x64.tar.gz .
+
+      - name: Upload package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: dist/${{ matrix.artifact }}.*
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish bridge release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Show packages
+        run: ls -lh dist
+
+      - name: Publish versioned bridge release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$BRIDGE_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$BRIDGE_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          fi
+          gh release create "$BRIDGE_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title 'TNS Tool Compiler Bridge v1' \
+            --notes 'Cross-platform local compiler bridge for TNS Tool. Windows x64 and Linux x64 packages. The web IDE communicates only through 127.0.0.1.'
+          gh release upload "$BRIDGE_TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
