@@ -1,0 +1,277 @@
+name: TNS compiler v4 - canonical Windows Zehn
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/finish-self-contained-compiler-release-v7.yml'
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_RUN_ID: '33232126878'
+  COMPILER_TAG: tns-tool-compiler-v4
+  BRIDGE_VERSION: '0.2.2'
+  RUNTIME_VERSION: 'runtime-0.2.2'
+  V3_URL: 'https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-compiler-v3/TNS-Tool-Compiler-Windows-x64.exe'
+
+jobs:
+  windows:
+    name: Windows x64 canonical Zehn compiler
+    runs-on: windows-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reuse genzehn source
+        uses: actions/download-artifact@v4
+        with:
+          name: ndless-common-runtime
+          path: common
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Extract validated v3 runtime as base
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Invoke-WebRequest -Uri $env:V3_URL -OutFile compiler-v3.exe
+          $env:LOCALAPPDATA = "$PWD/v3-localappdata"
+          $status = & "$PWD/compiler-v3.exe" --status-json
+          $status
+          if ($LASTEXITCODE -ne 0) { throw 'Could not extract v3 runtime.' }
+          $base = "$env:LOCALAPPDATA/TNS Tool Compiler/runtime/runtime-0.2.1"
+          if (-not (Test-Path "$base/toolchain/bin/arm-none-eabi-gcc.exe")) { throw 'Extracted ARM runtime is missing.' }
+          New-Item -ItemType Directory -Force bundle | Out-Null
+          Copy-Item -Recurse -Force $base bundle/runtime
+          Remove-Item bundle/runtime/.bundle-version -Force -ErrorAction SilentlyContinue
+
+      - name: Set up MSYS2 for fixed genzehn
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: false
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-zlib
+
+      - name: Build canonical 4-byte Zehn tables
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          SRC="$GITHUB_WORKSPACE/common/genzehn-src"
+
+          cat > /tmp/zehn-layout.cpp <<'CPP'
+          #include <cstdint>
+          #include "zehn.h"
+          static_assert(sizeof(Zehn_header) == 32, "Zehn header ABI drift");
+          static_assert(sizeof(Zehn_reloc) == 4, "Zehn reloc must be exactly 4 bytes");
+          static_assert(sizeof(Zehn_flag) == 4, "Zehn flag must be exactly 4 bytes");
+          int main(){return 0;}
+          CPP
+          g++ -mno-ms-bitfields -I "$GITHUB_WORKSPACE/common/ndless/include" /tmp/zehn-layout.cpp -o /tmp/zehn-layout.exe
+          /tmp/zehn-layout.exe
+
+          g++ -O2 -Wall -Wextra -std=c++11 -mno-ms-bitfields \
+            -I "$SRC/elfio-3.2" \
+            -I "$GITHUB_WORKSPACE/common/ndless/include" \
+            "$SRC/genzehn.cpp" \
+            -static-libgcc -static-libstdc++ \
+            -lboost_program_options-mt -lz -lws2_32 \
+            -o bundle/runtime/bin/genzehn.exe
+
+          ldd bundle/runtime/bin/genzehn.exe \
+            | awk '/\/mingw64\/bin\// { for (i=1; i<=NF; i++) if ($i ~ /^\/mingw64\/bin\//) print $i }' \
+            | sort -u \
+            | while IFS= read -r dll; do [ -n "$dll" ] && cp -v "$dll" bundle/runtime/bin/; done
+          bundle/runtime/bin/genzehn.exe --help >/dev/null || true
+
+      - name: Patch bridge to 0.2.2 self-healing Windows build
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $mainPath = 'tools/tns-tool-compiler-bridge/src/main.rs'
+          $cargoPath = 'tools/tns-tool-compiler-bridge/Cargo.toml'
+          $main = Get-Content $mainPath -Raw
+
+          $main = $main.Replace('const RUNTIME_VERSION: &str = "runtime-0.2.0";', 'const RUNTIME_VERSION: &str = "runtime-0.2.2";')
+
+          $needle = @'
+          use std::process::{Command, Output};
+          '@.Trim()
+          $replacement = @'
+          use std::process::{Command, Output};
+          #[cfg(target_os = "windows")]
+          use std::os::windows::process::CommandExt;
+          #[cfg(target_os = "windows")]
+          const CREATE_NO_WINDOW: u32 = 0x08000000;
+          '@.Trim()
+          if (-not $main.Contains($needle)) { throw 'Could not patch Windows CommandExt import.' }
+          $main = $main.Replace($needle, $replacement)
+
+          $needle = @'
+          fn run_command(command: &mut Command, log: &mut String, label: &str) -> Result<(), String> {
+              log.push_str("$ ");
+          '@.Trim()
+          $replacement = @'
+          fn run_command(command: &mut Command, log: &mut String, label: &str) -> Result<(), String> {
+              #[cfg(target_os = "windows")]
+              command.creation_flags(CREATE_NO_WINDOW);
+              log.push_str("$ ");
+          '@.Trim()
+          if (-not $main.Contains($needle)) { throw 'Could not patch hidden child process behavior.' }
+          $main = $main.Replace($needle, $replacement)
+
+          $needle = @'
+              if !same {
+                  fs::copy(&current, &target).map_err(|e| format!("Could not install compiler: {e}"))?;
+              }
+          '@.Trim()
+          $replacement = @'
+              if !same {
+                  if target.exists() {
+                      let mut stop = Command::new("taskkill.exe");
+                      stop.creation_flags(CREATE_NO_WINDOW)
+                          .args(["/IM", "TNS-Tool-Compiler.exe", "/F"]);
+                      let _ = stop.status();
+                      std::thread::sleep(std::time::Duration::from_millis(500));
+                  }
+                  fs::copy(&current, &target).map_err(|e| format!("Could not install compiler: {e}"))?;
+              }
+          '@.Trim()
+          if (-not $main.Contains($needle)) { throw 'Could not patch Windows self-update block.' }
+          $main = $main.Replace($needle, $replacement)
+
+          $needle = @'
+                  let status = Command::new("reg.exe").args(args).status().map_err(|e| e.to_string())?;
+          '@.Trim()
+          $replacement = @'
+                  let mut reg = Command::new("reg.exe");
+                  reg.creation_flags(CREATE_NO_WINDOW).args(args);
+                  let status = reg.status().map_err(|e| e.to_string())?;
+          '@.Trim()
+          if (-not $main.Contains($needle)) { throw 'Could not patch hidden registry commands.' }
+          $main = $main.Replace($needle, $replacement)
+          Set-Content -Path $mainPath -Value $main -Encoding utf8
+
+          $cargo = Get-Content $cargoPath -Raw
+          $cargo = $cargo.Replace('version = "0.2.0"', 'version = "0.2.2"')
+          Set-Content -Path $cargoPath -Value $cargo -Encoding utf8
+
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tools/tns-tool-compiler-bridge
+
+      - name: Build bridge and pack runtime
+        shell: pwsh
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: |
+          $ErrorActionPreference = 'Stop'
+          cargo build --release --manifest-path tools/tns-tool-compiler-bridge/Cargo.toml
+          $out = & tools/tns-tool-compiler-bridge/target/release/tns-tool-compiler-bridge.exe --status-json
+          if ($out -notmatch '"version":"0.2.2"') { throw "Expected bridge 0.2.2, got: $out" }
+          New-Item -ItemType Directory -Force dist | Out-Null
+          python tools/tns-tool-compiler-bridge/pack_runtime.py `
+            tools/tns-tool-compiler-bridge/target/release/tns-tool-compiler-bridge.exe `
+            bundle/runtime `
+            dist/TNS-Tool-Compiler-Windows-x64.exe
+          Get-Item dist/TNS-Tool-Compiler-Windows-x64.exe | Format-List Name,Length
+
+      - name: Real Zehn smoke - table ABI and zlib payload
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:LOCALAPPDATA = "$PWD/smoke-localappdata"
+          New-Item -ItemType Directory -Force smoke-project | Out-Null
+          @'
+          #define OLD_SCREEN_API
+          #include <stdio.h>
+          #include <libndls.h>
+          int main(void) {
+              assert_ndless_rev(801);
+              clrscr();
+              printf("Hello from canonical Windows Zehn!\n");
+              wait_key_pressed();
+              return 0;
+          }
+          '@ | Set-Content -Encoding ascii smoke-project/main.c
+          python -c "import zipfile; z=zipfile.ZipFile('smoke-project.zip','w',zipfile.ZIP_DEFLATED); z.write('smoke-project/main.c','main.c'); z.close()"
+          $proc = Start-Process -FilePath "$PWD/dist/TNS-Tool-Compiler-Windows-x64.exe" -ArgumentList '--build-zip','smoke-project.zip','smoke-windows.tns','smoke-windows' -Wait -PassThru
+          if ($proc.ExitCode -ne 0) { throw "Compiler smoke exited with $($proc.ExitCode)" }
+          @'
+          import struct, zlib
+          from pathlib import Path
+          b=Path('smoke-windows.tns').read_bytes()
+          assert len(b)>=32
+          sig,ver,file_size,rc,fc,extra,alloc,entry=struct.unpack_from('<8I',b,0)
+          assert sig==0x6e68655a and ver==1, (hex(sig),ver)
+          assert file_size==len(b), (file_size,len(b))
+          assert rc>0
+          first=struct.unpack_from('<I',b,32)[0]
+          assert (first & 0xff)==3 and (first>>8)==0, hex(first)
+          exec_off=32+4*(rc+fc)+extra
+          assert exec_off < file_size, (exec_off,file_size,rc,fc,extra)
+          payload=b[exec_off:file_size]
+          image=zlib.decompress(payload)
+          assert image and entry < len(image), (entry,len(image))
+          print('Canonical Zehn OK:', {'bytes':len(b),'relocs':rc,'flags':fc,'extra':extra,'payloadOffset':hex(exec_off),'payloadHead':payload[:4].hex(),'inflated':len(image),'entry':hex(entry)})
+          '@ | Set-Content -Encoding ascii validate_zehn.py
+          python validate_zehn.py
+          if (-not (Test-Path "$env:LOCALAPPDATA/TNS Tool Compiler/runtime/runtime-0.2.2/.bundle-version")) { throw 'runtime-0.2.2 was not extracted.' }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TNS-Tool-Compiler-Windows-x64-v4
+          path: dist/TNS-Tool-Compiler-Windows-x64.exe
+          retention-days: 30
+          if-no-files-found: error
+
+  release:
+    name: Publish Windows compiler v4
+    needs: windows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: TNS-Tool-Compiler-Windows-x64-v4
+          path: dist
+      - name: Manifest
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib,json
+          from pathlib import Path
+          p=Path('dist/TNS-Tool-Compiler-Windows-x64.exe')
+          data=p.read_bytes()
+          manifest={
+            'version':4,
+            'bridgeProtocol':2,
+            'bridgeVersion':'0.2.2',
+            'runtimeVersion':'runtime-0.2.2',
+            'ndless':'r2022',
+            'windowsZehnLayout':'canonical-4-byte-tables',
+            'genzehnCompilerFlag':'-mno-ms-bitfields',
+            'files':[{'name':p.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}],
+          }
+          Path('dist/compiler-manifest.json').write_text(json.dumps(manifest,indent=2))
+          print(json.dumps(manifest,indent=2))
+          PY
+      - name: Publish v4
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$COMPILER_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$COMPILER_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          fi
+          gh release create "$COMPILER_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title 'TNS Tool Compiler v4' \
+            --notes 'Windows compiler fix: genzehn is built with canonical 4-byte Zehn relocation/flag entries. The release smoke test parses the generated tables and zlib-decompresses the payload.'
+          gh release upload "$COMPILER_TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
