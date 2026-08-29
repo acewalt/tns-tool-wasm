@@ -176,7 +176,8 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
       onProgress(info) { logMessage(`Ndless: ${info?.message || info?.stage || "build"}`); },
     });
     if (!result?.ok) {
-      const error = new Error(result?.message || "La reconstrucción Ndless falló.");
+      const details = result?.details ? `\n${result.details}` : "";
+      const error = new Error(`${result?.message || "La reconstrucción Ndless falló."}${details}`);
       error.code = result?.code || "NDLESS_BUILD_FAILED";
       error.details = result?.details || "";
       throw error;
@@ -228,12 +229,33 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
     return result;
   }
 
+  function currentNdlessArtifact() {
+    const result = window.NdlessBuildManager?.artifact?.();
+    if (!result?.ok || !result?.bytes?.length) return null;
+    return {
+      ok: true,
+      family: "ndless",
+      filename: ensureTnsName(result.filename || "ndless-app.tns"),
+      bytes: result.bytes,
+      detection: result.detection,
+      sourceResult: result,
+    };
+  }
+
   async function downloadCurrentExperimental() {
-    logMessage("Reconstruyendo el TNS experimental para descargarlo…");
-    const artifact = core.validateArtifact(await buildCurrentArtifact(), validateGeneratedBytes);
+    let artifact = currentNdlessArtifact();
+    if (artifact) {
+      artifact = core.validateArtifact(artifact, validateGeneratedBytes);
+      fallbackDownload(artifact.bytes, artifact.filename);
+      logMessage(`Descarga iniciada desde el último Build TNS exitoso: ${artifact.filename} (${artifact.bytes.length} bytes).`);
+      return { fallback: "download", source: "last-build", artifact };
+    }
+
+    logMessage("No hay un Build TNS exitoso previo. Reconstruyendo el TNS para descargarlo…");
+    artifact = core.validateArtifact(await buildCurrentArtifact(), validateGeneratedBytes);
     fallbackDownload(artifact.bytes, artifact.filename);
     logMessage(`Descarga TNS experimental iniciada: ${artifact.filename} (${artifact.bytes.length} bytes).`);
-    return { fallback: "download", artifact };
+    return { fallback: "download", source: "fresh-build", artifact };
   }
 
   function logMessage(message, isError = false) {
@@ -293,7 +315,7 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
 
       const direct = makeButton("Descargar TNS experimental", downloadCurrentExperimental, "primary ndless-save-experimental-button");
       direct.dataset.experimentalSaveDirect = "1";
-      direct.title = "Reconstruye y valida un TNS nuevo y descarga exactamente esos bytes. No ejecuta el botón Build TNS.";
+      direct.title = "Descarga el último Build TNS exitoso; si no existe, intenta reconstruir y validar uno nuevo.";
       buildButton.insertAdjacentElement("afterend", direct);
     });
   }
