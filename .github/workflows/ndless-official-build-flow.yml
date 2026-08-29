@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'ndless-build-confirm-flow.js'
-      - 'ndless-local-runtime-v4.js'
+      - 'ndless-web-bridge.js'
       - 'container-editor-bindings.js'
       - 'multi-image-upload.js'
       - '.github/workflows/ndless-official-build-flow.yml'
@@ -22,21 +22,26 @@ jobs:
       - name: JavaScript syntax
         run: |
           node --check ndless-build-confirm-flow.js
-          node --check ndless-local-runtime-v4.js
+          node --check ndless-web-bridge.js
           node --check container-editor-bindings.js
           node --check multi-image-upload.js
-      - name: Verify confirmed compiler routing
+      - name: Verify dedicated web bridge routing
         run: |
-          grep -F 'tns-tool-compiler-v4' ndless-local-runtime-v4.js
-          grep -F 'version:"0.2.2"' ndless-local-runtime-v4.js
-          grep -F 'ndless-local-runtime-v4.js' container-editor-bindings.js
+          grep -F '127.0.0.1:34983' ndless-web-bridge.js
+          grep -F 'ndlessweb://start' ndless-web-bridge.js
+          grep -F 'ndless-web-compiler-v1' ndless-web-bridge.js
+          grep -F 'Ndless-Web-Compiler-Windows-x64.exe' ndless-web-bridge.js
+          grep -F 'ndless-web-bridge.js' container-editor-bindings.js
           grep -F 'ndless-build-confirm-flow.js' container-editor-bindings.js
-          grep -F 'Sí, ya se descargó' ndless-build-confirm-flow.js
-          grep -F 'openLocalCompiler' ndless-build-confirm-flow.js
+      - name: Verify first-run confirmation is inside compiler step
+        run: |
+          grep -F 'data-build-step1-prompt' ndless-build-confirm-flow.js
+          grep -F '¿Ya se descargó Ndless-Web-Compiler-Windows-x64.exe?' ndless-build-confirm-flow.js
+          grep -F 'Ahora abre el EXE desde Descargas' ndless-build-confirm-flow.js
+          grep -F 'Ya lo abrí' ndless-build-confirm-flow.js
           grep -F 'project.zip' ndless-build-confirm-flow.js
-          grep -F 'bridge.build(project' ndless-build-confirm-flow.js
-          grep -F 'downloadTns(result)' ndless-build-confirm-flow.js
+          grep -F 'NdlessLocalBridge.build(project' ndless-build-confirm-flow.js
       - name: Verify experimental Ndless button is retired
         run: |
           grep -F 'ndless-save-experimental-button' ndless-build-confirm-flow.js
-          grep -F 'dataset.experimentalSaveDirect = "1"' ndless-build-confirm-flow.js
+          grep -F 'dataset.experimentalSaveDirect="1"' ndless-build-confirm-flow.js
