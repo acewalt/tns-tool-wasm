@@ -1,0 +1,108 @@
+name: Ndless ZIP compiler
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tools/ndless-zip-compiler/**'
+      - '.github/workflows/ndless-zip-compiler.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build launcher
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:GITHUB_WORKSPACE 'tools/ndless-zip-compiler'
+          $dist = Join-Path $root 'dist'
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
+          if (-not (Test-Path $csc)) { throw 'csc.exe not found' }
+          & $csc /nologo /optimize+ /target:exe /platform:x64 "/out:$dist\NdlessZipCompiler.exe" /reference:System.dll /reference:System.Core.dll "$root\NdlessZipCompiler.cs"
+          if ($LASTEXITCODE -ne 0) { throw "csc failed: $LASTEXITCODE" }
+          & "$dist\NdlessZipCompiler.exe" --self-test
+          if ($LASTEXITCODE -ne 0) { throw "self-test failed: $LASTEXITCODE" }
+
+      - name: Test drag-drop build flow with fake compiler
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:GITHUB_WORKSPACE 'tools/ndless-zip-compiler'
+          $test = Join-Path $env:RUNNER_TEMP 'ndless-zip-test'
+          New-Item -ItemType Directory -Force -Path $test | Out-Null
+          $fakeSource = Join-Path $test 'FakeCompiler.cs'
+          @'
+          using System;
+          using System.IO;
+          using System.Text;
+          internal static class FakeCompiler {
+            private static int Main(string[] args) {
+              if (args.Length >= 3 && args[0] == "--build-zip") {
+                File.WriteAllBytes(args[2], Encoding.ASCII.GetBytes("ZehnFAKE"));
+                Console.Error.WriteLine("Built " + args[2]);
+                return 0;
+              }
+              if (args.Length >= 1 && args[0] == "--status-json") {
+                Console.WriteLine("{\"version\":\"0.2.1\",\"toolchainReady\":true}");
+                return 0;
+              }
+              return 2;
+            }
+          }
+          '@ | Set-Content -Encoding UTF8 $fakeSource
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
+          & $csc /nologo /optimize+ /target:exe /platform:x64 "/out:$test\FakeCompiler.exe" $fakeSource
+          if ($LASTEXITCODE -ne 0) { throw "fake compiler build failed: $LASTEXITCODE" }
+
+          $project = Join-Path $test 'project'
+          New-Item -ItemType Directory -Force -Path $project | Out-Null
+          'int main(void){return 0;}' | Set-Content -Encoding ASCII (Join-Path $project 'main.c')
+          $zip = Join-Path $test 'sample-project.zip'
+          Compress-Archive -Path (Join-Path $project '*') -DestinationPath $zip -Force
+
+          $env:TNS_TOOL_COMPILER_EXE = Join-Path $test 'FakeCompiler.exe'
+          & "$root\dist\NdlessZipCompiler.exe" --no-pause $zip
+          if ($LASTEXITCODE -ne 0) { throw "launcher build flow failed: $LASTEXITCODE" }
+          $tns = Join-Path $test 'sample-project.tns'
+          if (-not (Test-Path $tns)) { throw 'launcher did not create output TNS' }
+          $bytes = [System.IO.File]::ReadAllBytes($tns)
+          $magic = [System.Text.Encoding]::ASCII.GetString($bytes, 0, 4)
+          if ($magic -ne 'Zehn') { throw "invalid output magic: $magic" }
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $root = Join-Path $env:GITHUB_WORKSPACE 'tools/ndless-zip-compiler'
+          Copy-Item "$root\build.bat" "$root\dist\build.bat"
+          Copy-Item "$root\NdlessZipCompiler.cs" "$root\dist\NdlessZipCompiler.cs"
+          @'
+          Ndless ZIP Compiler
+          ===================
+
+          Arrastra uno o varios ZIP de proyectos Ndless sobre NdlessZipCompiler.exe.
+          No necesita una carpeta sdk.
+
+          Primera ejecución:
+          - reutiliza TNS Tool Compiler 0.2.1 si ya está instalado; o
+          - descarga la release v3 oficial (~262 MB), valida SHA-256 y la guarda en LOCALAPPDATA.
+
+          Después ejecuta el modo oficial:
+            TNS-Tool-Compiler --build-zip proyecto.zip salida.tns nombre
+
+          La salida actual es Modern Zehn.
+          '@ | Set-Content -Encoding UTF8 "$root\dist\README.txt"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: NdlessZipCompiler-Windows-x64
+          path: tools/ndless-zip-compiler/dist/
+          if-no-files-found: error
