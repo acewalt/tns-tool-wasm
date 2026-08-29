@@ -150,21 +150,51 @@
     const target = form.querySelector("select[name='target']");
     const note = form.querySelector("[data-project-mode-note]");
     if (!template || !target || !language) return;
-    const sync = () => {
-      if (language.value === "asm") return;
-      let option = Array.from(template.options).find(item => item.value === "browser-minimal");
-      if (!option) {
-        option = document.createElement("option");
-        option.value = "browser-minimal";
-        option.textContent = "Browser minimal (freestanding)";
-        template.insertBefore(option, template.firstChild);
+
+    let userPickedTemplate = false;
+    const originalNote = note?.textContent || "";
+    let option = Array.from(template.options).find(item => item.value === "browser-minimal");
+    if (!option) {
+      option = document.createElement("option");
+      option.value = "browser-minimal";
+      option.textContent = "Browser minimal (freestanding)";
+      template.insertBefore(option, template.firstChild);
+    }
+
+    const sync = ({ targetChanged = false } = {}) => {
+      const modern = target.value === "zehn-modern";
+      const assembly = language.value === "asm";
+      option.disabled = !modern || assembly;
+
+      if ((!modern || assembly) && template.value === "browser-minimal") template.value = "basic";
+
+      // A freshly-created Modern Zehn project must compile without the user
+      // having to discover a special template after Build TNS fails.
+      if (modern && !assembly && (targetChanged || !userPickedTemplate)) {
+        template.value = "browser-minimal";
       }
-      option.disabled = target.value !== "zehn-modern";
-      if (template.value === "browser-minimal" && option.disabled) template.value = "basic";
-      if (note && template.value === "browser-minimal") note.textContent = "No <os.h>/newlib: intended for the current real in-browser ARM → Modern Zehn build provider.";
+
+      if (note) {
+        if (modern && !assembly && template.value === "browser-minimal") {
+          note.textContent = "Browser-ready starter: Build TNS can compile this minimal project without the external Ndless SDK/sysroot.";
+        } else if (modern) {
+          note.textContent = "This SDK template uses Ndless headers/libraries. Browser Build TNS needs the full Ndless sysroot for it; Browser minimal is the immediately buildable starter.";
+        } else {
+          note.textContent = originalNote;
+        }
+      }
     };
-    form.addEventListener("change", () => setTimeout(sync,0));
-    sync();
+
+    template.addEventListener("change", () => {
+      userPickedTemplate = true;
+      sync();
+    });
+    target.addEventListener("change", () => {
+      userPickedTemplate = false;
+      sync({ targetChanged: true });
+    });
+    language.addEventListener("change", () => sync());
+    sync({ targetChanged: target.value === "zehn-modern" });
   }
 
   function setup() {
