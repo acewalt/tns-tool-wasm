@@ -228,6 +228,14 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
     return result;
   }
 
+  async function downloadCurrentExperimental() {
+    logMessage("Reconstruyendo el TNS experimental para descargarlo…");
+    const artifact = core.validateArtifact(await buildCurrentArtifact(), validateGeneratedBytes);
+    fallbackDownload(artifact.bytes, artifact.filename);
+    logMessage(`Descarga TNS experimental iniciada: ${artifact.filename} (${artifact.bytes.length} bytes).`);
+    return { fallback: "download", artifact };
+  }
+
   function logMessage(message, isError = false) {
     const prefix = "[Guardar experimental]";
     try {
@@ -283,9 +291,9 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
       const buildButton = actions?.querySelector(".ndless-build-tns-button");
       if (!actions || !buildButton || actions.querySelector("[data-experimental-save-direct]")) return;
 
-      const direct = makeButton("Guardar experimental", saveCurrentExperimental, "primary ndless-save-experimental-button");
+      const direct = makeButton("Descargar TNS experimental", downloadCurrentExperimental, "primary ndless-save-experimental-button");
       direct.dataset.experimentalSaveDirect = "1";
-      direct.title = "Reconstruye y valida un TNS nuevo antes de escribirlo. No ejecuta el botón Build TNS.";
+      direct.title = "Reconstruye y valida un TNS nuevo y descarga exactamente esos bytes. No ejecuta el botón Build TNS.";
       buildButton.insertAdjacentElement("afterend", direct);
     });
   }
@@ -338,5 +346,6 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
     buildCurrentArtifact,
     saveCurrentExperimental,
     saveCurrentAsExperimental,
+    downloadCurrentExperimental,
   });
 })();
