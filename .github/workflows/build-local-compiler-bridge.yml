@@ -332,7 +332,9 @@ jobs:
           set -e
           mkdir -p bundle/runtime/bin
           SRC="$GITHUB_WORKSPACE/common/genzehn-src"
-          g++ -O2 -Wall -Wextra -std=c++11 -I "$SRC/elfio-3.2" \
+          g++ -O2 -Wall -Wextra -std=c++11 \
+            -I "$SRC/elfio-3.2" \
+            -I "$GITHUB_WORKSPACE/common/ndless/include" \
             "$SRC/genzehn.cpp" -static -static-libgcc -static-libstdc++ \
             -lboost_program_options -lz -lws2_32 \
             -o bundle/runtime/bin/genzehn.exe
