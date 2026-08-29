@@ -22,15 +22,15 @@
   function starterSource(language="c", template="basic") {
     const cpp = language === "cpp";
     if (template === "graphics") {
-      return `${cpp ? '#include <os.h>\n' : ''}#include <SDL/SDL.h>\n\nint main(void) {\n    SDL_Init(SDL_INIT_VIDEO);\n    SDL_Surface *screen = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE);\n    nSDL_Font *font = nSDL_LoadFont(NSDL_FONT_TINYTYPE, 29, 43, 61);\n\n    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 18, 34, 48));\n    nSDL_DrawString(screen, font, 20, 22, \"Hello Ndless!\");\n    nSDL_DrawString(screen, font, 20, 48, \"Edit me in Monaco\");\n    SDL_Flip(screen);\n    wait_key_pressed();\n    SDL_Quit();\n    return 0;\n}\n`;
+      return `#include <libndls.h>\n#include <SDL/SDL.h>\n\nint main(void) {\n    SDL_Init(SDL_INIT_VIDEO);\n    SDL_Surface *screen = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE);\n    nSDL_Font *font = nSDL_LoadFont(NSDL_FONT_TINYTYPE, 29, 43, 61);\n\n    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 18, 34, 48));\n    nSDL_DrawString(screen, font, 20, 22, \"Hello Ndless!\");\n    nSDL_DrawString(screen, font, 20, 48, \"Edit me in Monaco\");\n    SDL_Flip(screen);\n    wait_key_pressed();\n    SDL_Quit();\n    return 0;\n}\n`;
     }
     if (template === "console") {
-      return `#include <os.h>\n#include <nspireio2.h>\n\nint main(void) {\n    nio_console console;\n    lcd_ingray();\n    clrscr();\n    nio_InitConsole(&console, 53, 29, 0, 0, 0, 15);\n    nio_DrawConsole(&console);\n    nio_printf(&console, \"Ndless project ready!\\n\");\n    nio_printf(&console, \"Press a key to exit.\");\n    wait_key_pressed();\n    nio_CleanUp(&console);\n    return 0;\n}\n`;
+      return `#include <libndls.h>\n#include <nspireio2.h>\n\nint main(void) {\n    nio_console console;\n    lcd_ingray();\n    clrscr();\n    nio_InitConsole(&console, 53, 29, 0, 0, 0, 15);\n    nio_DrawConsole(&console);\n    nio_printf(&console, \"Ndless project ready!\\n\");\n    nio_printf(&console, \"Press a key to exit.\");\n    wait_key_pressed();\n    nio_CleanUp(&console);\n    return 0;\n}\n`;
     }
     if (cpp) {
-      return `#include <os.h>\n\nclass App {\npublic:\n    void run() {\n        clrscr();\n        printf(\"Hello from C++ Ndless!\\n\");\n        wait_key_pressed();\n    }\n};\n\nint main(void) {\n    App app;\n    app.run();\n    return 0;\n}\n`;
+      return `#include <cstdio>\n#include <libndls.h>\n\nclass App {\npublic:\n    void run() {\n        clrscr();\n        std::printf(\"Hello from C++ Ndless!\\n\");\n        wait_key_pressed();\n    }\n};\n\nint main(void) {\n    App app;\n    app.run();\n    return 0;\n}\n`;
     }
-    return `#include <os.h>\n\nint main(void) {\n    assert_ndless_rev(801);\n    clrscr();\n    printf(\"Hello Ndless!\\n\");\n    wait_key_pressed();\n    return 0;\n}\n`;
+    return `#include <stdio.h>\n#include <libndls.h>\n\nint main(void) {\n    assert_ndless_rev(801);\n    clrscr();\n    printf(\"Hello Ndless!\\n\");\n    wait_key_pressed();\n    return 0;\n}\n`;
   }
 
   function makefileFor(project) {
@@ -102,7 +102,7 @@
     let depth=0;
     for(const ch of all){if(ch==="{")depth++;else if(ch==="}")depth--;if(depth<0){errors.push("Unbalanced braces were detected.");break;}}
     if(depth!==0&&!errors.includes("Unbalanced braces were detected."))errors.push("Unbalanced braces were detected.");
-    if(!/#include\s*[<\"](?:os\.h|SDL\/SDL\.h|nspireio2\.h)[>\"]/m.test(all))warnings.push("No common Ndless SDK header was detected.");
+    if(!/#include\s*[<\"](?:libndls\.h|os\.h|SDL\/SDL\.h|nspireio2\.h)[>\"]/m.test(all))warnings.push("No common Ndless SDK header was detected.");
     if(project.target==="bflt-r903"&&/\bgenzehn\b/i.test(project.files?.Makefile||""))warnings.push("Makefile appears to target Zehn while project target is bFLT.");
     return {valid:errors.length===0,errors,warnings};
   }
