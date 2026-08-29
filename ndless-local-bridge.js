@@ -1,15 +1,16 @@
 (() => {
   "use strict";
 
-  const BASE_URL = "http://127.0.0.1:34981";
-  const STATUS_URL = `${BASE_URL}/v1/status`;
-  const BUILD_URL = `${BASE_URL}/v1/build`;
+  const BASE_URL = "http://127.0.0.1:34982";
+  const STATUS_URL = `${BASE_URL}/v2/status`;
+  const BUILD_URL = `${BASE_URL}/v2/build`;
   const PROTOCOL_URL = "tnstool://start";
-  const RELEASE_TAG = "tns-tool-compiler-bridge-v1";
+  const PROTOCOL_VERSION = 2;
+  const RELEASE_TAG = "tns-tool-compiler-v1";
   const RELEASE_BASE = `https://github.com/acewalt/tns-tool-wasm/releases/download/${RELEASE_TAG}`;
   const DOWNLOADS = Object.freeze({
-    windows: `${RELEASE_BASE}/TNS-Tool-Compiler-Windows-x64.zip`,
-    linux: `${RELEASE_BASE}/TNS-Tool-Compiler-Linux-x64.tar.gz`,
+    windows: `${RELEASE_BASE}/TNS-Tool-Compiler-Windows-x64.exe`,
+    linux: `${RELEASE_BASE}/TNS-Tool-Compiler-Linux-x64.AppImage`,
   });
 
   function abortError() {
@@ -26,7 +27,7 @@
     }
     if (timeoutMs > 0) timer = setTimeout(() => controller.abort(new DOMException("Timed out", "TimeoutError")), timeoutMs);
     return {
-      signal: controller.signal,
+      signal:controller.signal,
       cleanup() {
         if (timer) clearTimeout(timer);
         if (outerSignal) outerSignal.removeEventListener("abort", abort);
@@ -45,6 +46,7 @@
         error.code = data?.code || `HTTP_${response.status}`;
         error.details = data?.details || "";
         error.diagnostics = data?.diagnostics || [];
+        error.missing = data?.missing || [];
         throw error;
       }
       return data || {};
@@ -55,19 +57,26 @@
 
   async function status(options = {}) {
     try {
-      const data = await fetchJson(STATUS_URL, { method:"GET", headers:{ "X-TNS-Tool-Protocol":"1" } }, options.timeoutMs || 900, options.signal);
+      const data = await fetchJson(STATUS_URL, {
+        method:"GET",
+        headers:{ "X-TNS-Tool-Protocol":String(PROTOCOL_VERSION) },
+      }, options.timeoutMs || 900, options.signal);
+      const compatible = Number(data?.protocol || 0) === PROTOCOL_VERSION;
       return {
-        connected: data?.bridge === true,
-        toolchainReady: data?.toolchainReady === true,
-        platform: data?.platform || "unknown",
-        version: data?.version || "unknown",
-        toolchain: data?.toolchain || null,
-        missing: Array.isArray(data?.missing) ? data.missing : [],
-        raw: data,
+        connected:data?.compiler === true || data?.bridge === true,
+        toolchainReady:compatible && data?.toolchainReady === true,
+        protocol:Number(data?.protocol || 0),
+        platform:data?.platform || "unknown",
+        version:data?.version || "unknown",
+        toolchain:data?.toolchain || null,
+        missing:Array.isArray(data?.missing) ? data.missing : [],
+        selfContained:data?.selfContained === true,
+        transport:data?.transport || null,
+        raw:data,
       };
     } catch (error) {
       if (options.signal?.aborted) throw abortError();
-      return { connected:false, toolchainReady:false, platform:"unknown", version:null, toolchain:null, missing:[], error };
+      return { connected:false, toolchainReady:false, protocol:0, platform:"unknown", version:null, toolchain:null, missing:[], selfContained:false, error };
     }
   }
 
@@ -91,99 +100,107 @@
 
     onProgress({ stage:"connecting", message:"Opening TNS Tool Compiler…" });
     openLocalCompiler();
-
-    const deadline = performance.now() + (options.waitMs || 12000);
+    const deadline = performance.now() + (options.waitMs || 15000);
     while (performance.now() < deadline) {
       if (options.signal?.aborted) throw abortError();
-      await new Promise(resolve => setTimeout(resolve, 450));
-      current = await status({ signal:options.signal, timeoutMs:700 });
+      await new Promise(resolve => setTimeout(resolve, 500));
+      current = await status({ signal:options.signal, timeoutMs:750 });
       if (current.connected) return current;
     }
     return current;
   }
 
-  function base64ToBytes(value) {
-    const binary = atob(String(value || ""));
-    const bytes = new Uint8Array(binary.length);
-    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-    return bytes;
-  }
-
-  function projectPayload(project) {
+  async function projectZip(project) {
     const core = window.NdlessProjectCore;
     if (!core?.exportEntries) throw new Error("Ndless project export module is unavailable.");
-    const files = core.exportEntries(project);
-    return {
-      protocol: 1,
-      client: {
-        name: "TNS Tool WASM",
-        origin: location.origin,
-        href: location.href,
-      },
-      project: {
-        name: project?.name || "ndless-app",
-        target: project?.target || "zehn-modern",
-        language: project?.language || "c",
-        template: project?.template || "basic",
-      },
-      // The bridge writes these entries into an isolated temporary project directory.
-      // Keeping the payload structured avoids putting a large ZIP inside a custom URL.
-      files,
-    };
+    if (typeof window.JSZip !== "function") throw new Error("JSZip is unavailable; project ZIP cannot be created.");
+    const entries = core.exportEntries(project);
+    const zip = new window.JSZip();
+    for (const [name, value] of Object.entries(entries)) {
+      if (value instanceof Uint8Array || value instanceof ArrayBuffer || value instanceof Blob) zip.file(name, value);
+      else zip.file(name, String(value ?? ""));
+    }
+    return zip.generateAsync({ type:"uint8array", compression:"DEFLATE", compressionOptions:{ level:6 } });
   }
 
   async function build(project, options = {}) {
     const onProgress = options.onProgress || (()=>{});
     const ready = options.status || await ensureReady({
-      signal: options.signal,
-      openIfMissing: options.openIfMissing !== false,
+      signal:options.signal,
+      openIfMissing:options.openIfMissing !== false,
       onProgress,
-      waitMs: options.waitMs,
+      waitMs:options.waitMs,
     });
 
     if (!ready?.connected) {
       const error = new Error("TNS Tool Compiler is not connected.");
       error.code = "LOCAL_BRIDGE_UNAVAILABLE";
-      error.details = "Install the Windows or Linux bridge once, then allow the browser to open tnstool:// when Build TNS is pressed.";
+      error.details = "Download and run TNS Tool Compiler once, then allow the browser to open tnstool:// when Build TNS is pressed.";
+      throw error;
+    }
+    if (ready.protocol !== PROTOCOL_VERSION) {
+      const error = new Error("The installed TNS Tool Compiler is an older incompatible version.");
+      error.code = "LOCAL_COMPILER_UPDATE_REQUIRED";
+      error.details = "Download the current self-contained compiler and run it once to update tnstool://.";
       throw error;
     }
     if (!ready.toolchainReady) {
-      const error = new Error("The local compiler bridge is connected, but the Ndless toolchain is not ready.");
+      const error = new Error("The local TNS Tool Compiler runtime is incomplete.");
       error.code = "LOCAL_TOOLCHAIN_MISSING";
-      error.details = ready.missing?.length ? `Missing: ${ready.missing.join(", ")}` : "Install or bundle the Ndless ARM toolchain next to the bridge.";
+      error.details = ready.missing?.length ? `Missing: ${ready.missing.join(", ")}` : "Reinstall the self-contained TNS Tool Compiler package.";
+      error.missing = ready.missing || [];
       throw error;
     }
 
-    onProgress({ stage:"sending", message:`Sending project to local ${ready.platform || "native"} compiler…` });
-    const data = await fetchJson(BUILD_URL, {
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "X-TNS-Tool-Protocol":"1",
-      },
-      body: JSON.stringify(projectPayload(project)),
-    }, options.timeoutMs || 120000, options.signal);
+    onProgress({ stage:"sending", message:"Packing project.zip…" });
+    const zipBytes = await projectZip(project);
+    onProgress({ stage:"sending", message:`Sending project.zip (${Math.max(1, Math.round(zipBytes.length / 1024))} KB) to local compiler…` });
 
-    if (!data?.ok || !data?.tnsBase64) {
-      const error = new Error(data?.message || "The local compiler did not return a TNS artifact.");
-      error.code = data?.code || "LOCAL_BUILD_FAILED";
-      error.details = data?.details || data?.log || "";
-      error.diagnostics = data?.diagnostics || [];
-      throw error;
+    const scoped = timeoutSignal(options.timeoutMs || 180000, options.signal);
+    try {
+      const response = await fetch(BUILD_URL, {
+        method:"POST",
+        cache:"no-store",
+        headers:{
+          "Content-Type":"application/zip",
+          "X-TNS-Tool-Protocol":String(PROTOCOL_VERSION),
+          "X-TNS-Project-Name":project?.name || "ndless-app",
+          "X-TNS-Project-Target":project?.target || "zehn-modern",
+          "X-TNS-Project-Language":project?.language || "c",
+          "X-TNS-Project-Template":project?.template || "basic",
+        },
+        body:zipBytes,
+        signal:scoped.signal,
+      });
+      if (!response.ok) {
+        let data = null;
+        try { data = await response.json(); } catch (_) {}
+        const error = new Error(data?.message || `Local compiler returned HTTP ${response.status}.`);
+        error.code = data?.code || `HTTP_${response.status}`;
+        error.details = data?.details || "";
+        error.diagnostics = data?.diagnostics || [];
+        error.missing = data?.missing || [];
+        throw error;
+      }
+      const bytes = new Uint8Array(await response.arrayBuffer());
+      if (!bytes.length) throw new Error("The local compiler returned an empty TNS artifact.");
+      const filename = response.headers.get("X-TNS-Filename") || `${project?.name || "ndless-app"}.tns`;
+      const durationMs = Number(response.headers.get("X-TNS-Duration-Ms")) || 0;
+      return {
+        ok:true,
+        engine:"local",
+        filename,
+        bytes,
+        elfBytes:null,
+        logs:[],
+        diagnostics:[],
+        toolchain:ready.toolchain || "Bundled GNU Arm + Ndless",
+        platform:response.headers.get("X-TNS-Platform") || ready.platform || "unknown",
+        durationMs,
+      };
+    } finally {
+      scoped.cleanup();
     }
-
-    return {
-      ok:true,
-      engine:"local",
-      filename:data.filename || `${project?.name || "ndless-app"}.tns`,
-      bytes:base64ToBytes(data.tnsBase64),
-      elfBytes:data.elfBase64 ? base64ToBytes(data.elfBase64) : null,
-      logs:Array.isArray(data.logs) ? data.logs : (data.log ? String(data.log).split(/\r?\n/) : []),
-      diagnostics:Array.isArray(data.diagnostics) ? data.diagnostics : [],
-      toolchain:data.toolchain || ready.toolchain || null,
-      platform:data.platform || ready.platform || "unknown",
-      durationMs:Number(data.durationMs) || 0,
-    };
   }
 
   async function browserFallbackReady() {
@@ -200,9 +217,11 @@
   window.NdlessLocalBridge = Object.freeze({
     BASE_URL,
     DOWNLOADS,
+    PROTOCOL_VERSION,
     status,
     ensureReady,
     openLocalCompiler,
+    projectZip,
     build,
     browserFallbackReady,
   });
