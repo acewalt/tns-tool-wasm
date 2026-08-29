@@ -1,0 +1,40 @@
+name: Ndless official Build TNS flow
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ndless-build-official-flow.js'
+      - 'ndless-local-runtime-v4.js'
+      - 'container-editor-bindings.js'
+      - 'multi-image-upload.js'
+      - '.github/workflows/ndless-official-build-flow.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: JavaScript syntax
+        run: |
+          node --check ndless-build-official-flow.js
+          node --check ndless-local-runtime-v4.js
+          node --check container-editor-bindings.js
+          node --check multi-image-upload.js
+      - name: Verify official compiler routing
+        run: |
+          grep -F 'tns-tool-compiler-v4' ndless-local-runtime-v4.js
+          grep -F 'version:"0.2.2"' ndless-local-runtime-v4.js
+          grep -F 'ndless-local-runtime-v4.js' container-editor-bindings.js
+          grep -F 'ndless-build-official-flow.js' container-editor-bindings.js
+          grep -F 'Descargar de nuevo' ndless-build-official-flow.js
+          grep -F 'project.zip' ndless-build-official-flow.js
+          grep -F 'NdlessBuildManager?.download?.(result)' ndless-build-official-flow.js
+      - name: Verify experimental Ndless button is retired by official flow
+        run: |
+          grep -F 'ndless-save-experimental-button' ndless-build-official-flow.js
+          grep -F 'dataset.experimentalSaveDirect = "1"' ndless-build-official-flow.js
