@@ -81,6 +81,7 @@ fn respond_json(request: Request, status: u16, body: Value, origin: Option<&str>
         .with_header(header("Content-Type", "application/json; charset=utf-8"))
         .with_header(header("Cache-Control", "no-store"))
         .with_header(header("Access-Control-Allow-Methods", "GET, POST, OPTIONS"))
+        .with_header(header("Access-Control-Allow-Private-Network", "true"))
         .with_header(header(
             "Access-Control-Allow-Headers",
             "Content-Type, X-TNS-Tool-Protocol",
