@@ -54,6 +54,7 @@ jobs:
           $stage = 'dist/TNS-Tool-Compiler-Windows-x64'
           New-Item -ItemType Directory -Force -Path $stage | Out-Null
           Copy-Item 'tools/tns-tool-compiler-bridge/target/release/tns-tool-compiler-bridge.exe' "$stage/tns-tool-compiler-bridge.exe"
+          Copy-Item 'tools/tns-tool-compiler-bridge/install-windows.cmd' "$stage/install-windows.cmd"
           Copy-Item 'tools/tns-tool-compiler-bridge/install-windows.ps1' "$stage/install-windows.ps1"
           Copy-Item 'tools/tns-tool-compiler-bridge/README.md' "$stage/README.md"
           Compress-Archive -Path "$stage/*" -DestinationPath 'dist/TNS-Tool-Compiler-Windows-x64.zip' -Force
