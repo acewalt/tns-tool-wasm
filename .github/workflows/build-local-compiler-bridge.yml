@@ -52,7 +52,7 @@ jobs:
         run: |
           set -euo pipefail
           git clone --depth 1 --branch "$NDLESS_REF" --recurse-submodules https://github.com/ndless-nspire/Ndless.git .ndless
-          test -f .ndless/ndless-sdk/include/os.h
+          test -f .ndless/ndless-sdk/include/libndls.h
 
       - name: Build ARM Ndless libraries
         shell: bash
@@ -95,7 +95,8 @@ jobs:
           export PATH="$SDK/bin:$ARM/bin:$PATH"
           mkdir -p smoke
           cat > smoke/main.c <<'EOF'
-          #include <os.h>
+          #include <stdio.h>
+          #include <libndls.h>
           int main(void) {
               assert_ndless_rev(801);
               clrscr();
@@ -194,7 +195,8 @@ jobs:
           set -euo pipefail
           mkdir -p smoke-project
           cat > smoke-project/main.c <<'EOF'
-          #include <os.h>
+          #include <stdio.h>
+          #include <libndls.h>
           int main(void) {
               assert_ndless_rev(801);
               clrscr();
@@ -366,7 +368,8 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path smoke-project | Out-Null
           @'
-          #include <os.h>
+          #include <stdio.h>
+          #include <libndls.h>
           int main(void) {
               assert_ndless_rev(801);
               clrscr();
