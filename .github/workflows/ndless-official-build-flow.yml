@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'ndless-build-official-flow.js'
+      - 'ndless-build-confirm-flow.js'
       - 'ndless-local-runtime-v4.js'
       - 'container-editor-bindings.js'
       - 'multi-image-upload.js'
@@ -21,20 +21,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: JavaScript syntax
         run: |
-          node --check ndless-build-official-flow.js
+          node --check ndless-build-confirm-flow.js
           node --check ndless-local-runtime-v4.js
           node --check container-editor-bindings.js
           node --check multi-image-upload.js
-      - name: Verify official compiler routing
+      - name: Verify confirmed compiler routing
         run: |
           grep -F 'tns-tool-compiler-v4' ndless-local-runtime-v4.js
           grep -F 'version:"0.2.2"' ndless-local-runtime-v4.js
           grep -F 'ndless-local-runtime-v4.js' container-editor-bindings.js
-          grep -F 'ndless-build-official-flow.js' container-editor-bindings.js
-          grep -F 'Descargar de nuevo' ndless-build-official-flow.js
-          grep -F 'project.zip' ndless-build-official-flow.js
-          grep -F 'NdlessBuildManager?.download?.(result)' ndless-build-official-flow.js
-      - name: Verify experimental Ndless button is retired by official flow
+          grep -F 'ndless-build-confirm-flow.js' container-editor-bindings.js
+          grep -F 'Sí, ya se descargó' ndless-build-confirm-flow.js
+          grep -F 'openLocalCompiler' ndless-build-confirm-flow.js
+          grep -F 'project.zip' ndless-build-confirm-flow.js
+          grep -F 'bridge.build(project' ndless-build-confirm-flow.js
+          grep -F 'downloadTns(result)' ndless-build-confirm-flow.js
+      - name: Verify experimental Ndless button is retired
         run: |
-          grep -F 'ndless-save-experimental-button' ndless-build-official-flow.js
-          grep -F 'dataset.experimentalSaveDirect = "1"' ndless-build-official-flow.js
+          grep -F 'ndless-save-experimental-button' ndless-build-confirm-flow.js
+          grep -F 'dataset.experimentalSaveDirect = "1"' ndless-build-confirm-flow.js
