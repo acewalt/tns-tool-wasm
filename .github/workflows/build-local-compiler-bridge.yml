@@ -68,6 +68,17 @@ jobs:
           make -C "$SDK/thirdparty" -j2
           make -C "$SDK/system" -j2
 
+          # GNU Arm 14/Newlib references the traditional _init/_fini hooks.
+          # Ndless r2022 uses its own C++ init/fini path, so add weak no-op
+          # compatibility hooks to libsyscalls without patching the SDK source.
+          "$ARM/bin/arm-none-eabi-as" \
+            "$GITHUB_WORKSPACE/tools/tns-tool-compiler-bridge/newlib-compat.S" \
+            -o "$GITHUB_WORKSPACE/newlib-compat.o"
+          "$ARM/bin/arm-none-eabi-ar" rcs \
+            "$SDK/lib/libsyscalls.a" \
+            "$GITHUB_WORKSPACE/newlib-compat.o"
+          "$ARM/bin/arm-none-eabi-nm" "$SDK/lib/libsyscalls.a" | grep -E ' (_init|_fini)$'
+
           test -f "$SDK/lib/libsyscalls.a"
           test -f "$SDK/lib/libndls.a"
           test -f "$SDK/lib/libnspireio.a"
@@ -108,7 +119,7 @@ jobs:
           EOF
           cd smoke
           nspire-gcc -Wall -W -Os -marm -ffunction-sections -fdata-sections -c main.c -o main.o
-          nspire-ld main.o -Wl,--gc-sections -o smoke.elf
+          nspire-ld main.o "$GITHUB_WORKSPACE/newlib-compat.o" -Wl,--gc-sections -o smoke.elf
           "$GITHUB_WORKSPACE/dist-common/linux-bin/genzehn" --input smoke.elf --output smoke.tns --name smoke --author "TNS Tool" --compress
           python3 - <<'PY'
           from pathlib import Path
