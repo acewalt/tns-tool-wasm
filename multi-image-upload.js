@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20260829-ndless-project-v11";
+  const V="20260829-ndless-project-v12";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
@@ -77,6 +77,7 @@
     .then(() => loadScript('script[data-ndless-inspector-editor-link="true"]', `./ndless-inspector-editor-link.js?v=${V}`, "ndlessInspectorEditorLink"))
     .then(() => loadScript('script[data-ndless-project-core="true"]', `./ndless-project-core.js?v=${V}`, "ndlessProjectCore"))
     .then(() => loadScript('script[data-ndless-project-core-enhancements="true"]', `./ndless-project-core-enhancements.js?v=${V}`, "ndlessProjectCoreEnhancements"))
+    .then(() => loadScript('script[data-ndless-framebuffer-preview="true"]', `./ndless-framebuffer-preview.js?v=${V}`, "ndlessFramebufferPreview"))
     .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
     .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=${V}`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
