@@ -10,13 +10,13 @@
   // any existing TNS generation, download, or save button implementation.
   if (document.querySelector('script[data-tns-file-save-experimental-core="true"]')) return;
   const core = document.createElement("script");
-  core.src = "./tns-file-save-experimental-core.js?v=20260829-direct-save-v5";
+  core.src = "./tns-file-save-experimental-core.js?v=20260829-direct-save-v6";
   core.async = false;
   core.dataset.tnsFileSaveExperimentalCore = "true";
   core.addEventListener("load", () => {
     if (document.querySelector('script[data-tns-file-save-experimental="true"]')) return;
     const ui = document.createElement("script");
-    ui.src = "./tns-file-save-experimental.js?v=20260829-direct-save-v5";
+    ui.src = "./tns-file-save-experimental.js?v=20260829-direct-save-v6";
     ui.async = false;
     ui.dataset.tnsFileSaveExperimental = "true";
     document.head.appendChild(ui);
