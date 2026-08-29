@@ -6,9 +6,23 @@
     if (nzp) registry.register({ ...nzp, editorGlobal: "TnsStructuredContentEditor" });
   }
 
-  const VERSION = "20260829-direct-save-v8";
+  const VERSION = "20260829-direct-save-v9";
+
+  function loadRuntimeUpgrade() {
+    if (document.querySelector('script[data-ndless-local-runtime-upgrade="true"]')) {
+      window.NdlessLocalRuntimeUpgrade?.patchBridge?.();
+      return;
+    }
+    const upgrade = document.createElement("script");
+    upgrade.src = `./ndless-local-runtime-upgrade.js?v=${VERSION}`;
+    upgrade.async = false;
+    upgrade.dataset.ndlessLocalRuntimeUpgrade = "true";
+    upgrade.addEventListener("error", () => console.error("Failed to load Ndless local compiler runtime upgrade."), { once: true });
+    document.head.appendChild(upgrade);
+  }
 
   function loadDiagnostics() {
+    loadRuntimeUpgrade();
     if (document.querySelector('script[data-ndless-experimental-export-fix="true"]')) {
       window.NdlessExperimentalExportDiagnostics?.setup?.();
       return;
@@ -38,6 +52,7 @@
   }
 
   // Experimental only: direct-file persistence plus Ndless reconstruction diagnostics.
+  loadRuntimeUpgrade();
   const existingCore = document.querySelector('script[data-tns-file-save-experimental-core="true"]');
   if (existingCore) {
     if (window.TnsFileSaveExperimentalCore) loadUi();
