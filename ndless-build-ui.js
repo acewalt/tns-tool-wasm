@@ -17,7 +17,7 @@
   }
 
   function escapeHtml(value) {
-    return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+    return String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;","&gt;":">",'"':"&quot;","'":"&#39;"}[c] || c));
   }
 
   function selectBuildTab(root) {
@@ -46,6 +46,36 @@
       message: d.message || "Build diagnostic",
       source: "Ndless Build",
     })));
+  }
+
+  const normalizeSource = value => String(value ?? "").replace(/\r\n?/g,"\n").trim();
+
+  function migrateUntouchedBasicStarter() {
+    const p = project();
+    const core = window.NdlessProjectCore;
+    if (!p || !core || p.target !== "zehn-modern" || p.language === "asm" || p.settings?.browserFreestanding) return null;
+    const sources = Object.keys(p.files || {}).filter(name => /\.(?:c|cc|cpp|cxx)$/i.test(name));
+    if (sources.length !== 1) return null;
+    const file = sources[0];
+    const cpp = /\.(?:cpp|cc|cxx)$/i.test(file);
+    const oldStarter = core.starterSource?.(cpp ? "cpp" : "c", "basic");
+    const replacement = cpp ? core.BROWSER_CPP : core.BROWSER_C;
+    if (!oldStarter || !replacement) return null;
+    if (normalizeSource(p.files[file]) !== normalizeSource(oldStarter)) return null;
+
+    p.files[file] = replacement;
+    p.template = "browser-minimal";
+    p.settings ||= {};
+    p.settings.browserFreestanding = true;
+    core.refreshGeneratedFiles?.(p);
+
+    if (p.activeFile === file) {
+      const monaco = window.TnsMonacoEditor?.monaco;
+      const model = monaco?.editor?.getModels?.().filter(m => !m.isDisposed()).at(-1);
+      if (model && normalizeSource(model.getValue()) === normalizeSource(oldStarter)) model.setValue(replacement);
+    }
+    try { localStorage.setItem("tns-tool-ndless-project-autosave-v1", JSON.stringify(p)); } catch (_) {}
+    return { file, source: replacement };
   }
 
   function render() {
@@ -86,13 +116,15 @@
   async function runBuild() {
     const p = project();
     if (!p || !window.NdlessBuildManager) return;
+    const migration = migrateUntouchedBasicStarter();
     currentResult = null;
     controller?.abort?.();
     controller = new AbortController();
     selectBuildTab(currentRoot);
-    setState("preparing", "Preparing browser ARM compiler…");
+    setState("preparing", migration ? "Updated untouched starter for browser build…" : "Preparing browser ARM compiler…");
     applyMarkers([]);
     const lines = ["> Build TNS", `target: ${p.target}`, ""];
+    if (migration) lines.push(`Auto-updated untouched ${migration.file} starter to Browser minimal (freestanding).`, "");
     consoleLines(lines);
     const result = await window.NdlessBuildManager.build(p, {
       signal: controller.signal,
@@ -142,13 +174,13 @@
   }
 
   function enhanceWizard() {
-    const form = document.querySelector(".ndless-project-dialog-overlay-v2 form.ndless-project-dialog");
+    const form = document.querySelector(".ndless-project-dialog-overlay-v2 form.ndless-project-dialog, .ndless-project-dialog-overlay form.ndless-project-dialog");
     if (!form || form.dataset.browserTemplateEnhanced === "1") return;
     form.dataset.browserTemplateEnhanced = "1";
     const language = form.querySelector("select[name='language']");
     const template = form.querySelector("select[name='template']");
     const target = form.querySelector("select[name='target']");
-    const note = form.querySelector("[data-project-mode-note]");
+    const note = form.querySelector("[data-project-mode-note]") || form.querySelector("p");
     if (!template || !target || !language) return;
 
     let userPickedTemplate = false;
@@ -167,12 +199,7 @@
       option.disabled = !modern || assembly;
 
       if ((!modern || assembly) && template.value === "browser-minimal") template.value = "basic";
-
-      // A freshly-created Modern Zehn project must compile without the user
-      // having to discover a special template after Build TNS fails.
-      if (modern && !assembly && (targetChanged || !userPickedTemplate)) {
-        template.value = "browser-minimal";
-      }
+      if (modern && !assembly && (targetChanged || !userPickedTemplate)) template.value = "browser-minimal";
 
       if (note) {
         if (modern && !assembly && template.value === "browser-minimal") {
@@ -185,14 +212,8 @@
       }
     };
 
-    template.addEventListener("change", () => {
-      userPickedTemplate = true;
-      sync();
-    });
-    target.addEventListener("change", () => {
-      userPickedTemplate = false;
-      sync({ targetChanged: true });
-    });
+    template.addEventListener("change", () => { userPickedTemplate = true; sync(); });
+    target.addEventListener("change", () => { userPickedTemplate = false; sync({ targetChanged: true }); });
     language.addEventListener("change", () => sync());
     sync({ targetChanged: target.value === "zehn-modern" });
   }
@@ -215,7 +236,10 @@
       if (event.target.closest?.("#xml-new-ndless-project")) setTimeout(enhanceWizard, 20);
     }, true);
     document.addEventListener("click", event => {
-      if (event.target.closest?.("#xml-new-ndless-project,.ndless-project-menu-action,[data-project-new-file]")) setTimeout(setup, 30);
+      if (event.target.closest?.("#xml-new-ndless-project,.ndless-project-menu-action,[data-project-new-file]")) {
+        setTimeout(setup, 30);
+        setTimeout(enhanceWizard, 30);
+      }
     }, true);
   }
 
