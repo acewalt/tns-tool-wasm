@@ -1,0 +1,130 @@
+name: Ndless Web Compiler launcher
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/ndless-web-compiler/NdlessWebCompiler.cs'
+      - '.github/workflows/build-ndless-web-compiler.yml'
+
+permissions:
+  contents: write
+
+env:
+  RELEASE_TAG: ndless-web-compiler-v1
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build launcher
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $root = Join-Path $env:GITHUB_WORKSPACE 'tools/ndless-web-compiler'
+          $dist = Join-Path $root 'dist'
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
+          if (-not (Test-Path $csc)) { throw 'csc.exe not found' }
+          & $csc /nologo /optimize+ /target:exe /platform:x64 "/out:$dist\Ndless-Web-Compiler-Windows-x64.exe" /reference:System.dll /reference:System.Core.dll "$root\NdlessWebCompiler.cs"
+          if ($LASTEXITCODE -ne 0) { throw "csc failed: $LASTEXITCODE" }
+          & "$dist\Ndless-Web-Compiler-Windows-x64.exe" --self-test
+          if ($LASTEXITCODE -ne 0) { throw 'self-test failed' }
+
+      - name: Build fake v4 backend
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $test = Join-Path $env:RUNNER_TEMP 'ndless-web-compiler-test'
+          New-Item -ItemType Directory -Force -Path $test | Out-Null
+          @'
+          using System;
+          using System.IO;
+          internal static class FakeBackend {
+            static void U32(BinaryWriter w,uint v){w.Write(v);}
+            static int Main(string[] args) {
+              if(args.Length>0 && args[0]=="--status-json") {
+                Console.WriteLine("{\"version\":\"0.2.2\",\"toolchainReady\":true}"); return 0;
+              }
+              if(args.Length>=4 && args[0]=="--build-zip") {
+                using(var fs=File.Create(args[2])) using(var w=new BinaryWriter(fs)) {
+                  w.Write(new byte[]{(byte)'Z',(byte)'e',(byte)'h',(byte)'n'});
+                  U32(w,1); U32(w,40); U32(w,1); U32(w,0); U32(w,0); U32(w,0); U32(w,0);
+                  U32(w,3); w.Write((byte)0x78); w.Write((byte)0x9C); w.Write((byte)0x03); w.Write((byte)0x00);
+                }
+                return 0;
+              }
+              return 2;
+            }
+          }
+          '@ | Set-Content -Encoding UTF8 (Join-Path $test 'FakeBackend.cs')
+          $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework64\v4.0.30319\csc.exe'
+          if (-not (Test-Path $csc)) { $csc = Join-Path $env:WINDIR 'Microsoft.NET\Framework\v4.0.30319\csc.exe' }
+          & $csc /nologo /optimize+ /target:exe /platform:x64 "/out:$test\FakeBackend.exe" (Join-Path $test 'FakeBackend.cs')
+          if ($LASTEXITCODE -ne 0) { throw 'fake backend build failed' }
+          "TNS_TOOL_COMPILER_EXE=$test\FakeBackend.exe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "WEB_TEST_DIR=$test" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+
+      - name: Test localhost bridge and ZIP round-trip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference='Stop'
+          $exe = Join-Path $env:GITHUB_WORKSPACE 'tools/ndless-web-compiler/dist/Ndless-Web-Compiler-Windows-x64.exe'
+          $env:LOCALAPPDATA = Join-Path $env:WEB_TEST_DIR 'localappdata'
+          New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
+          $server = Start-Process -FilePath $exe -ArgumentList '--serve' -PassThru
+          try {
+            $ready=$false
+            for($i=0;$i -lt 60;$i++) {
+              Start-Sleep -Milliseconds 250
+              try {
+                $status=Invoke-RestMethod -Uri 'http://127.0.0.1:34983/v2/status' -Headers @{Origin='https://acewalt.github.io'} -TimeoutSec 2
+                if($status.toolchainReady -eq $true){$ready=$true;break}
+              } catch {}
+            }
+            if(-not $ready){ throw 'web compiler never became ready' }
+            New-Item -ItemType Directory -Force -Path (Join-Path $env:WEB_TEST_DIR 'project') | Out-Null
+            'int main(void){return 0;}' | Set-Content -Encoding ASCII (Join-Path $env:WEB_TEST_DIR 'project/main.c')
+            Compress-Archive -Path (Join-Path $env:WEB_TEST_DIR 'project/*') -DestinationPath (Join-Path $env:WEB_TEST_DIR 'project.zip') -Force
+            $bytes=[IO.File]::ReadAllBytes((Join-Path $env:WEB_TEST_DIR 'project.zip'))
+            $headers=@{
+              Origin='https://acewalt.github.io';
+              'X-TNS-Tool-Protocol'='2';
+              'X-TNS-Project-Name'='web-smoke';
+              'X-TNS-Project-Target'='zehn-modern';
+              'X-TNS-Project-Language'='c';
+              'X-TNS-Project-Template'='basic'
+            }
+            $resp=Invoke-WebRequest -Uri 'http://127.0.0.1:34983/v2/build' -Method Post -ContentType 'application/zip' -Headers $headers -Body $bytes -TimeoutSec 20
+            $out=Join-Path $env:WEB_TEST_DIR 'result.tns'
+            [IO.File]::WriteAllBytes($out,$resp.Content)
+            $tns=[IO.File]::ReadAllBytes($out)
+            if([Text.Encoding]::ASCII.GetString($tns,0,4) -ne 'Zehn'){throw 'round-trip did not return Zehn'}
+            Write-Host "WEB_BRIDGE_OK bytes=$($tns.Length)"
+          } finally {
+            Stop-Process -Id $server.Id -Force -ErrorAction SilentlyContinue
+            Get-Process 'Ndless-Web-Compiler' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Ndless-Web-Compiler-Windows-x64
+          path: tools/ndless-web-compiler/dist/Ndless-Web-Compiler-Windows-x64.exe
+          retention-days: 30
+          if-no-files-found: error
+
+      - name: Publish small web launcher release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $asset='tools/ndless-web-compiler/dist/Ndless-Web-Compiler-Windows-x64.exe'
+          gh release view $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY *> $null
+          if($LASTEXITCODE -eq 0){ gh release delete $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --yes --cleanup-tag }
+          gh release create $env:RELEASE_TAG --repo $env:GITHUB_REPOSITORY --title 'Ndless Web Compiler v1' --notes 'Small Windows bridge for Build TNS. Run once from Downloads; it installs itself, registers ndlessweb://, listens only on 127.0.0.1:34983, downloads/verifies the canonical v4 backend, repairs runtime-0.2.2 if needed, receives project.zip from the web IDE and returns the compiled Zehn .tns.'
+          gh release upload $env:RELEASE_TAG $asset --repo $env:GITHUB_REPOSITORY --clobber
