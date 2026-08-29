@@ -36,6 +36,19 @@
     return remembered;
   }
 
+  function closeInspector(overlay) {
+    if (!overlay?.isConnected) return;
+
+    // Reuse the Inspector's own close handler so any cleanup it performs stays
+    // centralized there. Fall back to removing the overlay only if the close
+    // control is unavailable for some reason.
+    const closeButton = overlay.querySelector(".ndless-close");
+    if (closeButton instanceof HTMLElement) {
+      closeButton.click();
+    }
+    if (overlay.isConnected) overlay.remove();
+  }
+
   async function openInspectedFile(overlay) {
     const file = resolveInspectorFile(overlay);
     if (!file) {
@@ -50,6 +63,11 @@
     }
 
     await window.TnsNdlessEditor?.open?.(file);
+
+    // The editor is now open. Dismiss the Inspector that launched it so the
+    // newly opened editor is immediately visible instead of being left behind
+    // a stale modal/backdrop.
+    closeInspector(overlay);
   }
 
   // The legacy editor injects the Edit Ndless button after the Inspector opens.
@@ -68,5 +86,5 @@
     });
   }, true);
 
-  window.NdlessInspectorEditorLink = Object.freeze({ resolveInspectorFile });
+  window.NdlessInspectorEditorLink = Object.freeze({ resolveInspectorFile, closeInspector });
 })();
