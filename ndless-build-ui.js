@@ -5,11 +5,11 @@
   let currentRoot = null;
   let controller = null;
   let currentResult = null;
-  let toolchainPollTimer = null;
+  let bridgePollTimer = null;
+  let bridgeState = { checked:false, connected:false, toolchainReady:false, platform:"unknown", version:null, missing:[] };
   let buildState = { stage:"idle", message:"Ready to build." };
 
-  const TOOLCHAIN_MANIFEST_URL = "https://github.com/acewalt/tns-tool-wasm/releases/download/ndless-arm-toolchain-v1/toolchain.json";
-  const TOOLCHAIN_POLL_MS = 120000;
+  const BRIDGE_POLL_MS = 10000;
   const project = () => window.NdlessProjectWorkspace?.getProject?.() || null;
 
   function bytesLabel(n) {
@@ -43,73 +43,67 @@
     if (!model) return;
     const severity = monaco.MarkerSeverity;
     monaco.editor.setModelMarkers(model, "ndless-build", relevant.map(d => ({
-      startLineNumber: Math.max(1,d.line||1), startColumn: Math.max(1,d.column||1),
-      endLineNumber: Math.max(1,d.line||1), endColumn: Math.max(2,(d.column||1)+1),
-      severity: d.severity === "warning" ? severity.Warning : (d.severity === "info" ? severity.Info : severity.Error),
-      message: d.message || "Build diagnostic",
-      source: "Ndless Build",
+      startLineNumber:Math.max(1,d.line||1), startColumn:Math.max(1,d.column||1),
+      endLineNumber:Math.max(1,d.line||1), endColumn:Math.max(2,(d.column||1)+1),
+      severity:d.severity === "warning" ? severity.Warning : (d.severity === "info" ? severity.Info : severity.Error),
+      message:d.message || "Build diagnostic",
+      source:"Ndless Build",
     })));
   }
 
-  const normalizeSource = value => String(value ?? "").replace(/\r\n?/g,"\n").trim();
-
-  function migrateUntouchedBasicStarter() {
-    const p = project();
-    const core = window.NdlessProjectCore;
-    if (!p || !core || p.target !== "zehn-modern" || p.language === "asm" || p.settings?.browserFreestanding) return null;
-    const sources = Object.keys(p.files || {}).filter(name => /\.(?:c|cc|cpp|cxx)$/i.test(name));
-    if (sources.length !== 1) return null;
-    const file = sources[0];
-    const cpp = /\.(?:cpp|cc|cxx)$/i.test(file);
-    const oldStarter = core.starterSource?.(cpp ? "cpp" : "c", "basic");
-    const replacement = cpp ? core.BROWSER_CPP : core.BROWSER_C;
-    if (!oldStarter || !replacement) return null;
-    if (normalizeSource(p.files[file]) !== normalizeSource(oldStarter)) return null;
-
-    p.files[file] = replacement;
-    p.template = "browser-minimal";
-    p.settings ||= {};
-    p.settings.browserFreestanding = true;
-    core.refreshGeneratedFiles?.(p);
-
-    if (p.activeFile === file) {
-      const monaco = window.TnsMonacoEditor?.monaco;
-      const model = monaco?.editor?.getModels?.().filter(m => !m.isDisposed()).at(-1);
-      if (model && normalizeSource(model.getValue()) === normalizeSource(oldStarter)) model.setValue(replacement);
-    }
-    try { localStorage.setItem("tns-tool-ndless-project-autosave-v1", JSON.stringify(p)); } catch (_) {}
-    return { file, source: replacement };
+  function clearBridgePoll() {
+    if (bridgePollTimer) clearTimeout(bridgePollTimer);
+    bridgePollTimer = null;
   }
 
-  function clearToolchainPoll() {
-    if (toolchainPollTimer) clearTimeout(toolchainPollTimer);
-    toolchainPollTimer = null;
+  function scheduleBridgePoll() {
+    clearBridgePoll();
+    if (!currentRoot) return;
+    bridgePollTimer = setTimeout(async () => {
+      bridgePollTimer = null;
+      await refreshBridgeStatus(false);
+      scheduleBridgePoll();
+    }, BRIDGE_POLL_MS);
   }
 
-  async function checkToolchainReady() {
+  async function refreshBridgeStatus(renderAfter = true) {
+    if (!window.NdlessBuildManager?.localStatus) return bridgeState;
     try {
-      const response = await fetch(TOOLCHAIN_MANIFEST_URL, { cache:"no-store", redirect:"follow" });
-      if (!response.ok) return false;
-      const manifest = await response.json();
-      return manifest?.targetTriple === "arm-none-eabi" && manifest?.targetBackends?.includes?.("ARM") && !!manifest?.tools?.clang && !!manifest?.tools?.lld;
+      const status = await window.NdlessBuildManager.localStatus({ timeoutMs:700 });
+      bridgeState = { checked:true, ...status };
     } catch (_) {
-      return false;
+      bridgeState = { checked:true, connected:false, toolchainReady:false, platform:"unknown", version:null, missing:[] };
     }
+    if (renderAfter) render();
+    return bridgeState;
   }
 
-  function scheduleToolchainPoll() {
-    clearToolchainPoll();
-    if (buildState.stage !== "waiting") return;
-    toolchainPollTimer = setTimeout(async () => {
-      toolchainPollTimer = null;
-      if (!currentRoot || buildState.stage !== "waiting") return;
-      const ready = await checkToolchainReady();
-      if (ready) {
-        setState("ready", "ARM toolchain ready. Build TNS can now compile locally in this browser.");
-        return;
-      }
-      scheduleToolchainPoll();
-    }, TOOLCHAIN_POLL_MS);
+  function bridgePanel() {
+    const downloads = window.NdlessLocalBridge?.DOWNLOADS || {};
+    if (bridgeState.connected && bridgeState.toolchainReady) {
+      return `<div class="ndless-real-build-ready ndless-local-engine">
+        <b>Local TNS compiler</b>
+        <span><i class="ndless-toolchain-dot"></i> Connected · ${escapeHtml(bridgeState.platform || "native")}</span>
+        <small>Bridge ${escapeHtml(bridgeState.version || "")} · Native Ndless toolchain ready. Project builds stay on this computer.</small>
+      </div>`;
+    }
+    if (bridgeState.connected) {
+      return `<div class="ndless-real-build-waiting ndless-local-engine">
+        <b>Local TNS compiler</b>
+        <span><i class="ndless-toolchain-dot"></i> Bridge connected · toolchain incomplete</span>
+        <small>${bridgeState.missing?.length ? `Missing: ${escapeHtml(bridgeState.missing.join(", "))}` : "The bridge is installed, but its Ndless compiler bundle is not ready yet."}</small>
+      </div>`;
+    }
+    return `<div class="ndless-real-build-waiting ndless-local-engine">
+      <b>Local TNS compiler</b>
+      <span><i class="ndless-toolchain-dot"></i> Not connected</span>
+      <small>Build TNS will try to open <code>tnstool://start</code>. Install the bridge once for your operating system.</small>
+      <div class="ndless-local-links">
+        <button type="button" data-open-local-compiler>Open compiler</button>
+        ${downloads.windows ? `<a href="${escapeHtml(downloads.windows)}" target="_blank" rel="noopener">Windows x64</a>` : ""}
+        ${downloads.linux ? `<a href="${escapeHtml(downloads.linux)}" target="_blank" rel="noopener">Linux x64</a>` : ""}
+      </div>
+    </div>`;
   }
 
   function render() {
@@ -118,55 +112,70 @@
     const p = project();
     if (!pane || !p) return;
     const target = window.NdlessProjectCore?.TARGETS?.[p.target]?.label || p.target;
-    const compatibility = window.NdlessBuildManager?.browserCompatibility?.(p) || {ok:true};
-    const busy = !["idle","complete","error","cancelled","waiting","ready"].includes(buildState.stage);
-    const stageLabel = ({preparing:"Preparing compiler",compiling:"Compiling ARM",assembling:"Assembling",linking:"Linking ELF",packaging:"Building Zehn",validating:"Validating TNS",complete:"Build successful",error:"Build failed",cancelled:"Build cancelled",waiting:"Preparing toolchain",ready:"ARM toolchain ready",idle:"Ready"})[buildState.stage] || buildState.stage;
-    const statusClass = buildState.stage === "complete" || buildState.stage === "ready" ? "ok" : (buildState.stage === "error" ? "bad" : (buildState.stage === "waiting" ? "warn" : ""));
+    const busy = !["idle","complete","error","cancelled","needs-local"].includes(buildState.stage);
+    const stageLabel = ({
+      connecting:"Opening local compiler",
+      sending:"Sending project",
+      preparing:"Preparing compiler",
+      compiling:"Compiling ARM",
+      assembling:"Assembling",
+      linking:"Linking ELF",
+      packaging:"Building Zehn",
+      validating:"Validating TNS",
+      complete:"Build successful",
+      error:"Build failed",
+      cancelled:"Build cancelled",
+      "needs-local":"Local compiler required",
+      idle:"Ready",
+    })[buildState.stage] || buildState.stage;
+    const statusClass = buildState.stage === "complete" ? "ok" : (buildState.stage === "error" ? "bad" : (buildState.stage === "needs-local" ? "warn" : ""));
+    const engineLabel = bridgeState.connected && bridgeState.toolchainReady ? `Local · ${bridgeState.platform || "native"}` : "Local preferred · browser fallback experimental";
+
     pane.innerHTML = `<div class="ndless-real-build">
       <div class="ndless-real-build-grid">
-        <div class="ndless-project-build-card"><span>Target</span><strong>${escapeHtml(target)}</strong><small>${p.target === "zehn-modern" ? "Browser build · ELF32 ARM → Zehn" : "Legacy target"}</small></div>
+        <div class="ndless-project-build-card"><span>Target</span><strong>${escapeHtml(target)}</strong><small>${escapeHtml(engineLabel)}</small></div>
         <div class="ndless-project-build-card"><span>Status</span><strong class="${statusClass}">${escapeHtml(stageLabel)}</strong><small>${escapeHtml(buildState.message || "")}</small></div>
       </div>
-      ${!compatibility.ok && buildState.stage === "idle" ? `<div class="ndless-real-build-warning"><b>Full SDK runtime required</b><span>${escapeHtml(compatibility.message)}</span><small>${escapeHtml(compatibility.details || "")}</small></div>` : ""}
-      ${buildState.stage === "waiting" ? `<div class="ndless-real-build-waiting"><b>ARM toolchain</b><span><i class="ndless-toolchain-dot"></i> Building Clang + LLD on GitHub Actions</span><small>The page checks again about every 2 minutes. Nothing is being compiled on your PC yet.</small></div>` : ""}
-      ${buildState.stage === "ready" ? `<div class="ndless-real-build-ready"><b>ARM toolchain</b><span><i class="ndless-toolchain-dot"></i> Ready</span><small>The compiler will be downloaded and cached when you press Build TNS.</small></div>` : ""}
+      ${bridgePanel()}
       <div class="ndless-real-build-actions">
-        ${busy ? `<button type="button" class="danger" data-real-build-cancel>Cancel build</button>` : `<button type="button" class="primary" data-real-build-start>${buildState.stage === "waiting" ? "Check / Build TNS" : "Build TNS"}</button>`}
+        ${busy ? `<button type="button" class="danger" data-real-build-cancel>Cancel build</button>` : `<button type="button" class="primary" data-real-build-start>Build TNS</button>`}
         ${currentResult?.ok ? `<button type="button" data-real-build-download>Download TNS</button><button type="button" data-real-build-inspect>Inspect</button>` : ""}
       </div>
-      ${currentResult?.ok ? `<div class="ndless-real-build-artifact"><b>${escapeHtml(currentResult.filename)}</b><span>${bytesLabel(currentResult.bytes.length)} · ARM · Zehn</span><span>${currentResult.stats?.relocations ?? 0} relocations · ${currentResult.stats?.durationMs ?? 0} ms</span></div>` : ""}
-      ${buildState.details && buildState.stage !== "waiting" ? `<pre class="ndless-real-build-log">${escapeHtml(buildState.details)}</pre>` : ""}
-      <p class="ndless-real-build-note">Build TNS is not the Quick Preview. It lazy-loads a compiler, requires a real ARM backend, links ELF32 ARM, packages Zehn and rejects the result unless the local Ndless parser validates it.</p>
+      ${currentResult?.ok ? `<div class="ndless-real-build-artifact"><b>${escapeHtml(currentResult.filename)}</b><span>${bytesLabel(currentResult.bytes.length)} · ${escapeHtml(currentResult.engine === "local" ? `Local ${currentResult.platform || "native"}` : "Browser WASM")}</span><span>${currentResult.stats?.durationMs ?? 0} ms</span></div>` : ""}
+      ${buildState.details ? `<pre class="ndless-real-build-log">${escapeHtml(buildState.details)}</pre>` : ""}
+      <p class="ndless-real-build-note">Preferred path: the page opens the Windows/Linux TNS Tool Compiler and sends the project only through 127.0.0.1. The native toolchain returns the .tns to this page. Browser WebAssembly remains an optional fallback.</p>
     </div>`;
+
     $("[data-real-build-start]", pane)?.addEventListener("click", runBuild);
     $("[data-real-build-cancel]", pane)?.addEventListener("click", () => controller?.abort());
     $("[data-real-build-download]", pane)?.addEventListener("click", () => window.NdlessBuildManager?.download?.(currentResult));
     $("[data-real-build-inspect]", pane)?.addEventListener("click", inspectResult);
+    $("[data-open-local-compiler]", pane)?.addEventListener("click", async () => {
+      window.NdlessLocalBridge?.openLocalCompiler?.();
+      setTimeout(() => refreshBridgeStatus(true), 1200);
+      setTimeout(() => refreshBridgeStatus(true), 3500);
+    });
   }
 
   function setState(stage, message, details="") {
     buildState = { stage, message, details };
-    if (stage !== "waiting") clearToolchainPoll();
     render();
-    if (stage === "waiting") scheduleToolchainPoll();
   }
 
   async function runBuild() {
     const p = project();
     if (!p || !window.NdlessBuildManager) return;
-    const migration = migrateUntouchedBasicStarter();
     currentResult = null;
-    clearToolchainPoll();
     controller?.abort?.();
     controller = new AbortController();
     selectBuildTab(currentRoot);
-    setState("preparing", migration ? "Updated untouched starter for browser build…" : "Checking browser ARM compiler…");
+    setState("connecting", "Checking the local Windows/Linux compiler…");
     applyMarkers([]);
-    const lines = ["> Build TNS", `target: ${p.target}`, ""];
-    if (migration) lines.push(`Auto-updated untouched ${migration.file} starter to Browser minimal (freestanding).`, "");
+    const lines = ["> Build TNS", `target: ${p.target}`, "engine: local compiler preferred", ""];
     consoleLines(lines);
+
     const result = await window.NdlessBuildManager.build(p, {
-      signal: controller.signal,
+      signal:controller.signal,
       onProgress(info) {
         setState(info.stage || "preparing", info.message || info.stage || "Working…");
         lines.push(`[${info.stage || "build"}] ${info.message || ""}`);
@@ -174,25 +183,25 @@
       },
     });
     controller = null;
+    await refreshBridgeStatus(false);
+
     if (!result.ok) {
       applyMarkers(result.diagnostics || []);
       const detail = [result.message, result.details].filter(Boolean).join("\n\n");
-      if (result.code === "ARM_TOOLCHAIN_BUILDING") {
-        setState("waiting", "Clang + LLD ARM are currently being built. This is not a project build failure.", detail);
-        lines.push("", "ARM toolchain is still being built on GitHub Actions.", "The page will check for the published toolchain periodically.");
-        consoleLines(lines);
-        return;
-      }
-      setState(result.stage === "cancelled" ? "cancelled" : "error", result.message || "Build failed.", detail);
-      lines.push("", `ERROR: ${result.message || "Build failed."}`);
+      const needsLocal = ["LOCAL_COMPILER_REQUIRED","LOCAL_TOOLCHAIN_MISSING","LOCAL_BRIDGE_UNAVAILABLE"].includes(result.code);
+      setState(result.stage === "cancelled" ? "cancelled" : (needsLocal ? "needs-local" : "error"), result.message || "Build failed.", detail);
+      lines.push("", `${needsLocal ? "LOCAL:" : "ERROR:"} ${result.message || "Build failed."}`);
       if (result.details) lines.push(result.details);
       consoleLines(lines);
       return;
     }
+
     currentResult = result;
     applyMarkers(result.diagnostics || []);
     setState("complete", `${result.filename} · ${bytesLabel(result.bytes.length)}`);
-    lines.push("", `✓ ${result.filename}`, `ELF: ${bytesLabel(result.elfBytes.length)}`, `TNS: ${bytesLabel(result.bytes.length)}`, `Relocations: ${result.stats?.relocations ?? 0}`);
+    lines.push("", `✓ ${result.filename}`, `Engine: ${result.engine === "local" ? `local ${result.platform || "native"}` : "browser WASM"}`);
+    if (result.elfBytes?.length) lines.push(`ELF: ${bytesLabel(result.elfBytes.length)}`);
+    lines.push(`TNS: ${bytesLabel(result.bytes.length)}`);
     consoleLines(lines);
   }
 
@@ -214,63 +223,66 @@
       button.addEventListener("click", () => { selectBuildTab(root); setTimeout(() => { render(); runBuild(); }, 0); });
       actions.insertBefore(button, actions.firstChild);
     }
-    $("[data-project-tab='build']", root)?.addEventListener("click", () => setTimeout(render, 0));
+    $("[data-project-tab='build']", root)?.addEventListener("click", () => {
+      setTimeout(render, 0);
+      refreshBridgeStatus(true);
+    });
     render();
   }
 
   function enhanceWizard() {
     const form = document.querySelector(".ndless-project-dialog-overlay-v2 form.ndless-project-dialog, .ndless-project-dialog-overlay form.ndless-project-dialog");
-    if (!form || form.dataset.browserTemplateEnhanced === "1") return;
-    form.dataset.browserTemplateEnhanced = "1";
+    if (!form || form.dataset.browserTemplateEnhanced === "local-v1") return;
+    form.dataset.browserTemplateEnhanced = "local-v1";
     const language = form.querySelector("select[name='language']");
     const template = form.querySelector("select[name='template']");
     const target = form.querySelector("select[name='target']");
     const note = form.querySelector("[data-project-mode-note]") || form.querySelector("p");
     if (!template || !target || !language) return;
 
-    let userPickedTemplate = false;
-    const originalNote = note?.textContent || "";
     let option = Array.from(template.options).find(item => item.value === "browser-minimal");
     if (!option) {
       option = document.createElement("option");
       option.value = "browser-minimal";
-      option.textContent = "Browser minimal (freestanding)";
-      template.insertBefore(option, template.firstChild);
+      template.appendChild(option);
     }
+    option.textContent = "Browser minimal (WASM fallback)";
 
-    const sync = ({ targetChanged = false } = {}) => {
+    const originalNote = note?.textContent || "";
+    const sync = () => {
       const modern = target.value === "zehn-modern";
       const assembly = language.value === "asm";
       option.disabled = !modern || assembly;
-
       if ((!modern || assembly) && template.value === "browser-minimal") template.value = "basic";
-      if (modern && !assembly && (targetChanged || !userPickedTemplate)) template.value = "browser-minimal";
-
       if (note) {
-        if (modern && !assembly && template.value === "browser-minimal") {
-          note.textContent = "Browser-ready starter: Build TNS can compile this minimal project without the external Ndless SDK/sysroot.";
+        if (modern && template.value === "browser-minimal") {
+          note.textContent = "Freestanding template for the experimental browser-only compiler. The local compiler can use the normal Ndless SDK templates instead.";
         } else if (modern) {
-          note.textContent = "This SDK template uses Ndless headers/libraries. Browser Build TNS needs the full Ndless sysroot for it; Browser minimal is the immediately buildable starter.";
+          note.textContent = "Recommended: normal Ndless SDK project. Build TNS will use the installed Windows/Linux local compiler when available.";
         } else {
           note.textContent = originalNote;
         }
       }
     };
-
-    template.addEventListener("change", () => { userPickedTemplate = true; sync(); });
-    target.addEventListener("change", () => { userPickedTemplate = false; sync({ targetChanged: true }); });
-    language.addEventListener("change", () => sync());
-    sync({ targetChanged: target.value === "zehn-modern" });
+    template.addEventListener("change", sync);
+    target.addEventListener("change", sync);
+    language.addEventListener("change", sync);
+    sync();
   }
 
   function setup() {
     const root = $("#xml-doctor-panel .ndless-project-workspace");
     if (root !== currentRoot) {
-      clearToolchainPoll();
+      clearBridgePoll();
       currentRoot = root;
       currentResult = null;
+      bridgeState = { checked:false, connected:false, toolchainReady:false, platform:"unknown", version:null, missing:[] };
       buildState = { stage:"idle", message:"Ready to build." };
-      if (root) inject(root);
+      if (root) {
+        inject(root);
+        refreshBridgeStatus(true);
+        scheduleBridgePoll();
+      }
     } else if (root) inject(root);
   }
 
