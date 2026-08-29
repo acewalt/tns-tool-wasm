@@ -6,7 +6,7 @@
     if (nzp) registry.register({ ...nzp, editorGlobal: "TnsStructuredContentEditor" });
   }
 
-  const VERSION = "20260829-direct-save-v11";
+  const VERSION = "20260829-direct-save-v12";
 
   function loadZehnStreamFix() {
     if (document.querySelector('script[data-ndless-zehn-stream-fix="true"]')) {
@@ -28,16 +28,31 @@
       return;
     }
     const upgrade = document.createElement("script");
-    upgrade.src = `./ndless-local-runtime-upgrade.js?v=${VERSION}`;
+    upgrade.src = `./ndless-local-runtime-v4.js?v=${VERSION}`;
     upgrade.async = false;
     upgrade.dataset.ndlessLocalRuntimeUpgrade = "true";
-    upgrade.addEventListener("error", () => console.error("Failed to load Ndless local compiler runtime upgrade."), { once: true });
+    upgrade.addEventListener("error", () => console.error("Failed to load Ndless local compiler v4 routing."), { once: true });
     document.head.appendChild(upgrade);
+  }
+
+  function loadOfficialBuildFlow() {
+    if (document.querySelector('script[data-ndless-build-official-flow="true"]')) {
+      window.NdlessOfficialBuildFlow?.suppressExperimentalNdlessControls?.();
+      window.NdlessOfficialBuildFlow?.patchBuildManager?.();
+      return;
+    }
+    const flow = document.createElement("script");
+    flow.src = `./ndless-build-official-flow.js?v=${VERSION}`;
+    flow.async = false;
+    flow.dataset.ndlessBuildOfficialFlow = "true";
+    flow.addEventListener("error", () => console.error("Failed to load official Ndless Build TNS flow."), { once: true });
+    document.head.appendChild(flow);
   }
 
   function loadDiagnostics() {
     loadZehnStreamFix();
     loadRuntimeUpgrade();
+    loadOfficialBuildFlow();
     if (document.querySelector('script[data-ndless-experimental-export-fix="true"]')) {
       window.NdlessExperimentalExportDiagnostics?.setup?.();
       return;
@@ -66,9 +81,12 @@
     document.head.appendChild(ui);
   }
 
-  // Experimental only: direct-file persistence plus Ndless reconstruction diagnostics.
+  // Direct-file persistence and Ndless reconstruction diagnostics remain
+  // available for document editing, while Ndless Build TNS now uses the
+  // official compiler v4 flow.
   loadZehnStreamFix();
   loadRuntimeUpgrade();
+  loadOfficialBuildFlow();
   const existingCore = document.querySelector('script[data-tns-file-save-experimental-core="true"]');
   if (existingCore) {
     if (window.TnsFileSaveExperimentalCore) loadUi();
