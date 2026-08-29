@@ -1,8 +1,11 @@
-const fs = require('fs');
-const vm = require('vm');
-const path = require('path');
-const assert = require('assert');
+import fs from 'node:fs';
+import vm from 'node:vm';
+import path from 'node:path';
+import assert from 'node:assert';
+import { fileURLToPath } from 'node:url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const source = fs.readFileSync(path.join(__dirname, '..', 'ndless-local-runtime-upgrade.js'), 'utf8');
 
 let bridgeVersion = '0.2.0';
@@ -77,32 +80,27 @@ const context = vm.createContext({
 
 vm.runInContext(source, context, { filename: 'ndless-local-runtime-upgrade.js' });
 
-(async () => {
-  const options = {
-    openLocal: false,
-    alreadyOpened: true,
-    waitForConnection: true,
-    onProgress(info) { options.progress = info; },
-  };
+const options = {
+  openLocal: false,
+  alreadyOpened: true,
+  waitForConnection: true,
+  onProgress(info) { options.progress = info; },
+};
 
-  const outdated = await window.NdlessBuildManager.build({ name: 'test' }, options);
-  assert.strictEqual(outdated.ok, false);
-  assert.strictEqual(outdated.code, 'LOCAL_COMPILER_UPDATE_REQUIRED');
-  assert.strictEqual(outdated.stage, 'installing');
-  assert.strictEqual(downloadClicks, 1, 'v3 download must be triggered once');
-  assert.strictEqual(nativeBuilds, 0, 'must not compile with the outdated 0.2.0 runtime');
-  assert.match(options.progress.message, /0\.2\.1/);
-  assert.strictEqual(window.NdlessLocalBridge.RELEASE_TAG, 'tns-tool-compiler-v3');
-  assert.match(window.NdlessLocalBridge.DOWNLOADS.windows, /tns-tool-compiler-v3/);
+const outdated = await window.NdlessBuildManager.build({ name: 'test' }, options);
+assert.strictEqual(outdated.ok, false);
+assert.strictEqual(outdated.code, 'LOCAL_COMPILER_UPDATE_REQUIRED');
+assert.strictEqual(outdated.stage, 'installing');
+assert.strictEqual(downloadClicks, 1, 'v3 download must be triggered once');
+assert.strictEqual(nativeBuilds, 0, 'must not compile with the outdated 0.2.0 runtime');
+assert.match(options.progress.message, /0\.2\.1/);
+assert.strictEqual(window.NdlessLocalBridge.RELEASE_TAG, 'tns-tool-compiler-v3');
+assert.match(window.NdlessLocalBridge.DOWNLOADS.windows, /tns-tool-compiler-v3/);
 
-  bridgeVersion = '0.2.1';
-  toolchainReady = true;
-  const current = await window.NdlessBuildManager.build({ name: 'test' }, options);
-  assert.strictEqual(current.ok, true);
-  assert.strictEqual(nativeBuilds, 1, 'current compiler must delegate to the real build');
+bridgeVersion = '0.2.1';
+toolchainReady = true;
+const current = await window.NdlessBuildManager.build({ name: 'test' }, options);
+assert.strictEqual(current.ok, true);
+assert.strictEqual(nativeBuilds, 1, 'current compiler must delegate to the real build');
 
-  console.log('PASS Ndless local runtime upgrade guard');
-})().catch(error => {
-  console.error(error);
-  process.exitCode = 1;
-});
+console.log('PASS Ndless local runtime upgrade guard');
