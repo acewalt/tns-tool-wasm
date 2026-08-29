@@ -6,11 +6,12 @@
     if (nzp) registry.register({ ...nzp, editorGlobal: "TnsStructuredContentEditor" });
   }
 
-  const VERSION = "20260829-direct-save-v9";
+  const VERSION = "20260829-direct-save-v10";
 
   function loadRuntimeUpgrade() {
     if (document.querySelector('script[data-ndless-local-runtime-upgrade="true"]')) {
       window.NdlessLocalRuntimeUpgrade?.patchBridge?.();
+      window.NdlessLocalRuntimeUpgrade?.patchBuildManager?.();
       return;
     }
     const upgrade = document.createElement("script");
