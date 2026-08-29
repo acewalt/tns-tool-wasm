@@ -4,6 +4,8 @@
   const BASE_URL = "http://127.0.0.1:34982";
   const STATUS_URL = `${BASE_URL}/v2/status`;
   const BUILD_URL = `${BASE_URL}/v2/build`;
+  const LEGACY_BASE_URL = "http://127.0.0.1:34981";
+  const LEGACY_STATUS_URL = `${LEGACY_BASE_URL}/v1/status`;
   const PROTOCOL_URL = "tnstool://start";
   const PROTOCOL_VERSION = 2;
   const RELEASE_TAG = "tns-tool-compiler-v1";
@@ -55,6 +57,31 @@
     }
   }
 
+  async function legacyStatus(options = {}) {
+    try {
+      const data = await fetchJson(LEGACY_STATUS_URL, { method:"GET" }, options.timeoutMs || 550, options.signal);
+      if (data?.bridge !== true && data?.compiler !== true) return null;
+      const version = data?.version || "0.1.0";
+      return {
+        connected:true,
+        toolchainReady:false,
+        protocol:Number(data?.protocol || 1),
+        platform:data?.platform || "windows",
+        version,
+        toolchain:null,
+        missing:[`Legacy TNS Tool Compiler bridge ${version} detected on 127.0.0.1:34981. Install the current self-contained compiler to replace it.`],
+        selfContained:false,
+        transport:data?.transport || "json",
+        legacy:true,
+        legacyPort:34981,
+        raw:data,
+      };
+    } catch (error) {
+      if (options.signal?.aborted) throw abortError();
+      return null;
+    }
+  }
+
   async function status(options = {}) {
     try {
       const data = await fetchJson(STATUS_URL, {
@@ -72,11 +99,14 @@
         missing:Array.isArray(data?.missing) ? data.missing : [],
         selfContained:data?.selfContained === true,
         transport:data?.transport || null,
+        legacy:false,
         raw:data,
       };
     } catch (error) {
       if (options.signal?.aborted) throw abortError();
-      return { connected:false, toolchainReady:false, protocol:0, platform:"unknown", version:null, toolchain:null, missing:[], selfContained:false, error };
+      const legacy = await legacyStatus({ signal:options.signal, timeoutMs:Math.min(options.timeoutMs || 700, 650) });
+      if (legacy) return legacy;
+      return { connected:false, toolchainReady:false, protocol:0, platform:"unknown", version:null, toolchain:null, missing:[], selfContained:false, legacy:false, error };
     }
   }
 
@@ -138,10 +168,10 @@
       error.details = "Download and run TNS Tool Compiler once, then allow the browser to open tnstool:// when Build TNS is pressed.";
       throw error;
     }
-    if (ready.protocol !== PROTOCOL_VERSION) {
+    if (ready.protocol !== PROTOCOL_VERSION || ready.legacy) {
       const error = new Error("The installed TNS Tool Compiler is an older incompatible version.");
       error.code = "LOCAL_COMPILER_UPDATE_REQUIRED";
-      error.details = "Download the current self-contained compiler and run it once to update tnstool://.";
+      error.details = "The old bridge is still registered for tnstool://. Install the current self-contained compiler once; it will replace that association automatically.";
       throw error;
     }
     if (!ready.toolchainReady) {
@@ -216,6 +246,7 @@
 
   window.NdlessLocalBridge = Object.freeze({
     BASE_URL,
+    LEGACY_BASE_URL,
     DOWNLOADS,
     PROTOCOL_VERSION,
     status,
