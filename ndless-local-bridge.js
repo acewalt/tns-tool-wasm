@@ -8,7 +8,7 @@
   const LEGACY_STATUS_URL = `${LEGACY_BASE_URL}/v1/status`;
   const PROTOCOL_URL = "tnstool://start";
   const PROTOCOL_VERSION = 2;
-  const RELEASE_TAG = "tns-tool-compiler-v1";
+  const RELEASE_TAG = "tns-tool-compiler-v2";
   const RELEASE_BASE = `https://github.com/acewalt/tns-tool-wasm/releases/download/${RELEASE_TAG}`;
   const DOWNLOADS = Object.freeze({
     windows: `${RELEASE_BASE}/TNS-Tool-Compiler-Windows-x64.exe`,
@@ -248,6 +248,7 @@
     BASE_URL,
     LEGACY_BASE_URL,
     DOWNLOADS,
+    RELEASE_TAG,
     PROTOCOL_VERSION,
     status,
     ensureReady,
