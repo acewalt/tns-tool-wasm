@@ -16,6 +16,7 @@
   const RECENT_MS = 6 * 60 * 60 * 1000;
   const PATCH_MARK = "__tnsCompilerV3Download";
   let lastPatchedObject = null;
+  let lastPatchedManager = null;
 
   function versionParts(value) {
     return String(value || "0").split(/[^0-9]+/).filter(Boolean).slice(0, 4).map(Number);
@@ -150,15 +151,88 @@
     return true;
   }
 
+  function isExperimentalInvocation(options = {}) {
+    return options.openLocal === false
+      && options.alreadyOpened === true
+      && options.waitForConnection === true;
+  }
+
+  function patchBuildManager() {
+    const manager = window.NdlessBuildManager;
+    if (!manager?.build) return false;
+    if (manager === lastPatchedManager) return true;
+
+    const original = manager;
+    const patched = {
+      ...original,
+      async build(project, options = {}) {
+        if (isExperimentalInvocation(options)) {
+          let status = null;
+          try {
+            status = await window.NdlessLocalBridge?.status?.({ signal:options.signal, timeoutMs:950 });
+          } catch (_) {}
+
+          if (status?.connected && status.updateRequired) {
+            const bridge = window.NdlessLocalBridge;
+            const download = bridge?.downloadCompiler?.({ platform:status.platform });
+            if (download?.unsupported) {
+              return {
+                ok:false,
+                stage:"installing",
+                code:"LOCAL_COMPILER_PLATFORM_UNSUPPORTED",
+                message:`TNS Tool Compiler ${status.version || "unknown"} is outdated and automatic ${RELEASE_TAG} download is unavailable on this platform.`,
+                details:download.message || `Install ${EXPECTED_BRIDGE_VERSION} manually, then retry the experimental export.`,
+                diagnostics:[],
+                localStatus:status,
+              };
+            }
+
+            const started = download?.started === true;
+            const progressMessage = started
+              ? `TNS Tool Compiler ${status.version || "unknown"} is outdated. Downloading ${RELEASE_TAG} (${EXPECTED_BRIDGE_VERSION})… Open the downloaded file once, then run the experimental export again.`
+              : `${RELEASE_TAG} (${EXPECTED_BRIDGE_VERSION}) was already downloaded recently. Open the downloaded file once, then run the experimental export again.`;
+            options.onProgress?.({ stage:"installing", message:progressMessage });
+            console.warn(`[Ndless compiler] ${progressMessage}`);
+            return {
+              ok:false,
+              stage:"installing",
+              code:"LOCAL_COMPILER_UPDATE_REQUIRED",
+              message:progressMessage,
+              details:`Detected local bridge ${status.version || "unknown"}; experimental Ndless export requires ${EXPECTED_BRIDGE_VERSION}. The v3 executable replaces the stale 0.2.0 server and extracts runtime-0.2.1 with ARM GCC, genzehn and Ndless SDK libraries.`,
+              diagnostics:[],
+              localStatus:status,
+              download,
+            };
+          }
+        }
+        return original.build(project, options);
+      },
+    };
+
+    window.NdlessBuildManager = Object.freeze(patched);
+    lastPatchedManager = window.NdlessBuildManager;
+    console.info("[Ndless compiler] Build manager migration guard installed.");
+    return true;
+  }
+
   let attempts = 0;
   function retry() {
     patchBridge();
+    patchBuildManager();
     if (attempts++ < 300) setTimeout(retry, 100);
   }
 
   retry();
-  window.addEventListener("tns-runtime-ready", patchBridge);
-  try { window.NdlessRuntimeReady?.then?.(patchBridge).catch?.(() => {}); } catch (_) {}
+  window.addEventListener("tns-runtime-ready", () => {
+    patchBridge();
+    patchBuildManager();
+  });
+  try {
+    window.NdlessRuntimeReady?.then?.(() => {
+      patchBridge();
+      patchBuildManager();
+    }).catch?.(() => {});
+  } catch (_) {}
 
   window.NdlessLocalRuntimeUpgrade = Object.freeze({
     RELEASE_TAG,
@@ -167,5 +241,6 @@
     compareVersions,
     normalizeStatus,
     patchBridge,
+    patchBuildManager,
   });
 })();
