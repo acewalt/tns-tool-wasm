@@ -81,6 +81,7 @@
   function preview(source, fallback) {
     const raw = String(source || "");
     if (!detect(raw)) return fallback(raw);
+    patchVisibleCanvases();
     const frame = extract(raw);
     if (!frame) {
       return {
