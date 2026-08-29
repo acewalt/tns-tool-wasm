@@ -77,6 +77,7 @@ jobs:
           node --check ndless-rebuilder.js
           node --check ndless-tns-inspector.js
           node --check ndless-zehn.js
+          node --check ndless-zehn-stream-fix.js
           node --check ndless-elf32.js
           node --check ndless-zehn-builder.js
           node --check ndless-build-worker.js
@@ -102,6 +103,7 @@ jobs:
           node tests/ndless-reachable.test.js
           node tests/ndless-friendly.test.js
           node tests/ndless-export-roundtrip.test.js
+          node tests/ndless-zehn-stream-fix.test.js
           node tests/ndless-project.test.js
           node tests/ndless-project-tree.test.js
           node tests/ndless-zehn-builder.test.js
