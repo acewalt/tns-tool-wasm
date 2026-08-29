@@ -58,7 +58,7 @@ fn header(name: &str, value: &str) -> Header {
     Header::from_bytes(name.as_bytes(), value.as_bytes()).expect("valid header")
 }
 
-fn request_header(request: &Request, name: &str) -> Option<String> {
+fn request_header(request: &Request, name: &'static str) -> Option<String> {
     request
         .headers()
         .iter()
@@ -307,7 +307,7 @@ fn extract_zip_bytes(bytes: &[u8], destination: &Path, max_files: usize, max_unp
             return Err("ZIP expands beyond the allowed size.".to_owned());
         }
         let enclosed = entry.enclosed_name().ok_or_else(|| "ZIP contains an unsafe path.".to_owned())?;
-        let relative = safe_relative_path(enclosed)?;
+        let relative = safe_relative_path(&enclosed)?;
         let target = destination.join(relative);
         if entry.is_dir() {
             fs::create_dir_all(&target).map_err(|e| e.to_string())?;
