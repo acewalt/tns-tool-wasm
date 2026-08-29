@@ -5,8 +5,11 @@
   let currentRoot = null;
   let controller = null;
   let currentResult = null;
+  let toolchainPollTimer = null;
   let buildState = { stage:"idle", message:"Ready to build." };
 
+  const TOOLCHAIN_MANIFEST_URL = "https://github.com/acewalt/tns-tool-wasm/releases/download/ndless-arm-toolchain-v1/toolchain.json";
+  const TOOLCHAIN_POLL_MS = 120000;
   const project = () => window.NdlessProjectWorkspace?.getProject?.() || null;
 
   function bytesLabel(n) {
@@ -78,6 +81,37 @@
     return { file, source: replacement };
   }
 
+  function clearToolchainPoll() {
+    if (toolchainPollTimer) clearTimeout(toolchainPollTimer);
+    toolchainPollTimer = null;
+  }
+
+  async function checkToolchainReady() {
+    try {
+      const response = await fetch(TOOLCHAIN_MANIFEST_URL, { cache:"no-store", redirect:"follow" });
+      if (!response.ok) return false;
+      const manifest = await response.json();
+      return manifest?.targetTriple === "arm-none-eabi" && manifest?.targetBackends?.includes?.("ARM") && !!manifest?.tools?.clang && !!manifest?.tools?.lld;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  function scheduleToolchainPoll() {
+    clearToolchainPoll();
+    if (buildState.stage !== "waiting") return;
+    toolchainPollTimer = setTimeout(async () => {
+      toolchainPollTimer = null;
+      if (!currentRoot || buildState.stage !== "waiting") return;
+      const ready = await checkToolchainReady();
+      if (ready) {
+        setState("ready", "ARM toolchain ready. Build TNS can now compile locally in this browser.");
+        return;
+      }
+      scheduleToolchainPoll();
+    }, TOOLCHAIN_POLL_MS);
+  }
+
   function render() {
     const root = currentRoot;
     const pane = root && $("[data-project-build]", root);
@@ -85,21 +119,23 @@
     if (!pane || !p) return;
     const target = window.NdlessProjectCore?.TARGETS?.[p.target]?.label || p.target;
     const compatibility = window.NdlessBuildManager?.browserCompatibility?.(p) || {ok:true};
-    const busy = !["idle","complete","error","cancelled"].includes(buildState.stage);
-    const stageLabel = ({preparing:"Preparing compiler",compiling:"Compiling ARM",assembling:"Assembling",linking:"Linking ELF",packaging:"Building Zehn",validating:"Validating TNS",complete:"Build successful",error:"Build failed",cancelled:"Build cancelled",idle:"Ready"})[buildState.stage] || buildState.stage;
-    const statusClass = buildState.stage === "complete" ? "ok" : (buildState.stage === "error" ? "bad" : "");
+    const busy = !["idle","complete","error","cancelled","waiting","ready"].includes(buildState.stage);
+    const stageLabel = ({preparing:"Preparing compiler",compiling:"Compiling ARM",assembling:"Assembling",linking:"Linking ELF",packaging:"Building Zehn",validating:"Validating TNS",complete:"Build successful",error:"Build failed",cancelled:"Build cancelled",waiting:"Preparing toolchain",ready:"ARM toolchain ready",idle:"Ready"})[buildState.stage] || buildState.stage;
+    const statusClass = buildState.stage === "complete" || buildState.stage === "ready" ? "ok" : (buildState.stage === "error" ? "bad" : (buildState.stage === "waiting" ? "warn" : ""));
     pane.innerHTML = `<div class="ndless-real-build">
       <div class="ndless-real-build-grid">
         <div class="ndless-project-build-card"><span>Target</span><strong>${escapeHtml(target)}</strong><small>${p.target === "zehn-modern" ? "Browser build · ELF32 ARM → Zehn" : "Legacy target"}</small></div>
         <div class="ndless-project-build-card"><span>Status</span><strong class="${statusClass}">${escapeHtml(stageLabel)}</strong><small>${escapeHtml(buildState.message || "")}</small></div>
       </div>
       ${!compatibility.ok && buildState.stage === "idle" ? `<div class="ndless-real-build-warning"><b>Full SDK runtime required</b><span>${escapeHtml(compatibility.message)}</span><small>${escapeHtml(compatibility.details || "")}</small></div>` : ""}
+      ${buildState.stage === "waiting" ? `<div class="ndless-real-build-waiting"><b>ARM toolchain</b><span><i class="ndless-toolchain-dot"></i> Building Clang + LLD on GitHub Actions</span><small>The page checks again about every 2 minutes. Nothing is being compiled on your PC yet.</small></div>` : ""}
+      ${buildState.stage === "ready" ? `<div class="ndless-real-build-ready"><b>ARM toolchain</b><span><i class="ndless-toolchain-dot"></i> Ready</span><small>The compiler will be downloaded and cached when you press Build TNS.</small></div>` : ""}
       <div class="ndless-real-build-actions">
-        ${busy ? `<button type="button" class="danger" data-real-build-cancel>Cancel build</button>` : `<button type="button" class="primary" data-real-build-start>Build TNS</button>`}
+        ${busy ? `<button type="button" class="danger" data-real-build-cancel>Cancel build</button>` : `<button type="button" class="primary" data-real-build-start>${buildState.stage === "waiting" ? "Check / Build TNS" : "Build TNS"}</button>`}
         ${currentResult?.ok ? `<button type="button" data-real-build-download>Download TNS</button><button type="button" data-real-build-inspect>Inspect</button>` : ""}
       </div>
       ${currentResult?.ok ? `<div class="ndless-real-build-artifact"><b>${escapeHtml(currentResult.filename)}</b><span>${bytesLabel(currentResult.bytes.length)} · ARM · Zehn</span><span>${currentResult.stats?.relocations ?? 0} relocations · ${currentResult.stats?.durationMs ?? 0} ms</span></div>` : ""}
-      ${buildState.details ? `<pre class="ndless-real-build-log">${escapeHtml(buildState.details)}</pre>` : ""}
+      ${buildState.details && buildState.stage !== "waiting" ? `<pre class="ndless-real-build-log">${escapeHtml(buildState.details)}</pre>` : ""}
       <p class="ndless-real-build-note">Build TNS is not the Quick Preview. It lazy-loads a compiler, requires a real ARM backend, links ELF32 ARM, packages Zehn and rejects the result unless the local Ndless parser validates it.</p>
     </div>`;
     $("[data-real-build-start]", pane)?.addEventListener("click", runBuild);
@@ -110,7 +146,9 @@
 
   function setState(stage, message, details="") {
     buildState = { stage, message, details };
+    if (stage !== "waiting") clearToolchainPoll();
     render();
+    if (stage === "waiting") scheduleToolchainPoll();
   }
 
   async function runBuild() {
@@ -118,10 +156,11 @@
     if (!p || !window.NdlessBuildManager) return;
     const migration = migrateUntouchedBasicStarter();
     currentResult = null;
+    clearToolchainPoll();
     controller?.abort?.();
     controller = new AbortController();
     selectBuildTab(currentRoot);
-    setState("preparing", migration ? "Updated untouched starter for browser build…" : "Preparing browser ARM compiler…");
+    setState("preparing", migration ? "Updated untouched starter for browser build…" : "Checking browser ARM compiler…");
     applyMarkers([]);
     const lines = ["> Build TNS", `target: ${p.target}`, ""];
     if (migration) lines.push(`Auto-updated untouched ${migration.file} starter to Browser minimal (freestanding).`, "");
@@ -138,6 +177,12 @@
     if (!result.ok) {
       applyMarkers(result.diagnostics || []);
       const detail = [result.message, result.details].filter(Boolean).join("\n\n");
+      if (result.code === "ARM_TOOLCHAIN_BUILDING") {
+        setState("waiting", "Clang + LLD ARM are currently being built. This is not a project build failure.", detail);
+        lines.push("", "ARM toolchain is still being built on GitHub Actions.", "The page will check for the published toolchain periodically.");
+        consoleLines(lines);
+        return;
+      }
       setState(result.stage === "cancelled" ? "cancelled" : "error", result.message || "Build failed.", detail);
       lines.push("", `ERROR: ${result.message || "Build failed."}`);
       if (result.details) lines.push(result.details);
@@ -221,6 +266,7 @@
   function setup() {
     const root = $("#xml-doctor-panel .ndless-project-workspace");
     if (root !== currentRoot) {
+      clearToolchainPoll();
       currentRoot = root;
       currentResult = null;
       buildState = { stage:"idle", message:"Ready to build." };
