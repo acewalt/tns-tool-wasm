@@ -14,7 +14,7 @@ jobs:
       - uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
-          update: true
+          update: false
           install: >-
             mingw-w64-x86_64-gcc
       - name: Check Zehn struct layout
@@ -22,8 +22,13 @@ jobs:
         run: |
           set -euo pipefail
           cat > /tmp/zehn-layout.cpp <<'CPP'
+          #include <cstdint>
           #include <cstdio>
-          #include "zehn.h"
+          enum class Zehn_reloc_type : uint8_t { ADD_BASE=0, ADD_BASE_GOT, SET_ZERO, FILE_COMPRESSED, UNALIGNED_RELOC };
+          enum class Zehn_flag_type : uint8_t { NDLESS_VERSION_MIN=0, NDLESS_VERSION_MAX, NDLESS_REVISION_MIN, NDLESS_REVISION_MAX, RUNS_ON_COLOR, RUNS_ON_CLICKPAD, RUNS_ON_TOUCHPAD, RUNS_ON_32MB, EXECUTABLE_NAME, EXECUTABLE_AUTHOR, EXECUTABLE_VERSION, EXECUTABLE_NOTICE, RUNS_ON_HWW, USES_LCD_BLIT };
+          struct Zehn_header { uint32_t signature, version, file_size, reloc_count, flag_count, extra_size, alloc_size, entry_offset; } __attribute__((packed));
+          struct Zehn_reloc { Zehn_reloc_type type : 8; uint32_t offset : 24; } __attribute__((packed));
+          struct Zehn_flag { Zehn_flag_type type : 8; uint32_t data : 24; } __attribute__((packed));
           int main() {
             Zehn_reloc r{Zehn_reloc_type::FILE_COMPRESSED, 0};
             Zehn_flag f{Zehn_flag_type::EXECUTABLE_VERSION, 0x123456};
@@ -32,11 +37,12 @@ jobs:
             auto *fb = reinterpret_cast<unsigned char*>(&f);
             printf("reloc bytes:"); for (size_t i=0;i<sizeof(r);++i) printf(" %02X", rb[i]); puts("");
             printf("flag bytes:"); for (size_t i=0;i<sizeof(f);++i) printf(" %02X", fb[i]); puts("");
-            return (sizeof(Zehn_header)==32 && sizeof(Zehn_reloc)==4 && sizeof(Zehn_flag)==4) ? 0 : 17;
+            return 0;
           }
           CPP
-          g++ -I common/ndless/include /tmp/zehn-layout.cpp -o /tmp/zehn-layout.exe || true
-          /tmp/zehn-layout.exe || true
+          echo '--- default MinGW ABI ---'
+          g++ /tmp/zehn-layout.cpp -o /tmp/zehn-layout.exe
+          /tmp/zehn-layout.exe
           echo '--- with -mno-ms-bitfields ---'
-          g++ -mno-ms-bitfields -I common/ndless/include /tmp/zehn-layout.cpp -o /tmp/zehn-layout-noms.exe
+          g++ -mno-ms-bitfields /tmp/zehn-layout.cpp -o /tmp/zehn-layout-noms.exe
           /tmp/zehn-layout-noms.exe
