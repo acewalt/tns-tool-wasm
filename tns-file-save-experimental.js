@@ -199,10 +199,6 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   }
 
   async function saveCurrentExperimental() {
-    // Experimental button is intentionally useful in both cases:
-    // 1) if the document was opened with a writable handle, replace that file;
-    // 2) otherwise, build the complete TNS first and create a new file via Save As
-    //    (or traditional download when File System Access is unavailable).
     if (!state.handle) {
       logMessage("Sin archivo vinculado: reconstruyendo el TNS completo antes de crear un archivo nuevo…");
       return saveCurrentAsExperimental();
@@ -282,13 +278,15 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   }
 
   function injectNdlessControls() {
-    document.querySelectorAll(".ndless-real-build-actions").forEach(actions => {
-      if (actions.querySelector("[data-experimental-save-direct]")) return;
-      const direct = makeButton("Guardar experimental", saveCurrentExperimental, "");
+    document.querySelectorAll("#xml-doctor-panel .ndless-project-workspace").forEach(root => {
+      const actions = root.querySelector(".ndless-project-actions");
+      const buildButton = actions?.querySelector(".ndless-build-tns-button");
+      if (!actions || !buildButton || actions.querySelector("[data-experimental-save-direct]")) return;
+
+      const direct = makeButton("Guardar experimental", saveCurrentExperimental, "primary ndless-save-experimental-button");
       direct.dataset.experimentalSaveDirect = "1";
-      const saveAs = makeButton("Guardar como…", saveCurrentAsExperimental, "");
-      saveAs.dataset.experimentalSaveAs = "1";
-      actions.append(direct, saveAs);
+      direct.title = "Reconstruye y valida un TNS nuevo antes de escribirlo. No ejecuta el botón Build TNS.";
+      buildButton.insertAdjacentElement("afterend", direct);
     });
   }
 
