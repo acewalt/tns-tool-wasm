@@ -6,7 +6,7 @@
     if (nzp) registry.register({ ...nzp, editorGlobal: "TnsStructuredContentEditor" });
   }
 
-  const VERSION = "20260829-direct-save-v12";
+  const VERSION = "20260829-direct-save-v13";
 
   function loadZehnStreamFix() {
     if (document.querySelector('script[data-ndless-zehn-stream-fix="true"]')) {
@@ -42,10 +42,10 @@
       return;
     }
     const flow = document.createElement("script");
-    flow.src = `./ndless-build-official-flow.js?v=${VERSION}`;
+    flow.src = `./ndless-build-confirm-flow.js?v=${VERSION}`;
     flow.async = false;
     flow.dataset.ndlessBuildOfficialFlow = "true";
-    flow.addEventListener("error", () => console.error("Failed to load official Ndless Build TNS flow."), { once: true });
+    flow.addEventListener("error", () => console.error("Failed to load confirmed Ndless Build TNS flow."), { once: true });
     document.head.appendChild(flow);
   }
 
@@ -83,7 +83,7 @@
 
   // Direct-file persistence and Ndless reconstruction diagnostics remain
   // available for document editing, while Ndless Build TNS now uses the
-  // official compiler v4 flow.
+  // confirmed compiler-v4 handoff flow.
   loadZehnStreamFix();
   loadRuntimeUpgrade();
   loadOfficialBuildFlow();
