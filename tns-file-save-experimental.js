@@ -199,9 +199,15 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   }
 
   async function saveCurrentExperimental() {
+    // Experimental button is intentionally useful in both cases:
+    // 1) if the document was opened with a writable handle, replace that file;
+    // 2) otherwise, build the complete TNS first and create a new file via Save As
+    //    (or traditional download when File System Access is unavailable).
     if (!state.handle) {
-      throw new Error("Este documento no tiene FileSystemFileHandle. Ábrelo con ‘Abrir para edición directa’ para sobrescribirlo; también puedes usar ‘Guardar como…’.");
+      logMessage("Sin archivo vinculado: reconstruyendo el TNS completo antes de crear un archivo nuevo…");
+      return saveCurrentAsExperimental();
     }
+
     const result = await core.buildValidateAndWrite({
       build: buildCurrentArtifact,
       handle: state.handle,
@@ -214,9 +220,15 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   async function saveCurrentAsExperimental() {
     const artifact = core.validateArtifact(await buildCurrentArtifact(), validateGeneratedBytes);
     const result = await saveBytesAs(artifact.bytes, artifact.filename, { family: artifact.family });
+    if (result.handle && !state.handle) {
+      setCurrentFileHandle(result.handle, {
+        fileName: result.handle.name || artifact.filename,
+        family: artifact.family,
+      });
+    }
     logMessage(result.fallback === "download"
-      ? `File System Access API no disponible; se usó descarga tradicional para ${artifact.filename}.`
-      : `Guardar como completado: ${artifact.filename} (${result.bytesWritten} bytes).`);
+      ? `File System Access API no disponible; se creó ${artifact.filename} mediante descarga tradicional.`
+      : `Archivo TNS creado: ${artifact.filename} (${result.bytesWritten} bytes).`);
     return result;
   }
 
@@ -301,8 +313,8 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
     if (!status) return;
     const support = canUseDirectFileAccess();
     if (state.handle) status.textContent = `Experimental: ${state.fileName || "archivo"} vinculado para sobrescritura`;
-    else if (!support.open || !support.save) status.textContent = "Experimental: File System Access no disponible; Guardar como usará descarga";
-    else status.textContent = "Experimental: sin archivo vinculado";
+    else if (!support.save) status.textContent = "Experimental: sin handle; Guardar experimental creará el TNS mediante descarga";
+    else status.textContent = "Experimental: sin handle; Guardar experimental abrirá Guardar como…";
   }
 
   function injectControls() {
