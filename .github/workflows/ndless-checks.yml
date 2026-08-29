@@ -81,6 +81,8 @@ jobs:
           node --check ndless-zehn-builder.js
           node --check ndless-build-worker.js
           node --check ndless-build-manager.js
+          node --check ndless-build-coi.js
+          node --check ndless-coi-sw.js
           node --check ndless-build-ui.js
           node --check ndless-project-core.js
           node --check ndless-project-core-enhancements.js
@@ -89,6 +91,7 @@ jobs:
           node --check ndless-project-sdk-enhancements.js
           node --check ndless-project-sdk-enhancements-v2.js
           node --check ndless-project-file-tree.js
+          node --check multi-image-upload.js
       - name: Structured content tests
         run: node tests/custom-content-formats.test.js
       - name: Ndless synthetic tests
