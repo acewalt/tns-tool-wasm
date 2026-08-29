@@ -1,0 +1,225 @@
+name: Finish silent self-contained TNS compiler v2 retry
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/finish-self-contained-compiler-release-v5.yml'
+
+permissions:
+  contents: write
+
+env:
+  SOURCE_RUN_ID: '33232126878'
+  COMPILER_TAG: tns-tool-compiler-v2
+  ARM_VERSION: 14.3.rel1
+
+jobs:
+  windows:
+    name: Windows x64 silent EXE final retry
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Reuse validated Ndless runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: ndless-common-runtime
+          path: common
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: tools/tns-tool-compiler-bridge
+
+      - name: Set up MSYS2 for genzehn
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-boost
+            mingw-w64-x86_64-zlib
+
+      - name: Build Windows genzehn and bundle DLLs
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          mkdir -p bundle/runtime/bin
+          SRC="$GITHUB_WORKSPACE/common/genzehn-src"
+          g++ -O2 -Wall -Wextra -std=c++11 \
+            -I "$SRC/elfio-3.2" \
+            -I "$GITHUB_WORKSPACE/common/ndless/include" \
+            "$SRC/genzehn.cpp" \
+            -static-libgcc -static-libstdc++ \
+            -lboost_program_options-mt -lz -lws2_32 \
+            -o bundle/runtime/bin/genzehn.exe
+          ldd bundle/runtime/bin/genzehn.exe \
+            | awk '/\/mingw64\/bin\// { for (i=1; i<=NF; i++) if ($i ~ /^\/mingw64\/bin\//) print $i }' \
+            | sort -u \
+            | while IFS= read -r dll; do [ -n "$dll" ] && cp -v "$dll" bundle/runtime/bin/; done
+          bundle/runtime/bin/genzehn.exe --help >/dev/null || true
+
+      - name: Download and trim Windows GNU Arm runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $url = "https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/$env:ARM_VERSION/binrel/arm-gnu-toolchain-$env:ARM_VERSION-mingw-w64-x86_64-arm-none-eabi.zip"
+          Invoke-WebRequest -Uri $url -OutFile arm-toolchain.zip
+          Expand-Archive -Path arm-toolchain.zip -DestinationPath arm-expanded -Force
+
+          $gcc = Get-ChildItem -Path arm-expanded -Recurse -File -Filter arm-none-eabi-gcc.exe | Select-Object -First 1
+          if (-not $gcc) { throw 'arm-none-eabi-gcc.exe was not found inside the Arm GNU ZIP.' }
+          $toolchainRoot = Split-Path -Parent (Split-Path -Parent $gcc.FullName)
+          New-Item -ItemType Directory -Force -Path bundle/runtime/toolchain | Out-Null
+          Get-ChildItem -LiteralPath $toolchainRoot -Force | ForEach-Object {
+            Copy-Item -LiteralPath $_.FullName -Destination bundle/runtime/toolchain -Recurse -Force
+          }
+
+          Remove-Item -Recurse -Force bundle/runtime/toolchain/share -ErrorAction SilentlyContinue
+          Get-ChildItem bundle/runtime/toolchain/bin/arm-none-eabi-gdb* -ErrorAction SilentlyContinue | Remove-Item -Force
+
+          $keep = @(
+            'arm-none-eabi-gcc.exe',
+            'arm-none-eabi-g++.exe',
+            'arm-none-eabi-c++.exe',
+            'arm-none-eabi-cpp.exe',
+            'arm-none-eabi-as.exe',
+            'arm-none-eabi-ld.exe',
+            'arm-none-eabi-ld.bfd.exe'
+          )
+          Get-ChildItem bundle/runtime/toolchain/bin -File -Filter '*.exe' | Where-Object {
+            $keep -notcontains $_.Name
+          } | Remove-Item -Force
+
+          $bundledGcc = Join-Path $PWD 'bundle/runtime/toolchain/bin/arm-none-eabi-gcc.exe'
+          & $bundledGcc --version | Select-Object -First 1
+
+      - name: Assemble Windows runtime and enforce size ceiling
+        shell: pwsh
+        run: |
+          Copy-Item -Recurse -Force common/ndless bundle/runtime/ndless
+          if (-not (Test-Path bundle/runtime/ndless/lib/libndls.a)) { throw 'libndls.a missing' }
+          if (-not (Test-Path bundle/runtime/bin/genzehn.exe)) { throw 'genzehn.exe missing' }
+          $bytes = (Get-ChildItem bundle/runtime -Recurse -File | Measure-Object -Property Length -Sum).Sum
+          "Trimmed runtime bytes: $bytes"
+          if ($bytes -ge 1073741824) { throw "Runtime exceeds the embedded 1 GiB extraction ceiling: $bytes bytes" }
+
+      - name: Build silent compiler bridge
+        shell: pwsh
+        env:
+          RUSTFLAGS: -C target-feature=+crt-static
+        run: cargo build --release --manifest-path tools/tns-tool-compiler-bridge/Cargo.toml
+
+      - name: Verify Windows GUI subsystem
+        shell: pwsh
+        run: |
+          python -c "from pathlib import Path; import struct; p=Path(r'tools/tns-tool-compiler-bridge/target/release/tns-tool-compiler-bridge.exe'); b=p.read_bytes(); pe=struct.unpack_from('<I',b,0x3c)[0]; assert b[pe:pe+4]==b'PE\x00\x00'; subsystem=struct.unpack_from('<H',b,pe+24+68)[0]; print('PE subsystem:',subsystem,'(2 = Windows GUI)'); assert subsystem==2, f'Expected Windows GUI subsystem 2, got {subsystem}'"
+
+      - name: Pack single Windows EXE
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          python tools/tns-tool-compiler-bridge/pack_runtime.py `
+            tools/tns-tool-compiler-bridge/target/release/tns-tool-compiler-bridge.exe `
+            bundle/runtime `
+            dist/TNS-Tool-Compiler-Windows-x64.exe
+          Get-Item dist/TNS-Tool-Compiler-Windows-x64.exe | Format-List Name,Length
+
+      - name: Smoke test packed silent Windows EXE
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Force -Path smoke-project | Out-Null
+          @'
+          #define OLD_SCREEN_API
+          #include <stdio.h>
+          #include <libndls.h>
+          int main(void) {
+              assert_ndless_rev(801);
+              clrscr();
+              printf("Hello from silent local TNS Tool Compiler!\n");
+              wait_key_pressed();
+              return 0;
+          }
+          '@ | Set-Content -Encoding ascii smoke-project/main.c
+          python -c "import zipfile; z=zipfile.ZipFile('smoke-project.zip','w',zipfile.ZIP_DEFLATED); z.write('smoke-project/main.c','main.c'); z.close()"
+          $proc = Start-Process -FilePath "$PWD/dist/TNS-Tool-Compiler-Windows-x64.exe" -ArgumentList '--build-zip','smoke-project.zip','smoke-windows.tns','smoke-windows' -Wait -PassThru -NoNewWindow
+          if ($proc.ExitCode -ne 0) { throw "Silent compiler smoke exited with $($proc.ExitCode)" }
+          python -c "from pathlib import Path; b=Path('smoke-windows.tns').read_bytes(); assert b[:4] == b'Zehn'; print('Windows silent compiler smoke:', len(b), 'bytes')"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TNS-Tool-Compiler-Windows-x64-v2
+          path: dist/TNS-Tool-Compiler-Windows-x64.exe
+          retention-days: 14
+          if-no-files-found: error
+
+  release:
+    name: Publish silent Windows + Linux compiler v2
+    needs: windows
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Download Windows compiler
+        uses: actions/download-artifact@v4
+        with:
+          name: TNS-Tool-Compiler-Windows-x64-v2
+          path: dist
+
+      - name: Reuse validated Linux AppImage
+        uses: actions/download-artifact@v4
+        with:
+          name: TNS-Tool-Compiler-Linux-x64
+          path: dist
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Build release manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import hashlib, json
+          from pathlib import Path
+          files=[]
+          for p in sorted(Path('dist').iterdir()):
+              if not p.is_file(): continue
+              data=p.read_bytes()
+              files.append({'name':p.name,'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()})
+          assert any(x['name'].endswith('.exe') for x in files), files
+          assert any(x['name'].endswith('.AppImage') for x in files), files
+          Path('dist/compiler-manifest.json').write_text(json.dumps({
+              'version':2,
+              'bridgeProtocol':2,
+              'ndless':'r2022',
+              'armToolchain':'14.3.rel1',
+              'windowsMode':'background-gui',
+              'files':files,
+          }, indent=2))
+          print(json.dumps(files, indent=2))
+          PY
+
+      - name: Publish self-contained compiler release v2
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$COMPILER_TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release delete "$COMPILER_TAG" --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag
+          fi
+          gh release create "$COMPILER_TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title 'TNS Tool Compiler v2' \
+            --notes 'Self-contained local Ndless compiler for TNS Tool. Windows runs in the background without a console window. Download once; the web IDE opens it through tnstool://, sends project.zip over 127.0.0.1, and receives a real Modern Zehn .tns.'
+          gh release upload "$COMPILER_TAG" dist/* --repo "$GITHUB_REPOSITORY" --clobber
