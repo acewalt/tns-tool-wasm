@@ -4,9 +4,18 @@
   const bridge = window.NdlessLocalBridge;
   if (!bridge) return;
 
-  const RELEASE_TAG = "tns-tool-compiler-v1";
+  const RELEASE_TAG = bridge.RELEASE_TAG || "tns-tool-compiler-v2";
   const DOWNLOAD_KEY = `tns-tool-compiler-download:${RELEASE_TAG}`;
+  const OLD_DOWNLOAD_KEYS = ["tns-tool-compiler-download:tns-tool-compiler-v1"];
   const RECENT_MS = 6 * 60 * 60 * 1000;
+
+  // A release change must not inherit the previous release's "already downloaded"
+  // marker; otherwise Build TNS can keep waiting for an obsolete installer.
+  for (const key of OLD_DOWNLOAD_KEYS) {
+    if (key !== DOWNLOAD_KEY) {
+      try { localStorage.removeItem(key); } catch (_) {}
+    }
+  }
 
   function platform() {
     const value = String(
