@@ -86,6 +86,47 @@
     };
   }
 
+  function canonicalize(value) {
+    if (value == null || typeof value !== "object") return value;
+    if (value instanceof Uint8Array) return { __type:"Uint8Array", bytes:Array.from(value) };
+    if (ArrayBuffer.isView(value)) return { __type:value.constructor?.name || "TypedArray", bytes:Array.from(new Uint8Array(value.buffer, value.byteOffset, value.byteLength)) };
+    if (value instanceof ArrayBuffer) return { __type:"ArrayBuffer", bytes:Array.from(new Uint8Array(value)) };
+    if (Array.isArray(value)) return value.map(canonicalize);
+    const out = {};
+    for (const key of Object.keys(value).sort()) out[key] = canonicalize(value[key]);
+    return out;
+  }
+
+  function stableStringify(value) {
+    return JSON.stringify(canonicalize(value));
+  }
+
+  function hashString(text) {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash.toString(16).padStart(8, "0");
+  }
+
+  function projectFingerprint(project) {
+    const canonical = stableStringify(sanitizedProject(project));
+    return `ndless:${hashString(canonical)}:${canonical.length}`;
+  }
+
+  function withProjectFingerprint(result, project) {
+    return {
+      ...result,
+      projectFingerprint:projectFingerprint(project),
+      projectSnapshot:sanitizedProject(project),
+    };
+  }
+
+  function sameProject(result, project) {
+    return !!(result?.ok && result.projectFingerprint && result.projectFingerprint === projectFingerprint(project));
+  }
+
   function browserCompatibility(project) {
     if (project?.language === "asm") return { ok:true };
     if (project?.settings?.browserFreestanding) return { ok:true };
@@ -135,6 +176,8 @@
     const status = await globalThis.NdlessLocalBridge.ensureReady({
       signal:options.signal,
       openIfMissing:options.openLocal !== false,
+      alreadyOpened:options.alreadyOpened === true,
+      waitForConnection:options.waitForConnection === true,
       waitMs:options.localWaitMs || 12000,
       onProgress,
     });
@@ -162,7 +205,7 @@
     onProgress({ stage:"compiling", message:`Compiling with local ${status.platform || "native"} Ndless toolchain…` });
     const built = await globalThis.NdlessLocalBridge.build(project, { ...options, status, openIfMissing:false });
     const detection = requireValidNdless(built.bytes);
-    const result = {
+    const result = withProjectFingerprint({
       ok:true,
       engine:"local",
       target:project.target,
@@ -183,7 +226,7 @@
         durationMs:built.durationMs || 0,
         engine:"local",
       },
-    };
+    }, project);
     lastArtifact = result;
     onProgress({ stage:"complete", message:`Build successful with local ${status.platform || "native"} compiler.`, result });
     return result;
@@ -221,7 +264,7 @@
 
     onProgress({ stage:"validating", message:"Validating generated TNS…" });
     const detection = requireValidNdless(bytes);
-    const result = {
+    const result = withProjectFingerprint({
       ok:true,
       engine:"browser",
       target:"zehn-modern",
@@ -240,7 +283,7 @@
         durationMs:Math.round(performance.now() - started),
         engine:"browser",
       },
-    };
+    }, project);
     lastArtifact = result;
     onProgress({ stage:"complete", message:"Build successful with browser fallback.", result });
     return result;
@@ -291,7 +334,10 @@
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   }
 
-  function artifact() { return lastArtifact; }
+  function artifact(project = null) {
+    if (!project) return lastArtifact;
+    return sameProject(lastArtifact, project) ? lastArtifact : null;
+  }
   function dispose() { resetWorker(); lastArtifact = null; }
 
   window.NdlessBuildManager = Object.freeze({
@@ -301,6 +347,9 @@
     artifact,
     dispose,
     browserCompatibility,
+    sanitizedProject,
+    projectFingerprint,
+    sameProject,
     localStatus,
     engineStatus,
   });

@@ -126,10 +126,17 @@
     const onProgress = options.onProgress || (()=>{});
     let current = await status({ signal:options.signal, timeoutMs:900 });
     if (current.connected) return current;
-    if (options.openIfMissing === false) return current;
+    const alreadyOpened = options.alreadyOpened === true;
+    const shouldOpen = options.openIfMissing !== false && !alreadyOpened;
+    const shouldWait = shouldOpen || alreadyOpened || options.waitForConnection === true;
+    if (!shouldWait) return current;
 
-    onProgress({ stage:"connecting", message:"Opening TNS Tool Compiler…" });
-    openLocalCompiler();
+    if (shouldOpen) onProgress({ stage:"connecting", message:"Opening TNS Tool Compiler…" });
+    if (shouldOpen) {
+      openLocalCompiler();
+    } else {
+      onProgress({ stage:"connecting", message:"Waiting for TNS Tool Compiler connection..." });
+    }
     const deadline = performance.now() + (options.waitMs || 15000);
     while (performance.now() < deadline) {
       if (options.signal?.aborted) throw abortError();
@@ -158,8 +165,10 @@
     const ready = options.status || await ensureReady({
       signal:options.signal,
       openIfMissing:options.openIfMissing !== false,
+      alreadyOpened:options.alreadyOpened === true,
+      waitForConnection:options.waitForConnection === true,
       onProgress,
-      waitMs:options.waitMs,
+      waitMs:options.waitMs || options.localWaitMs,
     });
 
     if (!ready?.connected) {

@@ -38,18 +38,41 @@
     updateStatus();
   }
 
-  function detectBytes(bytes, file = null) {
+  function detectBytes(bytes, file = null, family = null) {
+    if (family === "ndless") {
+      return window.NdlessFormatDetector?.detect?.(bytes)
+        || window.TnsUniversalDetector?.detect?.(bytes, file)
+        || { valid: bytes?.byteLength > 0, family: "unknown", format: "unknown" };
+    }
     return window.TnsUniversalDetector?.detect?.(bytes, file)
       || window.NdlessFormatDetector?.detect?.(bytes)
       || { valid: bytes?.byteLength > 0, family: "unknown", format: "unknown" };
   }
 
+  function isNdlessDetection(detection) {
+    const haystack = `${detection?.family || ""} ${detection?.format || ""} ${detection?.kind || ""}`.toLowerCase();
+    return haystack.includes("ndless") || haystack.includes("zehn") || haystack.includes("prg") || haystack.includes("bflt");
+  }
+
   function validateGeneratedBytes(bytes, artifact = {}) {
-    const detection = detectBytes(bytes);
-    if (!detection?.valid) return detection || { valid: false, reason: "unrecognized-tns" };
-    if (artifact.family === "ndless" && detection.family === "document") {
-      return { valid: false, reason: "expected-ndless-but-generated-document" };
+    const detection = detectBytes(bytes, null, artifact.family);
+    if (artifact.family === "ndless") {
+      if (!isNdlessDetection(detection)) {
+        return {
+          valid: false,
+          reason: detection?.family === "document" ? "expected-ndless-but-generated-document" : "expected-ndless-but-generated-non-ndless",
+          detection,
+        };
+      }
+      if (!detection?.valid) {
+        return {
+          valid: false,
+          reason: detection?.reason || "invalid-ndless-artifact",
+          detection,
+        };
+      }
     }
+    if (!detection?.valid) return detection || { valid: false, reason: "unrecognized-tns" };
     return detection;
   }
 
@@ -167,19 +190,47 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   }
 
   async function buildNdlessArtifact() {
-    const project = window.NdlessProjectWorkspace?.getProject?.();
+    const project = currentNdlessProject();
     if (!project) throw new Error("No hay un proyecto Ndless abierto.");
-    if (!window.NdlessBuildManager?.build) throw new Error("NdlessBuildManager no está disponible.");
-    try { window.NdlessLocalBridge?.openLocalCompiler?.(); } catch (_) {}
+    if (!window.NdlessBuildManager?.build) throw new Error("NdlessBuildManager no esta disponible.");
+    logMessage("Ndless [preparing]: preparing current project build...");
+    let openedLocal = false;
+    try {
+      if (window.NdlessLocalBridge?.openLocalCompiler) {
+        window.NdlessLocalBridge.openLocalCompiler();
+        openedLocal = true;
+        logMessage("Ndless [connecting]: local compiler launch requested.");
+      }
+    } catch (error) {
+      logMessage(`Ndless [connecting]: local compiler launch skipped (${error?.message || error}).`);
+    }
     const result = await window.NdlessBuildManager.build(project, {
       openLocal: false,
-      onProgress(info) { logMessage(`Ndless: ${info?.message || info?.stage || "build"}`); },
+      alreadyOpened: openedLocal,
+      waitForConnection: openedLocal,
+      localWaitMs: 15000,
+      onProgress(info) {
+        const stage = info?.stage || "build";
+        const message = info?.message || stage;
+        logMessage(`Ndless [${stage}]: ${message}`);
+      },
     });
     if (!result?.ok) {
-      const details = result?.details ? `\n${result.details}` : "";
-      const error = new Error(`${result?.message || "La reconstrucción Ndless falló."}${details}`);
+      const details = result?.details ? `Details: ${result.details}` : "";
+      const diagnostics = result?.diagnostics?.length ? `Diagnostics: ${result.diagnostics.length}` : "";
+      const message = [
+        "Experimental TNS failed",
+        result?.stage ? `Stage: ${result.stage}` : "",
+        result?.code ? `Code: ${result.code}` : "",
+        `Message: ${result?.message || "La reconstruccion Ndless fallo."}`,
+        details,
+        diagnostics,
+      ].filter(Boolean).join("\n");
+      const error = new Error(message);
+      error.stage = result?.stage || "build";
       error.code = result?.code || "NDLESS_BUILD_FAILED";
       error.details = result?.details || "";
+      error.diagnostics = result?.diagnostics || [];
       throw error;
     }
     return {
@@ -188,14 +239,24 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
       filename: ensureTnsName(result.filename || `${project.name || "ndless-app"}.tns`),
       bytes: result.bytes,
       detection: result.detection,
+      projectFingerprint: result.projectFingerprint,
       sourceResult: result,
     };
   }
 
+  function currentNdlessProject() {
+    try {
+      return window.NdlessProjectWorkspace?.getProject?.() || null;
+    } catch (_) {
+      return null;
+    }
+  }
+
   async function buildCurrentArtifact() {
-    const ndlessProject = window.NdlessProjectWorkspace?.getProject?.();
+    const ndlessProject = currentNdlessProject();
     const workspace = document.querySelector("#xml-doctor-panel .ndless-project-workspace");
-    if (ndlessProject && workspace && workspace.isConnected) return buildNdlessArtifact();
+    if (ndlessProject) return buildNdlessArtifact();
+    if (workspace && workspace.isConnected) return buildNdlessArtifact();
     return buildXmlDoctorArtifact();
   }
 
@@ -230,7 +291,10 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   }
 
   function currentNdlessArtifact() {
-    const result = window.NdlessBuildManager?.artifact?.();
+    const project = currentNdlessProject();
+    const result = project
+      ? window.NdlessBuildManager?.artifact?.(project)
+      : null;
     if (!result?.ok || !result?.bytes?.length) return null;
     return {
       ok: true,
@@ -238,6 +302,7 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
       filename: ensureTnsName(result.filename || "ndless-app.tns"),
       bytes: result.bytes,
       detection: result.detection,
+      projectFingerprint: result.projectFingerprint,
       sourceResult: result,
     };
   }
@@ -245,14 +310,18 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   async function downloadCurrentExperimental() {
     let artifact = currentNdlessArtifact();
     if (artifact) {
+      logMessage("Ndless [validating]: validating current Build TNS...");
       artifact = core.validateArtifact(artifact, validateGeneratedBytes);
+      logMessage("Ndless [downloading]: downloading current Build TNS...");
       fallbackDownload(artifact.bytes, artifact.filename);
-      logMessage(`Descarga iniciada desde el último Build TNS exitoso: ${artifact.filename} (${artifact.bytes.length} bytes).`);
+      logMessage(`Descarga TNS experimental iniciada desde build vigente: ${artifact.filename} (${artifact.bytes.length} bytes).`);
       return { fallback: "download", source: "last-build", artifact };
     }
 
-    logMessage("No hay un Build TNS exitoso previo. Reconstruyendo el TNS para descargarlo…");
+    logMessage("Ndless [preparing]: no current Build TNS matches this project; rebuilding before download...");
     artifact = core.validateArtifact(await buildCurrentArtifact(), validateGeneratedBytes);
+    logMessage("Ndless [validating]: current artifact validated.");
+    logMessage("Ndless [downloading]: downloading rebuilt artifact...");
     fallbackDownload(artifact.bytes, artifact.filename);
     logMessage(`Descarga TNS experimental iniciada: ${artifact.filename} (${artifact.bytes.length} bytes).`);
     return { fallback: "download", source: "fresh-build", artifact };
@@ -315,7 +384,7 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
 
       const direct = makeButton("Descargar TNS experimental", downloadCurrentExperimental, "primary ndless-save-experimental-button");
       direct.dataset.experimentalSaveDirect = "1";
-      direct.title = "Descarga el último Build TNS exitoso; si no existe, intenta reconstruir y validar uno nuevo.";
+      direct.title = "Compila el proyecto Ndless actual, valida que sea Ndless real y descarga el .tns.";
       buildButton.insertAdjacentElement("afterend", direct);
     });
   }
@@ -369,5 +438,8 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
     saveCurrentExperimental,
     saveCurrentAsExperimental,
     downloadCurrentExperimental,
+    detectBytes,
+    isNdlessDetection,
+    validateGeneratedBytes,
   });
 })();
