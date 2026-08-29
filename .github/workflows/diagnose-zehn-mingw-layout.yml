@@ -1,0 +1,42 @@
+name: Diagnose MinGW Zehn layout
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/diagnose-zehn-mingw-layout.yml'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-gcc
+      - name: Check Zehn struct layout
+        shell: msys2 {0}
+        run: |
+          set -euo pipefail
+          cat > /tmp/zehn-layout.cpp <<'CPP'
+          #include <cstdio>
+          #include "zehn.h"
+          int main() {
+            Zehn_reloc r{Zehn_reloc_type::FILE_COMPRESSED, 0};
+            Zehn_flag f{Zehn_flag_type::EXECUTABLE_VERSION, 0x123456};
+            printf("header=%zu reloc=%zu flag=%zu\n", sizeof(Zehn_header), sizeof(Zehn_reloc), sizeof(Zehn_flag));
+            auto *rb = reinterpret_cast<unsigned char*>(&r);
+            auto *fb = reinterpret_cast<unsigned char*>(&f);
+            printf("reloc bytes:"); for (size_t i=0;i<sizeof(r);++i) printf(" %02X", rb[i]); puts("");
+            printf("flag bytes:"); for (size_t i=0;i<sizeof(f);++i) printf(" %02X", fb[i]); puts("");
+            return (sizeof(Zehn_header)==32 && sizeof(Zehn_reloc)==4 && sizeof(Zehn_flag)==4) ? 0 : 17;
+          }
+          CPP
+          g++ -I common/ndless/include /tmp/zehn-layout.cpp -o /tmp/zehn-layout.exe || true
+          /tmp/zehn-layout.exe || true
+          echo '--- with -mno-ms-bitfields ---'
+          g++ -mno-ms-bitfields -I common/ndless/include /tmp/zehn-layout.cpp -o /tmp/zehn-layout-noms.exe
+          /tmp/zehn-layout-noms.exe
