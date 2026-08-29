@@ -6,7 +6,7 @@
     if (nzp) registry.register({ ...nzp, editorGlobal: "TnsStructuredContentEditor" });
   }
 
-  const VERSION = "20260829-direct-save-v13";
+  const VERSION = "20260829-direct-save-v14";
 
   function loadZehnStreamFix() {
     if (document.querySelector('script[data-ndless-zehn-stream-fix="true"]')) {
@@ -21,37 +21,35 @@
     document.head.appendChild(fix);
   }
 
-  function loadRuntimeUpgrade() {
-    if (document.querySelector('script[data-ndless-local-runtime-upgrade="true"]')) {
-      window.NdlessLocalRuntimeUpgrade?.patchBridge?.();
-      window.NdlessLocalRuntimeUpgrade?.patchBuildManager?.();
+  function loadWebBridge() {
+    if (document.querySelector('script[data-ndless-web-bridge="true"]')) {
+      window.NdlessWebBridge?.patch?.();
       return;
     }
-    const upgrade = document.createElement("script");
-    upgrade.src = `./ndless-local-runtime-v4.js?v=${VERSION}`;
-    upgrade.async = false;
-    upgrade.dataset.ndlessLocalRuntimeUpgrade = "true";
-    upgrade.addEventListener("error", () => console.error("Failed to load Ndless local compiler v4 routing."), { once: true });
-    document.head.appendChild(upgrade);
+    const bridge = document.createElement("script");
+    bridge.src = `./ndless-web-bridge.js?v=${VERSION}`;
+    bridge.async = false;
+    bridge.dataset.ndlessWebBridge = "true";
+    bridge.addEventListener("error", () => console.error("Failed to load Ndless Web Compiler bridge."), { once: true });
+    document.head.appendChild(bridge);
   }
 
   function loadOfficialBuildFlow() {
     if (document.querySelector('script[data-ndless-build-official-flow="true"]')) {
       window.NdlessOfficialBuildFlow?.suppressExperimentalNdlessControls?.();
-      window.NdlessOfficialBuildFlow?.patchBuildManager?.();
       return;
     }
     const flow = document.createElement("script");
     flow.src = `./ndless-build-confirm-flow.js?v=${VERSION}`;
     flow.async = false;
     flow.dataset.ndlessBuildOfficialFlow = "true";
-    flow.addEventListener("error", () => console.error("Failed to load confirmed Ndless Build TNS flow."), { once: true });
+    flow.addEventListener("error", () => console.error("Failed to load Ndless Build TNS handoff flow."), { once: true });
     document.head.appendChild(flow);
   }
 
   function loadDiagnostics() {
     loadZehnStreamFix();
-    loadRuntimeUpgrade();
+    loadWebBridge();
     loadOfficialBuildFlow();
     if (document.querySelector('script[data-ndless-experimental-export-fix="true"]')) {
       window.NdlessExperimentalExportDiagnostics?.setup?.();
@@ -61,7 +59,7 @@
     fix.src = `./ndless-experimental-export-fix.js?v=${VERSION}`;
     fix.async = false;
     fix.dataset.ndlessExperimentalExportFix = "true";
-    fix.addEventListener("error", () => console.error("Failed to load Ndless experimental export diagnostics/fix."), { once: true });
+    fix.addEventListener("error", () => console.error("Failed to load Ndless diagnostics."), { once: true });
     document.head.appendChild(fix);
   }
 
@@ -77,15 +75,12 @@
     ui.async = false;
     ui.dataset.tnsFileSaveExperimental = "true";
     ui.addEventListener("load", loadDiagnostics, { once: true });
-    ui.addEventListener("error", () => console.error("Failed to load experimental TNS file save UI."), { once: true });
+    ui.addEventListener("error", () => console.error("Failed to load TNS file save UI."), { once: true });
     document.head.appendChild(ui);
   }
 
-  // Direct-file persistence and Ndless reconstruction diagnostics remain
-  // available for document editing, while Ndless Build TNS now uses the
-  // confirmed compiler-v4 handoff flow.
   loadZehnStreamFix();
-  loadRuntimeUpgrade();
+  loadWebBridge();
   loadOfficialBuildFlow();
   const existingCore = document.querySelector('script[data-tns-file-save-experimental-core="true"]');
   if (existingCore) {
@@ -99,6 +94,6 @@
   core.async = false;
   core.dataset.tnsFileSaveExperimentalCore = "true";
   core.addEventListener("load", loadUi, { once: true });
-  core.addEventListener("error", () => console.error("Failed to load experimental TNS file save core."), { once: true });
+  core.addEventListener("error", () => console.error("Failed to load TNS file save core."), { once: true });
   document.head.appendChild(core);
 })();
