@@ -22,15 +22,15 @@
   function starterSource(language="c", template="basic") {
     const cpp = language === "cpp";
     if (template === "graphics") {
-      return `#include <libndls.h>\n#include <SDL/SDL.h>\n\nint main(void) {\n    SDL_Init(SDL_INIT_VIDEO);\n    SDL_Surface *screen = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE);\n    nSDL_Font *font = nSDL_LoadFont(NSDL_FONT_TINYTYPE, 29, 43, 61);\n\n    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 18, 34, 48));\n    nSDL_DrawString(screen, font, 20, 22, \"Hello Ndless!\");\n    nSDL_DrawString(screen, font, 20, 48, \"Edit me in Monaco\");\n    SDL_Flip(screen);\n    wait_key_pressed();\n    SDL_Quit();\n    return 0;\n}\n`;
+      return `#define OLD_SCREEN_API\n#include <libndls.h>\n#include <SDL/SDL.h>\n\nint main(void) {\n    SDL_Init(SDL_INIT_VIDEO);\n    SDL_Surface *screen = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE);\n    nSDL_Font *font = nSDL_LoadFont(NSDL_FONT_TINYTYPE, 29, 43, 61);\n\n    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 18, 34, 48));\n    nSDL_DrawString(screen, font, 20, 22, \"Hello Ndless!\");\n    nSDL_DrawString(screen, font, 20, 48, \"Edit me in Monaco\");\n    SDL_Flip(screen);\n    wait_key_pressed();\n    SDL_Quit();\n    return 0;\n}\n`;
     }
     if (template === "console") {
-      return `#include <libndls.h>\n#include <nspireio2.h>\n\nint main(void) {\n    nio_console console;\n    lcd_ingray();\n    clrscr();\n    nio_InitConsole(&console, 53, 29, 0, 0, 0, 15);\n    nio_DrawConsole(&console);\n    nio_printf(&console, \"Ndless project ready!\\n\");\n    nio_printf(&console, \"Press a key to exit.\");\n    wait_key_pressed();\n    nio_CleanUp(&console);\n    return 0;\n}\n`;
+      return `#define OLD_SCREEN_API\n#include <libndls.h>\n#include <nspireio2.h>\n\nint main(void) {\n    nio_console console;\n    lcd_ingray();\n    clrscr();\n    nio_InitConsole(&console, 53, 29, 0, 0, 0, 15);\n    nio_DrawConsole(&console);\n    nio_printf(&console, \"Ndless project ready!\\n\");\n    nio_printf(&console, \"Press a key to exit.\");\n    wait_key_pressed();\n    nio_CleanUp(&console);\n    return 0;\n}\n`;
     }
     if (cpp) {
-      return `#include <cstdio>\n#include <libndls.h>\n\nclass App {\npublic:\n    void run() {\n        clrscr();\n        std::printf(\"Hello from C++ Ndless!\\n\");\n        wait_key_pressed();\n    }\n};\n\nint main(void) {\n    App app;\n    app.run();\n    return 0;\n}\n`;
+      return `#define OLD_SCREEN_API\n#include <cstdio>\n#include <libndls.h>\n\nclass App {\npublic:\n    void run() {\n        clrscr();\n        std::printf(\"Hello from C++ Ndless!\\n\");\n        wait_key_pressed();\n    }\n};\n\nint main(void) {\n    App app;\n    app.run();\n    return 0;\n}\n`;
     }
-    return `#include <stdio.h>\n#include <libndls.h>\n\nint main(void) {\n    assert_ndless_rev(801);\n    clrscr();\n    printf(\"Hello Ndless!\\n\");\n    wait_key_pressed();\n    return 0;\n}\n`;
+    return `#define OLD_SCREEN_API\n#include <stdio.h>\n#include <libndls.h>\n\nint main(void) {\n    assert_ndless_rev(801);\n    clrscr();\n    printf(\"Hello Ndless!\\n\");\n    wait_key_pressed();\n    return 0;\n}\n`;
   }
 
   function makefileFor(project) {
