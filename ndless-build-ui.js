@@ -146,11 +146,11 @@
       <p class="ndless-real-build-note">Preferred path: the page opens the Windows/Linux TNS Tool Compiler and sends the project only through 127.0.0.1. The native toolchain returns the .tns to this page. Browser WebAssembly remains an optional fallback.</p>
     </div>`;
 
-    $("[data-real-build-start]", pane)?.addEventListener("click", runBuild);
+    $("[data-real-build-start]", pane)?.addEventListener("click", () => runBuild(false));
     $("[data-real-build-cancel]", pane)?.addEventListener("click", () => controller?.abort());
     $("[data-real-build-download]", pane)?.addEventListener("click", () => window.NdlessBuildManager?.download?.(currentResult));
     $("[data-real-build-inspect]", pane)?.addEventListener("click", inspectResult);
-    $("[data-open-local-compiler]", pane)?.addEventListener("click", async () => {
+    $("[data-open-local-compiler]", pane)?.addEventListener("click", () => {
       window.NdlessLocalBridge?.openLocalCompiler?.();
       setTimeout(() => refreshBridgeStatus(true), 1200);
       setTimeout(() => refreshBridgeStatus(true), 3500);
@@ -162,9 +162,17 @@
     render();
   }
 
-  async function runBuild() {
+  async function runBuild(protocolAlreadyOpened = false) {
     const p = project();
     if (!p || !window.NdlessBuildManager) return;
+
+    // A custom-protocol launch must happen while the browser still considers
+    // this a direct user gesture. Do it before the first await/fetch.
+    if (!bridgeState.connected && !protocolAlreadyOpened) {
+      window.NdlessLocalBridge?.openLocalCompiler?.();
+      protocolAlreadyOpened = true;
+    }
+
     currentResult = null;
     controller?.abort?.();
     controller = new AbortController();
@@ -176,6 +184,7 @@
 
     const result = await window.NdlessBuildManager.build(p, {
       signal:controller.signal,
+      openLocal:!protocolAlreadyOpened,
       onProgress(info) {
         setState(info.stage || "preparing", info.message || info.stage || "Working…");
         lines.push(`[${info.stage || "build"}] ${info.message || ""}`);
@@ -220,7 +229,15 @@
       button.type = "button";
       button.className = "primary ndless-build-tns-button";
       button.textContent = "Build TNS";
-      button.addEventListener("click", () => { selectBuildTab(root); setTimeout(() => { render(); runBuild(); }, 0); });
+      button.addEventListener("click", () => {
+        let protocolOpened = false;
+        if (!bridgeState.connected) {
+          window.NdlessLocalBridge?.openLocalCompiler?.();
+          protocolOpened = true;
+        }
+        selectBuildTab(root);
+        setTimeout(() => { render(); runBuild(protocolOpened); }, 0);
+      });
       actions.insertBefore(button, actions.firstChild);
     }
     $("[data-project-tab='build']", root)?.addEventListener("click", () => {
