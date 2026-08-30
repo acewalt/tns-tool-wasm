@@ -68,6 +68,7 @@ jobs:
           node --check ndless-analysis-worker.js
           node --check ndless-arm-decoder.js
           node --check ndless-arm-runtime.js
+          node --check ndless-arm-runtime-v2.js
           node --check ndless-bflt.js
           node --check ndless-editor.js
           node --check ndless-friendly-core.js
