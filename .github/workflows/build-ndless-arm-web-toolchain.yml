@@ -1,4 +1,4 @@
-# Publishes the browser ARM toolchain required by Ndless mobile/browser builds.
+# Publishes the browser-native ARM toolchain and Ndless SDK used by mobile/browser builds.
 name: Build Ndless ARM web toolchain
 
 on:
@@ -9,6 +9,7 @@ on:
 
 permissions:
   contents: write
+  actions: read
 
 concurrency:
   group: ndless-arm-web-toolchain
@@ -17,6 +18,8 @@ concurrency:
 env:
   LLVM_VERSION: '18.1.8'
   TOOLCHAIN_TAG: 'ndless-arm-toolchain-v1'
+  ARM_VERSION: '14.3.rel1'
+  SOURCE_RUN_ID: '33232126878'
 
 jobs:
   build:
@@ -25,11 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install native LLVM helpers and Ninja
+      - name: Install build helpers
         run: |
           sudo apt-get update
-          sudo apt-get install -y ninja-build cmake xz-utils llvm-18-dev clang-18 lld-18
-          test -x /usr/lib/llvm-18/bin/llvm-tblgen
+          sudo apt-get install -y ninja-build cmake xz-utils python3
 
       - name: Set up Emscripten
         uses: mymindstorm/setup-emsdk@v14
@@ -45,6 +47,22 @@ jobs:
             -o build/llvm-project.tar.xz
           tar -xf build/llvm-project.tar.xz -C build/llvm-src --strip-components=1
 
+      - name: Build native LLVM table generators
+        run: |
+          cmake -B build/native-tblgen -S build/llvm-src/llvm -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DLLVM_TARGETS_TO_BUILD=ARM \
+            -DLLVM_ENABLE_PROJECTS=clang \
+            -DLLVM_BUILD_TOOLS=OFF \
+            -DLLVM_INCLUDE_TESTS=OFF \
+            -DLLVM_INCLUDE_EXAMPLES=OFF \
+            -DLLVM_INCLUDE_BENCHMARKS=OFF \
+            -DCLANG_BUILD_TOOLS=OFF \
+            -DCLANG_INCLUDE_TESTS=OFF
+          cmake --build build/native-tblgen --target llvm-tblgen clang-tblgen
+          test -x build/native-tblgen/bin/llvm-tblgen
+          test -x build/native-tblgen/bin/clang-tblgen
+
       - name: Configure LLVM for WebAssembly with ARM backend
         run: |
           mkdir -p build/llvm-wasm
@@ -53,7 +71,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=MinSizeRel \
             -DLLVM_ENABLE_PROJECTS='clang;lld' \
             -DLLVM_TARGETS_TO_BUILD=ARM \
-            -DLLVM_NATIVE_TOOL_DIR=/usr/lib/llvm-18/bin \
+            -DLLVM_NATIVE_TOOL_DIR="$GITHUB_WORKSPACE/build/native-tblgen/bin" \
             -DLLVM_ENABLE_THREADS=OFF \
             -DLLVM_ENABLE_ZLIB=OFF \
             -DLLVM_ENABLE_ZSTD=OFF \
@@ -67,15 +85,81 @@ jobs:
             -DLLVM_ENABLE_BINDINGS=OFF \
             -DCLANG_ENABLE_STATIC_ANALYZER=OFF \
             -DCLANG_ENABLE_ARCMT=OFF \
-            -DCMAKE_EXE_LINKER_FLAGS='-sMODULARIZE=1 -sEXPORT_NAME=LLVMTool -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=134217728 -sSTACK_SIZE=8388608 -sEXPORTED_RUNTIME_METHODS=FS,callMain -sINVOKE_RUN=0 -sEXIT_RUNTIME=1 -sENVIRONMENT=web,worker,node'
+            -DCLANG_BUILD_TOOLS=OFF \
+            -DLLD_BUILD_TOOLS=OFF \
+            -DCMAKE_EXE_LINKER_FLAGS='-sMODULARIZE=1 -sEXPORT_NAME=LLVMTool -sALLOW_MEMORY_GROWTH=1 -sINITIAL_MEMORY=134217728 -sMAXIMUM_MEMORY=2147483648 -sSTACK_SIZE=8388608 -sEXPORTED_RUNTIME_METHODS=FS,callMain -sINVOKE_RUN=0 -sEXIT_RUNTIME=1 -sENVIRONMENT=web,worker,node'
 
-      - name: Build clang and lld WebAssembly
+      - name: Build Clang and LLD WebAssembly
         run: |
           ninja -C build/llvm-wasm clang lld
           test -f build/llvm-wasm/bin/clang.js
           test -f build/llvm-wasm/bin/clang.wasm
           test -f build/llvm-wasm/bin/lld.js
           test -f build/llvm-wasm/bin/lld.wasm
+
+      - name: Reuse validated Ndless runtime
+        uses: actions/download-artifact@v4
+        with:
+          name: ndless-common-runtime
+          path: common
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: ${{ env.SOURCE_RUN_ID }}
+
+      - name: Download GNU Arm newlib runtime
+        run: |
+          curl -L --fail --retry 3 \
+            "https://armkeil.blob.core.windows.net/developer/Files/downloads/gnu/${ARM_VERSION}/binrel/arm-gnu-toolchain-${ARM_VERSION}-x86_64-arm-none-eabi.tar.xz" \
+            -o build/arm-toolchain.tar.xz
+          mkdir -p build/arm-expanded
+          tar -xf build/arm-toolchain.tar.xz -C build/arm-expanded
+          GCC="$(find build/arm-expanded -type f -path '*/bin/arm-none-eabi-gcc' | head -n 1)"
+          test -n "$GCC"
+          "$GCC" --version | head -n 1
+          printf '%s\n' "$GCC" > build/gcc-path.txt
+
+      - name: Assemble browser SDK
+        shell: bash
+        run: |
+          set -euo pipefail
+          GCC="$(cat build/gcc-path.txt)"
+          TCROOT="$(dirname "$(dirname "$GCC")")"
+          SDKROOT="$GITHUB_WORKSPACE/build/sdkroot/sdk"
+          mkdir -p "$SDKROOT/ndless" "$SDKROOT/newlib" "$SDKROOT/clang" "$SDKROOT/lib"
+
+          cp -a common/ndless/include "$SDKROOT/ndless/include"
+          cp -a common/ndless/lib "$SDKROOT/ndless/lib"
+          cp -a common/ndless/system "$SDKROOT/ndless/system"
+
+          cp -a "$TCROOT/arm-none-eabi/include" "$SDKROOT/newlib/include"
+          if [ -d "$TCROOT/arm-none-eabi/include/c++" ]; then
+            cp -a "$TCROOT/arm-none-eabi/include/c++" "$SDKROOT/cxx"
+          fi
+
+          CLANG_INC="$(find build/llvm-wasm -type d -path '*/lib/clang/*/include' | head -n 1 || true)"
+          if [ -n "$CLANG_INC" ] && [ -d "$CLANG_INC" ]; then
+            cp -a "$CLANG_INC" "$SDKROOT/clang/include"
+          else
+            mkdir -p "$SDKROOT/clang/include"
+            cp -a build/llvm-src/clang/lib/Headers/. "$SDKROOT/clang/include/"
+          fi
+
+          CFLAGS=(-mcpu=arm926ej-s -marm -mfloat-abi=soft)
+          for libname in libc.a libm.a libgcc.a libstdc++.a libsupc++.a; do
+            libpath="$("$GCC" "${CFLAGS[@]}" -print-file-name="$libname")"
+            if [ -f "$libpath" ]; then
+              cp -v "$libpath" "$SDKROOT/lib/$libname"
+            fi
+          done
+
+          test -f "$SDKROOT/ndless/include/os.h"
+          test -f "$SDKROOT/ndless/lib/libndls.a"
+          test -f "$SDKROOT/ndless/lib/libsyscalls.a"
+          test -f "$SDKROOT/ndless/system/ldscript"
+          test -f "$SDKROOT/ndless/system/crt0.o"
+          test -f "$SDKROOT/lib/libc.a"
+          test -f "$SDKROOT/lib/libm.a"
+          test -f "$SDKROOT/lib/libgcc.a"
 
       - name: Assemble split release assets
         shell: bash
@@ -100,41 +184,118 @@ jobs:
           split_tool lld
 
           python3 - <<'PY'
-          import hashlib, json, pathlib, os
-          root = pathlib.Path('build/ndless-arm-toolchain')
+          import gzip, hashlib, json, os, pathlib, struct
+
+          release = pathlib.Path('build/ndless-arm-toolchain')
+          sdkroot = pathlib.Path('build/sdkroot')
+          entries = []
+          for path in sorted(p for p in sdkroot.rglob('*') if p.is_file()):
+              rel = '/' + path.relative_to(sdkroot).as_posix()
+              data = path.read_bytes()
+              encoded = rel.encode('utf-8')
+              if len(encoded) > 65535:
+                  raise RuntimeError(f'path too long: {rel}')
+              entries.append((encoded, data))
+
+          raw = bytearray(b'TNSWEBSDK1')
+          raw += struct.pack('<I', len(entries))
+          for path, data in entries:
+              raw += struct.pack('<HI', len(path), len(data))
+              raw += path
+              raw += data
+
+          packed = gzip.compress(bytes(raw), compresslevel=9, mtime=0)
+          packed_path = release / 'sdk.pack.gz'
+          packed_path.write_bytes(packed)
+
+          # Split SDK pack just like the compiler WASM to keep release assets manageable.
+          chunk = 20 * 1024 * 1024
+          sdk_parts = []
+          for i in range(0, len(packed), chunk):
+              name = f'sdk.pack.gz.part{i // chunk:03d}'
+              (release / name).write_bytes(packed[i:i+chunk])
+              sdk_parts.append(name)
+          packed_path.unlink()
+
+          cxx_dirs = []
+          cxx_root = sdkroot / 'sdk' / 'cxx'
+          if cxx_root.is_dir():
+              for child in sorted(p for p in cxx_root.iterdir() if p.is_dir()):
+                  cxx_dirs.append('/sdk/cxx/' + child.name)
+                  target = child / 'arm-none-eabi'
+                  if target.is_dir():
+                      cxx_dirs.append('/sdk/cxx/' + child.name + '/arm-none-eabi')
+
           tools = {}
-          for tool in ('clang','lld'):
-              js = root / f'{tool}.js'
-              parts = sorted(root.glob(f'{tool}.wasm.part*'))
+          for tool in ('clang', 'lld'):
+              js = release / f'{tool}.js'
+              parts = sorted(release.glob(f'{tool}.wasm.part*'))
+              combined = b''.join(p.read_bytes() for p in parts)
               tools[tool] = {
                   'js': js.name,
                   'jsSha256': hashlib.sha256(js.read_bytes()).hexdigest(),
                   'wasmParts': [p.name for p in parts],
-                  'wasmSha256': hashlib.sha256(b''.join(p.read_bytes() for p in parts)).hexdigest(),
-                  'wasmBytes': sum(p.stat().st_size for p in parts),
+                  'wasmSha256': hashlib.sha256(combined).hexdigest(),
+                  'wasmBytes': len(combined),
               }
+
           manifest = {
-              'version': 1,
+              'version': 2,
               'llvmVersion': os.environ['LLVM_VERSION'],
+              'armRuntimeVersion': os.environ['ARM_VERSION'],
               'targetBackends': ['ARM'],
               'targetTriple': 'arm-none-eabi',
               'cpu': 'arm926ej-s',
               'tools': tools,
+              'sdk': {
+                  'version': 1,
+                  'compression': 'gzip',
+                  'format': 'TNSWEBSDK1',
+                  'packParts': sdk_parts,
+                  'packSha256': hashlib.sha256(packed).hexdigest(),
+                  'packBytes': len(packed),
+                  'unpackedSha256': hashlib.sha256(bytes(raw)).hexdigest(),
+                  'unpackedBytes': len(raw),
+                  'includeDirs': [
+                      '/sdk/clang/include',
+                      '/sdk/ndless/include',
+                      '/sdk/ndless/include/freetype2',
+                      '/sdk/newlib/include',
+                      *cxx_dirs,
+                  ],
+                  'libraryDirs': ['/sdk/ndless/lib', '/sdk/lib'],
+                  'system': {
+                      'ldscript': '/sdk/ndless/system/ldscript',
+                      'crt0': '/sdk/ndless/system/crt0.o',
+                      'crti': '/sdk/ndless/system/crti.o',
+                      'crtn': '/sdk/ndless/system/crtn.o',
+                  },
+              },
           }
-          (root/'toolchain.json').write_text(json.dumps(manifest, indent=2)+'\n')
+          (release / 'toolchain.json').write_text(json.dumps(manifest, indent=2) + '\n')
           PY
           ls -lh "$out"
 
-      - name: Smoke test generated clang.wasm under Node
+      - name: Validate release manifest and SDK pack
         run: |
-          node - <<'NODE'
-          const fs = require('fs');
-          const path = 'build/ndless-arm-toolchain';
-          const m = JSON.parse(fs.readFileSync(path + '/toolchain.json','utf8'));
-          if (!m.targetBackends.includes('ARM')) throw new Error('ARM backend missing from manifest');
-          if (!m.tools.clang.wasmParts.length || !m.tools.lld.wasmParts.length) throw new Error('tool parts missing');
-          console.log('manifest ok', m.llvmVersion, m.targetTriple, m.cpu);
-          NODE
+          python3 - <<'PY'
+          import gzip, hashlib, json, pathlib, struct
+          root = pathlib.Path('build/ndless-arm-toolchain')
+          m = json.loads((root/'toolchain.json').read_text())
+          assert m['targetTriple'] == 'arm-none-eabi'
+          assert 'ARM' in m['targetBackends']
+          assert m['sdk']['format'] == 'TNSWEBSDK1'
+          for tool in ('clang','lld'):
+              assert m['tools'][tool]['wasmParts']
+          packed = b''.join((root/name).read_bytes() for name in m['sdk']['packParts'])
+          assert hashlib.sha256(packed).hexdigest() == m['sdk']['packSha256']
+          raw = gzip.decompress(packed)
+          assert hashlib.sha256(raw).hexdigest() == m['sdk']['unpackedSha256']
+          assert raw[:10] == b'TNSWEBSDK1'
+          count = struct.unpack_from('<I', raw, 10)[0]
+          assert count > 10
+          print('WEB_TOOLCHAIN_MANIFEST_OK', m['llvmVersion'], 'sdk entries=', count, 'sdk MB=', round(len(packed)/1048576, 1))
+          PY
 
       - name: Publish versioned toolchain release
         env:
@@ -145,7 +306,7 @@ jobs:
           fi
           gh release create "$TOOLCHAIN_TAG" \
             --title 'Ndless ARM Web Toolchain v1' \
-            --notes 'LLVM/Clang + LLD compiled to WebAssembly with LLVM_TARGETS_TO_BUILD=ARM for TNS Tool WASM. Generated from upstream LLVM under its license.'
+            --notes 'Clang + LLD WebAssembly with ARM backend, validated Ndless SDK, newlib and ARM runtime libraries for browser-native Modern Zehn builds.'
           gh release upload "$TOOLCHAIN_TAG" build/ndless-arm-toolchain/* --clobber
 
       - name: Upload CI artifact
