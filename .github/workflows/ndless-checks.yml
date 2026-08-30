@@ -67,6 +67,7 @@ jobs:
           node --check ndless-analysis.js
           node --check ndless-analysis-worker.js
           node --check ndless-arm-decoder.js
+          node --check ndless-arm-runtime.js
           node --check ndless-bflt.js
           node --check ndless-editor.js
           node --check ndless-friendly-core.js
@@ -109,6 +110,7 @@ jobs:
           node tests/ndless-zehn-builder.test.js
           node tests/ndless-experimental-export-fix.test.js
           node tests/ndless-local-runtime-upgrade.test.js
+          node tests/ndless-arm-runtime.test.js
       - name: General smoke tests
         run: node tests/smoke.test.js
       - name: CLI e2e tests
