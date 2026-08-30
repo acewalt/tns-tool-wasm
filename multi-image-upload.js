@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20260829-ndless-project-v14";
+  const V="20260829-ndless-project-v15";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
@@ -86,6 +86,8 @@
     .then(() => loadScript('script[data-ndless-local-bridge="true"]', `./ndless-local-bridge.js?v=${V}`, "ndlessLocalBridge"))
     .then(() => loadScript('script[data-ndless-local-installer="true"]', `./ndless-local-installer.js?v=${V}`, "ndlessLocalInstaller"))
     .then(() => loadScript('script[data-ndless-build-manager="true"]', `./ndless-build-manager.js?v=${V}`, "ndlessBuildManager"))
+    .then(() => loadScript('script[data-ndless-browser-compiler="true"]', `./ndless-browser-compiler.js?v=${V}`, "ndlessBrowserCompiler"))
+    .then(() => loadScript('script[data-ndless-browser-live-preview="true"]', `./ndless-browser-live-preview.js?v=${V}`, "ndlessBrowserLivePreview"))
     .then(() => loadScript('script[data-ndless-build-auto-install="true"]', `./ndless-build-auto-install.js?v=${V}`, "ndlessBuildAutoInstall"))
     .then(() => loadScript('script[data-ndless-build-ui="true"]', `./ndless-build-ui.js?v=${V}`, "ndlessBuildUi"));
   window.TnsRuntimeReady = tnsChain;
