@@ -184,65 +184,6 @@
         </div>
       </section>
 
-      <script>
-        (() => {
-          "use strict";
-
-          const panelSelector = "#xml-doctor-panel .doctor-toolbar .tool-menu:first-of-type > .menu-panel";
-          let scheduled = false;
-
-          function reorderFileMenu() {
-            scheduled = false;
-            const panel = document.querySelector(panelSelector);
-            if (!panel) return;
-
-            const page = panel.querySelector(":scope > .file-page-menu");
-            const newDocument = panel.querySelector(":scope > #xml-new-btn");
-            const openTns = panel.querySelector(":scope > .file-menu-action input#xml-tns-file")?.closest("label");
-            const ndless = Array.from(panel.querySelectorAll(":scope > [data-ndless-project-action='1']"));
-            const directEdit = panel.querySelector(":scope > [data-experimental-open-direct]");
-            const xmlActions = Array.from(panel.children).find((node) =>
-              node.querySelector?.(':scope > .nested-trigger[data-i18n="xmlActionsMenu"]')
-            );
-            const save = Array.from(panel.children).find((node) =>
-              node.querySelector?.(':scope > .nested-trigger[data-i18n="saveMenu"]')
-            );
-
-            if (!page || !newDocument || !openTns || !ndless.length || !xmlActions || !save) return;
-
-            const desired = [page, newDocument, openTns, ...ndless];
-            if (directEdit) desired.push(directEdit);
-            desired.push(xmlActions, save);
-
-            const current = Array.from(panel.children);
-            if (desired.length === current.length && desired.every((node, i) => current[i] === node)) return;
-
-            const fragment = document.createDocumentFragment();
-            desired.forEach((node) => fragment.appendChild(node));
-            panel.appendChild(fragment);
-          }
-
-          function schedule() {
-            if (scheduled) return;
-            scheduled = true;
-            requestAnimationFrame(reorderFileMenu);
-          }
-
-          function init() {
-            schedule();
-            const panel = document.querySelector("#xml-doctor-panel");
-            if (panel) new MutationObserver(schedule).observe(panel, { childList: true, subtree: true });
-            new MutationObserver(schedule).observe(document.body, { childList: true, subtree: true });
-          }
-
-          if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", init, { once: true });
-          } else {
-            init();
-          }
-        })();
-      </script>
-
       <section id="normal-module" class="module-grid collapsed">
         <section class="panel">
           <h2 data-i18n="decodeTitle">1) Decodificar .tns a XML</h2>
