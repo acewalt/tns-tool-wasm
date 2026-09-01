@@ -21,9 +21,17 @@
     <div id="startup-loader" class="startup-loader" role="status" aria-live="polite">
       <div class="startup-loader-card">
         <div class="startup-loader-mark" aria-hidden="true">
-          <svg class="startup-loader-outline" viewBox="0 0 120 150" focusable="false">
-            <path class="startup-loader-file startup-loader-file-body" d="M28 8h45l27 27v87c0 11-7 18-18 18H28c-11 0-18-7-18-18V26c0-11 7-18 18-18Z" />
-            <path class="startup-loader-file startup-loader-file-fold" d="M73 8v28h27" />
+          <svg class="startup-loader-outline" viewBox="0 0 120 120" focusable="false" style="animation: none">
+            <rect x="8" y="8" width="104" height="104" rx="28" ry="28" pathLength="100"
+              fill="none" stroke="var(--lime)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"
+              stroke-dasharray="68 32">
+              <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="1.7s" repeatCount="indefinite" />
+            </rect>
+            <rect x="15" y="15" width="90" height="90" rx="24" ry="24" pathLength="100"
+              fill="none" stroke="var(--lime)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"
+              stroke-opacity="0.82" stroke-dasharray="46 54">
+              <animate attributeName="stroke-dashoffset" from="0" to="100" dur="1.7s" repeatCount="indefinite" />
+            </rect>
           </svg>
           <div class="startup-loader-core">TNS</div>
         </div>
