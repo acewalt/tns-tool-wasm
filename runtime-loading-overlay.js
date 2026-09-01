@@ -55,6 +55,7 @@
   }
 
   function createOverlay() {
+    if (document.getElementById("startup-loader")) return;
     if (isRuntimeReady() || document.getElementById(OVERLAY_ID)) return;
 
     overlay = document.createElement("div");

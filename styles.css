@@ -182,6 +182,132 @@ body.drop-target-active .click-burst-layer {
   }
 }
 
+.startup-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at 50% 42%, rgb(183 243 77 / 13%), transparent 24%),
+    rgb(5 12 24 / 86%);
+  backdrop-filter: blur(14px);
+  transition: opacity 0.45s ease, visibility 0.45s ease;
+}
+
+.startup-loader.startup-loader-closing {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+[data-theme="light"] .startup-loader {
+  background:
+    radial-gradient(circle at 50% 42%, rgb(122 193 26 / 14%), transparent 24%),
+    rgb(247 250 252 / 86%);
+}
+
+.startup-loader-card {
+  display: grid;
+  justify-items: center;
+  gap: 18px;
+  text-align: center;
+}
+
+.startup-loader-mark {
+  position: relative;
+  width: 164px;
+  height: 164px;
+  display: grid;
+  place-items: center;
+}
+
+.startup-loader-outline {
+  position: absolute;
+  width: 154px;
+  height: 154px;
+  overflow: visible;
+  animation: startupTnsSpin 1.7s linear infinite;
+  filter: drop-shadow(0 0 18px rgb(183 243 77 / 45%));
+  transform-origin: 50% 50%;
+}
+
+.startup-loader-file {
+  fill: none;
+  stroke: var(--lime);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.startup-loader-file-body {
+  stroke-width: 6;
+  stroke-dasharray: 165 70;
+}
+
+.startup-loader-file-fold {
+  stroke-width: 5;
+  stroke-dasharray: 34 24;
+  opacity: 0.82;
+}
+
+.startup-loader-core {
+  width: 84px;
+  height: 84px;
+  border: 2px solid rgb(183 243 77 / 38%);
+  border-radius: 26px;
+  display: grid;
+  place-items: center;
+  color: var(--lime);
+  background:
+    radial-gradient(circle at 50% 40%, rgb(183 243 77 / 14%), transparent 58%),
+    rgb(18 43 28 / 78%);
+  box-shadow:
+    inset 0 0 28px rgb(183 243 77 / 16%),
+    0 0 35px rgb(183 243 77 / 28%);
+  font-size: 28px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+}
+
+.startup-loader h2 {
+  margin: 0;
+  color: var(--lime);
+  font-size: clamp(44px, 7vw, 72px);
+  letter-spacing: -0.06em;
+  line-height: 0.9;
+  text-shadow: 0 0 18px rgb(183 243 77 / 48%);
+}
+
+.startup-loader-status {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.startup-loader[data-state="ready"] .startup-loader-status {
+  color: var(--lime);
+}
+
+.startup-loader[data-state="error"] .startup-loader-status {
+  color: #ff4d4d;
+}
+
+@keyframes startupTnsSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .startup-loader-outline {
+    animation: none;
+  }
+}
+
 .shell-header {
   display: flex;
   align-items: center;

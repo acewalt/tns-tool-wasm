@@ -4,20 +4,33 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20260827-menu-i18n-scrollbar" />
+    <link rel="stylesheet" href="./styles.css?v=20260831-loader-ndless-menu" />
     <link rel="stylesheet" href="./dist/monaco-lua-editor.css?v=20260827-editor-ui-polish-v2" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script type="module" src="./dist/monaco-lua-editor.js?v=20260827-editor-ui-polish-v2"></script>
     <script defer src="./stats-config.js?v=20260827-stats-header"></script>
-    <script defer src="./app.js?v=20260827-menu-i18n-scrollbar"></script>
+    <script defer src="./app.js?v=20260831-loader-ndless-menu"></script>
     <script defer src="./love-project-compat.js?v=20260826-project-compat-v1"></script>
     <script defer src="./xml-program-editor-fix.js?v=20260826-program-editor-sync-v1"></script>
     <script defer src="./monaco-search-tools.js?v=20260827-editor-ui-polish-v2"></script>
     <script defer src="./monaco-search-adapter-fix.js?v=20260826-monaco-search-adapter-v1"></script>
-    <script defer src="./multi-image-upload.js?v=20260828-ndless-workspace-v4"></script>
+    <script defer src="./multi-image-upload.js?v=20260831-loader-ndless-menu"></script>
   </head>
   <body>
+    <div id="startup-loader" class="startup-loader" role="status" aria-live="polite">
+      <div class="startup-loader-card">
+        <div class="startup-loader-mark" aria-hidden="true">
+          <svg class="startup-loader-outline" viewBox="0 0 120 150" focusable="false">
+            <path class="startup-loader-file startup-loader-file-body" d="M28 8h45l27 27v87c0 11-7 18-18 18H28c-11 0-18-7-18-18V26c0-11 7-18 18-18Z" />
+            <path class="startup-loader-file startup-loader-file-fold" d="M73 8v28h27" />
+          </svg>
+          <div class="startup-loader-core">TNS</div>
+        </div>
+        <h2>TNS tool</h2>
+        <p id="runtime-status" class="startup-loader-status">Loading WASM runtime</p>
+      </div>
+    </div>
     <div id="mouse-glow" class="mouse-glow" aria-hidden="true"></div>
     <header class="shell-header">
       <img src="./icon/tns_icon.png" alt="TNS" />

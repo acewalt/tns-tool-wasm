@@ -96,7 +96,7 @@
 
   async function saveBytesToCurrentFile(bytes, options = {}) {
     if (!state.handle) {
-      const error = new Error("No hay un archivo con permiso de escritura. Ábrelo primero con ‘Abrir para edición directa’ o usa ‘Guardar como…’.");
+      const error = new Error("No hay un archivo con permiso de escritura. Usa ‘Guardar como…’ para crear un archivo editable.");
       error.code = "NO_WRITABLE_HANDLE";
       throw error;
     }
@@ -358,13 +358,8 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   }
 
   function injectXmlControls() {
-    const openInput = document.querySelector("#xml-tns-file");
-    const openPanel = openInput?.closest(".menu-panel");
-    if (openPanel && !openPanel.querySelector("[data-experimental-open-direct]")) {
-      const button = makeButton("Abrir para edición directa", openTnsWithWritableHandle);
-      button.dataset.experimentalOpenDirect = "1";
-      openInput.closest("label")?.after(button);
-    }
+    // Direct writable-open remains available internally, but it is not shown in
+    // the File menu because it duplicates the normal Open TNS / Save flow.
     const createButton = document.querySelector("#xml-create-tns-btn");
     const savePanel = createButton?.parentElement;
     if (savePanel && !savePanel.querySelector("[data-experimental-save-direct]")) {

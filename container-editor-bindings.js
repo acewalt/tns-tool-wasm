@@ -6,7 +6,7 @@
     if (nzp) registry.register({ ...nzp, editorGlobal: "TnsStructuredContentEditor" });
   }
 
-  const VERSION = "20260829-direct-save-v14";
+  const VERSION = "20260831-loader-ndless-menu";
 
   function loadZehnStreamFix() {
     if (document.querySelector('script[data-ndless-zehn-stream-fix="true"]')) {

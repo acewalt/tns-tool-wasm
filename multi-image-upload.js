@@ -30,8 +30,8 @@
     });
   }
 
-  const V="20260829-ndless-project-v15";
-  ensureStyle('link[data-runtime-loading-overlay-style="true"]', "./runtime-loading-overlay.css?v=20260827-runtime-loader-v3", "runtimeLoadingOverlayStyle");
+  const V="20260831-loader-ndless-menu";
+  ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./runtime-loading-overlay.css?v=${V}`, "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
   ensureStyle('link[data-ndless-tns-inspector-style="true"]', `./ndless-tns-inspector.css?v=${V}`, "ndlessTnsInspectorStyle");
@@ -49,7 +49,7 @@
   ensureStyle('link[data-nvp-editor-style="true"]', `./nvp-editor.css?v=${V}`, "nvpEditorStyle");
   ensureStyle('link[data-image-editor-style="true"]', "./image-editor.css?v=20260827-image-editor-v1", "imageEditorStyle");
 
-  loadScript('script[data-runtime-loading-overlay="true"]', "./runtime-loading-overlay.js?v=20260827-runtime-loader-v3", "runtimeLoadingOverlay").catch(console.error);
+  loadScript('script[data-runtime-loading-overlay="true"]', `./runtime-loading-overlay.js?v=${V}`, "runtimeLoadingOverlay").catch(console.error);
   loadScript('script[data-monaco-ti-reference-theme="true"]', "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v3", "monacoTiReferenceTheme").catch(console.error);
 
   const tnsChain = loadScript('script[data-tns-container-registry="true"]', `./tns-container-registry.js?v=${V}`, "tnsContainerRegistry")

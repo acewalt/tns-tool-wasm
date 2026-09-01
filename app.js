@@ -1,6 +1,29 @@
 const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
-const SOURCE_VERSION = "2026-08-27-menu-i18n-scrollbar";
+const startupLoaderEl = document.querySelector("#startup-loader");
+let startupLoaderCloseTimer = null;
+const SOURCE_VERSION = "2026-08-31-loader-ndless-menu";
+
+function setRuntimeStatus(message, state = "loading") {
+  if (statusEl) {
+    statusEl.textContent = message;
+    statusEl.dataset.state = state;
+    statusEl.classList.toggle("ready", state === "ready");
+    statusEl.classList.toggle("error", state === "error");
+  }
+  if (!startupLoaderEl) return;
+  startupLoaderEl.dataset.state = state;
+  if (state === "ready" || state === "error") {
+    if (startupLoaderCloseTimer) window.clearTimeout(startupLoaderCloseTimer);
+    startupLoaderEl.classList.add("startup-loader-closing");
+    startupLoaderCloseTimer = window.setTimeout(() => {
+      startupLoaderEl.remove();
+    }, state === "error" ? 1800 : 650);
+  } else {
+    if (startupLoaderCloseTimer) window.clearTimeout(startupLoaderCloseTimer);
+    startupLoaderEl.classList.remove("startup-loader-closing");
+  }
+}
 
 const I18N = {
   es: {
@@ -1185,7 +1208,7 @@ function applyLanguage(nextLanguage = language) {
     if (xmlDoctor.lastReport) renderXmlAnalysis(xmlDoctor.lastReport);
     if (pyDoctor.lastReport) renderPyAnalysis(pyDoctor.lastReport);
     if (statusEl && statusEl.classList.contains("ready")) {
-      statusEl.textContent = t("ready");
+      setRuntimeStatus(t("ready"), "ready");
     }
     updateStatsUi();
 }
@@ -1546,9 +1569,9 @@ async function initPyodideRuntime() {
       "Ejecuta en la carpeta del proyecto: python -m http.server 8000 y abre http://localhost:8000/"
     );
   }
-  if (statusEl) statusEl.textContent = "Cargando Pyodide...";
+  setRuntimeStatus("Cargando Pyodide...");
   pyodide = await loadPyodide();
-  if (statusEl) statusEl.textContent = "Cargando pycryptodome...";
+  setRuntimeStatus("Cargando pycryptodome...");
   await pyodide.loadPackage("pycryptodome");
 
   pyodide.FS.mkdirTree("/home/pyodide/convert");
@@ -1572,10 +1595,7 @@ sys.path.insert(0, "/home/pyodide")
 sys.path.insert(0, "/home/pyodide/convert")
 sys.path.insert(0, "/home/pyodide/editor_XML")
 `);
-  if (statusEl) {
-    statusEl.textContent = t("ready");
-    statusEl.classList.add("ready");
-  }
+  setRuntimeStatus(t("ready"), "ready");
   setReady(true);
   setXmlDoctorEnabled(false);
   setPyDoctorEnabled(false);
@@ -1586,10 +1606,10 @@ async function ensureCryptoPackage() {
   try {
     await pyodide.runPythonAsync("import Crypto");
   } catch {
-    if (statusEl) statusEl.textContent = "Cargando pycryptodome...";
+    setRuntimeStatus("Cargando pycryptodome...");
     await pyodide.loadPackage("pycryptodome");
     await pyodide.runPythonAsync("import Crypto");
-    if (statusEl) statusEl.textContent = t("ready");
+    setRuntimeStatus(t("ready"), "ready");
   }
 }
 
@@ -18124,6 +18144,6 @@ wireEvents();
 void loadSiteStats();
 void recordTodayVisit();
 initPyodideRuntime().catch((err) => {
-  if (statusEl) statusEl.textContent = "Error";
+  setRuntimeStatus("Error", "error");
   log(`ERROR inicializando WASM: ${err.stack || err.message}`);
 });

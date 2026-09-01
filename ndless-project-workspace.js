@@ -119,7 +119,9 @@
     const open=document.createElement("label");open.className="menu-action file-menu-action ndless-project-menu-action";open.dataset.ndlessProjectAction="1";open.dataset.ndlessProjectAlways="1";open.innerHTML=`<span>${esc(tr("openProject"))}</span><input type="file" accept=".zip" hidden>`;$("input",open).addEventListener("change",e=>{openProjectZip(e.target.files?.[0]);e.target.value="";});
     const exp=document.createElement("button");exp.type="button";exp.className="menu-action";exp.dataset.ndlessProjectAction="1";exp.dataset.ndlessProjectOnly="1";exp.hidden=true;exp.textContent=tr("exportProject");exp.addEventListener("click",downloadProject);
     const close=document.createElement("button");close.type="button";close.className="menu-action";close.dataset.ndlessProjectAction="1";close.dataset.ndlessProjectOnly="1";close.hidden=true;close.textContent=tr("closeProject");close.addEventListener("click",()=>closeProject());
-    const anchor=$("#xml-new-btn",panel)||panel.firstElementChild;panel.insertBefore(sep,anchor);panel.insertBefore(btn,anchor);panel.insertBefore(open,anchor);panel.insertBefore(exp,anchor);panel.insertBefore(close,anchor);
+    const openTns=$("input#xml-tns-file",panel)?.closest("label");
+    const anchor=openTns?.nextSibling||$("#xml-new-btn",panel)?.nextSibling||panel.firstElementChild;
+    panel.insertBefore(sep,anchor);panel.insertBefore(btn,anchor);panel.insertBefore(open,anchor);panel.insertBefore(exp,anchor);panel.insertBefore(close,anchor);
   }
   function init(){if(!core())return setTimeout(init,100);if(!$("#xml-doctor-panel"))return setTimeout(init,100);injectMenu();document.addEventListener("click",e=>{if(state.project&&e.target.closest?.(".file-page-menu")){e.preventDefault();e.stopImmediatePropagation();}},true);window.NdlessProjectWorkspace=Object.freeze({newProject:wizard,openProjectZip,activateProject,closeProject,getProject:()=>state.project,downloadProject});}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
