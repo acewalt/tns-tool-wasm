@@ -36,12 +36,12 @@
 }
 
 *::-webkit-scrollbar {
-  width: 24px;
+  width: 42px;
   height: 12px;
 }
 
 *::-webkit-scrollbar:vertical {
-  width: 24px;
+  width: 42px;
 }
 
 *::-webkit-scrollbar:horizontal {
@@ -57,6 +57,11 @@
   background-clip: content-box;
   border: 4px solid transparent;
   border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:vertical {
+  border-left-width: 10px;
+  border-right-width: 10px;
 }
 
 *::-webkit-scrollbar-thumb:horizontal {
@@ -460,20 +465,30 @@ body.drop-target-active .click-burst-layer {
 }
 
 .theme-button {
-  width: 36px;
-  height: 36px;
-  min-width: 36px;
-  min-height: 36px;
+  width: 46px;
+  height: 34px;
+  min-width: 46px;
+  min-height: 34px;
+  flex: 0 0 46px;
+  aspect-ratio: auto;
   padding: 0;
   border: 1px solid var(--line);
-  border-radius: 50%;
+  border-radius: 8px;
   background: #fff;
   color: #172033;
   display: grid;
   place-items: center;
-  font-size: 20px;
+  font-size: 18px;
   line-height: 1;
   box-shadow: none;
+}
+
+.header-actions #theme-btn.theme-button {
+  width: 46px !important;
+  height: 34px !important;
+  min-width: 46px !important;
+  min-height: 34px !important;
+  flex: 0 0 46px !important;
 }
 
 .theme-button:hover {
@@ -1162,6 +1177,11 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   min-height: 520px;
 }
 
+.doctor-grid.analysis-hidden,
+.lua-doctor-grid.analysis-hidden {
+  grid-template-columns: minmax(0, 1fr);
+}
+
 .code-shell {
   display: grid;
   grid-template-columns: 54px minmax(0, 1fr);
@@ -1344,6 +1364,22 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   display: flex;
   flex-direction: column;
   min-height: 560px;
+}
+
+.doctor-grid.analysis-hidden > .doctor-side,
+.lua-doctor-grid.analysis-hidden > .lua-side {
+  display: none !important;
+}
+
+.doctor-side[hidden],
+.lua-side[hidden] {
+  display: none !important;
+}
+
+.side-log-title,
+.doctor-side > .mini-log,
+.lua-side > .mini-log {
+  display: none !important;
 }
 
 .doctor-side h3 {
@@ -2365,12 +2401,72 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   inset: 0 0 0 10px;
   z-index: 4;
   overflow: hidden;
+  background: #fff;
 }
 
 .monaco-code-host .monaco-editor,
 .monaco-code-host .monaco-editor-background,
 .monaco-code-host .monaco-editor .margin {
-  background: transparent;
+  background: #fff !important;
+}
+
+[data-theme="dark"] .monaco-code-host {
+  background: #0f172a;
+}
+
+[data-theme="dark"] .monaco-code-host .monaco-editor,
+[data-theme="dark"] .monaco-code-host .monaco-editor-background,
+[data-theme="dark"] .monaco-code-host .monaco-editor .margin {
+  background: #0f172a !important;
+}
+
+html:not([data-theme="dark"]) .code-shell,
+html:not([data-theme="dark"]) .editor-wrap,
+html:not([data-theme="dark"]) .lua-code-shell,
+html:not([data-theme="dark"]) .lua-editor-wrap,
+html:not([data-theme="dark"]) .monaco-code-host {
+  background: #fff !important;
+  color: #172033 !important;
+}
+
+html:not([data-theme="dark"]) .code-shell > .line-numbers,
+html:not([data-theme="dark"]) .lua-code-shell > .line-numbers {
+  background: #f8fafc;
+  color: #64748b;
+}
+
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor-background,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .margin,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .lines-content,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .view-lines,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .view-overlays {
+  background: #fff !important;
+}
+
+html:not([data-theme="dark"]) .modal-card .monaco-code-host,
+html:not([data-theme="dark"]) .lua-doctor-modal .monaco-code-host,
+html:not([data-theme="dark"]) .doctor-card .monaco-code-host {
+  background: #fff !important;
+  color: #172033 !important;
+}
+
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .view-line,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .view-line span {
+  opacity: 1 !important;
+}
+
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk1,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk2,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk3,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk4,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk5,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk6,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk7,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk8,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk9,
+html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
+  opacity: 1 !important;
 }
 
 .monaco-code-host .monaco-editor .glyph-margin,
@@ -2385,7 +2481,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 }
 
 .monaco-code-host .monaco-scrollable-element > .scrollbar.vertical {
-  width: 26px !important;
+  width: 42px !important;
 }
 
 .monaco-code-host .monaco-scrollable-element > .scrollbar.horizontal {
@@ -3075,8 +3171,17 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
     height: 34px;
     min-width: 34px;
     min-height: 34px;
+    flex-basis: 34px;
     padding: 0;
     font-size: 18px;
+  }
+
+  .header-actions #theme-btn.theme-button {
+    width: 34px !important;
+    height: 34px !important;
+    min-width: 34px !important;
+    min-height: 34px !important;
+    flex: 0 0 34px !important;
   }
 
   .layout {

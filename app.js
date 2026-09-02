@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-08-31-loader-ndless-menu";
+const SOURCE_VERSION = "2026-09-01-ui-polish";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -63,25 +63,25 @@ const I18N = {
     openPython: "Ver Python",
     editPython: "Editar Python",
     addPythonWidget: "Agregar Python",
-    addPage: "+ Pagina",
+    addPage: "+ Página",
     addPdfWidget: "Agregar PDF",
-    addPdfWidgetTitle: "Convierte cada pagina del PDF a imagen y crea una card por pagina.",
-    addPdfUnavailable: "Agregar PDF aun no esta implementado en este flujo. Usa Agregar imagen o importa paginas ya convertidas a imagen.",
-    addSpreadsheetWidget: "Agregar listas y hojas de cálculo",
+    addPdfWidgetTitle: "Convierte cada página del PDF a imagen y crea una card por página.",
+    addPdfUnavailable: "Agregar PDF aún no está implementado en este flujo. Usa Agregar imagen o importa páginas ya convertidas a imagen.",
+    addSpreadsheetWidget: "Agregar listas y hoja de cálculo",
     addProgramEditorWidget: "Agregar editor de programas",
     programEditorWidgetAdded: "Editor de programas agregado como nueva card.",
-    spreadsheetWidgetAdded: "Lista y hoja de cálculo agregada como nueva card.",
+    spreadsheetWidgetAdded: "Listas y hoja de cálculo agregadas como nueva card.",
     openSpreadsheet: "Abrir hoja",
     spreadsheetTitle: "Listas y hoja de cálculo",
     spreadsheetImport: "Importar XLSX",
-    spreadsheetSave: "Save",
+    spreadsheetSave: "Guardar",
     spreadsheetImportLoaded: "XLSX cargado en la previsualización.",
-    spreadsheetPreviewOnly: "Save escribe las celdas directamente en el XML TI-Nspire. Las fórmulas simples conservan formula y data.",
+    spreadsheetPreviewOnly: "Guardar escribe las celdas directamente en el XML TI-Nspire. Las fórmulas simples conservan fórmula y datos.",
     addNotepadWidget: "Agregar notas",
     notepadWidgetAdded: "Notas agregadas como nueva card.",
     openNotepad: "Abrir notas",
     notepadTitle: "Notas",
-    notepadSave: "Save",
+    notepadSave: "Guardar",
     addGraphWidget: "Agregar gráficos",
     addCalculatorWidget: "Agregar calculadora",
     calculatorWidgetAdded: "Calculadora agregada como nueva card.",
@@ -89,16 +89,14 @@ const I18N = {
     calculatorEntry: "Entrada",
     calculatorAddEntry: "Agregar entrada",
     calculatorTemplates: "Plantillas",
-    calculatorSave: "Save",
-    calculatorCancel: "Cancel",
+    calculatorSave: "Guardar",
+    calculatorCancel: "Cancelar",
     graphWidgetAdded: "Gráficos agregados como nueva card.",
     openGraph: "Abrir gráfica",
     graphTitle: "Gráficos",
     graphFormula: "Función",
     graphPreviewLove: "Preview LÖVE",
-    graphSave: "Save",
-    graphLiveFormula: "Type or paste a formula to preview it",
-    graphApplyPreview: "Preview",
+    graphSave: "Guardar",
     graphLiveFormula: "Escribe o pega una fórmula para previsualizarla",
     graphApplyPreview: "Previsualizar",
     viewImage: "Ver imagen",
@@ -113,9 +111,9 @@ const I18N = {
     previewLua: "Preview Lua",
     previewLove: "Preview LÖVE",
     previewLoveProject: "Preview proyecto LÖVE",
-    lovePreviewNote: "Preview LÖVE: soporta codigo love.* y ScriptApp TI-Nspire mediante una capa platform/on/gc sobre canvas.",
+    lovePreviewNote: "Preview LÖVE: soporta código love.* y ScriptApp TI-Nspire mediante una capa platform/on/gc sobre canvas.",
     loveProjectTitle: "Preview de proyecto LÖVE",
-    loveProjectIntro: "Abre un ZIP/.love o una carpeta de proyecto. Se montara en memoria y se ejecutara main.lua con soporte para require y love.filesystem.",
+    loveProjectIntro: "Abre un ZIP/.love o una carpeta de proyecto. Se montará en memoria y se ejecutará main.lua con soporte para require y love.filesystem.",
     loveProjectOpenZip: "Abrir ZIP/.love",
     loveProjectOpenFolder: "Abrir carpeta",
     loveProjectEntry: "Archivo principal",
@@ -137,7 +135,7 @@ const I18N = {
     lovePreviewNspireHint: "Este codigo parece ScriptApp TI-Nspire; usa Preview Lua. Preview LÖVE solo ejecuta codigo que define love.*.",
     lovePreviewNoCallbacks: "No se encontro love.draw ni love.update. Si este codigo es TI-Nspire, usa Preview Lua.",
     lovePreviewNspireCompat: "Codigo TI-Nspire detectado: Preview LÖVE usara platform/on/gc sobre el canvas interno.",
-    lovePreviewCalculatorWarning: "Aviso: este codigo usa love.* y no corre directamente en la calculadora. Usa Convertir LÖVE a TI-Nspire si quieres guardarlo para TI-Nspire.",
+    lovePreviewCalculatorWarning: "Aviso: este código usa love.* y no corre directamente en la calculadora. Usa Convertir LÖVE a TI-Nspire si quieres guardarlo para TI-Nspire.",
     luaGuide: "Guia Lua",
     luaTemplates: "Plantillas Lua",
     luaEditPages: "Editar paginas",
@@ -369,6 +367,8 @@ const I18N = {
     graphFormula: "Function",
     graphPreviewLove: "Preview LÖVE",
     graphSave: "Save",
+    graphLiveFormula: "Type or paste a formula to preview it",
+    graphApplyPreview: "Preview",
     viewImage: "View image",
     imageCalculatorView: "Calculator view",
     imageOriginalView: "Original view",
@@ -603,9 +603,9 @@ const I18N = {
     openPython: "Voir Python",
     editPython: "Editer Python",
     addPythonWidget: "Ajouter Python",
-    addPage: "+ Page",
+    addPage: "+ Carte",
     addPdfWidget: "Ajouter PDF",
-    addPdfWidgetTitle: "Convertit chaque page du PDF en image et cree une carte par page.",
+    addPdfWidgetTitle: "Convertit chaque page du PDF en image et crée une carte par page.",
     addPdfUnavailable: "Ajouter PDF n'est pas encore implemente dans ce flux. Utilisez Ajouter image ou importez des pages deja converties en images.",
     addSpreadsheetWidget: "Ajouter listes et feuille de calcul",
     addProgramEditorWidget: "Ajouter éditeur de programmes",
@@ -614,14 +614,14 @@ const I18N = {
     openSpreadsheet: "Ouvrir feuille",
     spreadsheetTitle: "Listes et feuille de calcul",
     spreadsheetImport: "Importer XLSX",
-    spreadsheetSave: "Save",
+    spreadsheetSave: "Enregistrer",
     spreadsheetImportLoaded: "XLSX chargé dans l’aperçu.",
-    spreadsheetPreviewOnly: "Save écrit les cellules directement dans le XML TI-Nspire. Les formules simples conservent formula et data.",
+    spreadsheetPreviewOnly: "Enregistrer écrit les cellules directement dans le XML TI-Nspire. Les formules simples conservent la formule et les données.",
     addNotepadWidget: "Ajouter notes",
     notepadWidgetAdded: "Notes ajoutées comme nouvelle carte.",
     openNotepad: "Ouvrir notes",
     notepadTitle: "Notes",
-    notepadSave: "Save",
+    notepadSave: "Enregistrer",
     addGraphWidget: "Ajouter graphiques",
     addCalculatorWidget: "Ajouter calculatrice",
     calculatorWidgetAdded: "Calculatrice ajoutée comme nouvelle carte.",
@@ -629,14 +629,14 @@ const I18N = {
     calculatorEntry: "Entrée",
     calculatorAddEntry: "Ajouter entrée",
     calculatorTemplates: "Modèles",
-    calculatorSave: "Save",
-    calculatorCancel: "Cancel",
+    calculatorSave: "Enregistrer",
+    calculatorCancel: "Annuler",
     graphWidgetAdded: "Graphiques ajoutés comme nouvelle carte.",
     openGraph: "Ouvrir graphique",
     graphTitle: "Graphiques",
     graphFormula: "Fonction",
     graphPreviewLove: "Aperçu LÖVE",
-    graphSave: "Save",
+    graphSave: "Enregistrer",
     graphLiveFormula: "Écrivez ou collez une formule pour la prévisualiser",
     graphApplyPreview: "Prévisualiser",
     viewImage: "Voir image",
@@ -675,7 +675,7 @@ const I18N = {
     lovePreviewNspireHint: "Ce code ressemble a une ScriptApp TI-Nspire; utilisez Apercu Lua. L'apercu LÖVE execute seulement le code qui definit love.*.",
     lovePreviewNoCallbacks: "Aucun callback love.draw ou love.update trouve. Si ce code est TI-Nspire, utilisez Apercu Lua.",
     lovePreviewNspireCompat: "Code TI-Nspire detecte : l'apercu LÖVE utilisera platform/on/gc sur le canvas interne.",
-    lovePreviewCalculatorWarning: "Avertissement : ce code utilise love.* et ne s'execute pas directement sur la calculatrice. Utilisez Convertir LÖVE vers TI-Nspire pour l'enregistrer pour TI-Nspire.",
+    lovePreviewCalculatorWarning: "Avertissement : ce code utilise love.* et ne s'exécute pas directement sur la calculatrice. Utilisez Convertir LÖVE vers TI-Nspire pour l'enregistrer pour TI-Nspire.",
     luaGuide: "Guide Lua",
     luaTemplates: "Modeles Lua",
     luaEditPages: "Editer pages",
@@ -1182,8 +1182,42 @@ const pyDoctorModal = {
 const codeEditorAdapters = new Map();
 
 function log(message) {
+  if (!logEl) return;
   logEl.textContent += `${message}\n`;
   logEl.scrollTop = logEl.scrollHeight;
+}
+
+function appendLogElement(target, source, message, { mirror = true } = {}) {
+  const text = String(message ?? "").replace(/\r\n/g, "\n").replace(/\r/g, "\n").trimEnd();
+  if (!text) return;
+  const stamp = new Date().toLocaleTimeString();
+  for (const line of text.split("\n")) {
+    if (target) {
+      target.textContent += `[${stamp}] ${line}\n`;
+    }
+    if (mirror) {
+      log(source ? `[${source}] ${line}` : line);
+    }
+  }
+  if (target) target.scrollTop = target.scrollHeight;
+}
+
+function shouldShowAnalysisSummary(counts = {}) {
+  const errors = Number(counts.errors || 0);
+  const warnings = Number(counts.warnings || 0);
+  const info = Number(counts.info ?? counts.infos ?? 0);
+  return errors > 0 || warnings > 0 || info > 1;
+}
+
+function setAnalysisPanelVisibility(scope, counts = {}) {
+  const root = typeof scope === "string" ? document.querySelector(scope) : scope;
+  if (!root) return;
+  const show = shouldShowAnalysisSummary(counts);
+  root.classList.toggle("analysis-hidden", !show);
+  const side = Array.from(root.children).find((child) => (
+    child.classList?.contains("doctor-side") || child.classList?.contains("lua-side")
+  ));
+  if (side) side.hidden = !show;
 }
 
 function applyLanguage(nextLanguage = language) {
@@ -1218,10 +1252,14 @@ function applyTheme(nextTheme = theme) {
   localStorage.setItem("tns-tool-theme", theme);
   document.documentElement.dataset.theme = theme;
   window.TnsMonacoEditor?.setTheme?.(theme);
+  window.requestAnimationFrame(() => {
+    for (const adapter of codeEditorAdapters.values()) adapter?.layout?.();
+  });
   const button = document.querySelector("#theme-btn");
   if (button) {
     button.textContent = theme === "dark" ? "☀" : "☾";
     button.title = theme === "dark" ? "Modo claro" : "Modo oscuro";
+    button.textContent = theme === "dark" ? "\u2600" : "\u263e";
   }
 }
 
@@ -1871,9 +1909,7 @@ function highlightPythonLine(line) {
   }
 
 function xmlLog(message) {
-  const target = document.querySelector("#xml-log");
-  target.textContent += `[${new Date().toLocaleTimeString()}] ${message}\n`;
-  target.scrollTop = target.scrollHeight;
+  appendLogElement(document.querySelector("#xml-log"), "XML", message);
 }
 
 function setXmlDoctorEnabled(enabled) {
@@ -8471,13 +8507,15 @@ function createCodeEditorAdapter(textarea, wrap, options = {}) {
     const monacoApi = window.TnsMonacoEditor;
     if (!monacoApi?.createTextEditor || monacoInstance) return;
     try {
+      const activeTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+      monacoApi.setTheme?.(activeTheme);
       host = document.createElement("div");
       host.className = "monaco-code-host";
       wrap.append(host);
       monacoInstance = monacoApi.createTextEditor(host, {
         value: nativeValue.get.call(textarea),
         language,
-        theme,
+        theme: activeTheme,
         editorOptions: options.editorOptions || {},
       });
       adapter.isMonaco = true;
@@ -8485,6 +8523,7 @@ function createCodeEditorAdapter(textarea, wrap, options = {}) {
       patchTextarea();
       wrap.classList.add("monaco-enabled");
       shell?.classList.add("monaco-enabled");
+      requestAnimationFrame(() => monacoInstance?.layout?.());
       monacoDisposables = [
         monacoInstance.onInput((value) => {
           nativeValue.set.call(textarea, value);
@@ -8577,7 +8616,7 @@ function showLuaEditor(item) {
         <button type="button" id="lua-save" class="green-tool-button">${escapeHtml(t("saveMenu"))}</button>
         <button type="button" id="lua-cancel">${escapeHtml(t("cancel"))}</button>
       </div>
-      <div class="lua-doctor-grid">
+      <div class="lua-doctor-grid analysis-hidden">
         <div class="lua-code-shell">
           <div id="lua-lines" class="line-numbers"></div>
           <div class="lua-editor-wrap">
@@ -8597,7 +8636,7 @@ function showLuaEditor(item) {
             <thead><tr><th>${escapeHtml(t("type"))}</th><th>${escapeHtml(t("line"))}</th><th>${escapeHtml(t("description"))}</th></tr></thead>
             <tbody id="lua-problems"></tbody>
           </table>
-          <h3>Log Lua</h3>
+          <h3 class="side-log-title">Log Lua</h3>
           <pre id="lua-log" class="mini-log"></pre>
         </aside>
       </div>
@@ -8610,8 +8649,9 @@ function showLuaEditor(item) {
   const lines = backdrop.querySelector("#lua-lines");
   const highlight = backdrop.querySelector("#lua-highlight");
   const label = backdrop.querySelector("#lua-line-label");
-  const log = backdrop.querySelector("#lua-log");
+  const luaLogEl = backdrop.querySelector("#lua-log");
   const problems = backdrop.querySelector("#lua-problems");
+  const luaGrid = backdrop.querySelector(".lua-doctor-grid");
   const issueLines = new Map();
   const updateLabel = () => {
     const before = editor.value.slice(0, editor.selectionStart).split("\n");
@@ -8638,10 +8678,14 @@ function showLuaEditor(item) {
   };
   const analyze = () => {
     const diagnostics = analyzeLuaBasic(editor.value);
+    const errorCount = diagnostics.errors.length;
+    const warningCount = diagnostics.warnings.length;
+    const infoCount = errorCount ? 0 : 1;
     issueLines.clear();
-    backdrop.querySelector("#lua-errors").textContent = String(diagnostics.errors.length);
-    backdrop.querySelector("#lua-warnings").textContent = String(diagnostics.warnings.length);
-    backdrop.querySelector("#lua-info").textContent = diagnostics.errors.length ? "0" : "1";
+    backdrop.querySelector("#lua-errors").textContent = String(errorCount);
+    backdrop.querySelector("#lua-warnings").textContent = String(warningCount);
+    backdrop.querySelector("#lua-info").textContent = String(infoCount);
+    setAnalysisPanelVisibility(luaGrid, { errors: errorCount, warnings: warningCount, info: infoCount });
     const allDiagnostics = [...diagnostics.errors, ...diagnostics.warnings];
     for (const diag of allDiagnostics) {
       if (diag.line && !issueLines.has(diag.line)) issueLines.set(diag.line, diag.level);
@@ -8660,9 +8704,10 @@ function showLuaEditor(item) {
         updateLabel();
       });
     }
-    log.textContent = allDiagnostics.length
+    if (luaLogEl) luaLogEl.textContent = "";
+    appendLogElement(luaLogEl, "Lua", allDiagnostics.length
       ? allDiagnostics.map((diag) => `[${diag.level}] Linea ${diag.line}: ${diag.message}`).join("\n")
-      : t("luaSyntaxOk");
+      : t("luaSyntaxOk"));
     updateLines();
     updateHighlight();
     updateLabel();
@@ -8817,7 +8862,7 @@ async function createEmptyXmlProjectForPageCreation() {
   if (!response.ok) throw new Error(`No se pudo cargar plantilla Document.xml: HTTP ${response.status}`);
   pyodide.FS.writeFile(`${xmlDoctor.sourcePath}/Document.xml`, await response.text());
 
-  // +Page necesita un contenedor de problema, no una página TI.ProgramEditor
+  // + Página necesita un contenedor de problema, no una página TI.ProgramEditor
   // implícita. "Nuevo documento" conserva su comportamiento anterior.
   const emptyProblem = '<?xml version="1.0" encoding="UTF-8" ?><prob xmlns="urn:TI.Problem" ver="1.0" pbname=""><sym></sym></prob>';
   pyodide.FS.writeFile(`${xmlDoctor.sourcePath}/Problem1.xml`, emptyProblem);
@@ -8832,7 +8877,7 @@ async function createEmptyXmlProjectForPageCreation() {
 async function ensureXmlProjectForPageCreation() {
   if (xmlDoctorHasProjectFiles()) return;
   await createEmptyXmlProjectForPageCreation();
-  xmlLog("Documento base vacío creado automáticamente para +Page.");
+  xmlLog("Documento base vacío creado automáticamente para + Página.");
 }
 
 
@@ -17015,9 +17060,17 @@ function openXmlDocumentSettings() {
 function renderXmlAnalysis(report) {
   xmlDoctor.lastReport = report;
   xmlDoctor.issueLines.clear();
-  document.querySelector("#xml-errors").textContent = report.errors;
-  document.querySelector("#xml-warnings").textContent = report.warnings;
-  document.querySelector("#xml-info").textContent = report.infos;
+  const errorCount = Number(report.errors || 0);
+  const warningCount = Number(report.warnings || 0);
+  const infoCount = Number(report.infos || 0);
+  document.querySelector("#xml-errors").textContent = String(errorCount);
+  document.querySelector("#xml-warnings").textContent = String(warningCount);
+  document.querySelector("#xml-info").textContent = String(infoCount);
+  setAnalysisPanelVisibility(document.querySelector("#xml-problems")?.closest(".doctor-grid"), {
+    errors: errorCount,
+    warnings: warningCount,
+    info: infoCount,
+  });
   const body = document.querySelector("#xml-problems");
   body.innerHTML = "";
   const monacoDiagnostics = [];
@@ -17513,17 +17566,23 @@ async function openPyDoctor(options = {}) {
 }
 
 function pyLog(message) {
-  const target = document.querySelector("#py-log");
-  target.textContent += `[${new Date().toLocaleTimeString()}] ${message}\n`;
-  target.scrollTop = target.scrollHeight;
+  appendLogElement(document.querySelector("#py-log"), "PY", message);
 }
 
 function renderPyAnalysis(report) {
   pyDoctor.lastReport = report;
   pyDoctor.issueLines.clear();
-  document.querySelector("#py-errors").textContent = report.errors || 0;
-  document.querySelector("#py-warnings").textContent = report.warnings || 0;
-  document.querySelector("#py-info").textContent = report.info || 0;
+  const errorCount = Number(report.errors || 0);
+  const warningCount = Number(report.warnings || 0);
+  const infoCount = Number(report.info || 0);
+  document.querySelector("#py-errors").textContent = String(errorCount);
+  document.querySelector("#py-warnings").textContent = String(warningCount);
+  document.querySelector("#py-info").textContent = String(infoCount);
+  setAnalysisPanelVisibility(document.querySelector("#py-problems")?.closest(".doctor-grid"), {
+    errors: errorCount,
+    warnings: warningCount,
+    info: infoCount,
+  });
   const body = document.querySelector("#py-problems");
   body.innerHTML = "";
   const monacoDiagnostics = [];

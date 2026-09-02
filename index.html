@@ -128,7 +128,7 @@
             <button type="button" class="menu-trigger green-menu-trigger"><span class="menu-icon">＋</span><span data-i18n="fileMenu">Archivo</span></button>
             <div class="menu-panel">
               <div class="tool-menu nested-menu file-page-menu">
-                <button type="button" class="menu-action nested-trigger" data-i18n="addPage">+ Pagina</button>
+                <button type="button" class="menu-action nested-trigger" data-i18n="addPage">+ Página</button>
                 <div class="menu-panel nested-panel">
                   <button type="button" id="file-page-add-program-editor" class="menu-action" data-i18n="addProgramEditorWidget">Agregar editor de programas</button>
                   <button type="button" id="file-page-add-python" class="menu-action" data-i18n="addPythonWidget">Agregar Python</button>
@@ -138,7 +138,7 @@
                   <button type="button" id="file-page-add-graph" class="menu-action" data-i18n="addGraphWidget">Agregar gráficos</button>
                   <button type="button" id="file-page-add-calculator" class="menu-action" data-i18n="addCalculatorWidget">Agregar calculadora</button>
                   <button type="button" id="file-page-add-image" class="menu-action" data-i18n="addImageWidget">Agregar imagen</button>
-                  <button type="button" id="file-page-add-pdf" class="menu-action" data-i18n="addPdfWidget" data-i18n-title="addPdfWidgetTitle" title="Convierte cada pagina del PDF a imagen y crea una card por pagina">Agregar PDF</button>
+                  <button type="button" id="file-page-add-pdf" class="menu-action" data-i18n="addPdfWidget" data-i18n-title="addPdfWidgetTitle" title="Convierte cada página del PDF a imagen y crea una card por página">Agregar PDF</button>
                 </div>
               </div>
               <button id="xml-new-btn" class="menu-action" data-i18n="newXmlProject">Nuevo</button>
@@ -177,7 +177,7 @@
           <span id="xml-line-label">Linea: 1 Col: 1 Total: 1</span>
         </div>
 
-        <div class="doctor-grid">
+        <div class="doctor-grid analysis-hidden">
           <div class="code-shell">
             <div id="xml-line-numbers" class="line-numbers">1</div>
             <div id="xml-editor-wrap" class="editor-wrap">
@@ -199,7 +199,7 @@
               </thead>
               <tbody id="xml-problems"></tbody>
             </table>
-            <h3>Log XML</h3>
+            <h3 class="side-log-title">Log XML</h3>
             <pre id="xml-log" class="mini-log"></pre>
           </aside>
         </div>
@@ -249,7 +249,7 @@
             <button id="py-doctor-changes-btn" disabled data-i18n="showChanges">Mostrar cambios</button>
             <span id="py-line-label">Linea: 1 Col: 1 Total: 1</span>
           </div>
-          <div class="doctor-grid">
+          <div class="doctor-grid analysis-hidden">
             <div class="code-shell">
               <div id="py-line-numbers" class="line-numbers">1</div>
               <div id="py-code-wrap" class="editor-wrap">
@@ -271,7 +271,7 @@
                 </thead>
                 <tbody id="py-problems"></tbody>
               </table>
-              <h3>Log PY</h3>
+              <h3 class="side-log-title">Log PY</h3>
               <pre id="py-log" class="mini-log"></pre>
             </aside>
           </div>
