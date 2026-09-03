@@ -1,8 +1,8 @@
 (() => {
   "use strict";
 
-  const INSTALL_MARK = "__tnsNspirePreviewIsolationV7";
-  const RUNTIME_VERSION = "20260903-nspire-runtime-v7";
+  const INSTALL_MARK = "__tnsNspirePreviewIsolationV8";
+  const RUNTIME_VERSION = "20260903-nspire-runtime-v8";
   const BASE_RUNTIME_FILES = [
     "vendor/luajs/lua.js",
     "vendor/luajs/nspire/env.js",
@@ -14,9 +14,10 @@
   ];
 
   function loadLegacyTiCompat() {
-    if (document.querySelector('script[data-ti-nspire-legacy-image-compat="true"]')) return;
+    const existing = document.querySelector('script[data-ti-nspire-legacy-image-compat="true"]');
+    if (existing) existing.remove();
     const script = document.createElement("script");
-    script.src = "./ti-nspire-legacy-image-compat.js?v=20260903-eepro-inline-image-v1";
+    script.src = "./ti-nspire-legacy-image-compat.js?v=20260903-eepro-inline-image-v2";
     script.dataset.tiNspireLegacyImageCompat = "true";
     script.async = false;
     document.head.appendChild(script);
@@ -34,8 +35,6 @@
     root[slot] = value;
     root[name] = value;
     try {
-      // app.js and generated LuaJS use bare global identifiers. Updating only
-      // window[name] is not enough in every browser/runtime combination.
       (0, eval)(`${name} = window[${JSON.stringify(slot)}];`);
     } catch (_error) {}
     try { delete root[slot]; } catch (_error) { root[slot] = undefined; }
@@ -87,7 +86,7 @@
     const root = window;
     const globals = root.G?.str;
     const current = globals?.tonumber;
-    if (typeof current !== "function" || current.__tnsTiTonumberV7) return;
+    if (typeof current !== "function" || current.__tnsTiTonumberV8) return;
 
     const safeTonumber = function (value, base) {
       if (typeof value === "number") {
@@ -118,7 +117,7 @@
       return [null];
     };
 
-    safeTonumber.__tnsTiTonumberV7 = true;
+    safeTonumber.__tnsTiTonumberV8 = true;
     safeTonumber.__tnsTiTonumberBase = current;
     globals.tonumber = safeTonumber;
 
@@ -136,7 +135,7 @@
 
     for (const name of ["lua_rawget", "lua_tableget"]) {
       const current = root[name];
-      if (typeof current !== "function" || current.__tnsTiNilReadV7) continue;
+      if (typeof current !== "function" || current.__tnsTiNilReadV8) continue;
 
       const safeRead = function (table, key) {
         if (table == null || table === false || key === undefined || key === null) return null;
@@ -145,13 +144,13 @@
       };
 
       copyFunctionMarkers(safeRead, current);
-      safeRead.__tnsTiNilReadV7 = true;
+      safeRead.__tnsTiNilReadV8 = true;
       safeRead.__tnsTiNilReadBase = current;
       bindGeneratedLuaSymbol(name, safeRead);
     }
 
     const currentEq = root.lua_eq;
-    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV7) {
+    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV8) {
       const safeEq = function (left, right) {
         const leftNil = left === undefined || left === null;
         const rightNil = right === undefined || right === null;
@@ -159,18 +158,18 @@
         return currentEq.apply(this, arguments);
       };
       copyFunctionMarkers(safeEq, currentEq);
-      safeEq.__tnsTiNilEqV7 = true;
+      safeEq.__tnsTiNilEqV8 = true;
       safeEq.__tnsTiNilEqBase = currentEq;
       bindGeneratedLuaSymbol("lua_eq", safeEq);
     }
 
     const typeFn = root.G?.str?.type;
-    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV7) {
+    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV8) {
       const safeType = function (value) {
         if (value === undefined || value === null) return ["nil"];
         return typeFn.apply(this, arguments);
       };
-      safeType.__tnsTiNilTypeV7 = true;
+      safeType.__tnsTiNilTypeV8 = true;
       safeType.__tnsTiNilTypeBase = typeFn;
       root.G.str.type = safeType;
     }
@@ -180,7 +179,7 @@
     let equalityProbe = false;
     try { equalityProbe = (0, eval)("lua_eq(null, null) === true"); } catch (_error) {}
     root.__tnsNspirePreviewNilEqualityProbe = equalityProbe;
-    root.__tnsNspirePreviewNilSemanticsV7 = true;
+    root.__tnsNspirePreviewNilSemanticsV8 = true;
   }
 
   function installIsolation() {
