@@ -59,12 +59,6 @@
       safeRead.__tnsTiNilReadV3 = true;
       safeRead.__tnsTiNilReadBase = current;
       root[name] = safeRead;
-      try {
-        // Some generated LuaJS code resolves the symbol lexically instead of
-        // through window.*, so keep both references aligned.
-        if (name === "lua_rawget") lua_rawget = safeRead;
-        if (name === "lua_tableget") lua_tableget = safeRead;
-      } catch (_error) {}
     }
 
     // Some LuaJS builds compare JS values strictly enough that undefined does
@@ -82,19 +76,18 @@
       safeEq.__tnsTiNilEqV3 = true;
       safeEq.__tnsTiNilEqBase = currentEq;
       root.lua_eq = safeEq;
-      try { lua_eq = safeEq; } catch (_error) {}
     }
 
     // Keep type(nil) correct even when the underlying JS value is undefined.
     const typeFn = root.G?.str?.type;
-    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV3 && typeof root.lua_tableset === "function") {
+    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV3) {
       const safeType = function (value) {
         if (value === undefined || value === null) return ["nil"];
         return typeFn.apply(this, arguments);
       };
       safeType.__tnsTiNilTypeV3 = true;
       safeType.__tnsTiNilTypeBase = typeFn;
-      root.lua_tableset(root.G.str, "type", safeType);
+      root.G.str.type = safeType;
     }
 
     root.__tnsNspirePreviewNilSemanticsV3 = true;
@@ -122,7 +115,8 @@
         // TI table compatibility in a microtask, so queue one final pass after
         // it to guarantee that absent fields end as Lua nil, never undefined.
         installTiNilSemantics();
-        queueMicrotask(installTiNilSemantics);
+        if (typeof queueMicrotask === "function") queueMicrotask(installTiNilSemantics);
+        else Promise.resolve().then(installTiNilSemantics);
         window.setTimeout(installTiNilSemantics, 0);
         return result;
       };
