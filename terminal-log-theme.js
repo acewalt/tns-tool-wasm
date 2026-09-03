@@ -136,7 +136,7 @@
   function loadCasPreviewBridge() {
     if (window.__tnsCasPreviewBridgeInstalled || document.querySelector('script[data-ti-cas-preview-bridge="true"]')) return;
     const script = document.createElement("script");
-    script.src = "./ti-cas-preview-bridge.js?v=20260903-giac-preview-v1";
+    script.src = "./ti-cas-preview-bridge-v2.js?v=20260903-giac-preview-v2";
     script.dataset.tiCasPreviewBridge = "true";
     document.head.appendChild(script);
   }
