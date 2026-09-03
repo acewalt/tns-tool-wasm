@@ -303,3 +303,15 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   `;
   document.head.appendChild(style);
 })();
+
+// Load Ctrl+V / paste support for the Preview LÖVE canvas. The helper reuses
+// the preview's existing keyboard bridge, so TI-Nspire ScriptApps receive the
+// pasted text through on.charIn just like normal typing.
+(() => {
+  if (document.querySelector('script[data-love-preview-paste="true"]')) return;
+
+  const script = document.createElement("script");
+  script.src = "./love-preview-paste.js?v=20260903-paste-v1";
+  script.dataset.lovePreviewPaste = "true";
+  document.head.appendChild(script);
+})();
