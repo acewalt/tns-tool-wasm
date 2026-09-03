@@ -5,9 +5,9 @@
   const FADE_MS = 520;
   const READY_LOG = "Runtime WASM listo.";
   const ROOT_LOCK = "tns-runtime-loading-lock";
-  const MOTION_CLASS = "startup-loader-motion-v2";
+  const MOTION_CLASS = "startup-loader-motion-v3";
   const FINAL_CLASS = "startup-loader-finalizing";
-  const STYLE_ID = "tns-startup-loader-motion-v2-style";
+  const STYLE_ID = "tns-startup-loader-motion-v3-style";
 
   let loader = null;
   let observer = null;
@@ -25,6 +25,8 @@
   function currentLanguage() {
     const saved = String(localStorage.getItem("tns-tool-language") || "").toLowerCase();
     if (["es", "en", "fr"].includes(saved)) return saved;
+    const active = document.querySelector("#language-buttons button.active[data-lang]")?.dataset.lang;
+    if (["es", "en", "fr"].includes(active)) return active;
     const html = String(document.documentElement.lang || "").slice(0, 2).toLowerCase();
     if (["es", "en", "fr"].includes(html)) return html;
     return "es";
@@ -73,30 +75,64 @@
         animation: tnsStartupCoreBreath 1.35s ease-in-out infinite alternate !important;
       }
 
-      #startup-loader.${MOTION_CLASS} h2 {
-        color: transparent !important;
-        background: linear-gradient(90deg,
-          #79df31 0%,
-          #a8f343 18%,
-          #e1ff87 36%,
-          #a9f23f 52%,
-          #78de32 68%,
-          #dfff80 84%,
-          #79df31 100%);
-        background-size: 250% 100%;
-        background-position: 0 0;
-        background-clip: text;
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
+      #startup-loader.${MOTION_CLASS} .startup-loader-card h2 {
+        position: relative;
+        isolation: isolate;
+        overflow: visible;
+        color: rgba(164, 242, 63, .17) !important;
+        -webkit-text-fill-color: rgba(164, 242, 63, .17) !important;
+        text-shadow: 0 0 22px rgba(164, 242, 63, .24);
+        filter: blur(1.8px);
         transform-origin: center;
-        animation:
-          tnsStartupWordReveal 760ms cubic-bezier(.2,.8,.2,1) both,
-          tnsStartupWordSweep 1.65s linear 420ms infinite,
-          tnsStartupWordGlow 1.3s ease-in-out 420ms infinite alternate !important;
+        animation: tnsStartupWordBase 920ms cubic-bezier(.18,.78,.24,1) 90ms both !important;
+      }
+
+      #startup-loader.${MOTION_CLASS} .startup-loader-card h2::before,
+      #startup-loader.${MOTION_CLASS} .startup-loader-card h2::after {
+        content: "TNS tool";
+        position: absolute;
+        inset: 0;
+        display: block;
+        pointer-events: none;
+        text-align: inherit;
+        font: inherit;
+        letter-spacing: inherit;
+        line-height: inherit;
+      }
+
+      #startup-loader.${MOTION_CLASS} .startup-loader-card h2::before {
+        z-index: 1;
+        color: #a8f53c;
+        -webkit-text-fill-color: #a8f53c;
+        text-shadow:
+          0 0 7px rgba(177, 255, 75, .62),
+          0 0 18px rgba(125, 225, 49, .38);
+        filter: blur(.15px);
+        clip-path: inset(0 100% 0 0);
+        animation: tnsStartupWordTrace 1.12s cubic-bezier(.2,.82,.2,1) 210ms both !important;
+      }
+
+      #startup-loader.${MOTION_CLASS} .startup-loader-card h2::after {
+        z-index: 2;
+        width: 24%;
+        right: auto;
+        color: transparent;
+        -webkit-text-fill-color: transparent;
+        background: linear-gradient(90deg,
+          transparent 0%,
+          rgba(174, 255, 72, .10) 24%,
+          rgba(232, 255, 178, .96) 50%,
+          rgba(174, 255, 72, .12) 76%,
+          transparent 100%);
+        filter: blur(7px);
+        mix-blend-mode: screen;
+        opacity: 0;
+        transform: translateX(-145%);
+        animation: tnsStartupSweepLine 1.12s cubic-bezier(.2,.82,.2,1) 210ms both !important;
       }
 
       #startup-loader.${MOTION_CLASS} .startup-loader-status {
-        animation: tnsStartupStatusReveal 520ms ease 420ms both !important;
+        animation: tnsStartupStatusReveal 560ms ease 780ms both !important;
       }
 
       #startup-loader.${MOTION_CLASS}.startup-loader-closing:not(.${FINAL_CLASS}) {
@@ -138,25 +174,69 @@
         }
       }
 
-      @keyframes tnsStartupWordReveal {
-        0% { opacity: 0; transform: translateY(9px) scale(.96); filter: blur(5px); letter-spacing: .07em; }
-        65% { opacity: 1; filter: blur(0); }
-        100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); letter-spacing: normal; }
+      @keyframes tnsStartupWordBase {
+        0% {
+          opacity: 0;
+          filter: blur(11px);
+          transform: translateY(7px) scale(.985);
+          letter-spacing: .025em;
+        }
+        45% {
+          opacity: .6;
+          filter: blur(5px);
+        }
+        100% {
+          opacity: 1;
+          filter: blur(1.8px);
+          transform: translateY(0) scale(1);
+          letter-spacing: normal;
+        }
       }
 
-      @keyframes tnsStartupWordSweep {
-        from { background-position: 0 0; }
-        to { background-position: -250% 0; }
+      @keyframes tnsStartupWordTrace {
+        0% {
+          clip-path: inset(0 100% 0 0);
+          opacity: .2;
+          filter: blur(4px);
+        }
+        16% { opacity: 1; }
+        72% { filter: blur(0); }
+        100% {
+          clip-path: inset(0 0 0 0);
+          opacity: 1;
+          filter: blur(0);
+        }
       }
 
-      @keyframes tnsStartupWordGlow {
-        from { filter: drop-shadow(0 0 7px rgba(158, 239, 57, .28)); }
-        to { filter: drop-shadow(0 0 18px rgba(158, 239, 57, .62)); }
+      @keyframes tnsStartupSweepLine {
+        0% {
+          transform: translateX(-145%);
+          opacity: 0;
+        }
+        12% { opacity: .95; }
+        82% { opacity: .9; }
+        100% {
+          transform: translateX(520%);
+          opacity: 0;
+        }
       }
 
       @keyframes tnsStartupStatusReveal {
-        from { opacity: 0; transform: translateY(4px); }
-        to { opacity: 1; transform: translateY(0); }
+        from { opacity: 0; transform: translateY(5px); filter: blur(3px); }
+        to { opacity: 1; transform: translateY(0); filter: blur(0); }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #startup-loader.${MOTION_CLASS} .startup-loader-card h2,
+        #startup-loader.${MOTION_CLASS} .startup-loader-card h2::before,
+        #startup-loader.${MOTION_CLASS} .startup-loader-card h2::after,
+        #startup-loader.${MOTION_CLASS} .startup-loader-outline rect,
+        #startup-loader.${MOTION_CLASS} .startup-loader-mark,
+        #startup-loader.${MOTION_CLASS} .startup-loader-core,
+        #startup-loader.${MOTION_CLASS} .startup-loader-status {
+          animation-duration: 1ms !important;
+          animation-delay: 0ms !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -246,11 +326,9 @@
     }
 
     installMotionStyle();
-    loader.classList.remove(FINAL_CLASS);
+    loader.classList.remove(FINAL_CLASS, "startup-loader-motion-v2");
     loader.classList.add(MOTION_CLASS);
 
-    // app.js may already have marked the loader as closing. Keep that state
-    // from hiding the animation until the minimum presentation time has elapsed.
     const status = loader.querySelector("#runtime-status");
     if (status && !String(status.textContent || "").trim()) status.textContent = loadingText();
 
@@ -290,22 +368,24 @@
     checkState();
 
     window.__tnsStartupLoaderMotion = {
-      version: "20260903-startup-motion-v2",
+      version: "20260903-startup-motion-v3",
       minVisibleMs: MIN_VISIBLE_MS,
       startedAt,
     };
   }
 
+  function updateStatusLanguage() {
+    if (!loader || finalized) return;
+    const status = loader.querySelector("#runtime-status");
+    if (status && !status.classList.contains("ready") && !status.classList.contains("error")) {
+      status.textContent = loadingText();
+    }
+  }
+
   function start() {
     adoptOrCreateLoader();
     document.querySelector("#language-buttons")?.addEventListener("click", () => {
-      window.setTimeout(() => {
-        if (!loader || finalized) return;
-        const status = loader.querySelector("#runtime-status");
-        if (status && !status.classList.contains("ready") && !status.classList.contains("error")) {
-          status.textContent = loadingText();
-        }
-      }, 0);
+      window.setTimeout(updateStatusLanguage, 0);
     });
   }
 
