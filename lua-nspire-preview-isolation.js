@@ -1,8 +1,8 @@
 (() => {
   "use strict";
 
-  const INSTALL_MARK = "__tnsNspirePreviewIsolationV6";
-  const RUNTIME_VERSION = "20260903-nspire-runtime-v6";
+  const INSTALL_MARK = "__tnsNspirePreviewIsolationV7";
+  const RUNTIME_VERSION = "20260903-nspire-runtime-v7";
   const BASE_RUNTIME_FILES = [
     "vendor/luajs/lua.js",
     "vendor/luajs/nspire/env.js",
@@ -12,6 +12,15 @@
     "vendor/luajs/nspire/timer.js",
     "vendor/luajs/nspire/locale.js",
   ];
+
+  function loadLegacyTiCompat() {
+    if (document.querySelector('script[data-ti-nspire-legacy-image-compat="true"]')) return;
+    const script = document.createElement("script");
+    script.src = "./ti-nspire-legacy-image-compat.js?v=20260903-eepro-inline-image-v1";
+    script.dataset.tiNspireLegacyImageCompat = "true";
+    script.async = false;
+    document.head.appendChild(script);
+  }
 
   function copyFunctionMarkers(target, source) {
     for (const key of Object.keys(source || {})) {
@@ -78,7 +87,7 @@
     const root = window;
     const globals = root.G?.str;
     const current = globals?.tonumber;
-    if (typeof current !== "function" || current.__tnsTiTonumberV6) return;
+    if (typeof current !== "function" || current.__tnsTiTonumberV7) return;
 
     const safeTonumber = function (value, base) {
       if (typeof value === "number") {
@@ -95,8 +104,6 @@
         return [parseLuaBaseInteger(text, radix)];
       }
 
-      // JS parseFloat("12abc") returns 12 and parseFloat("x") returns NaN.
-      // Lua tonumber must consume a valid numeral or return nil.
       if (/^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/.test(text)) {
         const numeric = Number(text);
         return [Number.isNaN(numeric) ? null : numeric];
@@ -111,7 +118,7 @@
       return [null];
     };
 
-    safeTonumber.__tnsTiTonumberV6 = true;
+    safeTonumber.__tnsTiTonumberV7 = true;
     safeTonumber.__tnsTiTonumberBase = current;
     globals.tonumber = safeTonumber;
 
@@ -129,7 +136,7 @@
 
     for (const name of ["lua_rawget", "lua_tableget"]) {
       const current = root[name];
-      if (typeof current !== "function" || current.__tnsTiNilReadV6) continue;
+      if (typeof current !== "function" || current.__tnsTiNilReadV7) continue;
 
       const safeRead = function (table, key) {
         if (table == null || table === false || key === undefined || key === null) return null;
@@ -138,13 +145,13 @@
       };
 
       copyFunctionMarkers(safeRead, current);
-      safeRead.__tnsTiNilReadV6 = true;
+      safeRead.__tnsTiNilReadV7 = true;
       safeRead.__tnsTiNilReadBase = current;
       bindGeneratedLuaSymbol(name, safeRead);
     }
 
     const currentEq = root.lua_eq;
-    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV6) {
+    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV7) {
       const safeEq = function (left, right) {
         const leftNil = left === undefined || left === null;
         const rightNil = right === undefined || right === null;
@@ -152,18 +159,18 @@
         return currentEq.apply(this, arguments);
       };
       copyFunctionMarkers(safeEq, currentEq);
-      safeEq.__tnsTiNilEqV6 = true;
+      safeEq.__tnsTiNilEqV7 = true;
       safeEq.__tnsTiNilEqBase = currentEq;
       bindGeneratedLuaSymbol("lua_eq", safeEq);
     }
 
     const typeFn = root.G?.str?.type;
-    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV6) {
+    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV7) {
       const safeType = function (value) {
         if (value === undefined || value === null) return ["nil"];
         return typeFn.apply(this, arguments);
       };
-      safeType.__tnsTiNilTypeV6 = true;
+      safeType.__tnsTiNilTypeV7 = true;
       safeType.__tnsTiNilTypeBase = typeFn;
       root.G.str.type = safeType;
     }
@@ -173,7 +180,7 @@
     let equalityProbe = false;
     try { equalityProbe = (0, eval)("lua_eq(null, null) === true"); } catch (_error) {}
     root.__tnsNspirePreviewNilEqualityProbe = equalityProbe;
-    root.__tnsNspirePreviewNilSemanticsV6 = true;
+    root.__tnsNspirePreviewNilSemanticsV7 = true;
   }
 
   function installIsolation() {
@@ -192,9 +199,6 @@
       };
 
       const tiHarden = function (...hardenArgs) {
-        // Keep the ordinary shared TI/LÖVE graphics/event bridge, but run it
-        // only after the TI runtime sources were selected above. The project
-        // loader (ffi/require/filesystem additions) is not part of this path.
         const result = typeof savedHarden === "function"
           ? savedHarden.apply(this, hardenArgs)
           : undefined;
@@ -207,8 +211,6 @@
         return result;
       };
 
-      // Critical V6 change: createLuaJsPreviewRuntime invokes these as bare
-      // identifiers. Bind both the window properties and the actual globals.
       bindGeneratedLuaSymbol("loadLuaJsRuntimeSources", freshLoader);
       bindGeneratedLuaSymbol("hardenLuaJsPreviewRuntime", tiHarden);
       window.__tnsNspirePreviewRuntimeActive = true;
@@ -231,6 +233,8 @@
     window.__tnsNspirePreviewIsolationInstalled = true;
     return true;
   }
+
+  loadLegacyTiCompat();
 
   if (!installIsolation()) {
     let attempts = 0;
