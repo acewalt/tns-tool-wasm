@@ -1,8 +1,17 @@
 (() => {
   "use strict";
 
-  const INSTALL_MARK = "__tnsNspirePreviewIsolationV1";
-  const LOVE_PROJECT_SOURCE_MARK = "installTnsLoveProjectRuntimeCompatibilityV3";
+  const INSTALL_MARK = "__tnsNspirePreviewIsolationV2";
+  const RUNTIME_VERSION = "20260903-nspire-runtime-v2";
+  const BASE_RUNTIME_FILES = [
+    "vendor/luajs/lua.js",
+    "vendor/luajs/nspire/env.js",
+    "vendor/luajs/nspire/tools.js",
+    "vendor/luajs/nspire/bindings.js",
+    "vendor/luajs/nspire/platform.js",
+    "vendor/luajs/nspire/timer.js",
+    "vendor/luajs/nspire/locale.js",
+  ];
 
   function luaTableKeys(table) {
     const props = [];
@@ -35,9 +44,29 @@
     return props;
   }
 
-  // This is the TI-Nspire/LuaJS hardening layer from app.js, deliberately kept
-  // independent from love-project-compat.js. It contains no LÖVE project,
-  // LuaJIT, ffi or Ndless behavior.
+  async function loadFreshNspireLuaJsSources() {
+    const sources = [];
+    for (const file of BASE_RUNTIME_FILES) {
+      const separator = file.includes("?") ? "&" : "?";
+      const response = await fetch(`./${file}${separator}v=${RUNTIME_VERSION}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`${file}: HTTP ${response.status}`);
+      sources.push(await response.text());
+    }
+
+    // The current repository runtime uses the direct lua_add/lua_subtract
+    // implementation. If an obsolete cached arithmetic shim appears here,
+    // fail explicitly instead of silently executing the wrong runtime.
+    if (sources.some((source) => /\bfunction\s+binaryArithmetic\b/.test(String(source)))) {
+      throw new Error(`Obsolete LuaJS arithmetic runtime detected (${RUNTIME_VERSION})`);
+    }
+
+    window.__tnsNspirePreviewRuntimeBuild = RUNTIME_VERSION;
+    return sources;
+  }
+
+  // TI-Nspire hardening only. This keeps the platform/on/gc bridge used by the
+  // normal ScriptApp Preview LÖVE, but excludes LÖVE-project/LuaJIT/ffi and
+  // every Ndless ARM path.
   function hardenNspireLuaJsRuntime() {
     const originalRawGet = window.lua_rawget;
     const originalRawSet = window.lua_rawset;
@@ -215,16 +244,11 @@
       const savedLoader = window.loadLuaJsRuntimeSources;
       const savedHarden = window.hardenLuaJsPreviewRuntime;
 
-      // A normal TI-Nspire ScriptApp must not inherit the compatibility source
-      // that love-project-compat.js appends for multi-file LÖVE/LuaJIT projects.
-      const filteredLoader = async function (...loaderArgs) {
-        if (typeof savedLoader !== "function") return [];
-        const sources = await savedLoader.apply(this, loaderArgs);
-        if (!Array.isArray(sources)) return sources;
-        return sources.filter((source) => !String(source).includes(LOVE_PROJECT_SOURCE_MARK));
-      };
-
-      window.loadLuaJsRuntimeSources = filteredLoader;
+      // Do not call the shared/cached loader here. It can have been wrapped by
+      // love-project-compat.js and it also keeps its own source cache. Fetching
+      // the seven base TI-Nspire files directly gives this preview a clean,
+      // deterministic runtime while leaving the LÖVE project bridge untouched.
+      window.loadLuaJsRuntimeSources = loadFreshNspireLuaJsSources;
       window.hardenLuaJsPreviewRuntime = hardenNspireLuaJsRuntime;
       window.__tnsNspirePreviewRuntimeActive = true;
 
@@ -232,9 +256,7 @@
         return await currentCreate.apply(this, args);
       } finally {
         window.__tnsNspirePreviewRuntimeActive = false;
-        // Do not overwrite a newer patch that another script installed while the
-        // async runtime was booting.
-        if (window.loadLuaJsRuntimeSources === filteredLoader) window.loadLuaJsRuntimeSources = savedLoader;
+        if (window.loadLuaJsRuntimeSources === loadFreshNspireLuaJsSources) window.loadLuaJsRuntimeSources = savedLoader;
         if (window.hardenLuaJsPreviewRuntime === hardenNspireLuaJsRuntime) window.hardenLuaJsPreviewRuntime = savedHarden;
       }
     };
