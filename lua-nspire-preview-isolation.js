@@ -1,8 +1,8 @@
 (() => {
   "use strict";
 
-  const INSTALL_MARK = "__tnsNspirePreviewIsolationV4";
-  const RUNTIME_VERSION = "20260903-nspire-runtime-v4";
+  const INSTALL_MARK = "__tnsNspirePreviewIsolationV5";
+  const RUNTIME_VERSION = "20260903-nspire-runtime-v5";
   const BASE_RUNTIME_FILES = [
     "vendor/luajs/lua.js",
     "vendor/luajs/nspire/env.js",
@@ -25,9 +25,8 @@
     root[slot] = value;
     root[name] = value;
     try {
-      // User Lua is compiled to JS that calls bare identifiers such as
-      // lua_eq(...), not window.lua_eq(...). Synchronize that real global
-      // binding as well as the window property.
+      // Generated LuaJS calls helpers such as lua_eq(...) through bare global
+      // identifiers. Keep the actual binding synchronized with window.*.
       (0, eval)(`${name} = window[${JSON.stringify(slot)}];`);
     } catch (_error) {}
     try { delete root[slot]; } catch (_error) { root[slot] = undefined; }
@@ -52,6 +51,86 @@
     return sources;
   }
 
+  function parseLuaBaseInteger(text, radix) {
+    let source = String(text).trim();
+    if (!source) return null;
+
+    let sign = 1;
+    if (source[0] === "+" || source[0] === "-") {
+      if (source[0] === "-") sign = -1;
+      source = source.slice(1);
+    }
+    if (!source) return null;
+
+    let value = 0;
+    for (const ch of source.toLowerCase()) {
+      const code = ch.charCodeAt(0);
+      let digit = -1;
+      if (code >= 48 && code <= 57) digit = code - 48;
+      else if (code >= 97 && code <= 122) digit = code - 97 + 10;
+      if (digit < 0 || digit >= radix) return null;
+      value = value * radix + digit;
+    }
+    return sign * value;
+  }
+
+  function installTiTonumberSemantics() {
+    const root = window;
+    const globals = root.G?.str;
+    const current = globals?.tonumber;
+    if (typeof current !== "function" || current.__tnsTiTonumberV5) return;
+
+    const safeTonumber = function (value, base) {
+      // Lua tonumber(number) returns the number itself. JavaScript NaN is not a
+      // valid failed-conversion sentinel in Lua, so normalize it to nil.
+      if (typeof value === "number") {
+        return [Number.isNaN(value) ? null : value];
+      }
+      if (typeof value !== "string") return [null];
+
+      const text = value.trim();
+      if (!text) return [null];
+
+      // With an explicit base, Lua expects an integer representation and the
+      // whole string must be valid for that radix.
+      if (base !== undefined && base !== null) {
+        const radix = Number(base);
+        if (!Number.isInteger(radix) || radix < 2 || radix > 36) return [null];
+        return [parseLuaBaseInteger(text, radix)];
+      }
+
+      // Standard decimal/scientific number. Reject partial matches such as
+      // "12abc": JS parseFloat would return 12, while Lua tonumber returns nil.
+      if (/^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/.test(text)) {
+        const numeric = Number(text);
+        return [Number.isNaN(numeric) ? null : numeric];
+      }
+
+      // Lua 5.1 accepts ordinary hexadecimal integer literals as numbers.
+      const hex = /^([+-]?)0[xX]([0-9a-fA-F]+)$/.exec(text);
+      if (hex) {
+        const magnitude = parseInt(hex[2], 16);
+        return [(hex[1] === "-" ? -1 : 1) * magnitude];
+      }
+
+      return [null];
+    };
+
+    safeTonumber.__tnsTiTonumberV5 = true;
+    safeTonumber.__tnsTiTonumberBase = current;
+    globals.tonumber = safeTonumber;
+
+    // Diagnostic probes: invalid input must be nil; valid numeric input must
+    // remain numeric. They are stored only for debugging and do not affect Lua.
+    try {
+      root.__tnsNspirePreviewTonumberProbe = {
+        invalidIsNil: safeTonumber("not-a-number")[0] === null,
+        decimal: safeTonumber("12.5")[0] === 12.5,
+        trailingRejected: safeTonumber("12abc")[0] === null,
+      };
+    } catch (_error) {}
+  }
+
   function installTiNilSemantics() {
     const root = window;
 
@@ -59,7 +138,7 @@
     // from a table read into the Lua program.
     for (const name of ["lua_rawget", "lua_tableget"]) {
       const current = root[name];
-      if (typeof current !== "function" || current.__tnsTiNilReadV4) continue;
+      if (typeof current !== "function" || current.__tnsTiNilReadV5) continue;
 
       const safeRead = function (table, key) {
         if (table == null || table === false || key === undefined || key === null) return null;
@@ -68,16 +147,14 @@
       };
 
       copyFunctionMarkers(safeRead, current);
-      safeRead.__tnsTiNilReadV4 = true;
+      safeRead.__tnsTiNilReadV5 = true;
       safeRead.__tnsTiNilReadBase = current;
       bindGeneratedLuaSymbol(name, safeRead);
     }
 
     // The parser compiles `x == nil` to the bare JS call `lua_eq(x, null)`.
-    // Some runtime variants keep a stale global binding even after
-    // window.lua_eq is replaced, so bind both references explicitly.
     const currentEq = root.lua_eq;
-    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV4) {
+    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV5) {
       const safeEq = function (left, right) {
         const leftNil = left === undefined || left === null;
         const rightNil = right === undefined || right === null;
@@ -85,28 +162,28 @@
         return currentEq.apply(this, arguments);
       };
       copyFunctionMarkers(safeEq, currentEq);
-      safeEq.__tnsTiNilEqV4 = true;
+      safeEq.__tnsTiNilEqV5 = true;
       safeEq.__tnsTiNilEqBase = currentEq;
       bindGeneratedLuaSymbol("lua_eq", safeEq);
     }
 
-    // Keep type(nil) correct for compatibility helpers that expose JS values.
     const typeFn = root.G?.str?.type;
-    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV4) {
+    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV5) {
       const safeType = function (value) {
         if (value === undefined || value === null) return ["nil"];
         return typeFn.apply(this, arguments);
       };
-      safeType.__tnsTiNilTypeV4 = true;
+      safeType.__tnsTiNilTypeV5 = true;
       safeType.__tnsTiNilTypeBase = typeFn;
       root.G.str.type = safeType;
     }
 
-    // Probe the same bare identifier that generated Lua code will call.
+    installTiTonumberSemantics();
+
     let equalityProbe = false;
     try { equalityProbe = (0, eval)("lua_eq(null, null) === true"); } catch (_error) {}
     root.__tnsNspirePreviewNilEqualityProbe = equalityProbe;
-    root.__tnsNspirePreviewNilSemanticsV4 = true;
+    root.__tnsNspirePreviewNilSemanticsV5 = true;
   }
 
   function installIsolation() {
