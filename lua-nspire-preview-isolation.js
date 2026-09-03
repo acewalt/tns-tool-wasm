@@ -1,8 +1,8 @@
 (() => {
   "use strict";
 
-  const INSTALL_MARK = "__tnsNspirePreviewIsolationV3";
-  const RUNTIME_VERSION = "20260903-nspire-runtime-v3";
+  const INSTALL_MARK = "__tnsNspirePreviewIsolationV4";
+  const RUNTIME_VERSION = "20260903-nspire-runtime-v4";
   const BASE_RUNTIME_FILES = [
     "vendor/luajs/lua.js",
     "vendor/luajs/nspire/env.js",
@@ -19,6 +19,21 @@
     }
   }
 
+  function bindGeneratedLuaSymbol(name, value) {
+    const root = window;
+    const slot = `__tnsGeneratedLuaBinding_${name}`;
+    root[slot] = value;
+    root[name] = value;
+    try {
+      // User Lua is compiled to JS that calls bare identifiers such as
+      // lua_eq(...), not window.lua_eq(...). Synchronize that real global
+      // binding as well as the window property.
+      (0, eval)(`${name} = window[${JSON.stringify(slot)}];`);
+    } catch (_error) {}
+    try { delete root[slot]; } catch (_error) { root[slot] = undefined; }
+    return value;
+  }
+
   async function loadFreshNspireLuaJsSources() {
     const sources = [];
     const legacyArithmeticFiles = [];
@@ -32,9 +47,6 @@
       sources.push(source);
     }
 
-    // Do not abort if GitHub Pages still serves the arithmetic-helper build.
-    // Both variants are valid LuaJS builds; the TI compatibility layer below
-    // normalizes Lua nil semantics after the runtime has been evaluated.
     window.__tnsNspirePreviewLegacyArithmeticFiles = legacyArithmeticFiles;
     window.__tnsNspirePreviewRuntimeBuild = RUNTIME_VERSION;
     return sources;
@@ -43,11 +55,11 @@
   function installTiNilSemantics() {
     const root = window;
 
-    // Lua has a single missing-value representation: nil. LuaJS tables may
-    // return JavaScript undefined for an absent key, so normalize reads only.
+    // A missing Lua table field is nil. Never let JavaScript undefined escape
+    // from a table read into the Lua program.
     for (const name of ["lua_rawget", "lua_tableget"]) {
       const current = root[name];
-      if (typeof current !== "function" || current.__tnsTiNilReadV3) continue;
+      if (typeof current !== "function" || current.__tnsTiNilReadV4) continue;
 
       const safeRead = function (table, key) {
         if (table == null || table === false || key === undefined || key === null) return null;
@@ -56,16 +68,16 @@
       };
 
       copyFunctionMarkers(safeRead, current);
-      safeRead.__tnsTiNilReadV3 = true;
+      safeRead.__tnsTiNilReadV4 = true;
       safeRead.__tnsTiNilReadBase = current;
-      root[name] = safeRead;
+      bindGeneratedLuaSymbol(name, safeRead);
     }
 
-    // Some LuaJS builds compare JS values strictly enough that undefined does
-    // not behave as Lua nil. Make nil equality explicit without changing any
-    // non-nil comparison semantics.
+    // The parser compiles `x == nil` to the bare JS call `lua_eq(x, null)`.
+    // Some runtime variants keep a stale global binding even after
+    // window.lua_eq is replaced, so bind both references explicitly.
     const currentEq = root.lua_eq;
-    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV3) {
+    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV4) {
       const safeEq = function (left, right) {
         const leftNil = left === undefined || left === null;
         const rightNil = right === undefined || right === null;
@@ -73,24 +85,28 @@
         return currentEq.apply(this, arguments);
       };
       copyFunctionMarkers(safeEq, currentEq);
-      safeEq.__tnsTiNilEqV3 = true;
+      safeEq.__tnsTiNilEqV4 = true;
       safeEq.__tnsTiNilEqBase = currentEq;
-      root.lua_eq = safeEq;
+      bindGeneratedLuaSymbol("lua_eq", safeEq);
     }
 
-    // Keep type(nil) correct even when the underlying JS value is undefined.
+    // Keep type(nil) correct for compatibility helpers that expose JS values.
     const typeFn = root.G?.str?.type;
-    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV3) {
+    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV4) {
       const safeType = function (value) {
         if (value === undefined || value === null) return ["nil"];
         return typeFn.apply(this, arguments);
       };
-      safeType.__tnsTiNilTypeV3 = true;
+      safeType.__tnsTiNilTypeV4 = true;
       safeType.__tnsTiNilTypeBase = typeFn;
       root.G.str.type = safeType;
     }
 
-    root.__tnsNspirePreviewNilSemanticsV3 = true;
+    // Probe the same bare identifier that generated Lua code will call.
+    let equalityProbe = false;
+    try { equalityProbe = (0, eval)("lua_eq(null, null) === true"); } catch (_error) {}
+    root.__tnsNspirePreviewNilEqualityProbe = equalityProbe;
+    root.__tnsNspirePreviewNilSemanticsV4 = true;
   }
 
   function installIsolation() {
@@ -111,9 +127,6 @@
           ? savedHarden.apply(this, hardenArgs)
           : undefined;
 
-        // Run after the normal hardening/LÖVE bridge. bindings.js also queues
-        // TI table compatibility in a microtask, so queue one final pass after
-        // it to guarantee that absent fields end as Lua nil, never undefined.
         installTiNilSemantics();
         if (typeof queueMicrotask === "function") queueMicrotask(installTiNilSemantics);
         else Promise.resolve().then(installTiNilSemantics);
