@@ -304,14 +304,23 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   document.head.appendChild(style);
 })();
 
-// Load Ctrl+V / paste support for the Preview LÖVE canvas. The helper reuses
-// the preview's existing keyboard bridge, so TI-Nspire ScriptApps receive the
-// pasted text through on.charIn just like normal typing.
+// Keep the normal TI-Nspire LuaJS preview independent from the extra LÖVE
+// project/LuaJIT compatibility layer. Load paste support only after isolation
+// is installed so Ctrl+V remains an input feature, not a runtime patch.
 (() => {
-  if (document.querySelector('script[data-love-preview-paste="true"]')) return;
+  if (document.querySelector('script[data-nspire-preview-isolation="true"]')) return;
 
-  const script = document.createElement("script");
-  script.src = "./love-preview-paste.js?v=20260903-paste-v1";
-  script.dataset.lovePreviewPaste = "true";
-  document.head.appendChild(script);
+  const isolationScript = document.createElement("script");
+  isolationScript.src = "./lua-nspire-preview-isolation.js?v=20260903-nspire-isolation-v1";
+  isolationScript.dataset.nspirePreviewIsolation = "true";
+  isolationScript.async = false;
+  isolationScript.addEventListener("load", () => {
+    if (document.querySelector('script[data-love-preview-paste="true"]')) return;
+    const pasteScript = document.createElement("script");
+    pasteScript.src = "./love-preview-paste.js?v=20260903-paste-v2";
+    pasteScript.dataset.lovePreviewPaste = "true";
+    pasteScript.async = false;
+    document.head.appendChild(pasteScript);
+  }, { once: true });
+  document.head.appendChild(isolationScript);
 })();
