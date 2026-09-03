@@ -311,7 +311,7 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   if (document.querySelector('script[data-nspire-preview-isolation="true"]')) return;
 
   const isolationScript = document.createElement("script");
-  isolationScript.src = "./lua-nspire-preview-isolation.js?v=20260903-nspire-isolation-v2";
+  isolationScript.src = "./lua-nspire-preview-isolation.js?v=20260903-nspire-isolation-v4";
   isolationScript.dataset.nspirePreviewIsolation = "true";
   isolationScript.async = false;
   isolationScript.addEventListener("load", () => {
