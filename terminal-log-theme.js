@@ -128,3 +128,19 @@
     start();
   }
 })();
+
+// Load the optional symbolic CAS bridge only after app.js and the Lua preview
+// compatibility patches are in place. The bridge modifies preview runtime
+// behavior only; it never rewrites the Lua source stored in a TNS document.
+(() => {
+  function loadCasPreviewBridge() {
+    if (window.__tnsCasPreviewBridgeInstalled || document.querySelector('script[data-ti-cas-preview-bridge="true"]')) return;
+    const script = document.createElement("script");
+    script.src = "./ti-cas-preview-bridge.js?v=20260903-giac-preview-v1";
+    script.dataset.tiCasPreviewBridge = "true";
+    document.head.appendChild(script);
+  }
+
+  if (document.readyState === "complete") loadCasPreviewBridge();
+  else window.addEventListener("load", loadCasPreviewBridge, { once: true });
+})();
