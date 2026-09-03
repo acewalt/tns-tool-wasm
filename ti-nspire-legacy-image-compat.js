@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "20260903-eepro-inline-image-v1";
+  const VERSION = "20260903-eepro-inline-image-v2";
   if (window.__tnsLegacyImageCompatVersion === VERSION) return;
   window.__tnsLegacyImageCompatVersion = VERSION;
 
@@ -34,10 +34,12 @@
   //   u32 height
   //   u32 reserved (normally 0)
   //   u32 row stride in bytes (normally width * 2)
-  //   u32 format/version (commonly 0x00010010)
-  //   RGB565 pixel rows
-  // The uploaded EEPro TNS contains, for example, 11x10/stride22,
-  // 14x7/stride28 and 37x37/stride74 images in exactly this format.
+  //   u32 format/version (the uploaded EEPro file uses 0x00010010)
+  //   little-endian RGB555 pixel rows
+  //
+  // The uploaded sint.tns.xml contains 11x10/stride22, 14x7/stride28 and
+  // 37x37/stride74 images. Comparing the decoded 37x37 TI-Planet logo with the
+  // real calculator screenshot confirms RGB555, not RGB565.
   function decodeInlineTiImage(source) {
     if (typeof source !== "string" || source.length < 20) return null;
 
@@ -48,7 +50,6 @@
     const format = u32le(source, 16);
     const dataOffset = 20;
 
-    // Do not mistake normal filenames/text for binary image strings.
     if (!width || !height || width > 4096 || height > 4096) return null;
     if (reserved !== 0) return null;
     if (stride < width * 2 || stride > width * 8) return null;
@@ -74,11 +75,11 @@
       for (let x = 0; x < width; x += 1) {
         const offset = row + x * 2;
         const value = byteAt(source, offset) | (byteAt(source, offset + 1) << 8);
-        const r5 = (value >>> 11) & 0x1f;
-        const g6 = (value >>> 5) & 0x3f;
+        const r5 = (value >>> 10) & 0x1f;
+        const g5 = (value >>> 5) & 0x1f;
         const b5 = value & 0x1f;
         output[out++] = Math.round((r5 * 255) / 31);
-        output[out++] = Math.round((g6 * 255) / 63);
+        output[out++] = Math.round((g5 * 255) / 31);
         output[out++] = Math.round((b5 * 255) / 31);
         output[out++] = 255;
       }
@@ -90,6 +91,7 @@
       height,
       stride,
       format,
+      pixelFormat: "RGB555LE",
       canvas,
       inline: true,
       name: "inline-ti-image",
@@ -149,6 +151,13 @@
         const resource = decodeInlineTiImage(source);
         if (!resource) return [null];
         window.__tnsInlineTiImageDecodeCount = (window.__tnsInlineTiImageDecodeCount || 0) + 1;
+        window.__tnsInlineTiImageLast = {
+          width: resource.width,
+          height: resource.height,
+          stride: resource.stride,
+          format: resource.format,
+          pixelFormat: resource.pixelFormat,
+        };
         return [createImageObject(resource, global)];
       };
       compatibleNew.__tnsEeproInlineImageCompat = true;
