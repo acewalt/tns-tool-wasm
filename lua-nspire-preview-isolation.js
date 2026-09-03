@@ -1,8 +1,8 @@
 (() => {
   "use strict";
 
-  const INSTALL_MARK = "__tnsNspirePreviewIsolationV5";
-  const RUNTIME_VERSION = "20260903-nspire-runtime-v5";
+  const INSTALL_MARK = "__tnsNspirePreviewIsolationV6";
+  const RUNTIME_VERSION = "20260903-nspire-runtime-v6";
   const BASE_RUNTIME_FILES = [
     "vendor/luajs/lua.js",
     "vendor/luajs/nspire/env.js",
@@ -25,8 +25,8 @@
     root[slot] = value;
     root[name] = value;
     try {
-      // Generated LuaJS calls helpers such as lua_eq(...) through bare global
-      // identifiers. Keep the actual binding synchronized with window.*.
+      // app.js and generated LuaJS use bare global identifiers. Updating only
+      // window[name] is not enough in every browser/runtime combination.
       (0, eval)(`${name} = window[${JSON.stringify(slot)}];`);
     } catch (_error) {}
     try { delete root[slot]; } catch (_error) { root[slot] = undefined; }
@@ -78,11 +78,9 @@
     const root = window;
     const globals = root.G?.str;
     const current = globals?.tonumber;
-    if (typeof current !== "function" || current.__tnsTiTonumberV5) return;
+    if (typeof current !== "function" || current.__tnsTiTonumberV6) return;
 
     const safeTonumber = function (value, base) {
-      // Lua tonumber(number) returns the number itself. JavaScript NaN is not a
-      // valid failed-conversion sentinel in Lua, so normalize it to nil.
       if (typeof value === "number") {
         return [Number.isNaN(value) ? null : value];
       }
@@ -91,22 +89,19 @@
       const text = value.trim();
       if (!text) return [null];
 
-      // With an explicit base, Lua expects an integer representation and the
-      // whole string must be valid for that radix.
       if (base !== undefined && base !== null) {
         const radix = Number(base);
         if (!Number.isInteger(radix) || radix < 2 || radix > 36) return [null];
         return [parseLuaBaseInteger(text, radix)];
       }
 
-      // Standard decimal/scientific number. Reject partial matches such as
-      // "12abc": JS parseFloat would return 12, while Lua tonumber returns nil.
+      // JS parseFloat("12abc") returns 12 and parseFloat("x") returns NaN.
+      // Lua tonumber must consume a valid numeral or return nil.
       if (/^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/.test(text)) {
         const numeric = Number(text);
         return [Number.isNaN(numeric) ? null : numeric];
       }
 
-      // Lua 5.1 accepts ordinary hexadecimal integer literals as numbers.
       const hex = /^([+-]?)0[xX]([0-9a-fA-F]+)$/.exec(text);
       if (hex) {
         const magnitude = parseInt(hex[2], 16);
@@ -116,12 +111,10 @@
       return [null];
     };
 
-    safeTonumber.__tnsTiTonumberV5 = true;
+    safeTonumber.__tnsTiTonumberV6 = true;
     safeTonumber.__tnsTiTonumberBase = current;
     globals.tonumber = safeTonumber;
 
-    // Diagnostic probes: invalid input must be nil; valid numeric input must
-    // remain numeric. They are stored only for debugging and do not affect Lua.
     try {
       root.__tnsNspirePreviewTonumberProbe = {
         invalidIsNil: safeTonumber("not-a-number")[0] === null,
@@ -134,11 +127,9 @@
   function installTiNilSemantics() {
     const root = window;
 
-    // A missing Lua table field is nil. Never let JavaScript undefined escape
-    // from a table read into the Lua program.
     for (const name of ["lua_rawget", "lua_tableget"]) {
       const current = root[name];
-      if (typeof current !== "function" || current.__tnsTiNilReadV5) continue;
+      if (typeof current !== "function" || current.__tnsTiNilReadV6) continue;
 
       const safeRead = function (table, key) {
         if (table == null || table === false || key === undefined || key === null) return null;
@@ -147,14 +138,13 @@
       };
 
       copyFunctionMarkers(safeRead, current);
-      safeRead.__tnsTiNilReadV5 = true;
+      safeRead.__tnsTiNilReadV6 = true;
       safeRead.__tnsTiNilReadBase = current;
       bindGeneratedLuaSymbol(name, safeRead);
     }
 
-    // The parser compiles `x == nil` to the bare JS call `lua_eq(x, null)`.
     const currentEq = root.lua_eq;
-    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV5) {
+    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV6) {
       const safeEq = function (left, right) {
         const leftNil = left === undefined || left === null;
         const rightNil = right === undefined || right === null;
@@ -162,18 +152,18 @@
         return currentEq.apply(this, arguments);
       };
       copyFunctionMarkers(safeEq, currentEq);
-      safeEq.__tnsTiNilEqV5 = true;
+      safeEq.__tnsTiNilEqV6 = true;
       safeEq.__tnsTiNilEqBase = currentEq;
       bindGeneratedLuaSymbol("lua_eq", safeEq);
     }
 
     const typeFn = root.G?.str?.type;
-    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV5) {
+    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV6) {
       const safeType = function (value) {
         if (value === undefined || value === null) return ["nil"];
         return typeFn.apply(this, arguments);
       };
-      safeType.__tnsTiNilTypeV5 = true;
+      safeType.__tnsTiNilTypeV6 = true;
       safeType.__tnsTiNilTypeBase = typeFn;
       root.G.str.type = safeType;
     }
@@ -183,7 +173,7 @@
     let equalityProbe = false;
     try { equalityProbe = (0, eval)("lua_eq(null, null) === true"); } catch (_error) {}
     root.__tnsNspirePreviewNilEqualityProbe = equalityProbe;
-    root.__tnsNspirePreviewNilSemanticsV5 = true;
+    root.__tnsNspirePreviewNilSemanticsV6 = true;
   }
 
   function installIsolation() {
@@ -196,31 +186,41 @@
       const savedHarden = window.hardenLuaJsPreviewRuntime;
 
       const freshLoader = async function () {
-        return loadFreshNspireLuaJsSources();
+        const sources = await loadFreshNspireLuaJsSources();
+        window.__tnsNspirePreviewFreshLoaderUsed = true;
+        return sources;
       };
 
       const tiHarden = function (...hardenArgs) {
+        // Keep the ordinary shared TI/LÖVE graphics/event bridge, but run it
+        // only after the TI runtime sources were selected above. The project
+        // loader (ffi/require/filesystem additions) is not part of this path.
         const result = typeof savedHarden === "function"
           ? savedHarden.apply(this, hardenArgs)
           : undefined;
 
         installTiNilSemantics();
+        window.__tnsNspirePreviewTiHardenUsed = true;
         if (typeof queueMicrotask === "function") queueMicrotask(installTiNilSemantics);
         else Promise.resolve().then(installTiNilSemantics);
         window.setTimeout(installTiNilSemantics, 0);
         return result;
       };
 
-      window.loadLuaJsRuntimeSources = freshLoader;
-      window.hardenLuaJsPreviewRuntime = tiHarden;
+      // Critical V6 change: createLuaJsPreviewRuntime invokes these as bare
+      // identifiers. Bind both the window properties and the actual globals.
+      bindGeneratedLuaSymbol("loadLuaJsRuntimeSources", freshLoader);
+      bindGeneratedLuaSymbol("hardenLuaJsPreviewRuntime", tiHarden);
       window.__tnsNspirePreviewRuntimeActive = true;
+      window.__tnsNspirePreviewFreshLoaderUsed = false;
+      window.__tnsNspirePreviewTiHardenUsed = false;
 
       try {
         return await currentCreate.apply(this, args);
       } finally {
         window.__tnsNspirePreviewRuntimeActive = false;
-        if (window.loadLuaJsRuntimeSources === freshLoader) window.loadLuaJsRuntimeSources = savedLoader;
-        if (window.hardenLuaJsPreviewRuntime === tiHarden) window.hardenLuaJsPreviewRuntime = savedHarden;
+        bindGeneratedLuaSymbol("loadLuaJsRuntimeSources", savedLoader);
+        bindGeneratedLuaSymbol("hardenLuaJsPreviewRuntime", savedHarden);
       }
     };
 
