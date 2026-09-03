@@ -202,16 +202,18 @@
       while ((performance.now() - started) < timeoutMs) {
         const module = win.Module;
         if (module && typeof module.cwrap === "function" && (runtimeInitialized || module.ready || module.calledRun)) {
-          try {
-            const candidate = module.cwrap("caseval", "string", ["string"]);
-            const probe = String(candidate("1+1") ?? "").trim();
-            if (probe === "2" || probe === "2.0") {
-              state.caseval = candidate;
-              state.status = "ready";
-              state.error = null;
-              return true;
-            }
-          } catch (_error) {}
+          for (const exportName of ["caseval", "_ZN4giac7casevalEPKc"]) {
+            try {
+              const candidate = module.cwrap(exportName, "string", ["string"]);
+              const probe = String(candidate("1+1") ?? "").trim();
+              if (probe === "2" || probe === "2.0") {
+                state.caseval = candidate;
+                state.status = "ready";
+                state.error = null;
+                return true;
+              }
+            } catch (_error) {}
+          }
         }
         await new Promise((resolve) => window.setTimeout(resolve, 100));
       }
