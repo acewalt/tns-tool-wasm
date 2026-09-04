@@ -1,0 +1,130 @@
+/* Faithful TI-Nspire Notes rendering loaded after app.js. */
+.ti-note-rich-modal {
+  width: min(760px, calc(100vw - 28px));
+}
+
+.ti-note-modebar {
+  width: 320px;
+  max-width: 100%;
+  display: flex;
+  gap: 6px;
+  margin: 0 auto 8px;
+}
+
+.ti-note-modebar .ti-note-mode {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ti-note-modebar .ti-note-mode.active {
+  background: var(--lime);
+  color: #1f3b0b;
+  border-color: color-mix(in srgb, var(--lime) 70%, #5f7f20);
+}
+
+.ti-note-rich-shell {
+  margin-inline: auto;
+}
+
+.ti-note-rich-view {
+  display: block;
+  width: 320px;
+  max-width: 100%;
+  height: 214px;
+  min-height: 214px;
+  margin: 0;
+  padding: 7px 6px;
+  overflow: auto;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: #ffffff;
+  color: #111111;
+  font-family: Arial, Helvetica, sans-serif;
+  font-size: 12px;
+  line-height: 1.22;
+  text-align: left;
+  white-space: normal;
+  overscroll-behavior: contain;
+}
+
+.ti-note-rich-view[hidden],
+#note-editor[hidden] {
+  display: none !important;
+}
+
+.ti-note-para {
+  display: block;
+  margin: 0 0 6px;
+  padding: 0;
+}
+
+.ti-note-para.ti-note-para-last {
+  margin-bottom: 0;
+}
+
+.ti-note-line {
+  display: block;
+  min-height: 1.22em;
+  margin: 0;
+  padding: 0;
+  white-space: pre-wrap;
+  overflow-wrap: normal;
+  word-break: normal;
+}
+
+.ti-note-run {
+  white-space: pre-wrap;
+}
+
+.ti-note-rich-hint {
+  width: 320px;
+  max-width: 100%;
+  margin: 8px auto 0;
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* The global site scrollbar is intentionally wide; calculator views need TI-like compact bars. */
+.ti-note-rich-view {
+  scrollbar-width: thin;
+  scrollbar-color: #8f98a6 #f4f4f4;
+}
+
+.ti-note-rich-view::-webkit-scrollbar {
+  width: 11px;
+  height: 11px;
+}
+
+.ti-note-rich-view::-webkit-scrollbar-track {
+  background: #f4f4f4;
+}
+
+.ti-note-rich-view::-webkit-scrollbar-thumb {
+  min-height: 28px;
+  background: #8f98a6;
+  background-clip: padding-box;
+  border: 2px solid #f4f4f4;
+  border-radius: 7px;
+}
+
+[data-theme="dark"] .ti-note-rich-view {
+  background: #ffffff;
+  color: #111111;
+}
+
+@media (max-width: 420px) {
+  .ti-note-rich-modal {
+    width: calc(100vw - 16px);
+  }
+
+  .ti-note-rich-view,
+  #note-editor {
+    width: 100%;
+  }
+}

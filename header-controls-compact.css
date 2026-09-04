@@ -63,6 +63,77 @@
   filter: none;
 }
 
+/* Mobile tools: use the available horizontal space instead of stacking the
+   three launcher cards vertically. The whole square remains the click target. */
+@media (max-width: 860px) {
+  .tools-sidebar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tools-sidebar > .sidebar-title {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+
+  .tools-sidebar > .doctor-launcher,
+  .tools-sidebar > .module-launcher {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 1 / 1;
+    box-sizing: border-box;
+    padding: 9px 7px;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  .tools-sidebar .launcher-content {
+    width: 100%;
+    height: 100%;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-align: center;
+  }
+
+  .tools-sidebar .launcher-content > div {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tools-sidebar .launcher-icon {
+    width: 34px;
+    height: 34px;
+    margin: 0;
+    flex: 0 0 auto;
+  }
+
+  .tools-sidebar .doctor-launcher h2,
+  .tools-sidebar .module-launcher h2 {
+    margin: 0;
+    font-size: clamp(11px, 3.15vw, 13px);
+    line-height: 1.16;
+    text-align: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  /* Long descriptions make ~100px-wide cards unreadable. The desktop cards
+     keep them; on mobile the icon + tool name provide the compact launcher. */
+  .tools-sidebar .doctor-launcher p,
+  .tools-sidebar .module-launcher p {
+    display: none;
+  }
+}
+
 @media (max-width: 720px) {
   .language-buttons button {
     width: 34px;
@@ -79,6 +150,27 @@
     min-width: 34px;
     height: 34px;
     min-height: 34px;
+  }
+}
+
+@media (max-width: 360px) {
+  .tools-sidebar {
+    gap: 6px;
+  }
+
+  .tools-sidebar > .doctor-launcher,
+  .tools-sidebar > .module-launcher {
+    padding: 7px 5px;
+  }
+
+  .tools-sidebar .launcher-icon {
+    width: 30px;
+    height: 30px;
+  }
+
+  .tools-sidebar .doctor-launcher h2,
+  .tools-sidebar .module-launcher h2 {
+    font-size: 10.5px;
   }
 }
 

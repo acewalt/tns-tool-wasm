@@ -128,3 +128,46 @@
     start();
   }
 })();
+
+// CAS Preview load order matters: install the hybrid lower-runtime wrapper first,
+// then load the stable Giac bridge. Giac will call through the hybrid layer with
+// its __tnsCasEval/__tnsCasEvalStr bindings, allowing SymPy/own fallbacks without
+// changing the Lua stored in the TNS document.
+(() => {
+  function loadScript(src, datasetKey) {
+    return new Promise((resolve, reject) => {
+      const existing = document.querySelector(`script[data-${datasetKey}="true"]`);
+      if (existing) {
+        if (existing.dataset.loaded === "true") resolve();
+        else existing.addEventListener("load", resolve, { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.dataset[datasetKey.replace(/-([a-z])/g, (_m, c) => c.toUpperCase())] = "true";
+      script.addEventListener("load", () => {
+        script.dataset.loaded = "true";
+        resolve();
+      }, { once: true });
+      script.addEventListener("error", reject, { once: true });
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadCasPreviewBridge() {
+    if (window.__tnsCasPreviewBridgeInstalled) return;
+    try {
+      if (!window.__tnsCasHybridInstalled) {
+        await loadScript("./ti-cas-hybrid-fallback-v1.js?v=20260903-ti-cas-hybrid-v1", "ti-cas-hybrid");
+      }
+      if (!window.__tnsCasPreviewBridgeInstalled) {
+        await loadScript("./ti-cas-preview-bridge-v3.js?v=20260903-giac-preview-v3", "ti-cas-preview-bridge");
+      }
+    } catch (error) {
+      console.warn("No se pudo cargar CAS Preview híbrido.", error);
+    }
+  }
+
+  if (document.readyState === "complete") loadCasPreviewBridge();
+  else window.addEventListener("load", loadCasPreviewBridge, { once: true });
+})();
