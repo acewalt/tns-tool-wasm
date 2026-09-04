@@ -23,6 +23,15 @@
     document.head.appendChild(script);
   }
 
+  function loadTiFontCalibration() {
+    if (document.querySelector('script[data-ti-preview-font-calibration="true"]')) return;
+    const script = document.createElement("script");
+    script.src = "./ti-preview-font-calibration.js?v=20260904-ti-font-calibration-v1";
+    script.dataset.tiPreviewFontCalibration = "true";
+    script.async = false;
+    document.head.appendChild(script);
+  }
+
   function copyFunctionMarkers(target, source) {
     for (const key of Object.keys(source || {})) {
       try { target[key] = source[key]; } catch (_error) {}
@@ -243,4 +252,6 @@
     }, 25);
     window.addEventListener("DOMContentLoaded", installIsolation, { once: true });
   }
+
+  loadTiFontCalibration();
 })();
