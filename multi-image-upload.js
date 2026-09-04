@@ -33,6 +33,7 @@
   const V="20260831-loader-ndless-menu";
   const NOTES_V="20260903-notepad-rich-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
+  const LOVE_PREVIEW_SIDE_V="20260903-side-controls-v1";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./runtime-loading-overlay.css?v=${V}`, "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
@@ -52,6 +53,7 @@
   ensureStyle('link[data-image-editor-style="true"]', "./image-editor.css?v=20260827-image-editor-v1", "imageEditorStyle");
   ensureStyle('link[data-notepad-rich-view-style="true"]', `./notepad-rich-view.css?v=${NOTES_V}`, "notepadRichViewStyle");
   ensureStyle('link[data-lua-guide-cas-style="true"]', `./lua-guide-cas.css?v=${LUA_GUIDE_CAS_V}`, "luaGuideCasStyle");
+  ensureStyle('link[data-love-preview-side-controls-style="true"]', `./love-preview-side-controls.css?v=${LOVE_PREVIEW_SIDE_V}`, "lovePreviewSideControlsStyle");
 
   loadScript('script[data-runtime-loading-overlay="true"]', `./runtime-loading-overlay.js?v=${V}`, "runtimeLoadingOverlay").catch(console.error);
   loadScript('script[data-monaco-ti-reference-theme="true"]', "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v3", "monacoTiReferenceTheme").catch(console.error);
@@ -109,6 +111,7 @@
     ['script[data-inspector-summary-filter="true"]', "./inspector-summary-filter.js?v=20260827-summary-filter-v1", "inspectorSummaryFilter"],
     ['script[data-notepad-rich-view="true"]', `./notepad-rich-view.js?v=${NOTES_V}`, "notepadRichView"],
     ['script[data-lua-guide-cas="true"]', `./lua-guide-cas.js?v=${LUA_GUIDE_CAS_V}`, "luaGuideCas"],
+    ['script[data-love-preview-side-controls="true"]', `./love-preview-side-controls.js?v=${LOVE_PREVIEW_SIDE_V}`, "lovePreviewSideControls"],
   ];
   independent.forEach(args => loadScript(...args).catch(error => console.error("Runtime loader:", error)));
 
