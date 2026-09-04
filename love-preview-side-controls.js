@@ -38,6 +38,22 @@
       .replace(/\s+/g, " ");
   }
 
+  function currentLanguage() {
+    const active = document.querySelector("#language-buttons button.active[data-lang]")?.dataset.lang;
+    const lang = String(active || document.documentElement.lang || "en").slice(0, 2).toLowerCase();
+    return ["es", "fr"].includes(lang) ? lang : "en";
+  }
+
+  function mathLabels() {
+    const lang = currentLanguage();
+    const labels = {
+      en: { math: "Math entry", on: "ON", off: "OFF", templates: "Templates" },
+      es: { math: "Entrada matemática", on: "ON", off: "OFF", templates: "Plantillas" },
+      fr: { math: "Saisie mathématique", on: "ON", off: "OFF", templates: "Modèles" }
+    };
+    return labels[lang] || labels.en;
+  }
+
   function keyName(button) {
     if (!button) return null;
     if (button.dataset.loveKey) return button.dataset.loveKey;
@@ -143,6 +159,63 @@
     controls.classList.add("love-preview-keyboard-controls");
   }
 
+  function setMathEntryEnabled(modal, enabled) {
+    const host = modal.querySelector(".love-preview-live-math");
+    const button = modal.querySelector(".love-preview-math-entry-toggle");
+    if (!host || !button) return;
+
+    const labels = mathLabels();
+    const value = Boolean(enabled);
+    modal.dataset.loveMathEntryEnabled = value ? "true" : "false";
+    host.hidden = !value;
+    host.classList.toggle("love-preview-math-entry-hidden", !value);
+    button.setAttribute("aria-pressed", value ? "true" : "false");
+    button.dataset.enabled = value ? "true" : "false";
+    button.textContent = `${labels.math}: ${value ? labels.on : labels.off}`;
+    button.title = value ? `${labels.math}: ${labels.on}` : `${labels.math}: ${labels.off}`;
+  }
+
+  function setupMathTools(modal, rightActions) {
+    const host = modal.querySelector(".love-preview-live-math");
+    const templatesButton = modal.querySelector(".lpm-toggle");
+    const templatesPanel = modal.querySelector(".lpm-panel");
+    const actionRow = rightActions?.querySelector(".love-preview-side-action-row");
+    if (!host || !templatesButton || !actionRow) return false;
+
+    const labels = mathLabels();
+
+    templatesButton.classList.remove("green-tool-button");
+    templatesButton.classList.add("love-preview-side-tool-button", "love-preview-templates-toggle");
+    templatesButton.textContent = labels.templates;
+    templatesButton.setAttribute("aria-label", labels.templates);
+    templatesButton.title = labels.templates;
+    if (templatesButton.parentNode !== actionRow) actionRow.appendChild(templatesButton);
+
+    if (templatesPanel && templatesPanel.parentNode !== rightActions) {
+      rightActions.appendChild(templatesPanel);
+    }
+
+    let mathButton = actionRow.querySelector(".love-preview-math-entry-toggle");
+    if (!mathButton) {
+      mathButton = document.createElement("button");
+      mathButton.type = "button";
+      mathButton.className = "love-preview-side-tool-button love-preview-math-entry-toggle";
+      actionRow.appendChild(mathButton);
+      mathButton.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        setMathEntryEnabled(modal, modal.dataset.loveMathEntryEnabled !== "true");
+      });
+    }
+
+    if (!modal.dataset.loveMathEntryEnabled) {
+      modal.dataset.loveMathEntryEnabled = "false";
+    }
+    setMathEntryEnabled(modal, modal.dataset.loveMathEntryEnabled === "true");
+    modal.classList.add("love-preview-side-math-tools-ready");
+    return true;
+  }
+
   function setupWorkspace(modal, stage, controls) {
     let workspace = modal.querySelector(".love-preview-side-workspace");
     let leftKeys = workspace?.querySelector(":scope > .love-preview-side-keys") || null;
@@ -203,6 +276,8 @@
       hideDuplicateClose(actionRow);
     }
 
+    setupMathTools(modal, rightActions);
+
     workspace.classList.toggle("is-expanded", stage.classList.contains("expanded-view"));
     modal.classList.add("love-preview-side-ui-ready");
   }
@@ -228,7 +303,7 @@
   let retryGeneration = 0;
   function scheduleBoundedRefresh() {
     const generation = ++retryGeneration;
-    const delays = [0, 40, 120, 300];
+    const delays = [0, 40, 120, 300, 700, 1050];
 
     for (const delay of delays) {
       window.setTimeout(() => {
@@ -264,8 +339,9 @@
     }
 
     window.TnsLovePreviewSideControls = {
-      version: "20260903-side-controls-v4-split",
-      refresh: enhanceAll
+      version: "20260903-side-controls-v5-math-tools",
+      refresh: enhanceAll,
+      setMathEntryEnabled
     };
   }
 })();
