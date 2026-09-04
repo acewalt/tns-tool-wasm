@@ -31,7 +31,7 @@
   }
 
   const V="20260831-loader-ndless-menu";
-  const NOTES_V="20260903-notepad-rich-v1";
+  const NOTES_V="20260904-notepad-rich-v2";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
   const LOVE_PREVIEW_SIDE_V="20260903-side-controls-v4-split";
   const LOVE_PREVIEW_MATH_V="20260903-live-math-v1";
