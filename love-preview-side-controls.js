@@ -47,9 +47,33 @@
   function mathLabels() {
     const lang = currentLanguage();
     const labels = {
-      en: { math: "Math entry", on: "ON", off: "OFF", templates: "Templates" },
-      es: { math: "Entrada matemática", on: "ON", off: "OFF", templates: "Plantillas" },
-      fr: { math: "Saisie mathématique", on: "ON", off: "OFF", templates: "Modèles" }
+      en: {
+        math: "Math entry",
+        on: "ON",
+        off: "OFF",
+        templates: "Templates",
+        edit: "Editable TI syntax",
+        hint: "Use ← →, Backspace or Delete to edit anywhere",
+        preview: "Optimized mathematical view"
+      },
+      es: {
+        math: "Entrada matemática",
+        on: "ON",
+        off: "OFF",
+        templates: "Plantillas",
+        edit: "Sintaxis TI editable",
+        hint: "Usa ← →, Backspace o Delete para editar en cualquier posición",
+        preview: "Vista matemática optimizada"
+      },
+      fr: {
+        math: "Saisie mathématique",
+        on: "ON",
+        off: "OFF",
+        templates: "Modèles",
+        edit: "Syntaxe TI modifiable",
+        hint: "Utilisez ← →, Retour arrière ou Suppr pour modifier partout",
+        preview: "Vue mathématique optimisée"
+      }
     };
     return labels[lang] || labels.en;
   }
@@ -159,6 +183,110 @@
     controls.classList.add("love-preview-keyboard-controls");
   }
 
+  function dispatchCanvasKey(canvas, key) {
+    if (!canvas) return;
+    const options = { key, bubbles: true, cancelable: true, composed: true };
+    canvas.dispatchEvent(new KeyboardEvent("keydown", options));
+    canvas.dispatchEvent(new KeyboardEvent("keyup", options));
+  }
+
+  function cleanLiveSource(source) {
+    const text = String(source?.textContent || "").trim();
+    return text === "—" ? "" : text;
+  }
+
+  function setupEditableMathEntry(modal) {
+    const host = modal.querySelector(".love-preview-live-math");
+    const canvas = modal.querySelector("#love-preview-canvas");
+    const source = host?.querySelector(".lpm-source code");
+    const pretty = host?.querySelector(".lpm-pretty");
+    if (!host || !canvas || !source || !pretty) return false;
+    if (host.querySelector(".love-preview-math-editor")) return true;
+
+    const labels = mathLabels();
+    const editor = document.createElement("div");
+    editor.className = "love-preview-math-editor";
+    editor.innerHTML = `
+      <div class="love-preview-math-editor-head">
+        <strong>${labels.edit}</strong>
+        <span>${labels.hint}</span>
+      </div>
+      <input class="love-preview-math-editor-input" type="text" spellcheck="false" autocomplete="off" autocapitalize="off" aria-label="${labels.edit}">
+      <div class="love-preview-math-preview-label">${labels.preview}</div>
+    `;
+    host.insertBefore(editor, pretty);
+
+    const input = editor.querySelector(".love-preview-math-editor-input");
+    const state = {
+      last: cleanLiveSource(source),
+      syncing: false,
+      composing: false
+    };
+    input.value = state.last;
+
+    const refreshFromPreview = (force = false) => {
+      if (state.syncing || state.composing) return;
+      if (!force && document.activeElement === input) return;
+      const next = cleanLiveSource(source);
+      if (next === state.last && input.value === next) return;
+      state.last = next;
+      input.value = next;
+      if (force) input.setSelectionRange(next.length, next.length);
+    };
+
+    const syncToPreview = () => {
+      if (state.composing) return;
+      const next = input.value;
+      const previous = state.last;
+      if (next === previous) return;
+
+      let prefix = 0;
+      const max = Math.min(previous.length, next.length);
+      while (prefix < max && previous[prefix] === next[prefix]) prefix += 1;
+
+      state.syncing = true;
+
+      // The TI ScriptApp field does not need an internal movable caret here.
+      // Rebuild only the changed suffix from the end, so the external editor
+      // can still offer a normal browser caret anywhere in the expression.
+      for (let i = previous.length; i > prefix; i -= 1) {
+        dispatchCanvasKey(canvas, "Backspace");
+      }
+      for (const ch of next.slice(prefix)) {
+        dispatchCanvasKey(canvas, ch);
+      }
+
+      state.last = next;
+      queueMicrotask(() => {
+        state.syncing = false;
+      });
+    };
+
+    input.addEventListener("compositionstart", () => {
+      state.composing = true;
+    });
+    input.addEventListener("compositionend", () => {
+      state.composing = false;
+      syncToPreview();
+    });
+    input.addEventListener("input", syncToPreview);
+    input.addEventListener("keydown", event => {
+      event.stopPropagation();
+      if (event.key === "Enter") {
+        event.preventDefault();
+        dispatchCanvasKey(canvas, "Enter");
+      }
+    });
+
+    const refreshLater = () => window.setTimeout(() => refreshFromPreview(false), 0);
+    canvas.addEventListener("keydown", refreshLater, false);
+    canvas.addEventListener("click", refreshLater, false);
+
+    editor.addEventListener("click", event => event.stopPropagation());
+    modal.classList.add("love-preview-editable-math-ready");
+    return true;
+  }
+
   function setMathEntryEnabled(modal, enabled) {
     const host = modal.querySelector(".love-preview-live-math");
     const button = modal.querySelector(".love-preview-math-entry-toggle");
@@ -173,6 +301,17 @@
     button.dataset.enabled = value ? "true" : "false";
     button.textContent = `${labels.math}: ${value ? labels.on : labels.off}`;
     button.title = value ? `${labels.math}: ${labels.on}` : `${labels.math}: ${labels.off}`;
+
+    if (value) {
+      setupEditableMathEntry(modal);
+      const input = host.querySelector(".love-preview-math-editor-input");
+      const source = host.querySelector(".lpm-source code");
+      if (input && source && document.activeElement !== input) {
+        const text = cleanLiveSource(source);
+        input.value = text;
+        input.setSelectionRange(text.length, text.length);
+      }
+    }
   }
 
   function setupMathTools(modal, rightActions) {
@@ -207,6 +346,8 @@
         setMathEntryEnabled(modal, modal.dataset.loveMathEntryEnabled !== "true");
       });
     }
+
+    setupEditableMathEntry(modal);
 
     if (!modal.dataset.loveMathEntryEnabled) {
       modal.dataset.loveMathEntryEnabled = "false";
@@ -339,7 +480,7 @@
     }
 
     window.TnsLovePreviewSideControls = {
-      version: "20260903-side-controls-v5-math-tools",
+      version: "20260904-side-controls-v6-editable-math",
       refresh: enhanceAll,
       setMathEntryEnabled
     };
