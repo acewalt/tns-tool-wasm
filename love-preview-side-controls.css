@@ -110,6 +110,64 @@
   display: none !important;
 }
 
+/* Editable TI syntax sits immediately above the pretty mathematical mirror.
+   It is a real browser input, so Home/End, arrows, selection, Backspace and
+   Delete work naturally even when the Lua ScriptApp itself only appends text. */
+.love-preview-math-editor {
+  padding: 9px 10px 8px;
+  border-bottom: 1px solid var(--line);
+  background: color-mix(in srgb, var(--panel) 88%, #ffffff 12%);
+}
+
+.love-preview-math-editor-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.love-preview-math-editor-head strong,
+.love-preview-math-preview-label {
+  font-size: 11px;
+  font-weight: 900;
+  color: var(--text);
+}
+
+.love-preview-math-editor-head span {
+  min-width: 0;
+  color: var(--muted);
+  font-size: 10px;
+  text-align: right;
+}
+
+.love-preview-math-editor-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  outline: none;
+  background: var(--input, #0d1728);
+  color: var(--text);
+  font: 12px/1.35 Consolas, "SFMono-Regular", Menlo, monospace;
+  caret-color: var(--lime);
+}
+
+.love-preview-math-editor-input:focus {
+  border-color: var(--lime);
+  box-shadow: 0 0 0 2px rgb(151 239 54 / 16%);
+}
+
+.love-preview-math-preview-label {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+
 /* The Templates palette is reparented to the right rail. On desktop it opens
    toward the calculator instead of overflowing beyond the modal. */
 @media (min-width: 981px) {
@@ -226,6 +284,16 @@
     width: auto !important;
     min-width: 128px !important;
     flex: 1 1 150px !important;
+  }
+
+  .love-preview-math-editor-head {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .love-preview-math-editor-head span {
+    text-align: left;
   }
 }
 
