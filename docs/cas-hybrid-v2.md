@@ -1,0 +1,1 @@
+This revision introduces a Giac-assisted synchronous fallback for explicit first-order separable ODEs when Giac `desolve` returns `[]`. SymPy remains a secondary fallback through the Pyodide runtime already loaded by the site. Diagnostic log messages report whether the Giac separable fallback, SymPy, or neither backend handled the ODE.
