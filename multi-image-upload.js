@@ -33,6 +33,7 @@
   const V="20260831-loader-ndless-menu";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
+  const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
   const LOVE_PREVIEW_SIDE_V="20260903-side-controls-v4-split";
   const LOVE_PREVIEW_MATH_V="20260903-live-math-v1";
@@ -114,6 +115,7 @@
     ['script[data-inspector-summary-filter="true"]', "./inspector-summary-filter.js?v=20260827-summary-filter-v1", "inspectorSummaryFilter"],
     ['script[data-notepad-rich-view="true"]', `./notepad-rich-view.js?v=${NOTES_V}`, "notepadRichView"],
     ['script[data-notepad-rich-size-fix="true"]', `./notepad-rich-size-fix.js?v=${NOTES_SIZE_FIX_V}`, "notepadRichSizeFix"],
+    ['script[data-notepad-rich-save-fix="true"]', `./notepad-rich-save-fix.js?v=${NOTES_SAVE_FIX_V}`, "notepadRichSaveFix"],
     ['script[data-lua-guide-cas="true"]', `./lua-guide-cas.js?v=${LUA_GUIDE_CAS_V}`, "luaGuideCas"],
     ['script[data-love-preview-side-controls="true"]', `./love-preview-side-controls.js?v=${LOVE_PREVIEW_SIDE_V}`, "lovePreviewSideControls"],
     ['script[data-love-preview-live-math="true"]', `./love-preview-live-math.js?v=${LOVE_PREVIEW_MATH_V}`, "lovePreviewLiveMath"],
