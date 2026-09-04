@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 
-const source = fs.readFileSync(new URL("../ti-cas-preview-bridge-v2.js", import.meta.url), "utf8");
+const source = fs.readFileSync(new URL("../ti-cas-preview-bridge-v3.js", import.meta.url), "utf8");
 let captured = null;
 const windowObject = {
   createLuaJsPreviewRuntime: async (code, ctx, canvas, logEl, symbols) => {
@@ -21,12 +21,12 @@ const context = {
   Infinity,
 };
 vm.createContext(context);
-vm.runInContext(source, context, { filename: "ti-cas-preview-bridge-v2.js" });
+vm.runInContext(source, context, { filename: "ti-cas-preview-bridge-v3.js" });
 
 const bridge = windowObject.TnsCasBridge;
 assert.ok(bridge, "TnsCasBridge should be installed");
 assert.equal(windowObject.__tnsCasPreviewBridgeInstalled, true);
-assert.match(bridge.version, /v2$/);
+assert.match(bridge.version, /v3$/);
 assert.equal(bridge.translateTiToGiac("deSolve(y'=x*y,x,y)"), "desolve(y'=x*y,x,y)");
 assert.equal(bridge.translateTiToGiac("nSolve(x^2-4=0,x)"), "fsolve(x^2-4=0,x)");
 assert.equal(bridge.translateGiacToTi("pi+infinity"), "π+∞");
@@ -63,6 +63,6 @@ assert.ok(captured.code.includes('local r = math.evalStr("factor(x^2-1)")'));
 assert.equal(captured.symbols.variables.keep, 1);
 assert.equal(typeof captured.symbols.variables.__tnsCasEval, "function");
 assert.equal(typeof captured.symbols.variables.__tnsCasEvalStr, "function");
-assert.match(log.textContent, /CAS Preview:/);
+assert.match(log.textContent, /CAS Preview v3:/);
 
-console.log("ti-cas-preview-bridge v2 tests: OK");
+console.log("ti-cas-preview-bridge v3 tests: OK");
