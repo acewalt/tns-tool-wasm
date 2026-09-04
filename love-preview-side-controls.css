@@ -102,6 +102,9 @@
   border-color: var(--lime) !important;
 }
 
+/* Math entry is opt-in. Keep the live pane hidden until the right-rail boolean
+   control has been installed, then let the button own the visible state. */
+.love-preview-modal:not(.love-preview-side-math-tools-ready) .love-preview-live-math,
 .love-preview-live-math[hidden],
 .love-preview-live-math.love-preview-math-entry-hidden {
   display: none !important;
