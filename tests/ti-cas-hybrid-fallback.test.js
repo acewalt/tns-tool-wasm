@@ -17,12 +17,16 @@ vm.runInContext(source, context, { filename: "ti-cas-hybrid-fallback-v1.js" });
 
 const hybrid = windowObject.TnsCasHybrid;
 assert.ok(hybrid, "TnsCasHybrid should be installed");
-assert.match(hybrid.version, /hybrid-v1$/);
+assert.match(hybrid.version, /hybrid-v2$/);
 assert.equal(hybrid.translateIntegralAlias("integral((y+2)/(y-1),y)"), "integrate((y+2)/(y-1),y)");
 assert.deepEqual(
   hybrid.parseCall("deSolve(y'=-((x^2+1)*(y-1))/((x-3)*(y+2)),x,y)", ["deSolve"]).args,
   ["y'=-((x^2+1)*(y-1))/((x-3)*(y+2))", "x", "y"]
 );
+assert.match(source, /__tns_out\s*=\s*_result/);
+assert.match(source, /\n__tns_out\n/);
+assert.match(source, /lastRaw/);
+assert.match(source, /lastStage/);
 
 const seen = [];
 const symbols = {
