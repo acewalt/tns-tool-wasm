@@ -1,0 +1,4 @@
+- Adds Giac-assisted fallback when Giac `desolve` returns `[]` for an explicit first-order separable ODE.
+- Keeps SymPy/Pyodide as secondary fallback.
+- Adds diagnostic log lines showing which fallback was used or why it still failed.
+- Loads `ti-cas-hybrid-fallback-v2.js` before the stable Giac bridge.
