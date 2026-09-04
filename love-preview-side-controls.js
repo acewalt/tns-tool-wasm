@@ -27,6 +27,8 @@
     "remplacer par ti-nspire"
   ];
 
+  const CLOSE_TERMS = ["close", "cerrar", "fermer"];
+
   function norm(value) {
     return String(value || "")
       .trim()
@@ -61,7 +63,7 @@
     for (const button of buttons) {
       const text = norm(button.textContent);
       if (ACTION_TERMS.some(term => text.includes(norm(term)))) known += 1;
-      if (["close", "cerrar", "fermer"].includes(text)) closeCount += 1;
+      if (CLOSE_TERMS.includes(text)) closeCount += 1;
     }
 
     if (known < 2) return -1;
@@ -84,6 +86,17 @@
     }
 
     return bestScore >= 20 ? best : null;
+  }
+
+  function hideDuplicateClose(actionRow) {
+    if (!actionRow) return;
+    for (const button of directButtons(actionRow)) {
+      if (!CLOSE_TERMS.includes(norm(button.textContent))) continue;
+      button.hidden = true;
+      button.classList.add("love-preview-side-close-hidden");
+      button.setAttribute("aria-hidden", "true");
+      button.tabIndex = -1;
+    }
   }
 
   function setupKeys(controls) {
@@ -156,12 +169,16 @@
     if (stage.parentNode !== center) center.appendChild(stage);
     if (controls.parentNode !== center) center.appendChild(controls);
 
-    if (!side.querySelector(".love-preview-side-action-row")) {
-      const actionRow = findActionRow(modal);
+    let actionRow = side.querySelector(".love-preview-side-action-row");
+    if (!actionRow) {
+      actionRow = findActionRow(modal);
       if (actionRow) {
         actionRow.classList.add("love-preview-side-action-row");
+        hideDuplicateClose(actionRow);
         side.appendChild(actionRow);
       }
+    } else {
+      hideDuplicateClose(actionRow);
     }
 
     workspace.classList.toggle("is-expanded", stage.classList.contains("expanded-view"));
@@ -227,7 +244,7 @@
     }
 
     window.TnsLovePreviewSideControls = {
-      version: "20260903-side-controls-v2-hotfix",
+      version: "20260903-side-controls-v3-left",
       refresh: enhanceAll
     };
   }
