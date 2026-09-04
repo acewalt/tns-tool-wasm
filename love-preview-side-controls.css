@@ -1,5 +1,5 @@
 /* Preview LÖVE desktop control layout.
-   - Bottom modal actions move to a compact right-side rail.
+   - Bottom modal actions move to a compact left-side rail.
    - Direction keys use a keyboard-style arrow pad below the calculator.
    The runtime JS only adds classes/reparents existing buttons, so their
    original click handlers remain intact. */
@@ -11,12 +11,14 @@
 .love-preview-side-workspace {
   width: 100%;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 164px;
+  grid-template-columns: 164px minmax(0, 1fr);
   gap: 18px;
   align-items: start;
 }
 
 .love-preview-side-center {
+  grid-column: 2;
+  grid-row: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
@@ -29,6 +31,8 @@
 }
 
 .love-preview-side-actions {
+  grid-column: 1;
+  grid-row: 1;
   min-width: 0;
   padding-top: 8px;
 }
@@ -52,6 +56,11 @@
   line-height: 1.15;
   min-height: 42px;
   padding: 9px 10px;
+}
+
+.love-preview-side-actions .love-preview-side-action-row > button[hidden],
+.love-preview-side-actions .love-preview-side-close-hidden {
+  display: none !important;
 }
 
 /* Existing .preview-controls is kept as the event container, but its keys are
@@ -118,7 +127,7 @@
 /* 800x600 expanded calculator still fits beside the action rail on normal
    desktop widths. */
 .love-preview-side-workspace.is-expanded {
-  grid-template-columns: minmax(0, 1fr) 154px;
+  grid-template-columns: 154px minmax(0, 1fr);
   gap: 14px;
 }
 
@@ -133,7 +142,14 @@
     gap: 10px;
   }
 
+  .love-preview-side-center {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
   .love-preview-side-actions {
+    grid-column: 1;
+    grid-row: 2;
     padding-top: 0;
   }
 
