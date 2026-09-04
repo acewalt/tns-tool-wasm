@@ -9,16 +9,11 @@
     left: ["left", "izquierda", "gauche"],
     right: ["right", "derecha", "droite"],
     space: ["space", "espacio", "espace"],
-    enter: ["enter", "entrar", "intro", "entrée", "entree"],
-    esc: ["esc", "escape", "échap", "echap"]
+    enter: ["enter", "entrar", "intro", "entree"],
+    esc: ["esc", "escape", "echap"]
   };
 
-  const ARROWS = {
-    up: "↑",
-    down: "↓",
-    left: "←",
-    right: "→"
-  };
+  const ARROWS = { up: "↑", down: "↓", left: "←", right: "→" };
 
   const ACTION_TERMS = [
     "copy content",
@@ -63,15 +58,12 @@
 
     let known = 0;
     let closeCount = 0;
-
     for (const button of buttons) {
       const text = norm(button.textContent);
       if (ACTION_TERMS.some(term => text.includes(norm(term)))) known += 1;
       if (["close", "cerrar", "fermer"].includes(text)) closeCount += 1;
     }
 
-    // The Preview footer has three named actions plus Close. Requiring at
-    // least two named actions prevents us from grabbing the modal header.
     if (known < 2) return -1;
     return known * 10 + closeCount;
   }
@@ -79,8 +71,8 @@
   function findActionRow(modal) {
     let best = null;
     let bestScore = -1;
-
     const candidates = [modal, ...modal.querySelectorAll("div, footer, section")];
+
     for (const candidate of candidates) {
       if (candidate.classList?.contains("preview-controls")) continue;
       if (candidate.closest(".love-preview-side-actions")) continue;
@@ -97,17 +89,12 @@
   function setupKeys(controls) {
     if (!controls || controls.classList.contains("love-preview-keyboard-controls")) return;
 
-    const buttons = Array.from(controls.querySelectorAll("button"));
     const found = new Map();
-
-    for (const button of buttons) {
+    for (const button of controls.querySelectorAll("button")) {
       const key = keyName(button);
-      if (!key || found.has(key)) continue;
-      found.set(key, button);
+      if (key && !found.has(key)) found.set(key, button);
     }
 
-    // Only switch layout after the four directions were found. This avoids
-    // altering unrelated .preview-controls containers elsewhere on the page.
     if (!["up", "down", "left", "right"].every(key => found.has(key))) return;
 
     const dpad = document.createElement("div");
@@ -145,8 +132,8 @@
 
   function setupWorkspace(modal, stage, controls) {
     let workspace = modal.querySelector(".love-preview-side-workspace");
-    let center;
-    let side;
+    let center = workspace?.querySelector(":scope > .love-preview-side-center") || null;
+    let side = workspace?.querySelector(":scope > .love-preview-side-actions") || null;
 
     if (!workspace) {
       workspace = document.createElement("div");
@@ -162,15 +149,12 @@
       stage.parentNode.insertBefore(workspace, stage);
       workspace.appendChild(center);
       workspace.appendChild(side);
-    } else {
-      center = workspace.querySelector(":scope > .love-preview-side-center");
-      side = workspace.querySelector(":scope > .love-preview-side-actions");
     }
 
-    if (!center || !side) return null;
+    if (!center || !side) return;
 
     if (stage.parentNode !== center) center.appendChild(stage);
-    if (controls && controls.parentNode !== center) center.appendChild(controls);
+    if (controls.parentNode !== center) center.appendChild(controls);
 
     if (!side.querySelector(".love-preview-side-action-row")) {
       const actionRow = findActionRow(modal);
@@ -180,46 +164,60 @@
       }
     }
 
-    const expanded = stage.classList.contains("expanded-view");
-    if (workspace.classList.contains("is-expanded") !== expanded) {
-      workspace.classList.toggle("is-expanded", expanded);
-    }
+    workspace.classList.toggle("is-expanded", stage.classList.contains("expanded-view"));
     modal.classList.add("love-preview-side-ui-ready");
-    return workspace;
   }
 
   function enhanceModal(modal) {
-    if (!modal) return;
-
-    const stage = modal.querySelector(".love-preview-stage");
-    const controls = modal.querySelector(".preview-controls");
-    if (!stage || !controls) return;
+    const stage = modal?.querySelector(".love-preview-stage");
+    const controls = modal?.querySelector(".preview-controls");
+    if (!stage || !controls) return false;
 
     setupKeys(controls);
     setupWorkspace(modal, stage, controls);
+    return true;
   }
 
-  let refreshQueued = false;
   function enhanceAll() {
-    refreshQueued = false;
-    document.querySelectorAll(".love-preview-modal").forEach(enhanceModal);
+    let count = 0;
+    for (const modal of document.querySelectorAll(".love-preview-modal")) {
+      if (enhanceModal(modal)) count += 1;
+    }
+    return count;
   }
 
-  function scheduleRefresh() {
-    if (refreshQueued) return;
-    refreshQueued = true;
-    queueMicrotask(enhanceAll);
+  let retryGeneration = 0;
+  function scheduleBoundedRefresh() {
+    const generation = ++retryGeneration;
+    const delays = [0, 40, 120, 300];
+
+    for (const delay of delays) {
+      window.setTimeout(() => {
+        if (generation !== retryGeneration) return;
+        enhanceAll();
+      }, delay);
+    }
+  }
+
+  function isPreviewOpenButton(button) {
+    if (!button) return false;
+    const text = norm(button.textContent || button.getAttribute("aria-label") || button.title);
+    return text.includes("preview") && text.includes("love");
   }
 
   if (!document.documentElement.hasAttribute(INSTALLED)) {
     document.documentElement.setAttribute(INSTALLED, "1");
 
-    const observer = new MutationObserver(scheduleRefresh);
-    observer.observe(document.body || document.documentElement, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      attributeFilter: ["class"]
+    // IMPORTANT: do not watch the whole document with MutationObserver.
+    // Preview LÖVE updates snapshots/log DOM frequently; observing every
+    // child/class mutation can create a feedback loop and freeze the tab.
+    // Instead we enhance only after the user opens/interacts with the preview,
+    // using a short bounded retry window for asynchronously-created modal DOM.
+    document.addEventListener("click", event => {
+      const button = event.target?.closest?.("button");
+      if (isPreviewOpenButton(button) || button?.closest?.(".love-preview-modal")) {
+        scheduleBoundedRefresh();
+      }
     });
 
     if (document.readyState === "loading") {
@@ -229,7 +227,7 @@
     }
 
     window.TnsLovePreviewSideControls = {
-      version: "20260903-side-controls-v1",
+      version: "20260903-side-controls-v2-hotfix",
       refresh: enhanceAll
     };
   }
