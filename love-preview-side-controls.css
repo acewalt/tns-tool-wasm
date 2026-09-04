@@ -1,6 +1,7 @@
 /* Preview LÖVE desktop control layout.
    - Navigation keys live in a compact LEFT rail.
    - Preview action buttons live in a compact RIGHT rail.
+   - Templates and Math entry controls also live in the RIGHT rail.
    - The duplicated footer Close button is hidden; the modal header Close remains.
    Existing buttons are only reparented, so their original handlers stay intact. */
 
@@ -45,6 +46,7 @@
   grid-row: 1;
   min-width: 0;
   padding-top: 8px;
+  position: relative;
 }
 
 .love-preview-side-actions .love-preview-side-action-row {
@@ -71,6 +73,48 @@
 .love-preview-side-actions .love-preview-side-action-row > button[hidden],
 .love-preview-side-actions .love-preview-side-close-hidden {
   display: none !important;
+}
+
+/* Preview-specific tools share the exact same right rail as the existing
+   Copy / Replace actions. This also fixes the old tiny green Templates pill. */
+.love-preview-side-actions .love-preview-side-tool-button {
+  width: 100% !important;
+  min-width: 0 !important;
+  min-height: 42px !important;
+  margin: 0 !important;
+  padding: 9px 10px !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: normal !important;
+  line-height: 1.15 !important;
+  overflow: visible !important;
+  text-overflow: clip !important;
+}
+
+.love-preview-side-actions .love-preview-templates-toggle {
+  margin-top: 0 !important;
+}
+
+.love-preview-side-actions .love-preview-math-entry-toggle[aria-pressed="true"] {
+  background: var(--lime) !important;
+  color: #23310f !important;
+  border-color: var(--lime) !important;
+}
+
+.love-preview-live-math[hidden],
+.love-preview-live-math.love-preview-math-entry-hidden {
+  display: none !important;
+}
+
+/* The Templates palette is reparented to the right rail. On desktop it opens
+   toward the calculator instead of overflowing beyond the modal. */
+@media (min-width: 981px) {
+  .love-preview-side-actions > .lpm-panel {
+    left: auto !important;
+    right: calc(100% + 12px) !important;
+    top: 0 !important;
+  }
 }
 
 /* The existing .preview-controls remains the event container. It is moved to
