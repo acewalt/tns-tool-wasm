@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const HYBRID_VERSION = "2026-09-03-ti-cas-hybrid-v1";
+  const HYBRID_VERSION = "2026-09-03-ti-cas-hybrid-v2";
   const state = {
     version: HYBRID_VERSION,
     sympyStatus: "idle",
@@ -9,7 +9,9 @@
     sympyLoadPromise: null,
     constantCounter: 0,
     lastFallback: null,
-    lastExpression: ""
+    lastExpression: "",
+    lastRaw: "",
+    lastStage: "idle"
   };
 
   function appendLog(logEl, message) {
@@ -133,12 +135,15 @@
     const dependent = call.args[2];
     state.constantCounter += 1;
     const constantName = `c${state.constantCounter}`;
+    state.lastStage = "sympy-start";
+    state.sympyError = null;
 
     try {
       runtime.globals.set("__tns_ode_equation", equation);
       runtime.globals.set("__tns_ode_independent", independent);
       runtime.globals.set("__tns_ode_dependent", dependent);
       runtime.globals.set("__tns_ode_constant", constantName);
+
       const raw = runtime.runPython(`
 import sympy as sp
 
@@ -176,34 +181,38 @@ if '=' in _work:
     _lhs_text, _rhs_text = _work.split('=', 1)
 else:
     _lhs_text, _rhs_text = _work, '0'
+
 _lhs = sp.sympify(_lhs_text, locals=_locals)
 _rhs = sp.sympify(_rhs_text, locals=_locals)
 _ode = sp.Eq(_lhs, _rhs)
 _d1 = sp.diff(_yx, _x)
 _result = None
 _backend = 'sympy-dsolve'
+_diag = ''
 
-# TI-like first-order separable fallback: build the implicit solution directly.
+# First try a TI-like separable solve and build an implicit solution.
 try:
     _solved = sp.solve(_ode, _d1)
     if _solved:
-        _F = sp.cancel(_solved[0])
+        _F = sp.factor(sp.cancel(_solved[0]))
         _Y = sp.Symbol('__Y__')
-        _Fxy = _F.xreplace({_yx: _Y})
+        _Fxy = sp.factor(_F.xreplace({_yx: _Y}))
         _sep = sp.separatevars(_Fxy, symbols=[_x, _Y], dict=True, force=True)
         if isinstance(_sep, dict) and _x in _sep and _Y in _sep:
             _coeff = _sep.get('coeff', sp.Integer(1))
-            _fx = _sep[_x]
-            _fy = _sep[_Y]
+            _fx = sp.factor(_sep[_x])
+            _fy = sp.factor(_sep[_Y])
             _left = sp.integrate(1 / _fy, _Y)
             _right = sp.integrate(_coeff * _fx, _x)
             if not _left.has(sp.Integral) and not _right.has(sp.Integral):
                 _left = _left.xreplace({_Y: _yx})
                 _result = sp.sstr(_left) + '=' + sp.sstr(_right) + '+' + _const_name
                 _backend = 'separable-fallback'
-except Exception:
+except Exception as _exc:
+    _diag = 'separable:' + repr(_exc)
     _result = None
 
+# Then use SymPy dsolve for other supported ODE families.
 if _result is None:
     try:
         _sol = sp.dsolve(_ode, _yx)
@@ -213,27 +222,48 @@ if _result is None:
             _result = sp.sstr(_sol.lhs) + '=' + sp.sstr(_sol.rhs)
         elif _sol is not None:
             _result = sp.sstr(_sol)
-    except Exception:
+        _backend = 'sympy-dsolve'
+    except Exception as _exc:
+        if _diag:
+            _diag += '|'
+        _diag += 'dsolve:' + repr(_exc)
         _result = None
 
+# IMPORTANT: runPython returns the final top-level expression. The old version
+# ended with an if statement, so Pyodide returned None even when _result existed.
 if _result is None:
-    '__TNS_NO_SOLUTION__'
+    __tns_out = '__TNS_NO_SOLUTION__' + (('|||DIAG:' + _diag) if _diag else '')
 else:
-    _result + '|||BACKEND:' + _backend
+    __tns_out = _result + '|||BACKEND:' + _backend
+__tns_out
 `);
+
       const text = String(raw ?? "").trim();
-      if (!text || text === "__TNS_NO_SOLUTION__") return null;
+      state.lastRaw = text;
+      if (!text) {
+        state.lastStage = "empty-result";
+        return null;
+      }
+      if (text.startsWith("__TNS_NO_SOLUTION__")) {
+        const diagAt = text.indexOf("|||DIAG:");
+        if (diagAt >= 0) state.sympyError = text.slice(diagAt + 8);
+        state.lastStage = "no-solution";
+        return null;
+      }
+
       const marker = "|||BACKEND:";
       const at = text.lastIndexOf(marker);
       const backend = at >= 0 ? text.slice(at + marker.length).trim() : "sympy";
       const value = at >= 0 ? text.slice(0, at) : text;
       state.lastFallback = backend;
+      state.lastStage = "fallback-success";
       return {
         value: tiFormat(value, independent, dependent, constantName),
         backend
       };
     } catch (error) {
       state.sympyError = String(error?.message || error);
+      state.lastStage = "exception";
       return null;
     } finally {
       for (const key of ["__tns_ode_equation", "__tns_ode_independent", "__tns_ode_dependent", "__tns_ode_constant"]) {
@@ -260,9 +290,10 @@ else:
       }
 
       const first = normalizeBindingResult(original(expression));
-      const [value, error, handled] = first;
+      const [value, _error, handled] = first;
       if (!isDeSolve(expression) || (handled && !unresolvedOdeValue(value))) return first;
 
+      state.lastStage = "giac-unresolved";
       const fallback = sympyOdeFallback(expression);
       if (!fallback) return first;
       if (mode === "evalStr") return [fallback.value, null, true];
@@ -285,7 +316,9 @@ else:
         sympyError: state.sympyError,
         constantCounter: state.constantCounter,
         lastFallback: state.lastFallback,
-        lastExpression: state.lastExpression
+        lastExpression: state.lastExpression,
+        lastRaw: state.lastRaw,
+        lastStage: state.lastStage
       };
     }
   };
@@ -298,10 +331,10 @@ else:
 
   window.createLuaJsPreviewRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
     if (codeMayNeedSympy(code)) {
-      appendLog(logEl, "CAS Hybrid: preparando SymPy como fallback de EDO...");
+      appendLog(logEl, "CAS Hybrid v2: preparando SymPy como fallback de EDO...");
       const ready = await ensureSympy();
-      if (ready) appendLog(logEl, "CAS Hybrid: SymPy listo.");
-      else appendLog(logEl, `CAS Hybrid: SymPy no disponible (${state.sympyError || "error desconocido"}).`);
+      if (ready) appendLog(logEl, "CAS Hybrid v2: SymPy listo.");
+      else appendLog(logEl, `CAS Hybrid v2: SymPy no disponible (${state.sympyError || "error desconocido"}).`);
     }
 
     const variables = { ...(symbols?.variables || {}) };
