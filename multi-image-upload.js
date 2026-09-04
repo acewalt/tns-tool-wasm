@@ -33,7 +33,7 @@
   const V="20260831-loader-ndless-menu";
   const NOTES_V="20260903-notepad-rich-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
-  const LOVE_PREVIEW_SIDE_V="20260903-side-controls-v3-left";
+  const LOVE_PREVIEW_SIDE_V="20260903-side-controls-v4-split";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./runtime-loading-overlay.css?v=${V}`, "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
