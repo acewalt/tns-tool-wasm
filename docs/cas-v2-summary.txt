@@ -1,0 +1,1 @@
+Giac-assisted separable ODE fallback + SymPy secondary fallback.
