@@ -131,8 +131,8 @@
 
 // CAS Preview load order matters: install the hybrid lower-runtime wrapper first,
 // then load the stable Giac bridge. Giac will call through the hybrid layer with
-// its __tnsCasEval/__tnsCasEvalStr bindings, allowing SymPy/own fallbacks without
-// changing the Lua stored in the TNS document.
+// its __tnsCasEval/__tnsCasEvalStr bindings, allowing Giac/SymPy/own fallbacks
+// without changing the Lua stored in the TNS document.
 (() => {
   function loadScript(src, datasetKey) {
     return new Promise((resolve, reject) => {
@@ -158,7 +158,7 @@
     if (window.__tnsCasPreviewBridgeInstalled) return;
     try {
       if (!window.__tnsCasHybridInstalled) {
-        await loadScript("./ti-cas-hybrid-fallback-v1.js?v=20260903-ti-cas-hybrid-v1", "ti-cas-hybrid");
+        await loadScript("./ti-cas-hybrid-fallback-v2.js?v=20260903-ti-cas-hybrid-v2", "ti-cas-hybrid");
       }
       if (!window.__tnsCasPreviewBridgeInstalled) {
         await loadScript("./ti-cas-preview-bridge-v3.js?v=20260903-giac-preview-v3", "ti-cas-preview-bridge");
