@@ -95,20 +95,7 @@
   }
 
   function setupKeys(controls) {
-    if (!controls) return;
-
-    let dpad = controls.querySelector(":scope > .love-preview-dpad");
-    let aux = controls.querySelector(":scope > .love-preview-aux-keys");
-
-    if (!dpad) {
-      dpad = document.createElement("div");
-      dpad.className = "love-preview-dpad";
-    }
-
-    if (!aux) {
-      aux = document.createElement("div");
-      aux.className = "love-preview-aux-keys";
-    }
+    if (!controls || controls.classList.contains("love-preview-keyboard-controls")) return;
 
     const buttons = Array.from(controls.querySelectorAll("button"));
     const found = new Map();
@@ -119,10 +106,18 @@
       found.set(key, button);
     }
 
+    // Only switch layout after the four directions were found. This avoids
+    // altering unrelated .preview-controls containers elsewhere on the page.
+    if (!["up", "down", "left", "right"].every(key => found.has(key))) return;
+
+    const dpad = document.createElement("div");
+    dpad.className = "love-preview-dpad";
+
+    const aux = document.createElement("div");
+    aux.className = "love-preview-aux-keys";
+
     for (const key of ["up", "left", "down", "right"]) {
       const button = found.get(key);
-      if (!button) continue;
-
       if (!button.dataset.loveOriginalLabel) {
         button.dataset.loveOriginalLabel = String(button.textContent || "").trim();
       }
@@ -143,17 +138,13 @@
       aux.appendChild(button);
     }
 
-    // Only switch layout after the four directions were found. This avoids
-    // altering unrelated .preview-controls containers elsewhere on the page.
-    if (["up", "down", "left", "right"].every(key => found.has(key))) {
-      controls.classList.add("love-preview-keyboard-controls");
-      if (!dpad.parentNode) controls.appendChild(dpad);
-      if (!aux.parentNode && aux.children.length) controls.appendChild(aux);
-    }
+    controls.appendChild(dpad);
+    if (aux.children.length) controls.appendChild(aux);
+    controls.classList.add("love-preview-keyboard-controls");
   }
 
   function setupWorkspace(modal, stage, controls) {
-    let workspace = modal.querySelector(":scope .love-preview-side-workspace");
+    let workspace = modal.querySelector(".love-preview-side-workspace");
     let center;
     let side;
 
@@ -181,13 +172,18 @@
     if (stage.parentNode !== center) center.appendChild(stage);
     if (controls && controls.parentNode !== center) center.appendChild(controls);
 
-    const actionRow = findActionRow(modal);
-    if (actionRow && actionRow.parentNode !== side) {
-      actionRow.classList.add("love-preview-side-action-row");
-      side.appendChild(actionRow);
+    if (!side.querySelector(".love-preview-side-action-row")) {
+      const actionRow = findActionRow(modal);
+      if (actionRow) {
+        actionRow.classList.add("love-preview-side-action-row");
+        side.appendChild(actionRow);
+      }
     }
 
-    workspace.classList.toggle("is-expanded", stage.classList.contains("expanded-view"));
+    const expanded = stage.classList.contains("expanded-view");
+    if (workspace.classList.contains("is-expanded") !== expanded) {
+      workspace.classList.toggle("is-expanded", expanded);
+    }
     modal.classList.add("love-preview-side-ui-ready");
     return workspace;
   }
@@ -203,19 +199,22 @@
     setupWorkspace(modal, stage, controls);
   }
 
+  let refreshQueued = false;
   function enhanceAll() {
+    refreshQueued = false;
     document.querySelectorAll(".love-preview-modal").forEach(enhanceModal);
+  }
+
+  function scheduleRefresh() {
+    if (refreshQueued) return;
+    refreshQueued = true;
+    queueMicrotask(enhanceAll);
   }
 
   if (!document.documentElement.hasAttribute(INSTALLED)) {
     document.documentElement.setAttribute(INSTALLED, "1");
 
-    const observer = new MutationObserver(() => {
-      // Coalesce the many DOM writes generated while the preview snapshot is
-      // refreshed. queueMicrotask keeps the control patch cheap and idempotent.
-      queueMicrotask(enhanceAll);
-    });
-
+    const observer = new MutationObserver(scheduleRefresh);
     observer.observe(document.body || document.documentElement, {
       childList: true,
       subtree: true,
