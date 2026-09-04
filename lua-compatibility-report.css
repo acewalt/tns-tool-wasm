@@ -1,0 +1,69 @@
+/* Lua import compatibility summary + full report dialog. */
+.tns-import-progress-actions { gap: 10px; flex-wrap: wrap; }
+.tns-import-progress-report {
+  min-width: 128px;
+  min-height: 39px;
+  padding: 9px 18px;
+  border: 1px solid rgba(118, 167, 226, .48);
+  border-radius: 999px;
+  background: rgba(36, 70, 112, .45);
+  color: #dbeaff;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(7px) scale(.94);
+  transition: filter 160ms ease, transform 160ms ease;
+}
+.tns-import-progress-report.visible { opacity: 1; pointer-events: auto; animation: tnsImportButtonIn 380ms cubic-bezier(.16,1.4,.35,1) forwards; }
+.tns-import-progress-report:hover { filter: brightness(1.08); transform: translateY(-1px) scale(1.01); }
+.tns-import-progress-meta { margin-top: 8px; color: #8ea4bf; font-size: 11px; }
+.tns-import-progress-compat { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 9px; }
+.tns-import-progress-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 999px; border: 1px solid rgba(105,140,183,.22); background: rgba(14,31,52,.62); color: #a9bad0; font-size: 10px; font-weight: 800; }
+.tns-import-progress-chip.ready { border-color: rgba(103,220,111,.27); color: #9af0a1; }
+.tns-import-progress-chip.review { border-color: rgba(255,194,92,.28); color: #ffd07a; }
+.tns-import-progress-chip.hybrid { border-color: rgba(104,182,255,.3); color: #8ec8ff; }
+
+.tns-lua-compat-overlay { position: fixed; inset: 0; z-index: 2147482900; display: grid; place-items: center; padding: 22px; background: rgba(2,8,18,.25); backdrop-filter: blur(0px); opacity: 0; transition: opacity 180ms ease, background 220ms ease, backdrop-filter 220ms ease; }
+.tns-lua-compat-overlay.visible { opacity: 1; background: rgba(2,8,18,.72); backdrop-filter: blur(12px) saturate(115%); }
+.tns-lua-compat-overlay.closing { opacity: 0; }
+.tns-lua-compat-card { width: min(820px, calc(100vw - 32px)); max-height: min(780px, calc(100vh - 32px)); overflow: auto; padding: 26px; border: 1px solid rgba(117,151,198,.3); border-radius: 20px; background: linear-gradient(180deg, rgba(18,30,50,.98), rgba(8,17,31,.98)); color: #e9f2ff; box-shadow: 0 32px 100px rgba(0,0,0,.55); transform: translateY(20px) scale(.97); transition: transform 220ms cubic-bezier(.16,1.1,.36,1); }
+.tns-lua-compat-overlay.visible .tns-lua-compat-card { transform: translateY(0) scale(1); }
+.tns-lua-compat-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
+.tns-lua-compat-kicker { color: #a8ff4c; font-size: 11px; font-weight: 850; letter-spacing: .08em; text-transform: uppercase; }
+.tns-lua-compat-head h2 { margin: 5px 0 0; font-size: 26px; letter-spacing: -.02em; }
+.tns-lua-compat-head p { margin: 7px 0 0; max-width: 620px; color: #93a7c2; font-size: 12px; line-height: 1.5; }
+.tns-lua-compat-x { flex: 0 0 auto; width: 34px; height: 34px; border-radius: 10px; border: 1px solid rgba(117,151,198,.24); background: rgba(16,31,52,.72); color: #dbe8fa; font-size: 20px; cursor: pointer; }
+.tns-lua-compat-file { margin-top: 19px; padding: 13px 14px; border: 1px solid rgba(93,126,169,.24); border-radius: 13px; background: rgba(5,12,23,.35); }
+.tns-lua-compat-file strong { display: block; overflow-wrap: anywhere; }
+.tns-lua-compat-file span { display: block; margin-top: 5px; color: #8ea4bf; font-size: 11px; }
+.tns-lua-compat-badges { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.tns-lua-compat-badge { display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border: 1px solid rgba(104,137,179,.25); border-radius: 999px; background: rgba(14,29,49,.7); font-size: 11px; }
+.tns-lua-compat-badge b { color: #cbd9ea; }
+.tns-lua-compat-badge span { color: #8ea4bf; }
+.tns-lua-compat-badge.ready span { color: #8bec95; }
+.tns-lua-compat-badge.review span { color: #ffd07a; }
+.tns-lua-compat-badge.hybrid span { color: #8ec8ff; }
+.tns-lua-compat-static-note { margin: 8px 2px 0; color: #6f849f; font-size: 10px; }
+.tns-lua-compat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+.tns-lua-compat-grid > section { min-width: 0; padding: 14px; border: 1px solid rgba(92,124,166,.2); border-radius: 14px; background: rgba(7,15,27,.34); }
+.tns-lua-compat-grid > section.wide { grid-column: 1 / -1; }
+.tns-lua-compat-grid h3 { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 0 0 10px; color: #dce8f8; font-size: 13px; }
+.tns-lua-compat-grid h3 span { min-width: 25px; padding: 2px 7px; border-radius: 999px; background: rgba(105,139,184,.12); color: #8ea4bf; font-size: 10px; text-align: center; }
+.tns-lua-compat-grid ul { margin: 0; padding-left: 18px; max-height: 160px; overflow: auto; color: #a9bad0; font-size: 11px; line-height: 1.5; }
+.tns-lua-compat-grid li + li { margin-top: 5px; }
+.tns-lua-compat-grid code { color: #bfe58d; font-size: 11px; }
+.tns-lua-compat-grid pre { margin: 5px 0 0; padding: 8px 9px; overflow: auto; border-radius: 9px; background: #07101d; color: #bcd0e7; font-size: 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.tns-lua-compat-kind { color: #7189a5; font-size: 10px; }
+.tns-lua-compat-engine { margin: -3px 0 10px; color: #8ec8ff; font-size: 11px; }
+.tns-lua-compat-grid li.warn { color: #ffd07a; }
+.tns-lua-compat-grid li.info { color: #8ec8ff; }
+.tns-lua-compat-grid li.ok { color: #8bec95; }
+.tns-lua-compat-grid li.muted { color: #71849d; }
+.tns-lua-compat-actions { display: flex; justify-content: flex-end; gap: 9px; margin-top: 18px; }
+.tns-lua-compat-actions button { min-height: 39px; padding: 9px 17px; border-radius: 999px; font: inherit; font-size: 12px; font-weight: 850; cursor: pointer; }
+.tns-lua-compat-actions .secondary { border: 1px solid rgba(118,167,226,.42); background: rgba(35,67,106,.58); color: #dbeaff; }
+.tns-lua-compat-actions .primary { border: 1px solid rgba(174,255,81,.7); background: linear-gradient(135deg,#b9ff57,#8eea2f); color: #17310b; }
+@media (max-width: 680px) { .tns-lua-compat-overlay { padding: 10px; } .tns-lua-compat-card { width: 100%; padding: 20px 16px; border-radius: 17px; } .tns-lua-compat-grid { grid-template-columns: 1fr; } .tns-lua-compat-grid > section.wide { grid-column: 1; } .tns-lua-compat-actions { flex-wrap: wrap; } }
