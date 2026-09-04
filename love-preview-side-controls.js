@@ -145,37 +145,59 @@
 
   function setupWorkspace(modal, stage, controls) {
     let workspace = modal.querySelector(".love-preview-side-workspace");
+    let leftKeys = workspace?.querySelector(":scope > .love-preview-side-keys") || null;
     let center = workspace?.querySelector(":scope > .love-preview-side-center") || null;
-    let side = workspace?.querySelector(":scope > .love-preview-side-actions") || null;
+    let rightActions = workspace?.querySelector(":scope > .love-preview-side-actions") || null;
 
     if (!workspace) {
       workspace = document.createElement("div");
       workspace.className = "love-preview-side-workspace";
 
+      leftKeys = document.createElement("aside");
+      leftKeys.className = "love-preview-side-keys";
+      leftKeys.setAttribute("aria-label", "Preview navigation controls");
+
       center = document.createElement("div");
       center.className = "love-preview-side-center";
 
-      side = document.createElement("aside");
-      side.className = "love-preview-side-actions";
-      side.setAttribute("aria-label", "Preview actions");
+      rightActions = document.createElement("aside");
+      rightActions.className = "love-preview-side-actions";
+      rightActions.setAttribute("aria-label", "Preview actions");
 
       stage.parentNode.insertBefore(workspace, stage);
+      workspace.appendChild(leftKeys);
       workspace.appendChild(center);
-      workspace.appendChild(side);
+      workspace.appendChild(rightActions);
+    } else {
+      if (!leftKeys) {
+        leftKeys = document.createElement("aside");
+        leftKeys.className = "love-preview-side-keys";
+        leftKeys.setAttribute("aria-label", "Preview navigation controls");
+        workspace.insertBefore(leftKeys, workspace.firstChild);
+      }
+      if (!center) {
+        center = document.createElement("div");
+        center.className = "love-preview-side-center";
+        workspace.appendChild(center);
+      }
+      if (!rightActions) {
+        rightActions = document.createElement("aside");
+        rightActions.className = "love-preview-side-actions";
+        rightActions.setAttribute("aria-label", "Preview actions");
+        workspace.appendChild(rightActions);
+      }
     }
 
-    if (!center || !side) return;
-
     if (stage.parentNode !== center) center.appendChild(stage);
-    if (controls.parentNode !== center) center.appendChild(controls);
+    if (controls.parentNode !== leftKeys) leftKeys.appendChild(controls);
 
-    let actionRow = side.querySelector(".love-preview-side-action-row");
+    let actionRow = rightActions.querySelector(".love-preview-side-action-row");
     if (!actionRow) {
       actionRow = findActionRow(modal);
       if (actionRow) {
         actionRow.classList.add("love-preview-side-action-row");
         hideDuplicateClose(actionRow);
-        side.appendChild(actionRow);
+        rightActions.appendChild(actionRow);
       }
     } else {
       hideDuplicateClose(actionRow);
@@ -225,11 +247,9 @@
   if (!document.documentElement.hasAttribute(INSTALLED)) {
     document.documentElement.setAttribute(INSTALLED, "1");
 
-    // IMPORTANT: do not watch the whole document with MutationObserver.
-    // Preview LÖVE updates snapshots/log DOM frequently; observing every
-    // child/class mutation can create a feedback loop and freeze the tab.
-    // Instead we enhance only after the user opens/interacts with the preview,
-    // using a short bounded retry window for asynchronously-created modal DOM.
+    // Keep the hotfix behavior: no global MutationObserver. Preview LÖVE
+    // updates snapshots/log DOM frequently, so we only enhance on user action
+    // and with a short bounded retry window.
     document.addEventListener("click", event => {
       const button = event.target?.closest?.("button");
       if (isPreviewOpenButton(button) || button?.closest?.(".love-preview-modal")) {
@@ -244,7 +264,7 @@
     }
 
     window.TnsLovePreviewSideControls = {
-      version: "20260903-side-controls-v3-left",
+      version: "20260903-side-controls-v4-split",
       refresh: enhanceAll
     };
   }
