@@ -1,7 +1,7 @@
 (() => {
   "use strict";
 
-  const VERSION = "20260904-ti-font-calibration-v1";
+  const VERSION = "20260905-ti-font-calibration-v2";
   // TI-Nspire gc font sizes behave much closer to typographic points than to
   // raw browser CSS pixels. 10 on the calculator is roughly 13.3 CSS px at
   // 96 dpi. The old preview rendered 10 as 10px, which made every ScriptApp
@@ -43,6 +43,15 @@
     return proxy;
   }
 
+  function loadPerformanceGuard() {
+    if (document.querySelector('script[data-ti-preview-performance="true"]')) return;
+    const script = document.createElement("script");
+    script.src = "./ti-preview-runtime-performance.js?v=20260905-ti-preview-runtime-performance-v1";
+    script.dataset.tiPreviewPerformance = "true";
+    script.async = false;
+    document.head.appendChild(script);
+  }
+
   function install() {
     const current = window.createLuaJsPreviewRuntime;
     if (typeof current !== "function") return false;
@@ -64,6 +73,8 @@
   for (const delay of [0, 50, 150, 400, 900, 1800, 3500]) {
     window.setTimeout(install, delay);
   }
+
+  loadPerformanceGuard();
 
   window.TnsTiPreviewFontCalibration = {
     version: VERSION,
