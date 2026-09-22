@@ -358,17 +358,13 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_experimental_tns_ou
   }
 
   function injectXmlControls() {
-    // Direct writable-open remains available internally, but it is not shown in
-    // the File menu because it duplicates the normal Open TNS / Save flow.
+    // These legacy XML save actions are no longer exposed in the File menu.
+    // Remove them if they were injected by an older cached version of the script.
     const createButton = document.querySelector("#xml-create-tns-btn");
     const savePanel = createButton?.parentElement;
-    if (savePanel && !savePanel.querySelector("[data-experimental-save-direct]")) {
-      const save = makeButton("Guardar experimental", saveCurrentExperimental);
-      save.dataset.experimentalSaveDirect = "1";
-      const saveAs = makeButton("Guardar como…", saveCurrentAsExperimental);
-      saveAs.dataset.experimentalSaveAs = "1";
-      savePanel.append(save, saveAs);
-    }
+    if (!savePanel) return;
+    savePanel.querySelectorAll("[data-experimental-save-direct], [data-experimental-save-as]")
+      .forEach(button => button.remove());
   }
 
   function injectNdlessControls() {
