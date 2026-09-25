@@ -18063,7 +18063,7 @@ function showAbout() {
       <p>${escapeHtml(data.creditsIntro)}</p>
       <ul>
         <li><strong>${escapeHtml(data.reverseTitle)}</strong> ${escapeHtml(data.reverseText)} <a href="https://tiplanet.org/forum/memberlist.php?mode=viewprofile&u=393033" target="_blank" rel="noopener noreferrer">MaksimirKurtov</a>, ${escapeHtml(data.reverseText2)} <a href="https://tiplanet.org/forum/viewtopic.php?t=27393&p=280845#p280845" target="_blank" rel="noopener noreferrer">TnsTools</a>.</li>
-        <li><strong>${escapeHtml(data.wasmTitle)}</strong> ${escapeHtml(data.wasmText)} <a href="https://tiplanet.org/forum/memberlist.php?mode=viewprofile&u=1381" target="_blank" rel="noopener noreferrer">Adriweb</a> ${escapeHtml(data.wasmTail)}</li>
+        <li><strong>${escapeHtml(data.wasmTitle)}</strong> ${escapeHtml(data.wasmText)} <a href="https://tiplanet.org/forum/memberlist.php?mode=viewprofile&u=1381" target="_blank" rel="noopener noreferrer">Adriweb</a> (<a href="https://github.com/adriweb" target="_blank" rel="noopener noreferrer">GitHub</a>) ${escapeHtml(data.wasmTail)}</li>
         <li><strong>${escapeHtml(data.mviewerTitle)}</strong> ${escapeHtml(data.mviewerText)} (<a href="https://github.com/critor" target="_blank" rel="noopener noreferrer">critor</a> · <a href="https://tiplanet.org/" target="_blank" rel="noopener noreferrer">mViewer GX / TI-Planet</a>).</li>
       </ul>
 
