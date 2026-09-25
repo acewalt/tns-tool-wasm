@@ -534,6 +534,11 @@ The original idea and technical mentoring for the WebAssembly/Web port are attri
 
 - Adriweb: https://tiplanet.org/forum/memberlist.php?mode=viewprofile&u=1381
 
+The image and PDF import workflow also benefited from the work of **critor** and **mViewer GX**, available through TI-Planet. mViewer GX served as an important reference that helped inform the implementation of adding images and PDF pages to TNS Tool WASM documents:
+
+- critor: https://github.com/critor
+- mViewer GX / TI-Planet: https://tiplanet.org/
+
 ## Disclaimer
 
 TNS Tool WASM is an independent software-development project and is not affiliated with, sponsored by, authorized by, or officially associated with Texas Instruments.
