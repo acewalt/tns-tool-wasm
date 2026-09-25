@@ -477,7 +477,17 @@ f3
 
 Graph parsing and expression compatibility are still experimental and will continue to expand.
 
-### Current limitations and planned work
+### Ndless project support
+
+TNS Tool WASM also includes an experimental **Ndless project** workflow for creating and working with native Ndless projects directly from the browser.
+
+This area is currently in a **very experimental stage**. Native ARM toolchains, SDK integration, compilation, filesystem behavior, process execution, and other low-level tasks are significantly more constrained inside a browser/WebAssembly environment than on a normal desktop system.
+
+Because of those WebAssembly and browser limitations, I am also considering a dedicated **PC/desktop port** of the Ndless project workflow. A native desktop version would be more viable for this part of the project because it could interact directly with the compiler toolchain, local filesystem, SDKs, and native processes without the restrictions imposed by the web sandbox.
+
+The web implementation will continue to be useful for experimentation, inspection, project editing, and testing, but the Ndless build workflow should currently be considered unstable and subject to major changes.
+
+## Current limitations and planned work
 
 Recent image and PDF workflow additions are now implemented:
 ![pdf](docs/images/pdf.gif)
