@@ -17976,6 +17976,8 @@ function aboutContent() {
     "wasmTitle": "Concepto y Port Web (WASM):",
     "wasmText": "La idea original de portar estas librerias mediante WebAssembly y la mentoria tecnica inicial se atribuyen a Adriweb, quien propuso hacerlo disponible en cualquier entorno:",
     "wasmTail": "(coordinacion y soporte de arquitectura en Discord).",
+    "mviewerTitle": "Referencia para imagenes y PDF:",
+    "mviewerText": "mViewer GX, desarrollada por critor y publicada a traves de TI-Planet, sirvio como una referencia importante para implementar en TNS Tool WASM la posibilidad de agregar imagenes y paginas de PDF a los documentos.",
     "disclaimer": "TNS Tool WASM es un proyecto de desarrollo de software independiente y no esta afiliado, patrocinado, autorizado ni asociado oficialmente con Texas Instruments.",
     "close": "Cerrar"
   },
@@ -18001,6 +18003,8 @@ function aboutContent() {
     "wasmTitle": "Concept and Web Port (WASM):",
     "wasmText": "The original idea of porting these libraries through WebAssembly and the initial technical mentoring are attributed to Adriweb, who proposed making it available in any environment:",
     "wasmTail": "(coordination and architecture support on Discord).",
+    "mviewerTitle": "Image and PDF workflow reference:",
+    "mviewerText": "mViewer GX, developed by critor and published through TI-Planet, served as an important reference for implementing the ability to add images and PDF pages to TNS Tool WASM documents.",
     "disclaimer": "TNS Tool WASM is an independent software-development project and is not affiliated with, sponsored by, authorized by, or officially associated with Texas Instruments.",
     "close": "Close"
   },
@@ -18026,6 +18030,8 @@ function aboutContent() {
     "wasmTitle": "Concept et Port Web (WASM) :",
     "wasmText": "L'idee originale de porter ces bibliotheques via WebAssembly et le mentorat technique initial sont attribues a Adriweb, qui a propose de le rendre disponible dans n'importe quel environnement :",
     "wasmTail": "(coordination et support d'architecture sur Discord).",
+    "mviewerTitle": "Reference pour les images et PDF :",
+    "mviewerText": "mViewer GX, developpe par critor et publie via TI-Planet, a servi de reference importante pour implementer dans TNS Tool WASM l'ajout d'images et de pages PDF aux documents.",
     "disclaimer": "TNS Tool WASM est un projet de developpement logiciel independant et n'est pas affilie, sponsorise, autorise ni officiellement associe a Texas Instruments.",
     "close": "Fermer"
   }
@@ -18058,6 +18064,7 @@ function showAbout() {
       <ul>
         <li><strong>${escapeHtml(data.reverseTitle)}</strong> ${escapeHtml(data.reverseText)} <a href="https://tiplanet.org/forum/memberlist.php?mode=viewprofile&u=393033" target="_blank" rel="noopener noreferrer">MaksimirKurtov</a>, ${escapeHtml(data.reverseText2)} <a href="https://tiplanet.org/forum/viewtopic.php?t=27393&p=280845#p280845" target="_blank" rel="noopener noreferrer">TnsTools</a>.</li>
         <li><strong>${escapeHtml(data.wasmTitle)}</strong> ${escapeHtml(data.wasmText)} <a href="https://tiplanet.org/forum/memberlist.php?mode=viewprofile&u=1381" target="_blank" rel="noopener noreferrer">Adriweb</a> ${escapeHtml(data.wasmTail)}</li>
+        <li><strong>${escapeHtml(data.mviewerTitle)}</strong> ${escapeHtml(data.mviewerText)} (<a href="https://github.com/critor" target="_blank" rel="noopener noreferrer">critor</a> · <a href="https://tiplanet.org/" target="_blank" rel="noopener noreferrer">mViewer GX / TI-Planet</a>).</li>
       </ul>
 
       <p class="about-disclaimer">${escapeHtml(data.disclaimer)}</p>
