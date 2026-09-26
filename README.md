@@ -1,5 +1,7 @@
 # TNS Tool WASM
 
+**TNS Tool WASM es una herramienta web experimental para trabajar con contenido de TI-Nspire/Lua. Algunas funciones, como Ndless, están en desarrollo experimental. El proyecto contempla un posible port a PC para superar ciertas limitaciones inherentes al entorno web.**
+
 TNS Tool WASM is an experimental browser-based toolkit for TI-Nspire workflows.
 
 It runs directly in the browser with Pyodide/WebAssembly and JavaScript, so it can decode, inspect, edit, validate, and rebuild TI-Nspire-related files without requiring the original command-line workflow.
