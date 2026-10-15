@@ -106,10 +106,10 @@
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
 
   const independent = [
-    ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20260827-media-import-v3", "mediaImportController"],
+    ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20261015-file-import-backdrop-fix-v3", "mediaImportController"],
     ['script[data-drag-drop-ui="true"]', "./drag-drop-ui.js?v=20261015-drag-overlay-no-blur-v2", "dragDropUi"],
-    ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20260827-home-drop-v1", "homeDropImport"],
-    ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20260827-lua-drop-progress-v1", "luaDropProgress"],
+    ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20261015-file-import-backdrop-fix-v3", "homeDropImport"],
+    ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20261015-file-import-backdrop-fix-v3", "luaDropProgress"],
     ['script[data-import-progress-i18n="true"]', "./import-progress-i18n.js?v=20260827-import-i18n-v1", "importProgressI18n"],
     ['script[data-sidebar-title-i18n="true"]', "./sidebar-title-i18n.js?v=20260827-sidebar-title-i18n-v1", "sidebarTitleI18n"],
     ['script[data-inspector-page-menu-i18n="true"]', "./inspector-page-menu-i18n.js?v=20260827-inspector-page-i18n-v1", "inspectorPageMenuI18n"],
