@@ -84,6 +84,13 @@
     window.addEventListener("dragleave", (event) => {
       if (event.relatedTarget == null) hideGlobalDropOverlay();
     }, true);
+    // A drop handler may stop propagation before our listener can run.
+    // Clear abandoned drag state on normal interaction and tab/window exit.
+    window.addEventListener("pointerdown", hideGlobalDropOverlay, true);
+    window.addEventListener("blur", hideGlobalDropOverlay);
+    document.addEventListener("visibilitychange", () => {
+      if (document.hidden) hideGlobalDropOverlay();
+    });
   }
 
   function installLanguageSync() {
