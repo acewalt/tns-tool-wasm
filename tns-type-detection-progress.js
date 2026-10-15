@@ -55,7 +55,22 @@
     if(result?.family==="custom-container"){type.textContent=result.typeLabel||tr("content");format.textContent=result.formatLabel||result.format||"custom";return;}
     type.textContent="Unknown";format.textContent=result?.reason||"unknown";
   }
-  async function closeOverlay(overlay){if(!overlay?.isConnected)return;overlay.classList.add("closing");document.documentElement.classList.remove("tns-import-progress-lock");await sleep(210);overlay.remove();}
+  async function closeOverlay(overlay){
+    try {
+      if (overlay?.isConnected) {
+        // Remove the blur compositor layer before starting the heavy WASM decoder.
+        overlay.classList.remove("visible");
+        overlay.classList.add("closing");
+        overlay.style.setProperty("backdrop-filter", "none", "important");
+        overlay.style.setProperty("-webkit-backdrop-filter", "none", "important");
+        overlay.remove();
+      }
+    } finally {
+      document.documentElement.classList.remove("tns-import-progress-lock");
+    }
+    // Give Chromium/Brave a full repaint before the synchronous decoder runs.
+    await nextPaint();
+  }
   async function waitFor(getter,timeout=5000){const start=Date.now();while(Date.now()-start<timeout){const value=getter();if(value)return value;await sleep(30);}throw new Error("Required TNS tool is not available.");}
   function bypassXml(input){input.dataset.tnsTypeProgressBypass="1";input.dataset.ndlessInspectorBypass="1";input.dispatchEvent(new Event("change",{bubbles:true}));}
   function bypassDecode(button){button.dataset.tnsTypeProgressBypass="1";button.dataset.ndlessInspectorBypass="1";button.click();}
@@ -86,7 +101,7 @@
       else if(ndless){const inspector=await waitFor(()=>window.TnsNdlessInspector?.showInspector&&window.TnsNdlessInspector);inspector.showInspector(result);}
       else normalRoute();
     }catch(error){console.warn("TNS type detection failed; using normal flow.",error);setStep(overlay,2,"error",error?.message||tr("failed"));await sleep(350);await closeOverlay(overlay);normalRoute();}
-    finally{busy=false;}
+    finally{if(overlay.isConnected){overlay.remove();document.documentElement.classList.remove("tns-import-progress-lock");}busy=false;}
   }
 
   window.TnsTypeRouter=Object.freeze({analyzeAndRoute,openCustomContainer});
