@@ -107,7 +107,7 @@
 
   const independent = [
     ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20260827-media-import-v3", "mediaImportController"],
-    ['script[data-drag-drop-ui="true"]', "./drag-drop-ui.js?v=20260827-drag-drop-v1", "dragDropUi"],
+    ['script[data-drag-drop-ui="true"]', "./drag-drop-ui.js?v=20261015-drag-overlay-no-blur-v2", "dragDropUi"],
     ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20260827-home-drop-v1", "homeDropImport"],
     ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20260827-lua-drop-progress-v1", "luaDropProgress"],
     ['script[data-import-progress-i18n="true"]', "./import-progress-i18n.js?v=20260827-import-i18n-v1", "importProgressI18n"],
