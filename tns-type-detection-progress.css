@@ -34,8 +34,9 @@
   background: linear-gradient(180deg, rgba(18, 30, 50, 0.96), rgba(8, 17, 31, 0.97));
   box-shadow: 0 34px 90px rgba(0, 0, 0, 0.46), 0 0 0 1px rgba(255, 255, 255, 0.025) inset;
   color: #e9f2ff;
-  transform: translateY(28px) scale(0.92);
-  opacity: 0;
+  /* Visible even if entrance animations are disabled by reduced-motion settings. */
+  transform: none;
+  opacity: 1;
 }
 
 .tns-type-progress-overlay.visible .tns-type-progress-card {
@@ -342,4 +343,8 @@
   .tns-type-progress-overlay,
   .tns-type-progress-card,
   .tns-type-progress-circle { animation: none !important; transition-duration: .01ms !important; }
+  .tns-type-progress-overlay.visible .tns-type-progress-card {
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }
