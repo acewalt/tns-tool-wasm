@@ -43,9 +43,9 @@
   100% { transform: translateX(185%); }
 }
 
-.tns-lua-compat-overlay { position: fixed; inset: 0; z-index: 2147482900; display: grid; place-items: center; padding: 22px; background: rgba(2,8,18,.25); backdrop-filter: blur(0px); opacity: 0; transition: opacity 180ms ease, background 220ms ease, backdrop-filter 220ms ease; }
-.tns-lua-compat-overlay.visible { opacity: 1; background: rgba(2,8,18,.72); backdrop-filter: blur(12px) saturate(115%); }
-.tns-lua-compat-overlay.closing { opacity: 0; }
+.tns-lua-compat-overlay { position: fixed; inset: 0; z-index: 2147482900; display: grid; place-items: center; padding: 22px; background: rgba(2,8,18,.72); backdrop-filter: none !important; -webkit-backdrop-filter: none !important; opacity: 0; transition: opacity 180ms ease, background 220ms ease; }
+.tns-lua-compat-overlay.visible { opacity: 1; background: rgba(2,8,18,.78); backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
+.tns-lua-compat-overlay.closing { opacity: 0; pointer-events: none; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; }
 .tns-lua-compat-card { width: min(820px, calc(100vw - 32px)); max-height: min(780px, calc(100vh - 32px)); overflow: auto; padding: 26px; border: 1px solid rgba(117,151,198,.3); border-radius: 20px; background: linear-gradient(180deg, rgba(18,30,50,.98), rgba(8,17,31,.98)); color: #e9f2ff; box-shadow: 0 32px 100px rgba(0,0,0,.55); transform: translateY(20px) scale(.97); transition: transform 220ms cubic-bezier(.16,1.1,.36,1); }
 .tns-lua-compat-overlay.visible .tns-lua-compat-card { transform: translateY(0) scale(1); }
 .tns-lua-compat-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; }
