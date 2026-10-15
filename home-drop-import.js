@@ -130,7 +130,7 @@
     if (!progressPromise) {
       progressPromise = loadScriptOnce(
         'script[data-import-progress-stepper="true"]',
-        "./import-progress-stepper.js?v=20260827-import-stepper-v7",
+        "./import-progress-stepper.js?v=20261015-file-import-backdrop-fix-v3",
         "importProgressStepper"
       );
     }
