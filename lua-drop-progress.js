@@ -4,7 +4,7 @@
   const OVERLAY_ID = "tns-import-progress-overlay";
   const STYLE_ID = "tns-import-progress-style";
   const LOG_SELECTOR = "#xml-log";
-  const STEPPER_SRC = "./import-progress-stepper.js?v=20261015-file-import-backdrop-fix-v3";
+  const STEPPER_SRC = "./import-progress-stepper.js?v=20261015-import-dialog-lifecycle-v4";
   const COMPAT_JS = "./lua-compatibility-report.js?v=20260903-lua-compat-v1";
   const COMPAT_CSS = "./lua-compatibility-report.css?v=20261015-file-import-backdrop-fix-v3";
 
