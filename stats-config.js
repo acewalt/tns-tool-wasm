@@ -128,7 +128,7 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   if (document.querySelector('script[data-import-progress-stepper="true"]')) return;
 
   const progressScript = document.createElement("script");
-  progressScript.src = "./import-progress-stepper.js?v=20261015-file-import-backdrop-fix-v3";
+  progressScript.src = "./import-progress-stepper.js?v=20261015-import-dialog-lifecycle-v4";
   progressScript.dataset.importProgressStepper = "true";
   document.head.appendChild(progressScript);
 })();
