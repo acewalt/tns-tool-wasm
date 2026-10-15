@@ -34,9 +34,10 @@
     style.textContent = `
       html.tns-import-progress-lock,
       html.tns-import-progress-lock body { overflow: hidden !important; }
-      .tns-import-progress-overlay { position:fixed; inset:0; z-index:2147482800; display:grid; place-items:center; padding:22px; background:rgba(2,8,18,.36); backdrop-filter:blur(0px) saturate(100%); -webkit-backdrop-filter:blur(0px) saturate(100%); opacity:0; transition:opacity 260ms ease,background 320ms ease,backdrop-filter 420ms ease,-webkit-backdrop-filter 420ms ease; }
-      .tns-import-progress-overlay.visible { opacity:1; background:rgba(2,8,18,.58); backdrop-filter:blur(11px) saturate(118%); -webkit-backdrop-filter:blur(11px) saturate(118%); }
-      .tns-import-progress-overlay.closing { opacity:0; background:rgba(2,8,18,0); backdrop-filter:blur(0px) saturate(100%); -webkit-backdrop-filter:blur(0px) saturate(100%); }
+      /* Avoid fullscreen GPU blur after file import in Chromium/Brave. */
+      .tns-import-progress-overlay { position:fixed; inset:0; z-index:2147482800; display:grid; place-items:center; padding:22px; background:rgba(2,8,18,.68); backdrop-filter:none !important; -webkit-backdrop-filter:none !important; opacity:0; transition:opacity 220ms ease; }
+      .tns-import-progress-overlay.visible { opacity:1; background:rgba(2,8,18,.74); backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
+      .tns-import-progress-overlay.closing { opacity:0; background:rgba(2,8,18,0); pointer-events:none; transition:none; backdrop-filter:none !important; -webkit-backdrop-filter:none !important; }
       .tns-import-progress-card { width:min(470px,calc(100vw - 34px)); max-height:min(720px,calc(100vh - 34px)); overflow:auto; padding:28px 30px 26px; border:1px solid rgba(133,164,207,.28); border-radius:22px; background:linear-gradient(180deg,rgba(18,30,50,.93),rgba(8,17,31,.94)),rgba(10,20,36,.92); box-shadow:0 34px 90px rgba(0,0,0,.46),0 0 0 1px rgba(255,255,255,.025) inset; color:#e9f2ff; transform:translateY(34px) scale(.9); opacity:0; will-change:transform,opacity; }
       .tns-import-progress-overlay.visible .tns-import-progress-card { animation:tnsImportBounceIn 560ms cubic-bezier(.16,1.25,.36,1) forwards; }
       .tns-import-progress-overlay.closing .tns-import-progress-card { animation:tnsImportOut 220ms ease forwards; }
@@ -116,7 +117,18 @@
   function failImport(detail="No se pudo completar la importación."){if(!state.active)return;setStep(getStep(2)?.classList.contains("completed")?3:2,"error",detail);setSummary("La importación terminó con un error.",detail);state.openGalleryOnClose=false;state.canClose=true;state.overlay?.querySelector(".tns-import-progress-close")?.classList.add("visible");}
   async function openResultView(count){if(!count)return;const find=()=>{const c=Array.from(document.querySelectorAll(".tns-image-gallery-chip"));return c.length?c[c.length-1]:null;},click=()=>{const c=find();if(!c)return false;c.click();return true;};if(click())return;let open=null;try{open=typeof window.openDocumentInspector==="function"?window.openDocumentInspector:(0,eval)("typeof openDocumentInspector === 'function' ? openDocumentInspector : null");}catch{}if(typeof open==="function")try{await Promise.resolve(open());}catch(e){console.warn("No se pudo abrir el inspector después de la importación.",e);}for(let i=0;i<30;i++){if(click())return;await new Promise(r=>setTimeout(r,80));}}
   function resetState(){Object.assign(state,{active:false,kind:"",total:0,current:0,created:0,failed:0,sourceName:"",lastItem:"",resultCount:0,canClose:false,openGalleryOnClose:false,overlay:null});}
-  function closeOverlay(){if(!state.active||!state.canClose||!state.overlay)return;const overlay=state.overlay,count=state.resultCount,open=state.openGalleryOnClose;overlay.classList.add("closing");document.documentElement.classList.remove("tns-import-progress-lock");setTimeout(()=>{overlay.remove();resetState();if(open&&count>0)setTimeout(()=>openResultView(count),80);},230);}
+  function closeOverlay(){
+    if(!state.active||!state.canClose||!state.overlay)return;
+    const overlay=state.overlay,count=state.resultCount,open=state.openGalleryOnClose;
+    // Remove the compositor surface synchronously before showing results.
+    overlay.classList.remove("visible");
+    overlay.style.setProperty("backdrop-filter","none","important");
+    overlay.style.setProperty("-webkit-backdrop-filter","none","important");
+    overlay.remove();
+    document.documentElement.classList.remove("tns-import-progress-lock");
+    resetState();
+    if(open&&count>0)requestAnimationFrame(()=>requestAnimationFrame(()=>openResultView(count)));
+  }
   function startImageBatch(total){clearArm();createOverlay({kind:"images",total});markPrepared(`${total} imagen${total===1?"":"es"} seleccionada${total===1?"":"s"}.`);}
   function startPdf(fileName=""){clearArm();createOverlay({kind:"pdf",sourceName:fileName});setStep(1,"active",fileName?`Leyendo ${fileName}…`:"Leyendo PDF…");setSummary("Leyendo PDF.","Preparando el documento para convertir sus páginas.");}
 
