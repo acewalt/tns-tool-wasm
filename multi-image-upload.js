@@ -31,7 +31,7 @@
   }
 
   const V="20260831-loader-ndless-menu";
-  const TNS_PROGRESS_V="20261014-tns-overlay-blur-fix";
+  const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
   const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
@@ -106,10 +106,10 @@
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
 
   const independent = [
-    ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20261015-file-import-backdrop-fix-v3", "mediaImportController"],
+    ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20261015-import-dialog-lifecycle-v4", "mediaImportController"],
     ['script[data-drag-drop-ui="true"]', "./drag-drop-ui.js?v=20261015-drag-overlay-no-blur-v2", "dragDropUi"],
-    ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20261015-file-import-backdrop-fix-v3", "homeDropImport"],
-    ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20261015-file-import-backdrop-fix-v3", "luaDropProgress"],
+    ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20261015-import-dialog-lifecycle-v4", "homeDropImport"],
+    ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20261015-import-dialog-lifecycle-v4", "luaDropProgress"],
     ['script[data-import-progress-i18n="true"]', "./import-progress-i18n.js?v=20260827-import-i18n-v1", "importProgressI18n"],
     ['script[data-sidebar-title-i18n="true"]', "./sidebar-title-i18n.js?v=20260827-sidebar-title-i18n-v1", "sidebarTitleI18n"],
     ['script[data-inspector-page-menu-i18n="true"]', "./inspector-page-menu-i18n.js?v=20260827-inspector-page-i18n-v1", "inspectorPageMenuI18n"],
