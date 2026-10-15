@@ -4022,3 +4022,15 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 .calc-v-derivative-body{font-size:20px;line-height:1}
 .calc-v-differential{margin-left:4px;font-style:italic}
 .calculator-editor-stage.expanded-view .calc-v-nroot{padding-left:10px}.calculator-editor-stage.expanded-view .calc-v-nroot .calc-v-radical{font-size:42px}.calculator-editor-stage.expanded-view .calc-v-nroot-index{top:-5px}
+
+/* Chromium/Brave: all file-import dialogs must avoid fullscreen backdrop
+   filters, including when a previously cached script injects old styles. */
+.tns-import-progress-overlay,
+.tns-import-progress-overlay.visible,
+.tns-import-progress-overlay.closing,
+.tns-lua-compat-overlay,
+.tns-lua-compat-overlay.visible,
+.tns-lua-compat-overlay.closing {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
