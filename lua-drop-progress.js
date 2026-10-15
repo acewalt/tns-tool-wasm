@@ -261,6 +261,17 @@
     return null;
   }
 
+  function scheduleAutoClose(overlay) {
+    if (!overlay?.isConnected || overlay.dataset.autoCloseScheduled === "1") return;
+    overlay.dataset.autoCloseScheduled = "1";
+    // Keep the success summary momentarily, then reveal the imported ScriptApp.
+    setTimeout(() => {
+      if (overlay.isConnected && overlay.dataset.canClose === "1") {
+        overlay.querySelector(".tns-import-progress-close")?.click();
+      }
+    }, 1200);
+  }
+
   async function finalizeDone(overlay) {
     const nt = tx();
     setStep(overlay, 2, "completed", "Listo", "Lua ScriptApp creada.");
@@ -273,6 +284,7 @@
       renderSummary(overlay, current.analysis);
       overlay.dataset.canClose = "1";
       overlay.querySelector(".tns-import-progress-close")?.classList.add("visible");
+      scheduleAutoClose(overlay);
       overlay.querySelector(".tns-import-progress-report")?.classList.add("visible");
       return;
     }
@@ -297,6 +309,7 @@
 
     overlay.dataset.canClose = "1";
     overlay.querySelector(".tns-import-progress-close")?.classList.add("visible");
+      scheduleAutoClose(overlay);
   }
 
   async function renderCurrent() {
