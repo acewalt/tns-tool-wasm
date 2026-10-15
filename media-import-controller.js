@@ -75,7 +75,7 @@
     if (!progressPromise) {
       progressPromise = loadScriptOnce(
         'script[data-import-progress-stepper="true"]',
-        "./import-progress-stepper.js?v=20260827-import-stepper-v4",
+        "./import-progress-stepper.js?v=20261015-file-import-backdrop-fix-v3",
         "importProgressStepper"
       ).then(async () => {
         for (let i = 0; i < 30 && !document.getElementById("tns-import-progress-style"); i += 1) {
