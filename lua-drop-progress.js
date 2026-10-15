@@ -4,9 +4,9 @@
   const OVERLAY_ID = "tns-import-progress-overlay";
   const STYLE_ID = "tns-import-progress-style";
   const LOG_SELECTOR = "#xml-log";
-  const STEPPER_SRC = "./import-progress-stepper.js?v=20260827-import-stepper-v7";
+  const STEPPER_SRC = "./import-progress-stepper.js?v=20261015-file-import-backdrop-fix-v3";
   const COMPAT_JS = "./lua-compatibility-report.js?v=20260903-lua-compat-v1";
-  const COMPAT_CSS = "./lua-compatibility-report.css?v=20260903-lua-compat-v1";
+  const COMPAT_CSS = "./lua-compatibility-report.css?v=20261015-file-import-backdrop-fix-v3";
 
   let stepperPromise = null;
   let compatibilityPromise = null;
@@ -203,9 +203,12 @@
     const closeButton = overlay.querySelector(".tns-import-progress-close");
     const close = () => {
       if (overlay.dataset.canClose !== "1") return;
-      overlay.classList.add("closing");
+      // Eliminate a fullscreen GPU compositor layer immediately.
+      overlay.classList.remove("visible");
+      overlay.style.setProperty("backdrop-filter", "none", "important");
+      overlay.style.setProperty("-webkit-backdrop-filter", "none", "important");
+      overlay.remove();
       document.documentElement.classList.remove("tns-import-progress-lock");
-      setTimeout(() => overlay.remove(), 230);
     };
     closeButton?.addEventListener("click", close);
     overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
