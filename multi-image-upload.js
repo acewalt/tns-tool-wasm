@@ -31,6 +31,7 @@
   }
 
   const V="20260831-loader-ndless-menu";
+  const TNS_PROGRESS_V="20261014-tns-overlay-blur-fix";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
   const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
@@ -39,7 +40,7 @@
   const LOVE_PREVIEW_MATH_V="20260903-live-math-v1";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./runtime-loading-overlay.css?v=${V}`, "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
-  ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${V}`, "tnsTypeProgressStyle");
+  ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${TNS_PROGRESS_V}`, "tnsTypeProgressStyle");
   ensureStyle('link[data-ndless-tns-inspector-style="true"]', `./ndless-tns-inspector.css?v=${V}`, "ndlessTnsInspectorStyle");
   ensureStyle('link[data-ndless-editor-style="true"]', `./ndless-editor.css?v=${V}`, "ndlessEditorStyle");
   ensureStyle('link[data-ndless-friendly-editor-style="true"]', `./ndless-friendly-editor.css?v=${V}`, "ndlessFriendlyEditorStyle");
@@ -76,7 +77,7 @@
     .then(() => loadScript('script[data-ndless-prg="true"]', `./ndless-prg.js?v=${V}`, "ndlessPrg"))
     .then(() => loadScript('script[data-ndless-format-detector="true"]', `./ndless-format-detector.js?v=${V}`, "ndlessFormatDetector"))
     .then(() => loadScript('script[data-tns-universal-detector="true"]', `./tns-universal-detector.js?v=${V}`, "tnsUniversalDetector"))
-    .then(() => loadScript('script[data-tns-type-progress="true"]', `./tns-type-detection-progress.js?v=${V}`, "tnsTypeProgress"))
+    .then(() => loadScript('script[data-tns-type-progress="true"]', `./tns-type-detection-progress.js?v=${TNS_PROGRESS_V}`, "tnsTypeProgress"))
     .then(() => loadScript('script[data-ndless-tns-inspector="true"]', `./ndless-tns-inspector.js?v=${V}`, "ndlessTnsInspector"))
     .then(() => loadScript('script[data-ndless-arm-decoder="true"]', `./ndless-arm-decoder.js?v=${V}`, "ndlessArmDecoder"))
     .then(() => loadScript('script[data-ndless-analysis="true"]', `./ndless-analysis.js?v=${V}`, "ndlessAnalysis"))
