@@ -10,7 +10,7 @@
       connected:"Calculadora conectada", failed:"Error de comunicación",
       note:"WebUSB requiere Chrome, Edge o Brave y un controlador USB compatible. No utiliza servicios externos.",
       folders:"Archivos y carpetas", model:"Calculadora", capture:"Captura de pantalla",
-      captureHint:"Experimental: servicio RLE de 4 bits. No todas las pantallas a color son compatibles.",
+      captureHint:"Captura RLE experimental: escala de grises y color RGB565. Depende del modelo y firmware.",
       files:"Archivos", refresh:"Actualizar", newFolder:"Nueva carpeta", send:"Enviar TNS",
       sendCurrent:"Enviar TNS actual", receive:"Recibir seleccionados", remove:"Eliminar seleccionados",
       select:"Seleccionar", name:"Nombre", type:"Tipo", size:"Tamaño", location:"Carpeta",
@@ -33,7 +33,7 @@
       connected:"Calculator connected", failed:"Communication error",
       note:"WebUSB requires Chrome, Edge or Brave and a compatible USB driver. No external service.",
       folders:"Calculator files and folders", model:"Calculator", capture:"Screen capture",
-      captureHint:"Experimental: 4-bit RLE service. Not every colour display is supported.",
+      captureHint:"Experimental RLE screenshot: grayscale and RGB565 colour. Depends on model and firmware.",
       files:"Files", refresh:"Refresh", newFolder:"New folder", send:"Send TNS",
       sendCurrent:"Send current TNS", receive:"Receive selected", remove:"Delete selected",
       select:"Select", name:"Name", type:"Type", size:"Size", location:"Folder",
@@ -56,7 +56,7 @@
       connected:"Calculatrice connectée", failed:"Erreur de communication",
       note:"WebUSB requiert Chrome, Edge ou Brave et un pilote USB compatible.",
       folders:"Fichiers et dossiers", model:"Calculatrice", capture:"Capture d'écran",
-      captureHint:"Expérimental : service RLE 4 bits. Les écrans couleur peuvent être incompatibles.",
+      captureHint:"Capture RLE expérimentale : niveaux de gris et couleur RGB565, selon le modèle.",
       files:"Fichiers", refresh:"Actualiser", newFolder:"Nouveau dossier", send:"Envoyer TNS",
       sendCurrent:"Envoyer TNS actuel", receive:"Recevoir sélection", remove:"Supprimer sélection",
       select:"Sélectionner", name:"Nom", type:"Type", size:"Taille", location:"Dossier",
@@ -263,9 +263,18 @@
     canvas.width=width;canvas.height=height;
     const ctx=canvas.getContext("2d"),img=ctx.createImageData(width,height);
     for(let i=0;i<width*height;i++){
-      const byte=pixels[i>>>1];
-      const gray=((i&1)?byte&15:byte>>>4)*17;
-      const p=i*4;img.data[p]=gray;img.data[p+1]=gray;img.data[p+2]=gray;img.data[p+3]=255;
+      const p=i*4;
+      if(snapshot.bpp===16){
+        const rgb=pixels[i*2]|(pixels[i*2+1]<<8);
+        img.data[p]=Math.round(((rgb>>>11)&31)*255/31);
+        img.data[p+1]=Math.round(((rgb>>>5)&63)*255/63);
+        img.data[p+2]=Math.round((rgb&31)*255/31);
+      }else{
+        const byte=pixels[i>>>1];
+        const gray=((i&1)?byte&15:byte>>>4)*17;
+        img.data[p]=gray;img.data[p+1]=gray;img.data[p+2]=gray;
+      }
+      img.data[p+3]=255;
     }
     ctx.putImageData(img,0,0);
     const host=q("[data-ti-image]",state.root);host.replaceChildren();
