@@ -4,7 +4,7 @@
 
 ## Funcionamiento
 
-Este módulo es parte del código de TNS Tool WASM. **No incrusta WebTILP, no abre otra web y no utiliza un puente Python**. El controlador `ti-nspire-webusb.js` conversa directamente con calculadoras TI-Nspire por medio de la API WebUSB del navegador. La interfaz es `ti-calculator-transfer.js`, con estilos propios en `ti-calculator-transfer.css`.
+Este módulo es parte del código de TNS Tool WASM. **No incrusta WebTILP, no abre otra web y no utiliza un puente Python**. Los controladores `ti-nspire-webusb.js` y `ti-nspire-nnse.js` conversan directamente con calculadoras TI-Nspire por medio de la API WebUSB del navegador. La TI-Nspire CX II usa tramas NNSE (NavNet SE) en la configuración USB 1; las generaciones anteriores conservan NavNet sin ese encapsulado. La interfaz es `ti-calculator-transfer.js`, con estilos propios en `ti-calculator-transfer.css`.
 
 El protocolo empleado se documenta públicamente en [Hackspire: USB Protocol](https://www.hackspire.org/USB_Protocol/). La implementación propia incluye acuses de recepción, verificaciones de integridad (CRC), conexión y desconexión de servicios, lectura de directorios, recepción y envío de TNS, creación y borrado de carpetas y captura RLE.
 
@@ -30,7 +30,7 @@ Se filtran los dispositivos Texas Instruments con identificadores `0451:e012` (f
 
 ## Límites actuales
 
-- El protocolo USB de TI-Nspire tiene variantes. La familia CX II utiliza cambios en los acuses de paquetes y tamaños de bloques; están contemplados en el código, **pero todavía se necesita validar el comportamiento con calculadoras físicas**.
+- El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
 - La captura RLE implementada solo decodifica 4 bits por píxel. Algunas generaciones CX/CX II tienen pantallas de color de 16 bits y pueden usar otro formato o servicio. En esos casos se informa que la captura no es compatible: no se muestra ninguna captura falsa.
 - No se han implementado instalación de SO, restauraciones ni acciones que modifiquen firmware.
 - Las transferencias quedan restringidas a documentos `.tns` para no corromper formatos ajenos.
@@ -39,9 +39,11 @@ Se filtran los dispositivos Texas Instruments con identificadores `0451:e012` (f
 
 ## Estructura técnica
 
-- `ti-nspire-webusb.js` — transporte WebUSB nativo y comandos de archivo.
+- `ti-nspire-nnse.js` — protocolo de transporte NNSE para la TI-Nspire CX II y pruebas de integridad de trama.
+- `ti-nspire-webusb.js` — controlador WebUSB, NavNet clásico y comandos de archivo.
 - `ti-calculator-transfer.js` — explorador, botones, progreso, selección y generación del documento.
 - `ti-calculator-transfer.css` — diseño del módulo.
-- `tests/calculator-transfer-ui.test.js` — validaciones del protocolo con respuestas sintéticas y sin hardware.
+- `tests/calculator-transfer-ui.test.js` — validaciones del protocolo NavNet clásico con respuestas sintéticas.
+- `tests/nnse-transport.test.js` — validaciones de tramas y handshakes NNSE, listado, envío, descarga, borrado y datos RLE con hardware simulado.
 
 Los scripts históricos `tools/calculator-transfer/bridge.py` y su prueba Python permanecen por compatibilidad del repositorio, **pero el módulo de la página ya no los utiliza**.
