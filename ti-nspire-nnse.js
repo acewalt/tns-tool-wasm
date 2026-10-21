@@ -86,20 +86,22 @@
     async readFrame() {
       // readExact is backed by a persistent USB byte FIFO; USB packet and
       // logical NNSE message boundaries do not necessarily coincide.
-      const head=await this.readExact(HEADER);
-      if(head[0]===0&&head[4]===0&&head[6]*256+head[7]>=HEADER) {
+      // Read 11 bytes first: a compact CX II stream-control message can
+      // consist of only 11 bytes, whereas standard NNSE headers are 12.
+      const head=await this.readExact(HEADER-1);
+      if(head[0]===0&&head[4]===0&&to16(head,6)>=HEADER) {
         const len=to16(head,6);
         if(len>HEADER+MAX_PAYLOAD)fail("Longitud NNSE excesiva.");
-        return parseFrame(join(head,await this.readExact(len-HEADER)));
+        const last=await this.readExact(1);
+        return parseFrame(join(head,last,await this.readExact(len-HEADER)));
       }
-      // Some CX II firmware sends a stream-control message without the
-      // leading zero byte. The 12th byte may already belong to its payload.
+      // Some firmware omits the leading zero byte from stream-control.
       if(head[0]===CTRL&&head[3]===0&&
         (head[2]===PC||head[2]===ALL)) {
         const wireLen=to16(head,5)-1;
-        if(wireLen<HEADER||wireLen>HEADER+MAX_PAYLOAD-1)fail("Longitud compacta NNSE excesiva.");
-        if(wireLen<HEADER)fail("NNSE compacta demasiado corta.");
-        return parseCompactControl(join(head,await this.readExact(wireLen-HEADER)));
+        if(wireLen<HEADER-1||wireLen>HEADER+MAX_PAYLOAD-1)
+          fail("Longitud compacta NNSE excesiva.");
+        return parseCompactControl(join(head,await this.readExact(wireLen-(HEADER-1))));
       }
       const prefix=Array.from(head.subarray(0,8),b=>b.toString(16).padStart(2,"0")).join(" ");
       fail("Respuesta USB no reconocida ("+prefix+"). No se recibieron tramas NNSE válidas.");
