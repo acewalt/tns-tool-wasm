@@ -23,7 +23,9 @@
       emptySelection:"Selecciona documentos para recibir.", exportUnavailable:"No está disponible el generador del documento TNS actual.",
       screenshotUnsupported:"La calculadora no entregó una captura RLE compatible.", saveImage:"Guardar PNG",
       unready:"La calculadora todavía no ha confirmado la conexión.", help:"Ayuda USB",
-      caution:"No desconectes el cable durante una transferencia."
+      caution:"No desconectes el cable durante una transferencia.",
+      loadingFolder:"Leyendo carpeta…", finishing:"Finalizando y cerrando transferencia…",
+      destination:"Carpeta de destino", receiving:"Recibiendo", sending:"Enviando"
     },
     en: {
       title:"TI-Nspire Manager", subtitle:"Native USB · TNS Tool WASM",
@@ -46,7 +48,9 @@
       emptySelection:"Select documents to receive.", exportUnavailable:"Current TNS builder is unavailable.",
       screenshotUnsupported:"No compatible RLE screenshot was received.", saveImage:"Save PNG",
       unready:"Calculator has not confirmed a connection.", help:"USB help",
-      caution:"Do not unplug USB while transferring."
+      caution:"Do not unplug USB while transferring.",
+      loadingFolder:"Reading folder…", finishing:"Finishing and closing transfer…",
+      destination:"Destination folder", receiving:"Receiving", sending:"Sending"
     },
     fr: {
       title:"Gestionnaire TI-Nspire", subtitle:"USB natif · TNS Tool WASM",
@@ -69,11 +73,16 @@
       emptySelection:"Sélectionnez les documents.", exportUnavailable:"Générateur TNS indisponible.",
       screenshotUnsupported:"Aucune capture RLE compatible.", saveImage:"Enregistrer PNG",
       unready:"La connexion n'est pas confirmée.", help:"Aide USB",
-      caution:"Ne débranchez pas le câble pendant le transfert."
+      caution:"Ne débranchez pas le câble pendant le transfert.",
+      loadingFolder:"Lecture du dossier…", finishing:"Finalisation du transfert…",
+      destination:"Dossier cible", receiving:"Réception", sending:"Envoi"
     }
   };
   const q=(selector,root=document)=>root?.querySelector(selector);
-  const state={root:null,link:null,path:"/",files:[],chosen:new Set(),busy:false};
+  const state={
+    root:null,link:null,path:"/",files:[],chosen:new Set(),busy:false,
+    cache:new Map(),expanded:new Set(["/"]),transferStarted:0
+  };
   function tr(k){
     const language=String(document.documentElement.lang||"es").slice(0,2);
     return (text[language]||text.es)[k]||k;
@@ -91,7 +100,29 @@
     document.body.append(a);a.click();a.remove();
     setTimeout(()=>URL.revokeObjectURL(url),2000);
   }
-  function selected(){return state.files.filter(x=>state.chosen.has(x.path));}
+  function allKnown(){
+    const entries=new Map();
+    for(const group of state.cache.values())for(const item of group)entries.set(item.path,item);
+    return [...entries.values()];
+  }
+  function selected(){return allKnown().filter(x=>state.chosen.has(x.path));}
+  function setCurrentFolder(path) {
+    state.path=path;
+    state.files=state.cache.get(path)||[];
+  }
+  function updateTransfer(name,current,total,direction,phase="data"){
+    if(!state.root)return;
+    const progress=q("[data-ti-bar]",state.root);
+    const pct=total?Math.min(100,Math.round(100*current/total)):0;
+    if(progress){progress.hidden=false;progress.value=pct;}
+    const seconds=Math.max(0.001,(Date.now()-state.transferStarted)/1000);
+    const rate=current/seconds;
+    const label=direction==="upload"?tr("sending"):tr("receiving");
+    const details=name+" · "+formatted(current)+" / "+formatted(total)+
+      " ("+pct+"%) · "+formatted(Math.round(rate))+"/s · "+Math.round(seconds)+"s";
+    if(phase==="finalizing"){say(tr("finishing"));log(details+" · "+tr("finishing"));}
+    else {say(label+" "+name+" · "+pct+"%");log(details);}
+  }
   function controls(){
     if(!state.root)return;
     const online=Boolean(state.link?.connected);
@@ -103,50 +134,105 @@
     disable("receive",state.busy||!online||!selected().length||selected().some(f=>f.isDir));
     disable("delete",state.busy||!online||!selected().length);
     const all=q("[data-ti-all]",state.root);
-    if(all)all.checked=state.files.length>0 && selected().length===state.files.length;
+    if(all) {
+      all.disabled=state.busy||!online||state.files.length===0;
+      all.checked=state.files.length>0&&state.files.every(f=>state.chosen.has(f.path));
+      all.indeterminate=state.files.some(f=>state.chosen.has(f.path))&&!all.checked;
+    }
     const count=q("[data-ti-selected]",state.root);
-    if(count)count.textContent=selected().length+"/"+state.files.length;
+    if(count)count.textContent=selected().length+"/"+allKnown().length;
   }
+  // Adapted from the Uiverse folder-tree concept, scoped to the manager.
+  // Children are requested from the physical calculator only when expanded.
   function rows(){
-    const root=q("[data-ti-rows]",state.root);
-    if(!root)return;
-    root.replaceChildren();
+    const host=q("[data-ti-rows]",state.root);
+    if(!host)return;
+    host.replaceChildren();
     q("[data-ti-path]",state.root).textContent=state.path;
-    if(!state.link?.connected||!state.files.length){
+    if(!state.link?.connected){
       const p=document.createElement("p");p.className="ti-manager-empty";
-      p.textContent=state.link?.connected?tr("empty"):tr("unavailable");
-      root.append(p);controls();return;
+      p.textContent=tr("unavailable");host.append(p);controls();return;
     }
-    const items=[...state.files].sort((a,b)=>Number(b.isDir)-Number(a.isDir)||a.name.localeCompare(b.name));
-    for(const file of items){
-      const r=document.createElement("div");r.className="ti-manager-row";
-      r.classList.toggle("selected",state.chosen.has(file.path));
-      const cb=document.createElement("input");cb.type="checkbox";cb.checked=state.chosen.has(file.path);
-      cb.setAttribute("aria-label",tr("select")+" "+file.name);
-      cb.addEventListener("change",()=>{
-        if(cb.checked)state.chosen.add(file.path);else state.chosen.delete(file.path);
-        r.classList.toggle("selected",cb.checked);controls();
-      });
-      const b=document.createElement("button");b.type="button";b.className="ti-manager-filename";
-      b.textContent=(file.isDir?"▣  ":"▤  ")+file.name;
-      b.title=file.path;
-      b.addEventListener("click",()=>{
-        if(file.isDir){void list(file.path);}
-        else{cb.checked=!cb.checked;cb.dispatchEvent(new Event("change"));}
-      });
-      const typ=document.createElement("span");typ.textContent=file.isDir?tr("folder"):tr("document");
-      const size=document.createElement("span");size.textContent=file.isDir?"—":formatted(file.size);
-      const folder=document.createElement("span");folder.textContent=state.path;
-      r.append(cb,b,typ,size,folder);root.append(r);
-    }
+    const icon=(folder,expanded)=>{
+      const el=document.createElement("span");el.className="ti-tree-icon";
+      el.innerHTML=folder?
+        (expanded?
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h20M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>':
+          '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 8 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>'):
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>';
+      return el;
+    };
+    const buildBranch=(path,depth)=>{
+      const ul=document.createElement("ul");ul.className="ti-tree-list";
+      const entries=[...(state.cache.get(path)||[])].sort((a,b)=>
+        Number(b.isDir)-Number(a.isDir)||a.name.localeCompare(b.name));
+      if(!entries.length){
+        const li=document.createElement("li");li.className="ti-tree-empty";
+        li.textContent=tr("empty");ul.append(li);
+      }
+      for(const file of entries) {
+        const li=document.createElement("li");li.className="ti-tree-item";
+        const expanded=file.isDir&&state.expanded.has(file.path);
+        const r=document.createElement("div");r.className="ti-manager-row ti-tree-row";
+        r.classList.toggle("selected",state.chosen.has(file.path));
+        r.classList.toggle("ti-tree-destination",file.isDir&&state.path===file.path);
+        const cb=document.createElement("input");cb.type="checkbox";
+        cb.checked=state.chosen.has(file.path);
+        cb.setAttribute("aria-label",tr("select")+" "+file.name);
+        cb.addEventListener("change",()=>{
+          if(cb.checked)state.chosen.add(file.path);else state.chosen.delete(file.path);
+          r.classList.toggle("selected",cb.checked);controls();
+        });
+        const b=document.createElement("button");b.type="button";b.className="ti-manager-filename ti-tree-label";
+        b.title=file.path;
+        const chevron=document.createElement("span");
+        chevron.className="ti-tree-chevron"+(expanded?" is-expanded":"");
+        chevron.textContent=file.isDir?"▸":"";
+        const name=document.createElement("span");name.className="ti-tree-text";
+        name.textContent=file.name;
+        b.append(chevron,icon(file.isDir,expanded),name);
+        b.addEventListener("click",()=>{
+          if(file.isDir){void toggleFolder(file.path);}
+          else{cb.checked=!cb.checked;cb.dispatchEvent(new Event("change"));}
+        });
+        const type=document.createElement("span");type.textContent=file.isDir?tr("folder"):tr("document");
+        const size=document.createElement("span");size.textContent=file.isDir?"—":formatted(file.size);
+        const folder=document.createElement("span");folder.textContent=path;
+        r.append(cb,b,type,size,folder);li.append(r);
+        if(file.isDir){
+          const wrapper=document.createElement("div");
+          wrapper.className="ti-tree-children-wrapper"+(expanded?" is-open":"");
+          const children=document.createElement("div");children.className="ti-tree-children";
+          if(state.cache.has(file.path))children.append(buildBranch(file.path,depth+1));
+          wrapper.append(children);li.append(wrapper);
+        }
+        ul.append(li);
+      }
+      return ul;
+    };
+    host.append(buildBranch("/",0));
     controls();
+  }
+  async function toggleFolder(path) {
+    if(state.busy)return;
+    if(state.expanded.has(path)) {
+      state.expanded.delete(path);
+      if(state.path===path)setCurrentFolder(path.split("/").slice(0,-1).join("/")||"/");
+      rows();return;
+    }
+    state.expanded.add(path);
+    setCurrentFolder(path);
+    if(!state.cache.has(path))await list(path);
+    else rows();
   }
   async function working(operation,message=tr("progress")){
     if(state.busy||!state.root)return;
     state.busy=true;controls();say(message);
+    const progress=q("[data-ti-bar]",state.root);
+    if(progress){progress.hidden=true;progress.value=0;}
     try{await operation();}
     catch(e){say(tr("failed")+": "+(e.message||e),true);log(String(e.message||e));}
-    finally{state.busy=false;controls();}
+    finally{state.busy=false;controls();if(progress)progress.hidden=true;}
   }
   async function connect(){
     if(state.busy)return;
@@ -161,7 +247,8 @@
       state.link=device;
       say(tr("connecting"));
       state.files=await device.connect();
-      state.path="/";state.chosen.clear();
+      state.cache.clear();state.cache.set("/",state.files);
+      state.expanded=new Set(["/"]);state.path="/";state.chosen.clear();
       q("[data-ti-device]",state.root).textContent=device.device.productName||
         (device.cx2?"TI-Nspire CX II / CAS":"TI-Nspire / CX");
       say(tr("connected")+" · "+q("[data-ti-device]",state.root).textContent);
@@ -171,7 +258,8 @@
   async function disconnect(){
     await working(async()=>{
       await state.link?.close();
-      state.link=null;state.path="/";state.files=[];state.chosen.clear();
+      state.link=null;state.path="/";state.files=[];
+      state.cache.clear();state.expanded=new Set(["/"]);state.chosen.clear();
       q("[data-ti-device]",state.root).textContent="—";
       q("[data-ti-image]",state.root).replaceChildren();
       rows();say(tr("idle"));log("");
@@ -180,8 +268,12 @@
   async function list(path){
     if(!state.link?.connected)return;
     await working(async()=>{
+      say(tr("loadingFolder")+" "+path);
       const files=await state.link.listDir(path);
-      state.path=path;state.files=files;state.chosen.clear();
+      state.cache.set(path,files);
+      state.expanded.add(path);setCurrentFolder(path);
+      const stillKnown=new Set(allKnown().map(f=>f.path));
+      for(const chosenPath of state.chosen)if(!stillKnown.has(chosenPath))state.chosen.delete(chosenPath);
       say(tr("connected"));rows();
     });
   }
@@ -190,9 +282,9 @@
     if(!/\.tns$/i.test(name))throw Error(tr("files")+" .tns");
     const dest=window.TnsNspireUSB.childPath(state.path,name);
     if(state.files.some(f=>f.name.toLowerCase()===name.toLowerCase())&&!confirm(tr("overwrite")))return false;
-    await state.link.putFile(dest,data,(n,total)=>{
-      const pct=Math.round(n/total*100);
-      say(tr("progress")+" "+name+" · "+pct+"%");
+    state.transferStarted=Date.now();
+    await state.link.putFile(dest,data,(n,total,phase)=>{
+      updateTransfer(name,n,total,"upload",phase);
     });
     return true;
   }
@@ -206,6 +298,7 @@
       }
       if(!uploaded)return;
       state.files=await state.link.listDir(state.path);
+      state.cache.set(state.path,state.files);
       state.chosen.clear();rows();
       say(tr("success"));
     });
@@ -221,6 +314,7 @@
       if(!a?.ok||!a.bytes?.length)throw Error(tr("exportUnavailable"));
       if(!(await send(a.filename,new Uint8Array(a.bytes))))return;
       state.files=await state.link.listDir(state.path);
+      state.cache.set(state.path,state.files);
       state.chosen.clear();rows();say(tr("success"));
     });
   }
@@ -230,10 +324,12 @@
     await working(async()=>{
       for(const f of targets){
         say(tr("progress")+" "+f.name);
-        const data=await state.link.getFile(f.path,(n,total)=>{
-          log(f.name+": "+Math.round(n/total*100)+"%");
+        state.transferStarted=Date.now();
+        const data=await state.link.getFile(f.path,(n,total,phase)=>{
+          updateTransfer(f.name,n,total,"download",phase);
         });
         saveFile(f.name,data);
+        log(f.name+" · "+formatted(data.length)+" · "+tr("downloaded"));
       }
       say(tr("downloaded"));
     });
@@ -244,6 +340,7 @@
     await working(async()=>{
       await state.link.makeDir(window.TnsNspireUSB.childPath(state.path,name));
       state.files=await state.link.listDir(state.path);
+      state.cache.set(state.path,state.files);
       rows();say(tr("success"));
     });
   }
@@ -252,8 +349,14 @@
     if(!targets.length||!confirm(tr("confirmDelete")))return;
     if(targets.some(x=>x.isDir)&&!confirm(tr("confirmFolders")))return;
     await working(async()=>{
-      for(const f of targets)await state.link.deleteEntry(f.path,f.isDir);
+      for(const f of targets) {
+        await state.link.deleteEntry(f.path,f.isDir);
+        state.chosen.delete(f.path);
+        if(f.isDir)for(const key of [...state.cache.keys()])
+          if(key===f.path||key.startsWith(f.path+"/"))state.cache.delete(key);
+      }
       state.files=await state.link.listDir(state.path);
+      state.cache.set(state.path,state.files);
       state.chosen.clear();rows();say(tr("success"));
     });
   }
@@ -297,7 +400,7 @@
   function close(){
     if(state.busy)return;
     const link=state.link;state.root?.remove();state.root=null;
-    state.link=null;state.files=[];state.chosen.clear();
+    state.link=null;state.files=[];state.cache.clear();state.chosen.clear();
     if(link)void link.close().catch(console.error);
   }
   function open(){
@@ -324,11 +427,12 @@
       '<div data-ti-rows></div></div>',
       '<div class="ti-manager-footer-actions"><label><span data-ti-upload-text></span><input type="file" data-ti-upload multiple accept=".tns" disabled hidden /></label>',
       '<button type="button" data-ti-current disabled></button></div>',
-      '<div class="ti-manager-log"><span data-ti-progress-label></span><output data-ti-log></output></div></main></div>',
+      '<div class="ti-manager-log"><span data-ti-progress-label></span><progress data-ti-bar max="100" value="0" hidden></progress><output data-ti-log></output></div></main></div>',
       '<footer class="ti-manager-bottom"><span data-ti-caution></span>',
       '<a data-ti-help href="./docs/calculator-transfer.md" target="_blank" rel="noopener noreferrer"></a></footer></section>'
     ].join("");
-    document.body.append(root);state.root=root;state.path="/";state.files=[];state.chosen.clear();
+    document.body.append(root);state.root=root;state.path="/";state.files=[];
+    state.cache.clear();state.expanded=new Set(["/"]);state.chosen.clear();
     const labels={
       "#ti-manager-title":"title","[data-ti-subtitle]":"subtitle",
       "[data-ti-connect]":"connect","[data-ti-disconnect]":"disconnect",
@@ -353,7 +457,11 @@
     q("[data-ti-delete]",root).addEventListener("click",remove);
     q("[data-ti-current]",root).addEventListener("click",current);
     q("[data-ti-capture]",root).addEventListener("click",screenshot);
-    q("[data-ti-up]",root).addEventListener("click",()=>list(state.path.split("/").slice(0,-1).join("/")||"/"));
+    q("[data-ti-up]",root).addEventListener("click",()=>{
+      const parent=state.path.split("/").slice(0,-1).join("/")||"/";
+      setCurrentFolder(parent);state.expanded.add(parent);
+      if(state.cache.has(parent))rows();else void list(parent);
+    });
     q("[data-ti-upload]",root).addEventListener("change",event=>{
       const files=Array.from(event.target.files||[]);
       event.target.value="";void upload(files);
