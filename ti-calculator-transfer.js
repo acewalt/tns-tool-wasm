@@ -1,183 +1,242 @@
 (() => {
   "use strict";
-  const HOST = "http://127.0.0.1:8765";
-  const USB_VENDOR = 0x0451;
-  const SUPPORTED = [0xe012, 0xe022];
-  const translations = {
-    es: ["Transferir a calculadora", "Detectar USB", "Buscar puente local", "Sin conexión", "USB detectado; faltan los comandos TI-Nspire", "Conexión activa", "Carpetas de la calculadora", "Dispositivos USB", "Actualizar", "Subir", "Enviar .tns", "Enviar documento actual", "Nueva carpeta", "Capturar pantalla", "Captura no disponible en este controlador. Usa la herramienta oficial TI para CX II.", "Inicia el puente local para leer y transferir archivos. Ver instrucciones en docs/calculator-transfer.md. La detección USB no da acceso a las carpetas.", "Seleccionar dispositivo", "No hay archivos en esta carpeta", "Conecta la calculadora para consultar sus archivos", "Descargar", "Instrucciones", "Captura oficial de TI", "Escribe el nombre de la nueva carpeta:", "No se encontró una calculadora compatible.", "Cerrar", "N-Link · gestor USB externo"],
-    en: ["Transfer to calculator", "Detect USB", "Find local bridge", "Not connected", "USB detected; TI-Nspire protocol unavailable", "Connected", "Calculator folders", "USB devices", "Refresh", "Up", "Send .tns", "Send current document", "New folder", "Take screenshot", "Capture unavailable with this driver. Use the official TI CX II tool.", "Start the local bridge to list and transfer files. See docs/calculator-transfer.md. USB detection alone cannot browse folders.", "Select device", "This folder is empty", "Connect a calculator to see real files", "Download", "Instructions", "Official TI screen capture", "Name of the new folder:", "No compatible calculators detected.", "Close", "N-Link · external USB file manager"],
-    fr: ["Transférer vers calculatrice", "Détecter USB", "Rechercher le pont local", "Déconnectée", "USB détecté; protocole TI-Nspire indisponible", "Connectée", "Dossiers de la calculatrice", "Périphériques USB", "Actualiser", "Monter", "Envoyer .tns", "Envoyer le document", "Nouveau dossier", "Capture d'écran", "Capture non disponible. Utilisez l'application TI officielle CX II.", "Démarrez le pont local pour voir les fichiers (docs/calculator-transfer.md).", "Sélectionner", "Dossier vide", "Connectez la calculatrice pour afficher les fichiers", "Télécharger", "Instructions", "Capture officielle de TI", "Nom du nouveau dossier :", "Aucune calculatrice compatible.", "Fermer", "N-Link · gestionnaire USB externe"]
+
+  // WebTILP runs the real TI calculator protocols inside its own WebAssembly
+  // application. Never represent a USB enumeration as an established session.
+  // Cross-origin embedding may be restricted by the upstream site's headers.
+  const WEBTILP_URL = "https://tiplanet.org/scripts/webtilibs/webtilp.html";
+  const state = { overlay: null, frame: null, activated: false, busy: false };
+
+  const STRINGS = {
+    es: {
+      title: "Transferir a calculadora",
+      subtitle: "Administrador USB real con WebTILP",
+      openTab: "Abrir WebTILP en otra pestaña",
+      embedded: "Cargar administrador integrado",
+      reload: "Recargar conexión",
+      prepare: "Preparar TNS actual",
+      close: "Cerrar",
+      description: "WebTILP se encarga de la conexión USB, los archivos, las carpetas, las transferencias y la captura de pantalla. No necesitas instalar el puente Python.",
+      noBrowser: "Para comunicarte con la calculadora utiliza Chrome, Edge o Brave con WebUSB y conecta un cable USB de datos.",
+      embeddedNotice: "La conexión USB dentro del panel puede estar restringida por el navegador o por WebTILP. Si no aparece o no conecta, usa «Abrir WebTILP en otra pestaña»; esa opción funciona independientemente del panel.",
+      prepared: "Documento TNS descargado. En WebTILP, usa «Send Selected Files» para seleccionar y enviarlo a la calculadora.",
+      nothing: "Crea o importa primero un documento TNS.",
+      failed: "No fue posible generar el documento:",
+      loading: "Cargando WebTILP…",
+      credit: "WebTILP es software libre externo; la comunicación USB y el explorador pertenecen a su proyecto.",
+      howto: "1. Abre WebTILP y pulsa «Connect Calculator». 2. Selecciona la TI-Nspire y autoriza el acceso. 3. Usa «Refresh List» para ver carpetas y documentos. 4. Puedes enviar y recibir archivos, crear carpetas y tomar capturas con las funciones de WebTILP.",
+      sendTip: "Si quieres enviar el TNS que estás editando, pulsa «Preparar TNS actual» y luego selecciónalo desde WebTILP.",
+      thirdParty: "La conexión ocurre en WebTILP, no en los servidores de TNS Tool WASM.",
+      waiting: "Listo para conectar mediante WebTILP",
+      newTabBlocked: "Tu navegador bloqueó la nueva pestaña. Permite ventanas emergentes o utiliza el enlace de WebTILP.",
+      createError: "No hay ningún documento abierto o el creador de TNS todavía no está listo."
+    },
+    en: {
+      title: "Transfer to calculator",
+      subtitle: "Real USB manager powered by WebTILP",
+      openTab: "Open WebTILP in a new tab",
+      embedded: "Load embedded manager",
+      reload: "Reload connection",
+      prepare: "Prepare current TNS",
+      close: "Close",
+      description: "WebTILP handles real USB connections, files, folders, transfers and screenshots. No Python bridge is required.",
+      noBrowser: "Use Chrome, Edge or Brave with WebUSB and a USB data cable to connect your calculator.",
+      embeddedNotice: "Embedded USB access may be restricted by your browser or the WebTILP website. If loading or connecting fails, use «Open WebTILP in a new tab» instead.",
+      prepared: "TNS downloaded. In WebTILP, select «Send Selected Files» and choose the file you just saved.",
+      nothing: "Create or import a TNS document first.",
+      failed: "Could not build the document:",
+      loading: "Loading WebTILP…",
+      credit: "WebTILP is an independent open-source application. USB communication and the file manager are provided by its project.",
+      howto: "1. Open WebTILP and click «Connect Calculator». 2. Select your TI-Nspire and authorize access. 3. Use «Refresh List» to browse documents. 4. Transfer files, create folders and capture screenshots within WebTILP.",
+      sendTip: "To send the document you are editing, click «Prepare current TNS», then select the downloaded file in WebTILP.",
+      thirdParty: "The connection runs within WebTILP, not on the TNS Tool WASM server.",
+      waiting: "Ready to connect using WebTILP",
+      newTabBlocked: "The browser blocked the new tab. Allow pop-ups or follow the WebTILP link.",
+      createError: "No document is open or the TNS builder is not ready."
+    },
+    fr: {
+      title: "Transférer vers la calculatrice",
+      subtitle: "Gestionnaire USB réel avec WebTILP",
+      openTab: "Ouvrir WebTILP dans un onglet",
+      embedded: "Charger le gestionnaire intégré",
+      reload: "Recharger la connexion",
+      prepare: "Préparer le TNS actuel",
+      close: "Fermer",
+      description: "WebTILP gère USB, les fichiers, les dossiers, les transferts et les captures d'écran. Aucun pont Python n'est nécessaire.",
+      noBrowser: "Utilisez Chrome, Edge ou Brave compatible WebUSB et un câble USB de données.",
+      embeddedNotice: "L'accès USB intégré peut être bloqué par le navigateur ou le site distant. Dans ce cas, ouvrez WebTILP dans un onglet séparé.",
+      prepared: "TNS téléchargé. Dans WebTILP, sélectionnez «Send Selected Files» et choisissez votre fichier.",
+      nothing: "Créez ou importez d'abord un document TNS.",
+      failed: "Impossible de générer le document :",
+      loading: "Chargement de WebTILP…",
+      credit: "WebTILP est un logiciel libre indépendant. Son projet fournit les fonctions USB et de gestion des fichiers.",
+      howto: "1. Ouvrez WebTILP puis «Connect Calculator». 2. Sélectionnez la TI-Nspire. 3. Utilisez «Refresh List». 4. Transférez les fichiers ou capturez l'écran.",
+      sendTip: "Pour envoyer le TNS actif, utilisez «Préparer le TNS actuel», puis sélectionnez-le dans WebTILP.",
+      thirdParty: "La connexion se fait dans WebTILP, pas sur les serveurs de TNS Tool WASM.",
+      waiting: "Prêt à connecter via WebTILP",
+      newTabBlocked: "Le navigateur a bloqué le nouvel onglet. Autorisez les fenêtres contextuelles.",
+      createError: "Aucun document ouvert ou créateur TNS indisponible."
+    }
   };
-  const state = { dialog:null, connected:false, info:null, path:"/", items:[], usb:null, screenshot:false, screenshotUrl:null };
-  function tr(i) { const l=(document.documentElement.lang||"es").slice(0,2);return (translations[l]||translations.es)[i]; }
-  function el(sel) { return state.dialog?.querySelector(sel); }
-  function say(s, error) { const x=el("[data-status]"); if(x){x.textContent=s;x.dataset.error=error?"1":"0";} }
-  function note(s) { const x=el("[data-note]");if(x)x.textContent=s; }
-  async function api(endpoint, options, blob) {
-    const cfg=options||{};
-    const ctrl=new AbortController();
-    const timeout=setTimeout(()=>ctrl.abort(),cfg.timeout||10000);
+
+  const qs = (selector, root = document) => root.querySelector(selector);
+  function strings() {
+    const lang = String(document.documentElement.lang || "es").slice(0, 2);
+    return STRINGS[lang] || STRINGS.es;
+  }
+  function updateStatus(message, error = false) {
+    const status = qs("[data-webtilp-status]", state.overlay || document);
+    if (!status) return;
+    status.textContent = message;
+    status.classList.toggle("error", error);
+  }
+  function startEmbedded() {
+    const root = state.overlay;
+    if (!root) return;
+    const holder = qs("[data-webtilp-holder]", root);
+    if (!holder) return;
+    if (state.frame) state.frame.remove();
+    holder.replaceChildren();
+    const frame = document.createElement("iframe");
+    frame.className = "ti-transfer-webtilp-frame";
+    frame.title = "WebTILP — calculator USB manager";
+    frame.src = WEBTILP_URL;
+    frame.allow = "usb *; hid *; serial *; fullscreen *; clipboard-write *";
+    frame.referrerPolicy = "strict-origin-when-cross-origin";
+    // Do not sandbox: WebTILP itself needs native USB, WASM, downloads and
+    // file picker APIs. Its permissions remain subject to the browser prompt.
+    holder.append(frame);
+    state.frame = frame;
+    state.activated = true;
+    qs("[data-webtilp-placeholder]", root).hidden = true;
+    qs("[data-webtilp-embedded]", root).hidden = true;
+    qs("[data-webtilp-reload]", root).hidden = false;
+    updateStatus(strings().loading);
+    frame.addEventListener("load", () => {
+      // Cross-origin load does not prove that WebTILP is usable or connected.
+      if (state.frame === frame) updateStatus(strings().embeddedNotice);
+    }, { once: true });
+    frame.addEventListener("error", () => {
+      if (state.frame === frame) updateStatus(strings().embeddedNotice, true);
+    }, { once: true });
+  }
+
+  function openExternal() {
+    // Direct action from a user click, so the popup is not deferred.
+    const tab = window.open(WEBTILP_URL, "_blank", "noopener,noreferrer");
+    if (!tab) {
+      // In browsers using 'noopener', window.open may return null even when
+      // the tab was created. Keep the always-visible regular anchor fallback.
+      updateStatus(strings().embeddedNotice);
+    }
+  }
+  function downloadBlob(filename, bytes) {
+    const blob = new Blob([bytes], { type: "application/octet-stream" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = String(filename || "documento.tns").replace(/[\\/:*?"<>|]/g, "_");
+    document.body.append(anchor);
+    anchor.click();
+    anchor.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  }
+  async function prepareCurrent() {
+    const button = qs("[data-webtilp-prepare]", state.overlay || document);
+    if (state.busy || !button) return;
+    state.busy = true;
+    button.disabled = true;
+    const copy = strings();
     try {
-      const response=await fetch(HOST+endpoint,{
-        method:cfg.body?"POST":"GET", mode:"cors",cache:"no-store",
-        headers:cfg.body?{"Content-Type":"application/json"}:{},
-        body:cfg.body?JSON.stringify(cfg.body):undefined,signal:ctrl.signal
-      });
-      if (!response.ok) {
-        const err=await response.json().catch(()=>({}));
-        throw new Error(err.error||"HTTP "+response.status);
+      // This object is loaded lazily by container-editor-bindings.js.
+      // It packages the current, unsaved edits into a valid TI document.
+      const artifactBuilder = window.TnsFileSaveExperimental?.buildXmlDoctorArtifact;
+      if (typeof artifactBuilder === "function") {
+        const artifact = await artifactBuilder();
+        if (!artifact?.ok || !artifact.bytes?.byteLength) throw new Error(copy.createError);
+        downloadBlob(artifact.filename, artifact.bytes);
+      } else {
+        // Use the standard, established Create TNS pathway when the optional
+        // experimental save module is not present.
+        const createButton = document.querySelector("#xml-create-tns-btn");
+        if (!createButton || createButton.disabled) throw new Error(copy.createError);
+        createButton.click();
       }
-      return blob?response.blob():response.json();
-    } finally {clearTimeout(timeout);}
-  }
-  function redraw() {
-    const box=el("[data-files]");if(!box)return;
-    el("[data-path]").textContent=state.path;
-    for(const name of ["refresh","upload","current","mkdir"])el("[data-"+name+"]").disabled=!state.connected;
-    el("[data-up]").disabled=!state.connected||state.path==="/";
-    el("[data-capture]").disabled=false;
-    box.replaceChildren();
-    if(!state.connected||!state.items.length){const p=document.createElement("p");p.textContent=tr(state.connected?17:18);box.append(p);return;}
-    for(const file of [...state.items].sort((a,b)=>Number(b.is_dir)-Number(a.is_dir)||a.name.localeCompare(b.name))){
-      const row=document.createElement("div");row.className="ti-calc-row";
-      const btn=document.createElement("button");btn.type="button";btn.textContent=(file.is_dir?"▣  ":"▤  ")+file.name;
-      btn.addEventListener("click",()=>file.is_dir?openPath(file.path):download(file.path));
-      const size=document.createElement("span");size.textContent=file.is_dir?"—":(Number(file.size||0)/1024).toFixed(1)+" KB";
-      row.append(btn,size);box.append(row);
+      updateStatus(copy.prepared);
+    } catch (error) {
+      updateStatus(copy.failed + " " + (error?.message || String(error)), true);
+    } finally {
+      state.busy = false;
+      if (state.overlay === button.closest(".ti-transfer-overlay")) button.disabled = false;
     }
   }
-  async function refresh() {
-    if(!state.connected)return;
-    try {
-      const r=await api("/api/files?path="+encodeURIComponent(state.path),{timeout:20000});
-      state.items=Array.isArray(r.files)?r.files.filter(f=>f&&typeof f.name==="string"&&typeof f.path==="string"):[];
-      say(tr(5)+" · "+(state.info?.name||"TI-Nspire"));redraw();
-    } catch(e){state.items=[];redraw();say(e.message,true);}
+  function close() {
+    state.frame = null;
+    state.overlay?.remove();
+    state.overlay = null;
+    state.activated = false;
   }
-  async function openPath(path){state.path=path;await refresh();}
-  function deviceList(devices){
-    const box=el("[data-devices]");box.replaceChildren();
-    if(!devices.length){box.textContent=tr(23);return;}
-    for(const device of devices){
-      const b=document.createElement("button");b.type="button";
-      b.textContent=(device.name||"TI-Nspire")+" · USB "+device.bus_number+":"+device.address;
-      b.addEventListener("click",async()=>{
-        try {
-          const result=await api("/api/connect",{body:{bus_number:device.bus_number,address:device.address},timeout:20000});
-          state.connected=Boolean(result.connected);state.info=result.info||device;
-          state.screenshot=Boolean(result.capabilities?.screenshot);
-          state.path="/";say(state.connected?tr(5):tr(3));
-          note(state.screenshot?"":tr(14));await refresh();
-        }catch(e){say(e.message,true);}
-      });box.append(b);
-    }
-  }
-  async function searchLocal(){
-    try{
-      const health=await api("/api/health",{timeout:3000});
-      state.connected=Boolean(health.connected);state.info=health.info||null;
-      state.screenshot=Boolean(health.capabilities?.screenshot);
-      if(state.connected){state.path="/";await refresh();}
-      else{const found=await api("/api/devices",{timeout:6000});deviceList(found.devices||[]);say(tr(3));redraw();}
-      note(state.screenshot?"":tr(15));
-    }catch(e){state.connected=false;state.screenshot=false;deviceList([]);say(state.usb?tr(4):tr(3));note(tr(15));redraw();}
-  }
-  async function detectUsb(){
-    if(!navigator.usb?.requestDevice){say("WebUSB no disponible (Chrome/Brave).",true);return;}
-    try{
-      const usb=await navigator.usb.requestDevice({filters:SUPPORTED.map(productId=>({vendorId:USB_VENDOR,productId}))});
-      if(!SUPPORTED.includes(usb.productId))throw new Error("TI-Nspire no compatible");
-      state.usb=usb;
-      say(tr(4)+" · "+(usb.productName||"TI-Nspire"));
-      note(tr(15));
-    }catch(e){if(e.name!=="NotFoundError")say(e.message,true);}
-  }
-  function binary64(bytes){
-    let str="";for(let i=0;i<bytes.length;i+=32768)str+=String.fromCharCode(...bytes.subarray(i,i+32768));
-    return btoa(str);
-  }
-  async function send(name,bytes){
-    try{
-      if(!state.connected)throw new Error(tr(3));
-      if(!/\.tns$/i.test(name))throw new Error("Only .tns files can be transferred.");
-      if(bytes.length>12*1024*1024)throw new Error("Maximum 12 MB.");
-      if(state.items.some(x=>x.name===name)&&!confirm("¿Reemplazar "+name+"?"))return;
-      say("Transfiriendo "+name+"…");
-      await api("/api/upload",{body:{path:state.path,name,data:binary64(bytes)},timeout:90000});
-      say("Transferido: "+name);await refresh();
-    }catch(e){say(e.message,true);}
-  }
-  async function sendCurrent(){
-    try{
-      const builder=window.TnsFileSaveExperimental?.buildXmlDoctorArtifact;
-      if(typeof builder!=="function")throw new Error("No está disponible la generación del documento actual.");
-      const result=await builder();
-      if(!result?.ok)throw new Error("No se pudo generar el TNS.");
-      await send(result.filename,new Uint8Array(result.bytes));
-    }catch(e){say(e.message,true);}
-  }
-  async function download(path){
-    try{
-      const data=await api("/api/download?path="+encodeURIComponent(path),{timeout:90000},true);
-      const url=URL.createObjectURL(data),a=document.createElement("a");
-      a.href=url;a.download=path.split("/").pop().replace(/[\\/:*?"<>|]/g,"_");a.click();
-      setTimeout(()=>URL.revokeObjectURL(url),1500);
-    }catch(e){say(e.message,true);}
-  }
-  async function screenshot(){
-    if(!state.screenshot){
-      note(tr(14));
-      if(confirm(tr(14)+"\n\n¿Abrir TI-Nspire CX II Connect en otra pestaña?")){
-        window.open("https://nspireconnect.ti.com/","_blank","noopener,noreferrer");
-      }
-      return;
-    }
-    try{
-      const data=await api("/api/screenshot",{timeout:25000},true);
-      if(state.screenshotUrl)URL.revokeObjectURL(state.screenshotUrl);
-      state.screenshotUrl=URL.createObjectURL(data);
-      const box=el("[data-screen]");box.replaceChildren();
-      const img=document.createElement("img");img.src=state.screenshotUrl;img.alt="TI-Nspire";
-      const link=document.createElement("a");link.href=state.screenshotUrl;link.download="TI-Nspire-screen.png";link.textContent=tr(19);
-      box.append(img,link);
-    }catch(e){say(e.message,true);}
-  }
-  function close(){if(state.screenshotUrl)URL.revokeObjectURL(state.screenshotUrl);state.screenshotUrl=null;state.dialog?.remove();state.dialog=null;}
-  function open(){
-    if(state.dialog)return;
-    const overlay=document.createElement("div");overlay.className="ti-calc-overlay";
-    overlay.innerHTML=[
-      '<section class="ti-calc-dialog" role="dialog" aria-modal="true" aria-labelledby="ti-calc-title">',
-      '<header class="ti-calc-head"><div><h2 id="ti-calc-title"></h2><p data-status></p></div><button type="button" data-close class="ti-calc-close">×</button></header>',
-      '<div class="ti-calc-toolbar"><button type="button" data-usb></button><button type="button" data-local></button><a data-help href="./docs/calculator-transfer.md" target="_blank" rel="noopener noreferrer"></a></div>',
-      '<p class="ti-calc-note" data-note></p>',
-      '<div class="ti-calc-columns"><aside class="ti-calc-side"><h3 data-devices-label></h3><div data-devices class="ti-calc-devices"></div><h3 data-capture-label></h3><button type="button" data-capture disabled></button>',
-      '<div data-screen class="ti-calc-screen"></div><a data-official href="https://nspireconnect.ti.com/" target="_blank" rel="noopener noreferrer"></a><a data-nlink href="https://lights0123.com/n-link/" target="_blank" rel="noopener noreferrer"></a></aside>',
-      '<main class="ti-calc-files"><h3 data-files-label></h3><div class="ti-calc-nav"><button data-up type="button" disabled>↑</button><code data-path>/</code><button data-refresh type="button" disabled>↻</button></div>',
-      '<div class="ti-calc-file-list" data-files></div><div class="ti-calc-actions"><label><span data-upload-label></span><input data-upload type="file" accept=".tns" hidden disabled></label><button data-current type="button" disabled></button><button data-mkdir type="button" disabled></button></div></main></div></section>'
+  function open() {
+    if (state.overlay) return;
+    const overlay = document.createElement("div");
+    overlay.className = "ti-transfer-overlay";
+    const copy = strings();
+    overlay.innerHTML = [
+      '<section class="ti-transfer-modal" role="dialog" aria-modal="true" aria-labelledby="ti-transfer-title">',
+      ' <header class="ti-transfer-topbar"><div class="ti-transfer-title"><h2 id="ti-transfer-title"></h2><p data-webtilp-subtitle></p></div>',
+      '   <button type="button" data-webtilp-close class="ti-transfer-close" aria-label="Close">×</button></header>',
+      ' <div class="ti-transfer-toolbar">',
+      '   <a data-webtilp-external target="_blank" rel="noopener noreferrer" class="ti-transfer-primary"></a>',
+      '   <button type="button" data-webtilp-embedded></button>',
+      '   <button type="button" data-webtilp-reload hidden></button>',
+      '   <button type="button" data-webtilp-prepare></button>',
+      ' </div>',
+      ' <p class="ti-transfer-status" data-webtilp-status></p>',
+      ' <p class="ti-transfer-description" data-webtilp-description></p>',
+      ' <div class="ti-transfer-viewport" data-webtilp-holder>',
+      '   <div class="ti-transfer-placeholder" data-webtilp-placeholder>',
+      '     <div class="ti-transfer-placeholder-icon" aria-hidden="true">USB</div>',
+      '     <h3>WebTILP</h3><p data-webtilp-instructions></p>',
+      '   </div>',
+      ' </div>',
+      ' <footer class="ti-transfer-footer"><p data-webtilp-notice></p><p data-webtilp-tip></p>',
+      '   <small data-webtilp-credit></small></footer>',
+      '</section>'
     ].join("");
-    document.body.append(overlay);state.dialog=overlay;state.path="/";state.items=[];
-    const fill=[["#ti-calc-title",0],["[data-usb]",1],["[data-local]",2],["[data-files-label]",6],["[data-devices-label]",7],["[data-upload-label]",10],["[data-current]",11],["[data-mkdir]",12],["[data-capture-label]",13],["[data-capture]",13],["[data-help]",20],["[data-official]",21],["[data-nlink]",25]];
-    for(const [selector,index]of fill)el(selector).textContent=tr(index);
-    el("[data-close]").setAttribute("aria-label",tr(24));
-    el("[data-close]").addEventListener("click",close);
-    overlay.addEventListener("click",e=>{if(e.target===overlay)close();});
-    el("[data-usb]").addEventListener("click",detectUsb);
-    el("[data-local]").addEventListener("click",searchLocal);
-    el("[data-refresh]").addEventListener("click",refresh);
-    el("[data-up]").addEventListener("click",()=>openPath(state.path.split("/").slice(0,-1).join("/")||"/"));
-    el("[data-current]").addEventListener("click",sendCurrent);
-    el("[data-upload]").addEventListener("change",async e=>{
-      const f=e.target.files?.[0];e.target.value="";if(f)await send(f.name,new Uint8Array(await f.arrayBuffer()));
-    });
-    el("[data-mkdir]").addEventListener("click",async()=>{
-      const name=prompt(tr(22),"Nuevo");if(!name)return;
-      try{await api("/api/mkdir",{body:{path:state.path,name}});await refresh();}catch(e){say(e.message,true);}
-    });
-    el("[data-capture]").addEventListener("click",screenshot);
-    say(tr(3));note(tr(15));redraw();void searchLocal();
+    document.body.append(overlay);
+    state.overlay = overlay;
+    qs("#ti-transfer-title", overlay).textContent = copy.title;
+    qs("[data-webtilp-subtitle]", overlay).textContent = copy.subtitle;
+    qs("[data-webtilp-external]", overlay).textContent = copy.openTab;
+    qs("[data-webtilp-external]", overlay).href = WEBTILP_URL;
+    qs("[data-webtilp-embedded]", overlay).textContent = copy.embedded;
+    qs("[data-webtilp-reload]", overlay).textContent = copy.reload;
+    qs("[data-webtilp-prepare]", overlay).textContent = copy.prepare;
+    qs("[data-webtilp-description]", overlay).textContent = copy.description;
+    qs("[data-webtilp-instructions]", overlay).textContent = copy.howto;
+    qs("[data-webtilp-notice]", overlay).textContent = copy.embeddedNotice;
+    qs("[data-webtilp-tip]", overlay).textContent = copy.sendTip;
+    qs("[data-webtilp-credit]", overlay).textContent = copy.credit;
+    qs("[data-webtilp-close]", overlay).setAttribute("aria-label", copy.close);
+    qs("[data-webtilp-close]", overlay).addEventListener("click", close);
+    qs("[data-webtilp-embedded]", overlay).addEventListener("click", startEmbedded);
+    qs("[data-webtilp-reload]", overlay).addEventListener("click", startEmbedded);
+    qs("[data-webtilp-prepare]", overlay).addEventListener("click", prepareCurrent);
+    overlay.addEventListener("click", event => { if (event.target === overlay) close(); });
+    updateStatus(copy.waiting);
+    // Load in-panel by default, but always offer the direct top-level link:
+    // WebUSB permissions or frame policies can block embedded access.
+    startEmbedded();
   }
-  document.addEventListener("click",event=>{if(event.target.closest?.("#xml-transfer-calculator-btn")){event.preventDefault();open();}});
-  document.addEventListener("keydown",event=>{if(event.key==="Escape"&&state.dialog)close();});
-  window.TnsCalculatorTransfer=Object.freeze({open,close});
+
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("#xml-transfer-calculator-btn")) {
+      event.preventDefault();
+      open();
+    }
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape" && state.overlay) close();
+  });
+  window.TnsCalculatorTransfer = Object.freeze({ open, close, openExternal, prepareCurrent });
 })();
