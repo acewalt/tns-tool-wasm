@@ -28,6 +28,32 @@ Se filtran los dispositivos Texas Instruments con identificadores `0451:e012` (f
 7. **Eliminar seleccionados**: pide confirmación. **Importante:** eliminar una carpeta puede borrar también su contenido; se muestra una segunda confirmación.
 8. **Capturar pantalla**: solicita una captura por el servicio RLE `0x4024`. Decodifica el formato clásico de 4 bits en escala de grises y el RLE RGB565 de 16 bits de modelos a color. Si recibe una respuesta completa, la reconstruye en un canvas y permite descargarla como PNG.
 
+## Recuperación de comunicaciones CX II (21 de octubre de 2026)
+
+Si el navegador muestra un error NNSE con una cabecera que contiene
+`6c ce 54 fd 64 01 40 60` (archivos) o
+`6d e1 54 fd 64 01 40 24` (captura), no significa necesariamente
+que no detecte la calculadora. En pruebas con hardware se ha visto que
+la lectura de directorios y la creación de carpetas llegan a funcionar,
+pero que alguna respuesta posterior comienza en un límite de lectura USB
+desalineado.
+
+El receptor ahora recorre un búfer persistente, valida sumas de
+verificación NNSE, reconoce el control NNSE compacto y solo admite
+paquetes NavNet sin encapsular cuando verifica íntegramente sus
+sumas de verificación y las direcciones de la respuesta. El barrido
+está acotado a 8192 bytes para no aceptar silenciosamente datos
+arbitrarios. Se añadieron pruebas con prefijos residuales, respuestas
+partidas entre lecturas WebUSB, tramas dañadas y descargas en varios
+bloques.
+
+**Validación restante:** estas pruebas utilizan dispositivos simulados.
+No se ha verificado el parche en una TI-Nspire CX II física conectada
+desde Windows y Brave. Es recomendable comprobar primero lectura
+de carpetas y descarga de un TNS pequeño, después descarga de un
+TNS grande, y por último captura de pantalla. No uses WebTILP y esta
+página simultáneamente sobre la misma calculadora.
+
 ## Límites actuales
 
 - El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
