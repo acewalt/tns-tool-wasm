@@ -116,7 +116,8 @@
     while (i < rle.length && o < expectedLength) {
       const signed = (rle[i++] << 24) >> 24;
       if (signed >= 0) {
-        ensure(i < rle.length && o + signed + 1 <= expectedLength, "RLE inválido.");
+        ensure(o + signed + 1 <= expectedLength, "RLE desbordado.");
+        ensure(i < rle.length, "RLE incompleta.");
         output.fill(rle[i++], o, o + signed + 1);
         o += signed + 1;
       } else {
