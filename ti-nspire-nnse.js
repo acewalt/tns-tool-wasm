@@ -1,0 +1,189 @@
+/*
+ * NNSE ("NavNet SE") USB framing for TI-Nspire CX II (USB configuration #1).
+ * First-party protocol implementation; the complete NavNet packet is carried
+ * as an NNSE stream payload. No iframe, external website, or local daemon.
+ *
+ * Protocol references:
+ * https://www.hackspire.org/USB_Protocol/
+ * https://github.com/adriweb/tilibs (NNSE protocol research)
+ */
+(() => {
+  "use strict";
+  const PC=0xfe, CALC=0x01, ALL=0xff, HEADER=12, MAX_PAYLOAD=1472;
+  const ADDR=0x01, TIME=0x02, STREAM=0x04, CTRL=0x08;
+  const to16=(a,i)=>a[i]*256+a[i+1];
+  const fail=message=>{ throw new Error("TI-Nspire CX II (NNSE): "+message); };
+  const join=(...parts)=>{
+    const out=new Uint8Array(parts.reduce((n,p)=>n+p.length,0));
+    let cursor=0;
+    for(const p of parts){out.set(p,cursor);cursor+=p.length;}
+    return out;
+  };
+
+  function checksum(data) {
+    let sum=0;
+    for(let i=0;i<data.length;i+=2) {
+      sum += (data[i]<<8) | (i+1<data.length?data[i+1]:0);
+    }
+    while(sum>>>16)sum=(sum&0xffff)+(sum>>>16);
+    return sum&0xffff;
+  }
+  function encodeFrame(service,payload=new Uint8Array(0),opts={}) {
+    if(!(payload instanceof Uint8Array))payload=new Uint8Array(payload);
+    if(payload.length>MAX_PAYLOAD)fail("Paquete excesivo.");
+    const len=HEADER+payload.length,bytes=new Uint8Array(len);
+    bytes[0]=0;bytes[1]=service;bytes[2]=opts.src??PC;bytes[3]=opts.dest??CALC;
+    bytes[4]=opts.unknown??0;bytes[5]=opts.reqAck??0;
+    bytes[6]=len>>>8;bytes[7]=len&255;
+    const seq=(opts.seq??0)&0xffff;
+    bytes[8]=seq>>>8;bytes[9]=seq&255;
+    bytes.set(payload,HEADER);
+    const sum=checksum(bytes)^0xffff;
+    bytes[10]=sum>>>8;bytes[11]=sum&255;
+    return bytes;
+  }
+  function parseFrame(bytes) {
+    if(bytes.length<HEADER)fail("Cabecera NNSE incompleta.");
+    const len=to16(bytes,6);
+    if(bytes[0]!==0 || bytes[4]!==0 || len<HEADER ||
+      len>HEADER+MAX_PAYLOAD || bytes.length!==len)fail("Cabecera NNSE inválida.");
+    if(checksum(bytes)!==0xffff)fail("Checksum NNSE inválido.");
+    return {service:bytes[1],src:bytes[2],dest:bytes[3],unknown:bytes[4],
+      reqAck:bytes[5],seq:to16(bytes,8),payload:bytes.subarray(HEADER)};
+  }
+  function parseCompactControl(bytes) {
+    const len=to16(bytes,5);
+    if(bytes[0]!==CTRL||bytes[3]!==0||len<HEADER||len>HEADER+MAX_PAYLOAD||
+      bytes.length!==len-1)fail("Cabecera compacta NNSE inválida.");
+    if(checksum(join(Uint8Array.of(0),bytes))!==0xffff)
+      fail("Checksum compacto NNSE inválido.");
+    return {service:bytes[0],src:bytes[1],dest:bytes[2],
+      unknown:bytes[3],reqAck:bytes[4],seq:to16(bytes,7),
+      payload:bytes.subarray(HEADER-1)};
+  }
+
+  class NNSETransport {
+    constructor({readExact,write}) {
+      if(typeof readExact!=="function"||typeof write!=="function")fail("Transporte USB inválido.");
+      this.readExact=readExact;this.write=write;
+      this.seq=1;this.ready=false;this.inbox=[];this.lastStreamSeq=null;
+    }
+    nextSeq(){const n=this.seq;this.seq=(this.seq+1)&65535;return n;}
+    async send(service,payload=new Uint8Array(0),opts={}) {
+      await this.write(encodeFrame(service,payload,{seq:this.nextSeq(),...opts}));
+    }
+    async promptAddress() {
+      await this.send(ADDR,Uint8Array.of(0x80));
+      await this.send(ADDR,Uint8Array.of(0x80));
+    }
+    async handshake() {
+      // WebUSB on Windows cannot reliably USB-reset a CX II. Prompt its
+      // already-configured NNSE connection rather than waiting for a raw
+      // NavNet address packet, which cannot occur in USB configuration #1.
+      await this.promptAddress();
+      this.ready=true;
+    }
+    async readFrame() {
+      // readExact is backed by a persistent USB byte FIFO; USB packet and
+      // logical NNSE message boundaries do not necessarily coincide.
+      const head=await this.readExact(HEADER);
+      if(head[0]===0&&head[4]===0&&head[6]*256+head[7]>=HEADER) {
+        const len=to16(head,6);
+        if(len>HEADER+MAX_PAYLOAD)fail("Longitud NNSE excesiva.");
+        return parseFrame(join(head,await this.readExact(len-HEADER)));
+      }
+      // Some CX II firmware sends a stream-control message without the
+      // leading zero byte. The 12th byte may already belong to its payload.
+      if(head[0]===CTRL&&head[3]===0&&
+        (head[2]===PC||head[2]===ALL)) {
+        const wireLen=to16(head,5)-1;
+        if(wireLen<HEADER||wireLen>HEADER+MAX_PAYLOAD-1)fail("Longitud compacta NNSE excesiva.");
+        if(wireLen<HEADER)fail("NNSE compacta demasiado corta.");
+        return parseCompactControl(join(head,await this.readExact(wireLen-HEADER)));
+      }
+      const prefix=Array.from(head.subarray(0,8),b=>b.toString(16).padStart(2,"0")).join(" ");
+      fail("Respuesta USB no reconocida ("+prefix+"). No se recibieron tramas NNSE válidas.");
+    }
+    async handle(frame) {
+      if(frame.dest!==PC&&frame.dest!==ALL)return null;
+      if(frame.service&0x80)return frame;
+      if(frame.reqAck&1) {
+        await this.send(frame.service|0x80,new Uint8Array(0),{
+          src:frame.dest,dest:frame.src,unknown:frame.unknown,
+          reqAck:frame.reqAck&~1,seq:frame.seq
+        });
+      }
+      switch(frame.service) {
+        case ADDR:
+          if(frame.payload[0]===0) {
+            await this.promptAddress();
+            this.lastStreamSeq=null;
+          }
+          return null;
+        case TIME:
+          if(frame.payload[0]===0) {
+            const body=new Uint8Array(17),ts=(Date.now()/1000)>>>0;
+            body[0]=0x80;body[1]=ts>>>24;body[2]=(ts>>>16)&255;
+            body[3]=(ts>>>8)&255;body[4]=ts&255;
+            await this.send(TIME,body);
+            this.ready=true;
+          }
+          return null;
+        case CTRL:
+          if(frame.payload.length===1) {
+            const op=frame.payload[0];
+            if(op===1||op===2||op===0) {
+              if(op===2){this.inbox=[];this.lastStreamSeq=null;}
+              await this.send(CTRL,Uint8Array.of(op|0x80,op===1?3:0),{dest:frame.src});
+            }
+          }
+          return null;
+        case STREAM:
+          if(frame.payload.length<16)fail("Trama NavNet vacía en NNSE.");
+          if(frame.payload[0]!==0x54||frame.payload[1]!==0xfd) {
+            fail("La calculadora envió una trama NavNet incorrecta.");
+          }
+          if(frame.seq!==this.lastStreamSeq) {
+            this.lastStreamSeq=frame.seq;
+            this.inbox.push(frame.payload.slice());
+          }
+          return null;
+        default:return null;
+      }
+    }
+    async sendStream(navnet) {
+      if(!(navnet instanceof Uint8Array)||navnet.length>MAX_PAYLOAD)
+        fail("Trama NavNet demasiado grande para NNSE.");
+      if(!this.ready)await this.handshake();
+      const seq=this.nextSeq();
+      const bytes=encodeFrame(STREAM,navnet,{seq,reqAck:1});
+      // A service reply can precede the NNSE ACK. Queue it rather than
+      // discarding the reply and then blocking forever in receiveRaw().
+      for(let attempt=0;attempt<3;attempt++) {
+        await this.write(bytes);
+        for(let n=0;n<32;n++) {
+          const frame=await this.readFrame();
+          if(frame.service===(STREAM|0x80)&&frame.seq===seq &&
+            (frame.dest===PC||frame.dest===ALL))return;
+          const wasQueued=this.inbox.length;
+          await this.handle(frame);
+          if(this.inbox.length>wasQueued)return;
+        }
+      }
+      fail("Sin confirmación NNSE de la calculadora.");
+    }
+    async receiveRaw() {
+      if(this.inbox.length)return this.inbox.shift();
+      for(let n=0;n<100;n++) {
+        const frame=await this.readFrame();
+        await this.handle(frame);
+        if(this.inbox.length)return this.inbox.shift();
+      }
+      fail("No llegó la respuesta NavNet a través de NNSE.");
+    }
+    reset(){this.ready=false;this.inbox=[];this.lastStreamSeq=null;}
+  }
+  window.TnsNspireNNSE=Object.freeze({
+    NNSETransport,encodeFrame,parseFrame,parseCompactControl,checksum
+  });
+})();
