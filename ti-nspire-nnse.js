@@ -51,6 +51,32 @@
     return {service:bytes[1],src:bytes[2],dest:bytes[3],unknown:bytes[4],
       reqAck:bytes[5],seq:to16(bytes,8),payload:bytes.subarray(HEADER)};
   }
+  function splitNavNetFrames(bytes) {
+    const frames=[];
+    let pos=0;
+    while(pos<bytes.length) {
+      // The firmware sometimes packs more than one NavNet reply into an
+      // NNSE stream. Preserve each complete inner packet in FIFO order.
+      if(bytes.length-pos<16) {
+        if(!frames.length)fail("Paquete NavNet incompleto.");
+        break;
+      }
+      if(bytes[pos]!==0x54||bytes[pos+1]!==0xfd)
+        fail("Trama NavNet incorrecta dentro de NNSE.");
+      const extended=bytes[pos+12]===255;
+      if(extended&&bytes.length-pos<20)fail("Paquete NavNet extendido incompleto.");
+      const logical=extended?
+        bytes[pos+16]*0x1000000+bytes[pos+17]*65536+bytes[pos+18]*256+bytes[pos+19]:
+        bytes[pos+12];
+      const end=pos+16+(extended?4:0)+logical;
+      if(logical>MAX_PAYLOAD||end>bytes.length)
+        fail("Longitud de paquete NavNet incorrecta dentro de NNSE.");
+      frames.push(bytes.slice(pos,end));
+      pos=end;
+    }
+    return frames;
+  }
+
   function parseCompactControl(bytes) {
     const len=to16(bytes,5);
     if(bytes[0]!==CTRL||bytes[3]!==0||len<HEADER||len>HEADER+MAX_PAYLOAD||
@@ -141,13 +167,10 @@
           }
           return null;
         case STREAM:
-          if(frame.payload.length<16)fail("Trama NavNet vacía en NNSE.");
-          if(frame.payload[0]!==0x54||frame.payload[1]!==0xfd) {
-            fail("La calculadora envió una trama NavNet incorrecta.");
-          }
           if(frame.seq!==this.lastStreamSeq) {
+            const frames=splitNavNetFrames(frame.payload);
             this.lastStreamSeq=frame.seq;
-            this.inbox.push(frame.payload.slice());
+            this.inbox.push(...frames);
           }
           return null;
         default:return null;
@@ -186,6 +209,6 @@
     reset(){this.ready=false;this.inbox=[];this.lastStreamSeq=null;}
   }
   window.TnsNspireNNSE=Object.freeze({
-    NNSETransport,encodeFrame,parseFrame,parseCompactControl,checksum
+    NNSETransport,encodeFrame,parseFrame,parseCompactControl,splitNavNetFrames,checksum
   });
 })();
