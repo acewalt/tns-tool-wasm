@@ -356,6 +356,8 @@
 
   async function importLua(file) {
     ensureXmlWorkspaceVisible();
+    const hasProject = resolveFunction("xmlDoctorHasProjectFiles");
+    const isNewDocument = hasProject ? !hasProject() : false;
     await ensureProject();
     const code = await file.text();
     const addLua = await waitForFunction("addLuaScriptAppToStage");
@@ -369,6 +371,7 @@
     await saveLua(item, code);
     item.content = code;
     item.detail = { ...(item.detail || {}), length: code.length, importedFile: file.name };
+    if (isNewDocument) resolveFunction("setXmlTnsOutputFileName")?.(file.name);
     await refreshDocument();
     log(`Lua importado: ${file.name} reemplazó el código de ejemplo en la nueva card ScriptApp.`);
 
