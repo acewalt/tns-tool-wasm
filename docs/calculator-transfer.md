@@ -26,12 +26,12 @@ Se filtran los dispositivos Texas Instruments con identificadores `0451:e012` (f
 5. **Recibir seleccionados**: lee archivos de la calculadora y los descarga al ordenador.
 6. **Nueva carpeta**: solicita un nombre y envía el comando de creación.
 7. **Eliminar seleccionados**: pide confirmación. **Importante:** eliminar una carpeta puede borrar también su contenido; se muestra una segunda confirmación.
-8. **Capturar pantalla**: intenta la función de captura mediante el servicio RLE `0x4024`, limitado a imágenes de escala de grises de 4 bits. Si se recibe una imagen válida, la reconstruye en un canvas y permite descargarla como PNG.
+8. **Capturar pantalla**: solicita una captura por el servicio RLE `0x4024`. Decodifica el formato clásico de 4 bits en escala de grises y el RLE RGB565 de 16 bits de modelos a color. Si recibe una respuesta completa, la reconstruye en un canvas y permite descargarla como PNG.
 
 ## Límites actuales
 
 - El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
-- La captura RLE implementada solo decodifica 4 bits por píxel. Algunas generaciones CX/CX II tienen pantallas de color de 16 bits y pueden usar otro formato o servicio. En esos casos se informa que la captura no es compatible: no se muestra ninguna captura falsa.
+- La captura RLE decodifica tanto 4 bits por píxel como RGB565 de 16 bits. Los modelos CX/CX II pueden usar variantes que requieren pruebas físicas adicionales; si el firmware no responde con un formato esperado, se informa el error sin mostrar una captura ficticia.
 - No se han implementado instalación de SO, restauraciones ni acciones que modifiquen firmware.
 - Las transferencias quedan restringidas a documentos `.tns` para no corromper formatos ajenos.
 - Una lectura o escritura interrumpida puede dejar un documento incompleto en la calculadora. No retires el cable mientras haya actividad.
