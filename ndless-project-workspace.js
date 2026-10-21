@@ -80,13 +80,13 @@
   function bindWorkspace(){const w=state.workspace;$("[data-project-new-file]",w).addEventListener("click",newFile);$("[data-project-import-files]",w).addEventListener("change",e=>{importFiles(e.target.files);e.target.value="";});$("[data-project-delete-file]",w).addEventListener("click",deleteActiveFile);$("[data-project-preview]",w).addEventListener("click",drawPreview);$("[data-project-validate]",w).addEventListener("click",()=>{saveCurrentFile();setRightTab("console");renderConsole();});$("[data-project-download]",w).addEventListener("click",downloadProject);$("[data-project-exit]",w).addEventListener("click",closeProject);$$('[data-project-tab]',w).forEach(b=>b.addEventListener("click",()=>setRightTab(b.dataset.projectTab)));}
 
   function setFileMenuMode(active){
-    const panel=$("#xml-doctor-panel .doctor-toolbar .tool-menu:first-of-type > .menu-panel");if(!panel)return;
+    const panel=$("#xml-doctor-panel .doctor-toolbar > .tool-menu > .menu-panel");if(!panel)return;
     Array.from(panel.children).forEach(el=>{if(el.dataset.ndlessProjectAction==="1")return;if(active){if(!state.menuRestore.has(el))state.menuRestore.set(el,el.style.display);el.style.display="none";}else if(state.menuRestore.has(el)){el.style.display=state.menuRestore.get(el);state.menuRestore.delete(el);}});
     $$('[data-ndless-project-only]',panel).forEach(el=>el.hidden=!active);$$('[data-ndless-project-always]',panel).forEach(el=>el.hidden=false);
   }
   function setToolbarMode(active){
     const panel=$("#xml-doctor-panel"),toolbar=$(".doctor-toolbar",panel);if(!panel||!toolbar)return;
-    const hide=[...$$('.doctor-toolbar > .tool-menu',panel).slice(1),$("#xml-syntax-btn"),$("#xml-programs"),$("#xml-line-label")].filter(Boolean);
+    const hide=[...$('.doctor-toolbar > .tool-menu',panel).slice(1),$("#xml-syntax-btn"),$("#xml-programs"),$("#xml-line-label"),$(".xml-output-file-name",panel)].filter(Boolean);
     hide.forEach(el=>{if(active){if(!state.toolbarRestore.has(el))state.toolbarRestore.set(el,el.style.display);el.style.display="none";}else if(state.toolbarRestore.has(el)){el.style.display=state.toolbarRestore.get(el);state.toolbarRestore.delete(el);}});
     const page=$(".file-page-menu > .nested-trigger",panel);if(page){page.disabled=active;page.setAttribute("aria-disabled",active?"true":"false");page.title=active?tr("noPage"):"";}
   }
@@ -113,9 +113,9 @@
   }
 
   function injectMenu(){
-    const panel=$("#xml-doctor-panel .doctor-toolbar .tool-menu:first-of-type > .menu-panel");if(!panel||$("#xml-new-ndless-project",panel))return;
+    const panel=$("#xml-doctor-panel .doctor-toolbar > .tool-menu > .menu-panel");if(!panel||$("#xml-new-ndless-project",panel))return;
     const sep=document.createElement("div");sep.className="ndless-project-menu-separator";sep.dataset.ndlessProjectAction="1";sep.dataset.ndlessProjectAlways="1";
-    const btn=document.createElement("button");btn.type="button";btn.id="xml-new-ndless-project";btn.className="menu-action ndless-project-menu-action";btn.dataset.ndlessProjectAction="1";btn.dataset.ndlessProjectAlways="1";btn.textContent=tr("newProject");btn.addEventListener("click",wizard);
+    const btn=document.createElement("button");btn.type="button";btn.id="xml-new-ndless-project";btn.className="menu-action ndless-project-menu-action";btn.dataset.ndlessProjectAction="1";btn.dataset.ndlessProjectAlways="1";btn.innerHTML=`<span>${esc(tr("newProject"))}</span><span class="ndless-project-off-badge" aria-label="Off">OFF</span>`;btn.disabled=true;btn.title="En mantenimiento / Under maintenance";
     const open=document.createElement("label");open.className="menu-action file-menu-action ndless-project-menu-action";open.dataset.ndlessProjectAction="1";open.dataset.ndlessProjectAlways="1";open.innerHTML=`<span>${esc(tr("openProject"))}</span><input type="file" accept=".zip" hidden>`;$("input",open).addEventListener("change",e=>{openProjectZip(e.target.files?.[0]);e.target.value="";});
     const exp=document.createElement("button");exp.type="button";exp.className="menu-action";exp.dataset.ndlessProjectAction="1";exp.dataset.ndlessProjectOnly="1";exp.hidden=true;exp.textContent=tr("exportProject");exp.addEventListener("click",downloadProject);
     const close=document.createElement("button");close.type="button";close.className="menu-action";close.dataset.ndlessProjectAction="1";close.dataset.ndlessProjectOnly="1";close.hidden=true;close.textContent=tr("closeProject");close.addEventListener("click",()=>closeProject());
