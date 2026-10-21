@@ -153,6 +153,12 @@
       ensure(!this.connected, "Ya existe una conexión.");
       try {
         if (!this.device.opened) await this.device.open();
+        // Older Nspire handsets issue their address-request packet after a
+        // USB reset. CX II speaks a different initialization variant.
+        if (!this.cx2 && typeof this.device.reset === "function") {
+          try { await this.device.reset(); }
+          catch (_) { /* some WebUSB drivers forbid resets */ }
+        }
         if (!this.device.configuration) await this.device.selectConfiguration(1);
         const found = [...(this.device.configuration?.interfaces || [])]
           .flatMap(iface => (iface.alternates || []).map(alt => ({ iface, alt })))
