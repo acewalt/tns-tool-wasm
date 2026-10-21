@@ -37,6 +37,29 @@ assert.deepEqual(Array.from(proto.decodeRle(
   Uint8Array.of(1,0,0xf8,0xe0,0x07),8,4)),
   [0,248,224,7,0,248,224,7]);
 
+// A bad candidate is not accepted as a file response. Sliding the input
+// stream must eventually find the next checksum-valid NNSE boundary.
+const validRaw=proto.packet(Uint8Array.of(5,9,8,7),{
+  srcAddr:0x6401,dstAddr:0x6400,srcSid:0x4060,dstSid:0x8000,
+  seq:0,bigEndianLength:true
+});
+const invalidRaw=validRaw.slice();invalidRaw[17]^=1;
+const goodFrame=nnse.encodeFrame(4,validRaw,{src:1,dest:0xfe,seq:777});
+const compactFrame=nnse.encodeFrame(8,Uint8Array.of(2),{src:1,dest:0xfe,seq:778}).subarray(1);
+assert.equal(nnse.parseCompactControl(compactFrame).service,8);
+const stream=concat(Uint8Array.of(0x6c,0xce),invalidRaw,compactFrame,goodFrame);
+let scanOffset=0;
+const scanner=new nnse.NNSETransport({
+  readExact:async count=>{
+    if(scanOffset+count>stream.length)throw Error("Scanner over-read");
+    const chunk=stream.subarray(scanOffset,scanOffset+count);
+    scanOffset+=count;return chunk;
+  },
+  write:async()=>{}
+});
+scanner.ready=true;
+assert.deepEqual(Array.from(await scanner.receiveRaw()),Array.from(validRaw));
+
 class FakeNNSEUSB {
   vendorId=0x0451;productId=0xe022;opened=false;configuration=null;
   answers=[];seq=100;rootIndex=0;uploaded=[];expected=0;prompts=0;seenFrames=[];
