@@ -2,12 +2,13 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
-const read = path => readFileSync(new URL(path, import.meta.url), "utf8");
+const read = relativePath => readFileSync(new URL(relativePath, import.meta.url), "utf8");
 const html = read("../index.html");
 const app = read("../app.js");
 const ndless = read("../ndless-project-workspace.js");
 const transfer = read("../ti-calculator-transfer.js");
 const styles = read("../styles.css");
+const transferStyles = read("../ti-calculator-transfer.css");
 
 assert.match(html, /id="xml-transfer-calculator-btn"/);
 assert.match(html, /class="ti-file-action-separator"/);
@@ -24,18 +25,18 @@ assert.match(ndless, /ndless-project-off-badge/);
 assert.match(styles, /xml-output-file-name\[hidden\]/);
 assert.match(html, /class="xml-output-file-name" hidden/);
 
-// Transfer module must not invent calculator files or enable screen capture
-// before an actual backend announces screenshot support.
-assert.match(transfer, /navigator\.usb\.requestDevice/);
-assert.match(transfer, /0x0451/);
-assert.match(transfer, /0xe012/);
-assert.match(transfer, /0xe022/);
-assert.match(transfer, /\/api\/files/);
-assert.match(transfer, /\/api\/upload/);
-assert.match(transfer, /\/api\/download/);
-assert.match(transfer, /\/api\/screenshot/);
-assert.match(transfer, /state\.screenshot=Boolean\(.*capabilities\?\.screenshot/);
-assert.doesNotMatch(transfer, /fakeFiles|mockFiles|sampleFileList/i);
-
+// The integrated application is the upstream WebTILP, using its actual TI
+// USB/WASM implementation. The old mock USB file browser is no longer present.
+assert.match(transfer, /tiplanet\.org\/scripts\/webtilibs\/webtilp\.html/);
+assert.match(transfer, /frame\.allow\s*=\s*"usb \*; hid \*; serial \*/);
+assert.match(transfer, /frame\.src\s*=\s*WEBTILP_URL/);
+assert.match(transfer, /rel="noopener noreferrer"/);
+assert.match(transfer, /target="_blank"/);
+assert.match(transfer, /data-webtilp-prepare/);
+assert.match(transfer, /TnsFileSaveExperimental\?\.buildXmlDoctorArtifact/);
+assert.match(transfer, /await createFunction\(\)/);
+assert.doesNotMatch(transfer, /api\/files|api\/connect|localhost:8765|Fake TI-Nspire/);
+assert.match(transferStyles, /ti-transfer-webtilp-frame/);
 new vm.Script(transfer, { filename: "ti-calculator-transfer.js" });
-console.log("Calculator transfer menu and capability tests passed.");
+
+console.log("WebTILP integration and Ndless menu regression checks passed.");
