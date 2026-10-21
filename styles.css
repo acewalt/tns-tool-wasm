@@ -4125,3 +4125,13 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 #xml-doctor-panel #xml-new-ndless-project:disabled {
   cursor: not-allowed; opacity: .74;
 }
+
+/* Dedicated rule between regular File menu actions and Save. */
+#xml-doctor-panel .ti-file-action-separator {
+  height: 1px;
+  width: calc(100% - 20px);
+  margin: 6px 10px;
+  flex: 0 0 auto;
+  background: var(--line);
+  opacity: .85;
+}
