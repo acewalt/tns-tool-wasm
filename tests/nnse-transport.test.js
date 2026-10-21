@@ -30,6 +30,9 @@ assert.throws(()=>nnse.parseFrame(corrupt),/Checksum/);
 const large=proto.packet(new Uint8Array(320).fill(0x5a),{bigEndianLength:true});
 assert.deepEqual(Array.from(large.slice(16,20)),[0,0,1,64]);
 assert.equal(proto.parsePacket(large,{bigEndianLength:true}).length,320);
+const packed=concat(proto.packet(Uint8Array.of(0xff,0),{seq:0,bigEndianLength:true}),
+  proto.packet(Uint8Array.of(0xff,0x11),{seq:0,bigEndianLength:true}));
+assert.equal(nnse.splitNavNetFrames(packed).length,2);
 assert.deepEqual(Array.from(proto.decodeRle(
   Uint8Array.of(1,0,0xf8,0xe0,0x07),8,4)),
   [0,248,224,7,0,248,224,7]);
