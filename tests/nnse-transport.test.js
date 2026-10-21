@@ -56,7 +56,8 @@ class FakeNNSEUSB {
     }]}]};
   }
   respond(data,service=0x4060,destSid=0x8000){
-    const raw=proto.packet(data,{srcSid:service,dstSid:destSid,seq:0,bigEndianLength:true});
+    const raw=proto.packet(data,{srcAddr:0x6401,dstAddr:0x6400,
+      srcSid:service,dstSid:destSid,seq:0,bigEndianLength:true});
     if(this.sendBareOnDownload && data[0]===5){
       // Actual recorded failure starts with a two-byte stale fragment,
       // followed by 54 FD 64 01 40 60 (calculator's NavNet file service).
