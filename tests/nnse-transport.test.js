@@ -41,6 +41,7 @@ class FakeNNSEUSB {
   vendorId=0x0451;productId=0xe022;opened=false;configuration=null;
   answers=[];seq=100;rootIndex=0;uploaded=[];expected=0;prompts=0;seenFrames=[];
   file=Uint8Array.of(1,2,3,4);colorScreenshot=false;
+  sendBareOnDownload=false;addStalePrefix=false;splitBulkReads=false;
   async open(){this.opened=true;}
   async close(){this.opened=false;}
   async claimInterface(){}
@@ -56,9 +57,17 @@ class FakeNNSEUSB {
   }
   respond(data,service=0x4060,destSid=0x8000){
     const raw=proto.packet(data,{srcSid:service,dstSid:destSid,seq:0,bigEndianLength:true});
-    this.answers.push(nnse.encodeFrame(4,raw,{
+    if(this.sendBareOnDownload && data[0]===5){
+      // Actual recorded failure starts with a two-byte stale fragment,
+      // followed by 54 FD 64 01 40 60 (calculator's NavNet file service).
+      this.answers.push(concat(Uint8Array.of(0x6c,0xce),raw));
+      return;
+    }
+    const framed=nnse.encodeFrame(4,raw,{
       src:1,dest:0xfe,seq:this.seq++,reqAck:1
-    }));
+    });
+    this.answers.push(this.addStalePrefix?
+      concat(Uint8Array.of(0xb4,0x72,0x6c,0xce),framed):framed);
   }
   async transferOut(_endpoint,bytes){
     if(!bytes.length)return {status:"ok"};
@@ -91,7 +100,10 @@ class FakeNNSEUSB {
       if(this.uploaded.length>=this.expected)this.respond(Uint8Array.of(255,0),service,dest);
     }else if(d[0]===7&&d[1]===1)
       this.respond(concat(Uint8Array.of(3,1),new Uint8Array(9),be32(this.file.length)),service,dest);
-    else if(d[0]===4)this.respond(concat(Uint8Array.of(5),this.file),service,dest);
+    else if(d[0]===4){
+      for(let offset=0;offset<this.file.length;offset+=1200)
+        this.respond(concat(Uint8Array.of(5),this.file.subarray(offset,offset+1200)),service,dest);
+    }
     else if(d[0]===0&&service===0x4024){
       if(this.colorScreenshot){
         this.respond(concat(Uint8Array.of(1),be32(8),Uint8Array.of(0,0,0,0,0,2,0,2)),service,dest);
@@ -104,8 +116,12 @@ class FakeNNSEUSB {
     return {status:"ok"};
   }
   async transferIn(){
-    const bytes=this.answers.shift();
+    let bytes=this.answers.shift();
     if(!bytes)throw Error("Unexpected USB read - test deadlock");
+    if(this.splitBulkReads && bytes.length>40){
+      this.answers.unshift(bytes.subarray(40));
+      bytes=bytes.subarray(0,40);
+    }
     return {status:"ok",data:new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength)};
   }
 }
@@ -121,6 +137,14 @@ await controller.makeDir("/Examples/New");
 await controller.putFile("/Examples/new.tns",Uint8Array.of(7,8,9));
 assert.deepEqual(fake.uploaded,[7,8,9]);
 assert.deepEqual(Array.from(await controller.getFile("/Examples/current.tns")),[1,2,3,4]);
+fake.addStalePrefix=true;fake.splitBulkReads=true;
+assert.deepEqual(Array.from(await controller.getFile("/Examples/with-stale-nnse.tns")),[1,2,3,4]);
+fake.addStalePrefix=false;fake.splitBulkReads=false;
+fake.sendBareOnDownload=true;
+assert.deepEqual(Array.from(await controller.getFile("/Examples/bare-with-stale.tns")),[1,2,3,4]);
+fake.file=Uint8Array.from({length:1900},(_,i)=>i&255);
+assert.deepEqual(Array.from(await controller.getFile("/Examples/multiblock.tns")),Array.from(fake.file));
+fake.sendBareOnDownload=false;fake.file=Uint8Array.of(1,2,3,4);
 await controller.deleteEntry("/Examples/new.tns");
 const snap=await controller.screenshotRle();
 assert.deepEqual([snap.width,snap.height,snap.bpp],[2,2,4]);
