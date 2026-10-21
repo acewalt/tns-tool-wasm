@@ -35,7 +35,7 @@
     el("[data-path]").textContent=state.path;
     for(const name of ["refresh","upload","current","mkdir"])el("[data-"+name+"]").disabled=!state.connected;
     el("[data-up]").disabled=!state.connected||state.path==="/";
-    el("[data-capture]").disabled=!state.connected||!state.screenshot;
+    el("[data-capture]").disabled=false;
     box.replaceChildren();
     if(!state.connected||!state.items.length){const p=document.createElement("p");p.textContent=tr(state.connected?17:18);box.append(p);return;}
     for(const file of [...state.items].sort((a,b)=>Number(b.is_dir)-Number(a.is_dir)||a.name.localeCompare(b.name))){
@@ -125,7 +125,13 @@
     }catch(e){say(e.message,true);}
   }
   async function screenshot(){
-    if(!state.screenshot){note(tr(14));return;}
+    if(!state.screenshot){
+      note(tr(14));
+      if(confirm(tr(14)+"\n\n¿Abrir TI-Nspire CX II Connect en otra pestaña?")){
+        window.open("https://nspireconnect.ti.com/","_blank","noopener,noreferrer");
+      }
+      return;
+    }
     try{
       const data=await api("/api/screenshot",{timeout:25000},true);
       if(state.screenshotUrl)URL.revokeObjectURL(state.screenshotUrl);
