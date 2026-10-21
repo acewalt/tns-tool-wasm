@@ -4,13 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
-    <link rel="stylesheet" href="./styles.css?v=20261021-output-filename-v1" />
+    <link rel="stylesheet" href="./styles.css?v=20261021-output-filename-v2" />
     <link rel="stylesheet" href="./dist/monaco-lua-editor.css?v=20260827-editor-ui-polish-v2" />
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script type="module" src="./dist/monaco-lua-editor.js?v=20260827-editor-ui-polish-v2"></script>
     <script defer src="./stats-config.js?v=20261015-import-dialog-lifecycle-v4"></script>
-    <script defer src="./app.js?v=20261021-output-filename-v1"></script>
+    <script defer src="./app.js?v=20261021-output-filename-v2"></script>
     <script defer src="./love-project-compat.js?v=20260826-project-compat-v1"></script>
     <script defer src="./xml-program-editor-fix.js?v=20260826-program-editor-sync-v1"></script>
     <script defer src="./monaco-search-tools.js?v=20260827-editor-ui-polish-v2"></script>
@@ -124,11 +124,10 @@
       <section id="xml-doctor-panel" class="panel doctor-panel collapsed">
         <div class="doctor-toolbar">
           <h2>Syntax Doctor XML</h2>
-          <label class="xml-output-file-name" for="xml-output-filename">
-            <span data-i18n="tnsOutputFileName">Nombre del archivo TNS</span>
-            <input id="xml-output-filename" type="text" value="documento.tns" placeholder="ejemplo.tns" maxlength="180" autocomplete="off" spellcheck="false" disabled />
-          </label>
-          <span class="xml-output-toolbar-break" aria-hidden="true"></span>
+          <div class="xml-output-file-name">
+            <button type="button" id="xml-output-filename-display" data-i18n-title="tnsOutputFileName" title="Nombre del archivo TNS" disabled>documento.tns</button>
+            <input id="xml-output-filename" type="text" value="documento.tns" maxlength="180" autocomplete="off" spellcheck="false" data-i18n-title="tnsOutputFileName" aria-label="Nombre del archivo TNS" hidden disabled />
+          </div>
           <div class="tool-menu">
             <button type="button" class="menu-trigger green-menu-trigger"><span class="menu-icon">＋</span><span data-i18n="fileMenu">Archivo</span></button>
             <div class="menu-panel">
