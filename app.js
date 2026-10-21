@@ -1237,6 +1237,8 @@ function applyLanguage(nextLanguage = language) {
   for (const element of document.querySelectorAll("[data-i18n-title]")) {
     element.setAttribute("title", t(element.dataset.i18nTitle));
   }
+  const tnsNameInput = document.querySelector("#xml-output-filename");
+  if (tnsNameInput) tnsNameInput.setAttribute("aria-label", t("tnsOutputFileName"));
   for (const button of document.querySelectorAll("#language-buttons button")) {
     button.classList.toggle("active", button.dataset.lang === language);
   }
@@ -1917,7 +1919,7 @@ function xmlLog(message) {
 }
 
 function setXmlDoctorEnabled(enabled) {
-  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn", "xml-output-filename"]) {
+  for (const id of ["xml-embed-btn", "xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-syntax-btn", "xml-autofix-btn", "xml-format-btn", "xml-resolve-btn", "xml-changes-btn", "xml-output-filename", "xml-output-filename-display"]) {
     document.querySelector(`#${id}`).disabled = !enabled;
   }
   document.querySelector("#xml-programs").disabled = !enabled;
@@ -1926,7 +1928,7 @@ function setXmlDoctorEnabled(enabled) {
 }
 
 function setXmlDoctorDocumentActionsEnabled(enabled) {
-  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-output-filename"]) {
+  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-output-filename", "xml-output-filename-display"]) {
     const el = document.querySelector(`#${id}`);
     if (el) el.disabled = !enabled;
   }
@@ -10184,6 +10186,8 @@ function setXmlTnsOutputFileName(rawName) {
   xmlDoctor.outputFileName = normalized;
   const input = document.querySelector("#xml-output-filename");
   if (input && input.value !== normalized) input.value = normalized;
+  const display = document.querySelector("#xml-output-filename-display");
+  if (display) display.textContent = normalized;
   return normalized;
 }
 
@@ -18188,9 +18192,34 @@ function wireEvents() {
   document.querySelector("#xml-folder").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "folder").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-new-btn").addEventListener("click", () => createNewXmlProject().catch((err) => xmlLog(`ERROR: ${err.message}`)));
   const xmlOutputNameInput = document.querySelector("#xml-output-filename");
+  const xmlOutputNameDisplay = document.querySelector("#xml-output-filename-display");
+  let xmlNameBeforeEditing = "";
+  xmlOutputNameDisplay.addEventListener("click", () => {
+    if (xmlOutputNameDisplay.disabled) return;
+    xmlNameBeforeEditing = xmlDoctorTnsOutputName();
+    xmlOutputNameDisplay.hidden = true;
+    xmlOutputNameInput.hidden = false;
+    xmlOutputNameInput.focus();
+    // Select just the basename so users can rename without losing .tns.
+    xmlOutputNameInput.setSelectionRange(0, Math.max(0, xmlOutputNameInput.value.length - 4));
+  });
   xmlOutputNameInput.addEventListener("input", () => { xmlDoctor.outputFileName = xmlOutputNameInput.value; });
-  xmlOutputNameInput.addEventListener("change", () => setXmlTnsOutputFileName(xmlOutputNameInput.value));
-  xmlOutputNameInput.addEventListener("blur", () => setXmlTnsOutputFileName(xmlOutputNameInput.value));
+  xmlOutputNameInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      xmlOutputNameInput.blur();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      xmlDoctor.outputFileName = xmlNameBeforeEditing;
+      xmlOutputNameInput.value = xmlNameBeforeEditing;
+      xmlOutputNameInput.blur();
+    }
+  });
+  xmlOutputNameInput.addEventListener("blur", () => {
+    setXmlTnsOutputFileName(xmlOutputNameInput.value);
+    xmlOutputNameInput.hidden = true;
+    xmlOutputNameDisplay.hidden = false;
+  });
   document.querySelector("#file-page-add-program-editor").addEventListener("click", () => addPageFromFileMenu("program-editor").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-image").addEventListener("click", () => addPageFromFileMenu("image").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-python").addEventListener("click", () => addPageFromFileMenu("python").catch((err) => xmlLog(`ERROR: ${err.message}`)));
