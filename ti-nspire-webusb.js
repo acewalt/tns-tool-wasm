@@ -255,12 +255,13 @@
     }
     async recvData() {
       for (let attempt = 0; attempt < 32; attempt++) {
-        const response = this.queue.length ? this.queue.shift() : await this.receiveRawPacket();
+        const alreadyAcked = this.queue.length > 0;
+        const response = alreadyAcked ? this.queue.shift() : await this.receiveRawPacket();
         if (response.dstSid !== this.hostSid) {
           await this.out(this.ackFor(response, response.dstSid !== 0x40de));
           continue;
         }
-        if (!this.cx2 && !this.queue.includes(response)) await this.out(this.ackFor(response));
+        if (!this.cx2 && !alreadyAcked) await this.out(this.ackFor(response));
         return response.data;
       }
       throw new NspireError("La calculadora no devolvió una respuesta de servicio.");
@@ -306,6 +307,16 @@
           ensure(done[0] === 0xff && done[1] === 0, "La calculadora no cerró la enumeración.");
         }
         return result;
+      });
+    }
+    async deleteEntry(path, isDir = false) {
+      path = pathName(path);
+      ensure(path !== "/", "No se puede borrar la raíz.");
+      return this.usingService(SERVICE_FILES, async () => {
+        const command = isDir ? Uint8Array.of(0x0b, 0x03) : Uint8Array.of(0x09, 0x01);
+        await this.sendData(concat(command, pathField(path)));
+        const result = await this.recvData();
+        ensure(result.length >= 2 && result[0] === 0xff && result[1] === 0, "La calculadora rechazó la eliminación.");
       });
     }
     async makeDir(path) {
