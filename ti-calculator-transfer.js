@@ -150,17 +150,22 @@
     try {
       // This object is loaded lazily by container-editor-bindings.js.
       // It packages the current, unsaved edits into a valid TI document.
+      const createButton = document.querySelector("#xml-create-tns-btn");
+      if (!createButton || createButton.disabled) throw new Error(copy.nothing);
       const artifactBuilder = window.TnsFileSaveExperimental?.buildXmlDoctorArtifact;
       if (typeof artifactBuilder === "function") {
         const artifact = await artifactBuilder();
         if (!artifact?.ok || !artifact.bytes?.byteLength) throw new Error(copy.createError);
         downloadBlob(artifact.filename, artifact.bytes);
       } else {
-        // Use the standard, established Create TNS pathway when the optional
-        // experimental save module is not present.
+        // The standard function returns a Promise after packaging and download.
+        // Do not claim the TNS was prepared before generation completes.
         const createButton = document.querySelector("#xml-create-tns-btn");
-        if (!createButton || createButton.disabled) throw new Error(copy.createError);
-        createButton.click();
+        const createFunction = window.createTnsFromXmlDoctor;
+        if (!createButton || createButton.disabled || typeof createFunction !== "function") {
+          throw new Error(copy.createError);
+        }
+        await createFunction();
       }
       updateStatus(copy.prepared);
     } catch (error) {
