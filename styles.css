@@ -4113,3 +4113,15 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
     min-height: 34px;
   }
 }
+
+/* Keep the filename hidden until a document is successfully created or imported. */
+#xml-doctor-panel .xml-output-file-name[hidden] { display: none !important; }
+#xml-doctor-panel .ndless-project-off-badge {
+  display: inline-flex; align-items: center; margin-left: 8px;
+  padding: 2px 7px; border-radius: 5px;
+  color: #a9b0ba; background: #353c47; border: 1px solid #59616c;
+  font-size: 10px; line-height: 1.4; font-weight: 800; letter-spacing: .08em;
+}
+#xml-doctor-panel #xml-new-ndless-project:disabled {
+  cursor: not-allowed; opacity: .74;
+}
