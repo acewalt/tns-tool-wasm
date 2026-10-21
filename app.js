@@ -47,6 +47,7 @@ const I18N = {
     embedXml: "Incrustar en XML",
     saveXmlZip: "Guardar XML ZIP",
     createTnsFromDoctor: "Crear TNS",
+    tnsOutputFileName: "Nombre del archivo TNS",
     fileMenu: "Archivo",
     editMenu: "Editar",
     xmlActionsMenu: "Acciones XML",
@@ -317,6 +318,7 @@ const I18N = {
     embedXml: "Embed in XML",
     saveXmlZip: "Save XML ZIP",
     createTnsFromDoctor: "Create TNS",
+    tnsOutputFileName: "TNS file name",
     fileMenu: "File",
     editMenu: "Edit",
     xmlActionsMenu: "XML actions",
@@ -587,6 +589,7 @@ const I18N = {
     embedXml: "Incruster en XML",
     saveXmlZip: "Enregistrer ZIP XML",
     createTnsFromDoctor: "Créer TNS",
+    tnsOutputFileName: "Nom du fichier TNS",
     fileMenu: "Fichier",
     editMenu: "Edition",
     xmlActionsMenu: "Actions XML",
@@ -1157,6 +1160,7 @@ const xmlDoctor = {
   sourcePath: "/work/xml_doctor_input",
   stagePath: "/work/xml_doctor_stage",
   sourceFileName: "",
+  outputFileName: "documento.tns",
   candidates: [],
   current: null,
   lastDiff: "",
@@ -1922,7 +1926,7 @@ function setXmlDoctorEnabled(enabled) {
 }
 
 function setXmlDoctorDocumentActionsEnabled(enabled) {
-  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn"]) {
+  for (const id of ["xml-save-btn", "xml-create-tns-btn", "xml-inspector-btn", "xml-add-func-btn", "xml-document-btn", "xml-output-filename"]) {
     const el = document.querySelector(`#${id}`);
     if (el) el.disabled = !enabled;
   }
@@ -1953,6 +1957,7 @@ async function loadXmlDoctorFiles(files, mode) {
   xmlDoctor.lastReport = null;
   xmlDoctor.issueLines.clear();
   await scanXmlPrograms();
+  setXmlTnsOutputFileName(xmlDoctor.sourceFileName);
 }
 
 async function openTnsInXmlDoctor(file) {
@@ -1973,6 +1978,7 @@ decode_tns_file(Path("/work/xml_doctor_input.tns"), Path("${xmlDoctor.sourcePath
   xmlDoctor.lastReport = null;
   xmlDoctor.issueLines.clear();
   await scanXmlPrograms();
+  setXmlTnsOutputFileName(file.name);
   xmlLog(`TNS abierto: ${file.name}`);
 }
 
@@ -8857,6 +8863,7 @@ async function createEmptyXmlProjectForPageCreation() {
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
   xmlDoctor.sourceFileName = "documento.tns";
+  setXmlTnsOutputFileName("documento.tns");
 
   const response = await fetch(`./templates/blank_tns_xml/Document.xml?v=${SOURCE_VERSION}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`No se pudo cargar plantilla Document.xml: HTTP ${response.status}`);
@@ -10121,6 +10128,7 @@ async function createNewXmlProject() {
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
   xmlDoctor.sourceFileName = "documento.tns";
+  setXmlTnsOutputFileName("documento.tns");
   for (const name of ["Document.xml", "Problem1.xml"]) {
     const response = await fetch(`./templates/blank_tns_xml/${name}?v=${SOURCE_VERSION}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`No se pudo cargar plantilla ${name}: HTTP ${response.status}`);
@@ -10155,18 +10163,33 @@ build_tns_from_xml(Path("${xmlDoctor.stagePath}"), Path(wasm_xml_tns_output))
   downloadBytes(outputName, outputBytes);
 }
 
-function xmlDoctorTnsOutputName() {
-  const rawName = xmlDoctor.current?.program_name || xmlDoctor.sourceFileName || "documento";
-  const baseName = rawName.replace(/\.tns$/i, "").replace(/\.xml$/i, "");
-  const safeName = baseName.normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^A-Za-z0-9_]+/g, "_")
-    .replace(/^_+/, "")
-    .slice(0, 15) || "documento";
-  const index = Number.isFinite(Number(xmlDoctor.current?.index)) ? Number(xmlDoctor.current.index) + 1 : 1;
-  return `${safeName}_output_${index}.tns`;
+// External filename is independent of the internal Document Settings name.
+function normalizeTnsOutputFileName(rawName) {
+  const base = String(rawName ?? "")
+    .trim()
+    .replace(/[\/\\<>:"|?*\x00-\x1f]/g, "_")
+    .replace(/[. ]+$/g, "")
+    .replace(/\.tns$/i, "")
+    .replace(/[. ]+$/g, "")
+    .slice(0, 170);
+  const safe = base || "documento";
+  const reserved = /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\..*)?$/i.test(safe)
+    ? `_${safe}` : safe;
+  return `${reserved}.tns`;
 }
 
+function setXmlTnsOutputFileName(rawName) {
+  const baseName = String(rawName ?? "").replace(/\.(?:tns|xml|lua)$/i, "");
+  const normalized = normalizeTnsOutputFileName(baseName);
+  xmlDoctor.outputFileName = normalized;
+  const input = document.querySelector("#xml-output-filename");
+  if (input && input.value !== normalized) input.value = normalized;
+  return normalized;
+}
+
+function xmlDoctorTnsOutputName() {
+  return setXmlTnsOutputFileName(xmlDoctor.outputFileName);
+}
 function tiDocumentNameError(name) {
   if (!name) return "Nombre de documento vacio.";
   if (name.length > 15) return "Nombre de variable de libreria invalido: no debe exceder 15 caracteres.";
@@ -18164,6 +18187,10 @@ function wireEvents() {
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-folder").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "folder").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-new-btn").addEventListener("click", () => createNewXmlProject().catch((err) => xmlLog(`ERROR: ${err.message}`)));
+  const xmlOutputNameInput = document.querySelector("#xml-output-filename");
+  xmlOutputNameInput.addEventListener("input", () => { xmlDoctor.outputFileName = xmlOutputNameInput.value; });
+  xmlOutputNameInput.addEventListener("change", () => setXmlTnsOutputFileName(xmlOutputNameInput.value));
+  xmlOutputNameInput.addEventListener("blur", () => setXmlTnsOutputFileName(xmlOutputNameInput.value));
   document.querySelector("#file-page-add-program-editor").addEventListener("click", () => addPageFromFileMenu("program-editor").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-image").addEventListener("click", () => addPageFromFileMenu("image").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-python").addEventListener("click", () => addPageFromFileMenu("python").catch((err) => xmlLog(`ERROR: ${err.message}`)));
