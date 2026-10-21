@@ -111,23 +111,30 @@
     ensure(offset + 9 <= value.length, "Entrada de directorio truncada.");
     return { name, size: u32(value, offset), date: u32(value, offset + 4), isDir: value[offset + 8] === 1 };
   }
-  function decodeRle(rle, expectedLength) {
-    ensure(expectedLength > 0 && expectedLength <= 3 * 1024 * 1024, "Dimensiones de captura incorrectas.");
+  function decodeRle(rle, expectedLength, unitBytes = 1) {
+    // Classic TI-Nspire compresses bytes (two grayscale pixels per byte).
+    // CX/CX II color screens compress 32-bit groups containing two RGB565 pixels.
+    ensure(expectedLength > 0 && expectedLength <= 3 * 1024 * 1024 &&
+      (unitBytes === 1 || unitBytes === 4) && expectedLength % unitBytes === 0,
+      "Dimensiones de captura incorrectas.");
     const output = new Uint8Array(expectedLength);
     let i = 0, o = 0;
     while (i < rle.length && o < expectedLength) {
       const signed = (rle[i++] << 24) >> 24;
+      const count = (signed >= 0 ? signed + 1 : 1 - signed);
+      const length = count * unitBytes;
+      ensure(o + length <= expectedLength, "RLE desbordado.");
       if (signed >= 0) {
-        ensure(o + signed + 1 <= expectedLength, "RLE desbordado.");
-        ensure(i < rle.length, "RLE incompleta.");
-        output.fill(rle[i++], o, o + signed + 1);
-        o += signed + 1;
+        ensure(i + unitBytes <= rle.length, "RLE incompleta.");
+        const sample = rle.subarray(i, i + unitBytes);
+        for (let j = 0; j < count; j++) output.set(sample, o + j * unitBytes);
+        i += unitBytes;
       } else {
-        const count = 1 - signed;
-        ensure(i + count <= rle.length && o + count <= expectedLength, "RLE truncado.");
-        output.set(rle.subarray(i, i + count), o);
-        i += count; o += count;
+        ensure(i + length <= rle.length, "RLE truncado.");
+        output.set(rle.subarray(i, i + length), o);
+        i += length;
       }
+      o += length;
     }
     ensure(o === expectedLength, "La imagen recibida está incompleta.");
     return output;
@@ -411,11 +418,15 @@
       return this.usingService(SERVICE_SCREEN_RLE, async () => {
         await this.sendData(Uint8Array.of(0));
         const meta = await this.recvData();
-        ensure(meta.length >= 15 && meta[0] === 1, "No hay respuesta de captura de pantalla.");
-        const width = u16(meta, 9), height = u16(meta, 11), bpp = meta[13];
-        ensure(width > 0 && width <= 640 && height > 0 && height <= 480 && bpp === 4,
-          "Esta generación no admite capturas RLE de 4 bits por este protocolo.");
-        const wanted = Math.ceil(width * height / 2);
+        ensure(meta.length >= 13 && meta[0] === 1, "No hay respuesta de captura de pantalla.");
+        const width = u16(meta, 9), height = u16(meta, 11);
+        // Screen metadata need not contain a pixel-depth byte. Color Nspire
+        // screens use RGB565; the original Nspire uses packed 4-bit grayscale.
+        const bpp = meta[13] === 4 || meta[13] === 16 ? meta[13] : (this.cx2 ? 16 : 4);
+        ensure(width > 0 && width <= 640 && height > 0 && height <= 480 &&
+          (bpp === 4 || bpp === 16), "Formato de captura de pantalla no compatible.");
+        const wanted = bpp === 16 ? width * height * 2 : Math.ceil(width * height / 2);
+        const unitBytes = bpp === 16 ? 4 : 1;
         const encoded = [];
         let decoded = null;
         for (let i = 0; i < 2048; i++) {
@@ -423,7 +434,7 @@
           ensure(part.length > 1 && part[0] === 2, "Trama de captura desconocida.");
           encoded.push(part.subarray(1));
           const all = concat(...encoded);
-          try { decoded = decodeRle(all, wanted); break; }
+          try { decoded = decodeRle(all, wanted, unitBytes); break; }
           catch (e) { if (!/incompleta|truncado/.test(e.message)) throw e; }
           ensure(all.length <= 1024 * 1024, "Captura excesiva.");
         }
