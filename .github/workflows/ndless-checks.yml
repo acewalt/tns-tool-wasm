@@ -19,6 +19,11 @@ on:
       - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
       - 'index.html'
+      - 'ti-calculator-transfer.js'
+      - 'ti-calculator-transfer.css'
+      - 'tools/calculator-transfer/**'
+      - 'tests/calculator-transfer-ui.test.js'
+      - 'tests/test_calculator_bridge.py'
       - '.github/workflows/ndless-checks.yml'
   pull_request:
     paths:
@@ -37,6 +42,11 @@ on:
       - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
       - 'index.html'
+      - 'ti-calculator-transfer.js'
+      - 'ti-calculator-transfer.css'
+      - 'tools/calculator-transfer/**'
+      - 'tests/calculator-transfer-ui.test.js'
+      - 'tests/test_calculator_bridge.py'
       - '.github/workflows/ndless-checks.yml'
 
 jobs:
@@ -97,6 +107,12 @@ jobs:
           node --check ndless-local-runtime-upgrade.js
           node --check ndless-experimental-export-fix.js
           node --check multi-image-upload.js
+          node --check ti-calculator-transfer.js
+          python -m py_compile tools/calculator-transfer/bridge.py tests/test_calculator_bridge.py
+      - name: Calculator transfer regression tests
+        run: |
+          node tests/calculator-transfer-ui.test.js
+          python -m unittest discover -s tests -p 'test_calculator_bridge.py'
       - name: Structured content tests
         run: node tests/custom-content-formats.test.js
       - name: Ndless synthetic tests
