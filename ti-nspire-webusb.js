@@ -56,7 +56,9 @@
     dv.setUint16(4, opts.srcSid ?? 0x4003);
     dv.setUint16(6, opts.dstAddr ?? 0x6401);
     dv.setUint16(8, opts.dstSid ?? 0x4003);
-    const payload = large ? concat(Uint8Array.of(data.length & 255, (data.length >>> 8) & 255, 0, 0), data) : data;
+    const lengthPrefix = opts.bigEndianLength ? be32(data.length) :
+      Uint8Array.of(data.length & 255, (data.length >>> 8) & 255, 0, 0);
+    const payload = large ? concat(lengthPrefix, data) : data;
     dv.setUint16(10, checksum(payload));
     header[12] = large ? 255 : data.length;
     header[13] = opts.ack ?? 0;
@@ -64,11 +66,11 @@
     header[15] = header.subarray(0, 15).reduce((sum, x) => (sum + x) & 255, 0);
     return concat(header, payload);
   }
-  function parsePacket(bytes) {
+  function parsePacket(bytes, opts = {}) {
     ensure(bytes.length >= 16, "Trama USB incompleta.");
     const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     ensure(dv.getUint16(0) === 0x54fd, "Identificador de trama TI-Nspire inválido.");
-    const length = bytes[12] === 255 ? dv.getUint32(16, true) : bytes[12];
+    const length = bytes[12] === 255 ? dv.getUint32(16, !opts.bigEndianLength) : bytes[12];
     const offset = bytes[12] === 255 ? 20 : 16;
     ensure(length <= MAX_FILE_SIZE && bytes.length === offset + length, "Longitud de trama USB incorrecta.");
     const headSum = bytes.subarray(0, 15).reduce((sum, x) => (sum + x) & 255, 0);
@@ -141,6 +143,7 @@
       this.seq = 1; this.initialized = false; this.activeService = false;
       this.readBuffer = new Uint8Array(0); this.queue = [];
       this.connected = false; this.busy = false;
+      this.nnse = null;
     }
     static async select() {
       ensure(navigator.usb?.requestDevice, "WebUSB no disponible. Abre la página en Chrome, Brave o Edge por HTTPS.");
@@ -173,6 +176,14 @@
         this.endpointIn = inEp.endpointNumber;
         this.endpointOut = outEp.endpointNumber;
         this.outPacketSize = outEp.packetSize || 64;
+        if (this.cx2 && this.device.configuration.configurationValue === 1) {
+          ensure(window.TnsNspireNNSE?.NNSETransport,
+            "Falta cargar el transporte NNSE de TI-Nspire CX II.");
+          this.nnse = new window.TnsNspireNNSE.NNSETransport({
+            readExact: count => this.readExact(count),
+            write: bytes => this.out(bytes)
+          });
+        }
         // A successful filesystem exchange, not enumeration, proves connection.
         await this.initialize();
         const files = await this.listDir("/");
@@ -185,6 +196,7 @@
     }
     async close() {
       this.connected = false; this.initialized = false;
+      this.nnse?.reset(); this.nnse = null;
       this.queue = []; this.readBuffer = new Uint8Array(0);
       try { if (this.activeService) await this.disconnectService(); } catch (_) {}
       try { if (this.device.opened) await this.device.releaseInterface(this.iface); } catch (_) {}
@@ -212,7 +224,10 @@
     }
     async receiveRawPacket() {
       const header = await this.readExact(16);
-      ensure(header[0] === 0x54 && header[1] === 0xfd, "Cabecera USB desconocida.");
+      ensure(header[0] === 0x54 && header[1] === 0xfd,
+        "Cabecera USB NavNet desconocida (" +
+        Array.from(header.subarray(0, 8), b => b.toString(16).padStart(2, "0")).join(" ") +
+        "). En una CX II con configuración USB 1 se requiere NNSE.");
       const size = header[12] === 255 ? await this.readExact(4) : new Uint8Array(0);
       const count = header[12] === 255 ? new DataView(size.buffer).getUint32(0, true) : header[12];
       ensure(count < 4 * 1024 * 1024, "Respuesta USB excesiva.");
@@ -221,6 +236,12 @@
     }
     async initialize() {
       if (this.initialized) return;
+      if (this.nnse) {
+        await this.nnse.handshake();
+        this.hostSid = 0x8000;
+        this.initialized = true;
+        return;
+      }
       if (!this.cx2) {
         // Legacy handhelds first send an address-request packet; the caller
         // must reconnect on timeout/disconnect instead of assuming CX II mode.
@@ -240,6 +261,13 @@
       });
     }
     async sendData(data, overrideSid = null) {
+      if (this.nnse) {
+        await this.nnse.sendStream(packet(data, {
+          srcSid: overrideSid ?? this.hostSid, dstSid: this.deviceSid,
+          seq: 0, bigEndianLength: true
+        }));
+        return;
+      }
       await this.out(packet(data, {
         srcSid: overrideSid ?? this.hostSid, dstSid: this.deviceSid,
         seq: this.cx2 ? 0 : this.seq
@@ -261,6 +289,14 @@
       throw new NspireError("Demasiados paquetes USB inesperados.");
     }
     async recvData() {
+      if (this.nnse) {
+        for (let attempt = 0; attempt < 64; attempt++) {
+          const response = parsePacket(await this.nnse.receiveRaw(), { bigEndianLength: true });
+          if (response.dstSid === this.hostSid) return response.data;
+          // Discard delayed messages from an earlier filesystem operation.
+        }
+        throw new NspireError("La TI-Nspire CX II no respondió al servicio solicitado.");
+      }
       for (let attempt = 0; attempt < 32; attempt++) {
         const alreadyAcked = this.queue.length > 0;
         const response = alreadyAcked ? this.queue.shift() : await this.receiveRawPacket();
