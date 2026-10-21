@@ -152,7 +152,10 @@
     if(state.busy)return;
     let device;
     // Do not delay requestDevice; it requires the originating click activation.
-    try{device=await window.TnsNspireUSB.NspireUSB.select();}
+    try{
+      if(!window.TnsNspireUSB?.NspireUSB)throw Error("El controlador WebUSB aún no está cargado.");
+      device=await window.TnsNspireUSB.NspireUSB.select();
+    }
     catch(e){if(e.name!=="NotFoundError")say(e.message||String(e),true);return;}
     await working(async()=>{
       state.link=device;
@@ -170,6 +173,7 @@
       await state.link?.close();
       state.link=null;state.path="/";state.files=[];state.chosen.clear();
       q("[data-ti-device]",state.root).textContent="—";
+      q("[data-ti-image]",state.root).replaceChildren();
       rows();say(tr("idle"));log("");
     });
   }
@@ -200,14 +204,17 @@
         const data=new Uint8Array(await file.arrayBuffer());
         if(await send(file.name,data))uploaded++;
       }
+      if(!uploaded)return;
       state.files=await state.link.listDir(state.path);
       state.chosen.clear();rows();
-      if(uploaded) say(tr("success"));
+      say(tr("success"));
     });
   }
   async function current(){
     if(!state.link?.connected)return;
     await working(async()=>{
+      const createButton=document.querySelector("#xml-create-tns-btn");
+      if(!createButton||createButton.disabled)throw Error(tr("exportUnavailable"));
       const builder=window.TnsFileSaveExperimental?.buildXmlDoctorArtifact;
       if(typeof builder!=="function")throw Error(tr("exportUnavailable"));
       const a=await builder();
