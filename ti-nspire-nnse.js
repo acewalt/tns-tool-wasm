@@ -93,6 +93,7 @@
       if(typeof readExact!=="function"||typeof write!=="function")fail("Transporte USB inválido.");
       this.readExact=readExact;this.write=write;
       this.seq=1;this.ready=false;this.inbox=[];this.lastStreamSeq=null;
+      this.frameBuffer=new Uint8Array(0);this.nextBareSeq=0x10000;
     }
     nextSeq(){const n=this.seq;this.seq=(this.seq+1)&65535;return n;}
     async send(service,payload=new Uint8Array(0),opts={}) {
@@ -110,27 +111,94 @@
       this.ready=true;
     }
     async readFrame() {
-      // readExact is backed by a persistent USB byte FIFO; USB packet and
-      // logical NNSE message boundaries do not necessarily coincide.
-      // Read 11 bytes first: a compact CX II stream-control message can
-      // consist of only 11 bytes, whereas standard NNSE headers are 12.
-      const head=await this.readExact(HEADER-1);
-      if(head[0]===0&&head[4]===0&&to16(head,6)>=HEADER) {
-        const len=to16(head,6);
-        if(len>HEADER+MAX_PAYLOAD)fail("Longitud NNSE excesiva.");
-        const last=await this.readExact(1);
-        return parseFrame(join(head,last,await this.readExact(len-HEADER)));
+      // USB bulk transfers are an unstructured byte stream. An earlier
+      // command can leave trailing bytes from a stale fragment in the FIFO.
+      // Never assume the first 11 bytes of transferIn form an NNSE header.
+      // Retain every byte until a fully checksummed frame can be verified.
+      const MAX_RESYNC=8192;
+      const fill=async n=>{
+        while(this.frameBuffer.length<n) {
+          this.frameBuffer=join(this.frameBuffer,
+            await this.readExact(n-this.frameBuffer.length));
+        }
+      };
+      let skipped=0;
+      while(skipped<=MAX_RESYNC) {
+        await fill(11);
+        const h=this.frameBuffer;
+        const normal=h[0]===0 && h[4]===0 &&
+          h[2]===CALC && (h[3]===PC||h[3]===ALL) &&
+          (h[1]&0x7f)>=1 && (h[1]&0x7f)<=8 &&
+          (h[5]&~0x09)===0 && to16(h,6)>=HEADER &&
+          to16(h,6)<=HEADER+MAX_PAYLOAD;
+        if(normal) {
+          const length=to16(h,6);
+          await fill(length);
+          try {
+            const frame=parseFrame(this.frameBuffer.slice(0,length));
+            this.frameBuffer=this.frameBuffer.slice(length);
+            return frame;
+          } catch (_) {
+            // This was not a valid checksum-verified frame boundary.
+          }
+        }
+        const compact=h[0]===CTRL && h[1]===CALC &&
+          (h[2]===PC||h[2]===ALL) && h[3]===0 &&
+          (h[4]&~0x09)===0 && to16(h,5)>=HEADER &&
+          to16(h,5)<=HEADER+MAX_PAYLOAD;
+        if(compact) {
+          const length=to16(h,5)-1;
+          await fill(length);
+          try {
+            const frame=parseCompactControl(this.frameBuffer.slice(0,length));
+            this.frameBuffer=this.frameBuffer.slice(length);
+            return frame;
+          } catch (_) {
+            // Try the next possible boundary instead of losing the buffer.
+          }
+        }
+        // On some CX II exchanges a standalone NavNet packet can follow
+        // an NNSE stream fragment. Accept it ONLY if both the NavNet header
+        // and data checksums verify; never interpret arbitrary bytes as data.
+        if(h[0]===0x54 && h[1]===0xfd && this.ready) {
+          await fill(16);
+          const raw=this.frameBuffer;
+          const headSum=raw.subarray(0,15).reduce((sum,n)=>(sum+n)&255,0);
+          if(raw[15]===headSum && to16(raw,2)===0x6401 &&
+            to16(raw,6)===0x6400) {
+            const extended=raw[12]===255;
+            if(extended)await fill(20);
+            const bytes=this.frameBuffer;
+            const size=extended?
+              (bytes[16]*0x1000000 + bytes[17]*65536 +
+                bytes[18]*256+bytes[19]) : bytes[12];
+            const length=16+(extended?4:0)+size;
+            if(size<=MAX_PAYLOAD && length<=HEADER+MAX_PAYLOAD) {
+              await fill(length);
+              try {
+                const valid=window.TnsNspireUSB?.parsePacket(
+                  this.frameBuffer.slice(0,length),{bigEndianLength:true});
+                if(valid && valid.dstAddr===0x6400) {
+                  const payload=this.frameBuffer.slice(0,length);
+                  this.frameBuffer=this.frameBuffer.slice(length);
+                  // Use distinct sequence IDs for unwrapped replies so the
+                  // duplicate NNSE-sequence filter cannot drop this packet.
+                  return {service:STREAM,src:CALC,dest:PC,
+                    unknown:0,reqAck:0,seq:this.nextBareSeq++,payload};
+                }
+              } catch (_) {
+                // Invalid NavNet checksum: keep searching for NNSE.
+              }
+            }
+          }
+        }
+        this.frameBuffer=this.frameBuffer.slice(1);
+        skipped++;
       }
-      // Some firmware omits the leading zero byte from stream-control.
-      if(head[0]===CTRL&&head[3]===0&&
-        (head[2]===PC||head[2]===ALL)) {
-        const wireLen=to16(head,5)-1;
-        if(wireLen<HEADER-1||wireLen>HEADER+MAX_PAYLOAD-1)
-          fail("Longitud compacta NNSE excesiva.");
-        return parseCompactControl(join(head,await this.readExact(wireLen-(HEADER-1))));
-      }
-      const prefix=Array.from(head.subarray(0,8),b=>b.toString(16).padStart(2,"0")).join(" ");
-      fail("Respuesta USB no reconocida ("+prefix+"). No se recibieron tramas NNSE válidas.");
+      const prefix=Array.from(this.frameBuffer.subarray(0,8),
+        b=>b.toString(16).padStart(2,"0")).join(" ");
+      fail("No se encontró una trama USB válida tras descartar "+skipped+
+        " bytes ("+prefix+"). Reconecta la calculadora.");
     }
     async handle(frame) {
       if(frame.dest!==PC&&frame.dest!==ALL)return null;
@@ -206,7 +274,8 @@
       }
       fail("No llegó la respuesta NavNet a través de NNSE.");
     }
-    reset(){this.ready=false;this.inbox=[];this.lastStreamSeq=null;}
+    reset(){this.ready=false;this.inbox=[];this.lastStreamSeq=null;
+      this.frameBuffer=new Uint8Array(0);this.nextBareSeq=0x10000;}
   }
   window.TnsNspireNNSE=Object.freeze({
     NNSETransport,encodeFrame,parseFrame,parseCompactControl,splitNavNetFrames,checksum
