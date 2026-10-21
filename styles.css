@@ -4034,3 +4034,25 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
   backdrop-filter: none !important;
   -webkit-backdrop-filter: none !important;
 }
+
+/* Separate editable TNS filename for the XML editor. */
+#xml-doctor-panel > .doctor-toolbar > h2 { flex: 0 1 auto; margin: 0; }
+#xml-doctor-panel .xml-output-file-name {
+  display: flex; align-items: center; gap: 10px; min-width: 240px;
+  max-width: min(390px, 100%); flex: 0 1 370px; margin-left: auto;
+  color: var(--muted); font-size: 12px; font-weight: 700;
+}
+#xml-doctor-panel .xml-output-file-name > span { white-space: nowrap; }
+#xml-doctor-panel #xml-output-filename {
+  width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--line);
+  border-radius: 8px; background: var(--panel); color: var(--text);
+  font-size: 13px; font-weight: 600; font-family: inherit; outline: none;
+}
+#xml-doctor-panel #xml-output-filename:focus-visible {
+  border-color: var(--lime2); box-shadow: 0 0 0 2px rgb(141 230 42 / 15%);
+}
+#xml-doctor-panel #xml-output-filename:disabled { opacity: 0.6; cursor: not-allowed; }
+#xml-doctor-panel .xml-output-toolbar-break { flex-basis: 100%; height: 0; }
+@media (max-width: 760px) {
+  #xml-doctor-panel .xml-output-file-name { flex: 1 1 100%; max-width: 100%; margin-left: 0; }
+}
