@@ -30,11 +30,14 @@ assert.throws(()=>nnse.parseFrame(corrupt),/Checksum/);
 const large=proto.packet(new Uint8Array(320).fill(0x5a),{bigEndianLength:true});
 assert.deepEqual(Array.from(large.slice(16,20)),[0,0,1,64]);
 assert.equal(proto.parsePacket(large,{bigEndianLength:true}).length,320);
+assert.deepEqual(Array.from(proto.decodeRle(
+  Uint8Array.of(1,0,0xf8,0xe0,0x07),8,4)),
+  [0,248,224,7,0,248,224,7]);
 
 class FakeNNSEUSB {
   vendorId=0x0451;productId=0xe022;opened=false;configuration=null;
   answers=[];seq=100;rootIndex=0;uploaded=[];expected=0;prompts=0;seenFrames=[];
-  file=Uint8Array.of(1,2,3,4);
+  file=Uint8Array.of(1,2,3,4);colorScreenshot=false;
   async open(){this.opened=true;}
   async close(){this.opened=false;}
   async claimInterface(){}
@@ -87,8 +90,13 @@ class FakeNNSEUSB {
       this.respond(concat(Uint8Array.of(3,1),new Uint8Array(9),be32(this.file.length)),service,dest);
     else if(d[0]===4)this.respond(concat(Uint8Array.of(5),this.file),service,dest);
     else if(d[0]===0&&service===0x4024){
-      this.respond(concat(Uint8Array.of(1),be32(2),Uint8Array.of(0,0,0,0,0,2,0,2,4,0)),service,dest);
-      this.respond(Uint8Array.of(2,255,0x12,0x34),service,dest);
+      if(this.colorScreenshot){
+        this.respond(concat(Uint8Array.of(1),be32(8),Uint8Array.of(0,0,0,0,0,2,0,2)),service,dest);
+        this.respond(Uint8Array.of(2,1,0,0xf8,0xe0,0x07),service,dest);
+      }else{
+        this.respond(concat(Uint8Array.of(1),be32(2),Uint8Array.of(0,0,0,0,0,2,0,2,4,0)),service,dest);
+        this.respond(Uint8Array.of(2,255,0x12,0x34),service,dest);
+      }
     }
     return {status:"ok"};
   }
@@ -114,6 +122,10 @@ await controller.deleteEntry("/Examples/new.tns");
 const snap=await controller.screenshotRle();
 assert.deepEqual([snap.width,snap.height,snap.bpp],[2,2,4]);
 assert.deepEqual(Array.from(snap.pixels),[0x12,0x34]);
+fake.colorScreenshot=true;
+const color=await controller.screenshotRle();
+assert.deepEqual([color.width,color.height,color.bpp],[2,2,16]);
+assert.deepEqual(Array.from(color.pixels),[0,248,224,7,0,248,224,7]);
 await controller.close();
 assert.equal(fake.opened,false);
 console.log("CX II NNSE framing, handshake, directory, upload, download, delete, screenshot: passed.");
