@@ -1,31 +1,145 @@
-.ti-calc-overlay{position:fixed;inset:0;z-index:11000;display:grid;place-items:center;background:rgba(2,7,18,.77);padding:18px;overflow:auto}
-.ti-calc-dialog{width:min(1120px,100%);max-height:min(95vh,980px);display:flex;flex-direction:column;gap:13px;padding:22px;border:1px solid var(--line);border-radius:15px;background:var(--panel);color:var(--text);box-shadow:0 20px 90px rgba(0,0,0,.3);overflow:auto}
-.ti-calc-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;border-bottom:1px solid var(--line);padding-bottom:12px}
-.ti-calc-head h2{margin:0 0 5px;font-size:22px}
-.ti-calc-head p{margin:0;color:var(--muted);font-size:13px}
-.ti-calc-head [data-status][data-error="1"]{color:#f87171}
-.ti-calc-close{border:0;background:transparent;color:var(--text);font-size:27px;cursor:pointer;padding:0 8px}
-.ti-calc-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-.ti-calc-toolbar button,.ti-calc-side>button,.ti-calc-nav button,.ti-calc-actions button,.ti-calc-actions label{border:1px solid var(--line);background:var(--button-bg);color:var(--button-text);font-weight:700;border-radius:8px;padding:9px 12px;cursor:pointer}
-.ti-calc-toolbar button:first-child{background:var(--lime2);color:#102112;border-color:transparent}
-.ti-calc-toolbar a,.ti-calc-side a{font-size:12px;color:var(--accent);text-decoration:underline}
-.ti-calc-note{border-left:3px solid var(--line);padding:7px 10px;margin:0;font-size:13px;color:var(--muted);line-height:1.5}
-.ti-calc-columns{display:grid;grid-template-columns:minmax(225px,280px) minmax(0,1fr);gap:14px;min-height:380px}
-.ti-calc-side,.ti-calc-files{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:13px;min-width:0;display:flex;flex-direction:column;gap:9px}
-.ti-calc-side h3,.ti-calc-files h3{font-size:14px;margin:0 0 3px}
-.ti-calc-devices{display:flex;flex-direction:column;gap:8px;min-height:60px;font-size:13px;color:var(--muted)}
-.ti-calc-devices button{border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:8px;padding:10px;text-align:left;cursor:pointer}
-.ti-calc-screen{display:flex;flex-direction:column;gap:8px;align-items:center}
-.ti-calc-screen img{max-width:100%;border:1px solid var(--line);border-radius:8px}
-.ti-calc-nav{display:flex;gap:8px;align-items:center}
-.ti-calc-nav code{flex:1;min-width:0;border:1px solid var(--line);border-radius:6px;padding:10px;overflow:auto;white-space:nowrap;color:var(--text);font-size:13px}
-.ti-calc-nav button:disabled,.ti-calc-side button:disabled,.ti-calc-actions button:disabled,.ti-calc-actions label:has(input:disabled){opacity:.45;cursor:not-allowed}
-.ti-calc-file-list{flex:1;min-height:220px;max-height:435px;overflow:auto;display:flex;flex-direction:column;gap:2px;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px}
-.ti-calc-row{display:flex;align-items:center;gap:10px;border-radius:6px}
-.ti-calc-row:hover{background:var(--button-bg)}
-.ti-calc-row button{flex:1;text-align:left;padding:10px 8px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;min-width:0;background:transparent;border:0;color:var(--text);cursor:pointer;font:inherit;font-size:13px}
-.ti-calc-row span{flex:none;color:var(--muted);font-size:12px;padding-right:9px}
-.ti-calc-file-list p{padding:12px;font-size:13px;color:var(--muted);margin:0}
-.ti-calc-actions{display:flex;gap:8px;flex-wrap:wrap}
-.ti-calc-actions label{display:inline-flex;align-items:center;justify-content:center}
-@media(max-width:760px){.ti-calc-overlay{padding:8px}.ti-calc-dialog{padding:13px}.ti-calc-columns{grid-template-columns:1fr}.ti-calc-side{min-height:unset}.ti-calc-file-list{min-height:190px}}
+
+/* Actual WebTILP USB/WASM application integration. No faux device data. */
+.ti-transfer-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 11000;
+  display: grid;
+  place-items: center;
+  padding: 10px;
+  overflow: auto;
+  background: rgba(3, 7, 18, .82);
+}
+.ti-transfer-modal {
+  display: flex;
+  flex-direction: column;
+  width: min(1560px, 100%);
+  height: min(96vh, 1150px);
+  min-height: min(650px, 96vh);
+  overflow: hidden;
+  padding: 16px;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  color: var(--text);
+  background: var(--panel);
+  box-shadow: 0 20px 80px #0007;
+}
+.ti-transfer-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ti-transfer-title h2 { font-size: 21px; margin: 0 0 3px; }
+.ti-transfer-title p { font-size: 12px; margin: 0; color: var(--muted); }
+.ti-transfer-close {
+  cursor: pointer;
+  background: none;
+  border: 0;
+  color: var(--text);
+  font-size: 29px;
+  line-height: 1;
+  padding: 2px 10px;
+}
+.ti-transfer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.ti-transfer-toolbar button,
+.ti-transfer-toolbar a {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--button-bg);
+  color: var(--button-text);
+  font: 700 13px/1.35 inherit;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-decoration: none;
+  padding: 10px 13px;
+  cursor: pointer;
+}
+.ti-transfer-toolbar .ti-transfer-primary {
+  color: #0f1a0c;
+  background: var(--lime2);
+  border-color: var(--lime2);
+}
+.ti-transfer-toolbar button:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+.ti-transfer-status {
+  margin: 0;
+  color: var(--accent);
+  font-size: 12px;
+}
+.ti-transfer-status.error { color: #ef4444; }
+.ti-transfer-description {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.ti-transfer-viewport {
+  flex: 1;
+  min-height: 220px;
+  display: flex;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--bg);
+}
+.ti-transfer-webtilp-frame {
+  width: 100%;
+  height: 100%;
+  flex: 1;
+  display: block;
+  background: #101726;
+  border: 0;
+}
+.ti-transfer-placeholder {
+  margin: auto;
+  max-width: 570px;
+  text-align: center;
+  padding: 26px;
+}
+.ti-transfer-placeholder-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 65px;
+  height: 65px;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: .06em;
+  border-radius: 17px;
+  color: #0e1b0c;
+  background: var(--lime2);
+}
+.ti-transfer-placeholder h3 { margin: 13px 0 7px; }
+.ti-transfer-placeholder p { color: var(--muted); font-size: 13px; line-height: 1.55; }
+.ti-transfer-footer {
+  padding-top: 2px;
+  display: grid;
+  gap: 4px;
+  max-height: 150px;
+  overflow: auto;
+}
+.ti-transfer-footer p,
+.ti-transfer-footer small {
+  font-size: 11px;
+  line-height: 1.38;
+  margin: 0;
+  color: var(--muted);
+}
+.ti-transfer-footer small { opacity: .75; }
+@media (max-width: 760px) {
+  .ti-transfer-modal { height: 97vh; padding: 9px; gap: 6px; }
+  .ti-transfer-topbar h2 { font-size: 17px; }
+  .ti-transfer-toolbar { gap: 5px; }
+  .ti-transfer-toolbar button, .ti-transfer-toolbar a { padding: 8px; font-size: 11px; }
+  .ti-transfer-footer { max-height: 110px; }
+}
