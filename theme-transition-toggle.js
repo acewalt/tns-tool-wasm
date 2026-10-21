@@ -214,32 +214,48 @@
 
     try {
       if (!reduceMotion && typeof document.startViewTransition === "function") {
-        const transition = document.startViewTransition(() => {
-          applyTheme(nextTheme, button);
-        });
+        try {
+          const transition = document.startViewTransition(() => {
+            applyTheme(nextTheme, button);
+          });
 
-        await transition.ready;
+          // A transition may be skipped by the browser while another view
+          // transition is active. Never let a rejected ready promise silently
+          // turn the circular reveal into an instant color change.
+          await transition.ready;
 
-        const animation = document.documentElement.animate(
-          {
-            clipPath: [
-              `circle(0px at ${x}px ${y}px)`,
-              `circle(${radius}px at ${x}px ${y}px)`,
-            ],
-          },
-          {
-            duration: 720,
-            easing: "cubic-bezier(.22, 1, .36, 1)",
-            pseudoElement: "::view-transition-new(root)",
-          }
-        );
+          const animation = document.documentElement.animate(
+            {
+              clipPath: [
+                `circle(0px at ${x}px ${y}px)`,
+                `circle(${radius}px at ${x}px ${y}px)`,
+              ],
+            },
+            {
+              duration: 720,
+              easing: "cubic-bezier(.22, 1, .36, 1)",
+              fill: "both",
+              pseudoElement: "::view-transition-new(root)",
+            }
+          );
 
-        await Promise.allSettled([transition.finished, animation.finished]);
+          await Promise.allSettled([transition.finished, animation.finished]);
+        } catch (error) {
+          // Unsupported pseudo-element animations, aborted transitions and
+          // competing view transitions still get a visible circular effect.
+          console.warn("Native theme reveal unavailable; using circle fallback.", error);
+          await fallbackTransition(nextTheme, button, x, y, radius);
+        }
       } else if (!reduceMotion) {
         await fallbackTransition(nextTheme, button, x, y, radius);
       } else {
+        // Honor system accessibility preferences.
         applyTheme(nextTheme, button);
       }
+    } catch (error) {
+      // The theme control must remain operational even when animations fail.
+      console.warn("Theme reveal failed; applying the selected theme.", error);
+      applyTheme(nextTheme, button);
     } finally {
       switching = false;
     }
