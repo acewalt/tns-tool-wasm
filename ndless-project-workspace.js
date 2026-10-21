@@ -121,7 +121,8 @@
     const close=document.createElement("button");close.type="button";close.className="menu-action";close.dataset.ndlessProjectAction="1";close.dataset.ndlessProjectOnly="1";close.hidden=true;close.textContent=tr("closeProject");close.addEventListener("click",()=>closeProject());
     const openTns=$("input#xml-tns-file",panel)?.closest("label");
     const anchor=openTns?.nextSibling||$("#xml-new-btn",panel)?.nextSibling||panel.firstElementChild;
-    panel.insertBefore(sep,anchor);panel.insertBefore(btn,anchor);panel.insertBefore(open,anchor);panel.insertBefore(exp,anchor);panel.insertBefore(close,anchor);
+    const sectionEnd=document.createElement("div");sectionEnd.className="ti-file-action-separator";sectionEnd.setAttribute("role","separator");sectionEnd.setAttribute("aria-hidden","true");
+    panel.insertBefore(sep,anchor);panel.insertBefore(btn,anchor);panel.insertBefore(open,anchor);panel.insertBefore(exp,anchor);panel.insertBefore(close,anchor);panel.insertBefore(sectionEnd,anchor);
   }
   function init(){if(!core())return setTimeout(init,100);if(!$("#xml-doctor-panel"))return setTimeout(init,100);injectMenu();document.addEventListener("click",e=>{if(state.project&&e.target.closest?.(".file-page-menu")){e.preventDefault();e.stopImmediatePropagation();}},true);window.NdlessProjectWorkspace=Object.freeze({newProject:wizard,openProjectZip,activateProject,closeProject,getProject:()=>state.project,downloadProject});}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
