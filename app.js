@@ -8865,7 +8865,6 @@ async function createEmptyXmlProjectForPageCreation() {
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
   xmlDoctor.sourceFileName = "documento.tns";
-  setXmlTnsOutputFileName("documento.tns");
 
   const response = await fetch(`./templates/blank_tns_xml/Document.xml?v=${SOURCE_VERSION}`, { cache: "no-store" });
   if (!response.ok) throw new Error(`No se pudo cargar plantilla Document.xml: HTTP ${response.status}`);
@@ -8881,6 +8880,7 @@ async function createEmptyXmlProjectForPageCreation() {
   xmlDoctor.lastDiff = "";
   xmlDoctor.issueLines.clear();
   await scanXmlPrograms();
+  setXmlTnsOutputFileName("documento.tns");
 }
 
 async function ensureXmlProjectForPageCreation() {
@@ -10130,7 +10130,6 @@ async function createNewXmlProject() {
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
   xmlDoctor.sourceFileName = "documento.tns";
-  setXmlTnsOutputFileName("documento.tns");
   for (const name of ["Document.xml", "Problem1.xml"]) {
     const response = await fetch(`./templates/blank_tns_xml/${name}?v=${SOURCE_VERSION}`, { cache: "no-store" });
     if (!response.ok) throw new Error(`No se pudo cargar plantilla ${name}: HTTP ${response.status}`);
@@ -10141,6 +10140,7 @@ async function createNewXmlProject() {
   xmlDoctor.lastDiff = "";
   xmlDoctor.issueLines.clear();
   await scanXmlPrograms();
+  setXmlTnsOutputFileName("documento.tns");
 }
 
 async function createTnsFromXmlDoctor() {
@@ -10188,6 +10188,8 @@ function setXmlTnsOutputFileName(rawName) {
   if (input && input.value !== normalized) input.value = normalized;
   const display = document.querySelector("#xml-output-filename-display");
   if (display) display.textContent = normalized;
+  const wrapper = document.querySelector("#xml-doctor-panel .xml-output-file-name");
+  if (wrapper) wrapper.hidden = false;
   return normalized;
 }
 
