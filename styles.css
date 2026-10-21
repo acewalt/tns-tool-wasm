@@ -4035,24 +4035,81 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
   -webkit-backdrop-filter: none !important;
 }
 
-/* Separate editable TNS filename for the XML editor. */
-#xml-doctor-panel > .doctor-toolbar > h2 { flex: 0 1 auto; margin: 0; }
+/* Centered document filename: text until clicked, editable in place. */
+#xml-doctor-panel > .doctor-toolbar {
+  position: relative;
+}
+#xml-doctor-panel > .doctor-toolbar > h2 {
+  flex: 0 0 100%;
+  margin: 0 0 4px;
+}
 #xml-doctor-panel .xml-output-file-name {
-  display: flex; align-items: center; gap: 10px; min-width: 240px;
-  max-width: min(390px, 100%); flex: 0 1 370px; margin-left: auto;
-  color: var(--muted); font-size: 12px; font-weight: 700;
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(520px, calc(100% - 365px));
+  min-width: 0;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
-#xml-doctor-panel .xml-output-file-name > span { white-space: nowrap; }
+#xml-doctor-panel .xml-output-file-name [hidden] {
+  display: none !important;
+}
+#xml-doctor-panel #xml-output-filename-display,
 #xml-doctor-panel #xml-output-filename {
-  width: 100%; min-width: 0; padding: 9px 11px; border: 1px solid var(--line);
-  border-radius: 8px; background: var(--panel); color: var(--text);
-  font-size: 13px; font-weight: 600; font-family: inherit; outline: none;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 5px 12px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 24px;
+  text-align: center;
 }
+#xml-doctor-panel #xml-output-filename-display {
+  display: block;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  cursor: text;
+}
+#xml-doctor-panel #xml-output-filename-display:not(:disabled):hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+#xml-doctor-panel #xml-output-filename-display:focus-visible,
 #xml-doctor-panel #xml-output-filename:focus-visible {
-  border-color: var(--lime2); box-shadow: 0 0 0 2px rgb(141 230 42 / 15%);
+  outline: 2px solid var(--lime2);
+  outline-offset: 2px;
 }
-#xml-doctor-panel #xml-output-filename:disabled { opacity: 0.6; cursor: not-allowed; }
-#xml-doctor-panel .xml-output-toolbar-break { flex-basis: 100%; height: 0; }
-@media (max-width: 760px) {
-  #xml-doctor-panel .xml-output-file-name { flex: 1 1 100%; max-width: 100%; margin-left: 0; }
+#xml-doctor-panel #xml-output-filename {
+  border-color: var(--line);
+  background: var(--panel);
+  outline: none;
+  font-weight: 600;
+}
+#xml-doctor-panel #xml-output-filename:focus {
+  border-color: var(--lime2);
+  box-shadow: 0 0 0 2px rgb(141 230 42 / 15%);
+}
+#xml-doctor-panel #xml-output-filename-display:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+@media (max-width: 850px) {
+  #xml-doctor-panel .xml-output-file-name {
+    position: static;
+    transform: none;
+    flex: 0 0 100%;
+    width: 100%;
+    max-width: 100%;
+    min-height: 34px;
+  }
 }
