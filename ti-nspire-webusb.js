@@ -202,10 +202,13 @@
       }
     }
     async close() {
-      this.connected = false; this.initialized = false;
+      this.connected = false;
+      // Send any pending service disconnect using its original USB framing
+      // before disposing of the NNSE transport.
+      try { if (this.activeService) await this.disconnectService(); } catch (_) {}
+      this.initialized = false;
       this.nnse?.reset(); this.nnse = null;
       this.queue = []; this.readBuffer = new Uint8Array(0);
-      try { if (this.activeService) await this.disconnectService(); } catch (_) {}
       try { if (this.device.opened) await this.device.releaseInterface(this.iface); } catch (_) {}
       try { if (this.device.opened) await this.device.close(); } catch (_) {}
     }
