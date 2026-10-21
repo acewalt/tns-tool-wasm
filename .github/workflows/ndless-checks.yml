@@ -20,6 +20,7 @@ on:
       - 'multi-image-upload.js'
       - 'index.html'
       - 'ti-calculator-transfer.js'
+      - 'ti-nspire-webusb.js'
       - 'ti-calculator-transfer.css'
       - 'tools/calculator-transfer/**'
       - 'tests/calculator-transfer-ui.test.js'
@@ -43,6 +44,7 @@ on:
       - 'multi-image-upload.js'
       - 'index.html'
       - 'ti-calculator-transfer.js'
+      - 'ti-nspire-webusb.js'
       - 'ti-calculator-transfer.css'
       - 'tools/calculator-transfer/**'
       - 'tests/calculator-transfer-ui.test.js'
@@ -108,6 +110,7 @@ jobs:
           node --check ndless-experimental-export-fix.js
           node --check multi-image-upload.js
           node --check ti-calculator-transfer.js
+          node --check ti-nspire-webusb.js
           python -m py_compile tools/calculator-transfer/bridge.py tests/test_calculator_bridge.py
       - name: Calculator transfer regression tests
         run: |
