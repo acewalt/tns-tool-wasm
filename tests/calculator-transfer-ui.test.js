@@ -27,7 +27,7 @@ const sandbox = vm.createContext({
   window: win,
   navigator: {},
   Uint8Array, DataView, ArrayBuffer, TextEncoder, TextDecoder, Error,
-  console
+  console, setTimeout, clearTimeout
 });
 vm.runInContext(controller, sandbox);
 const protocol = win.TnsNspireUSB;
@@ -98,7 +98,7 @@ class FakeUSB {
     else if(d[0]===4)this.respond(concat(Uint8Array.of(5),this.file));
     else if(d[0]===0 && p.dstSid===0x4024){
       this.screenshots++;
-      this.respond(concat(Uint8Array.of(1),be32(2),Uint8Array.of(0,0,0,0,0,2,0,2,4,0)),0x4024);
+      this.respond(concat(Uint8Array.of(1),be32(3),Uint8Array.of(0,0,0,0,0,2,0,2,4,0)),0x4024);
       this.respond(Uint8Array.of(2,255,0x12,0x34),0x4024);
     }
     return {status:"ok"};
