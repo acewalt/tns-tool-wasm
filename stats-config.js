@@ -179,20 +179,7 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   document.head.appendChild(script);
 })();
 
-// Replace the old instant theme button with a circular moon/sun toggle and a
-// page-wide circular reveal using the View Transitions API (with a fallback).
-(() => {
-  // The main page now loads this script directly after app.js. Keep this
-  // loader only for older cached pages so the click handler is never doubled.
-  if (document.querySelector('script[src*="theme-transition-toggle.js"]')) return;
-
-  const script = document.createElement("script");
-  script.src = "./theme-transition-toggle.js?v=20261021-theme-reveal-v3";
-  script.dataset.animatedThemeToggle = "true";
-  document.head.appendChild(script);
-})();
-
-// Add support and feedback information inside the About modal, between
+// Theme toggle is loaded exactly once by index.html after app.js.\n// Do not inject a competing async copy here.\n\n// Add support and feedback information inside the About modal, between
 // Purpose and Development and Interface. Keep it synchronized with the site's
 // Spanish / English / French language selection.
 (() => {
