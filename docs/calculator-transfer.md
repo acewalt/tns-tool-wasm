@@ -162,6 +162,23 @@ transporte simulado y de interfaz, pero se deben comprobar con la
 calculadora física antes de confiar en el renombrado de directorios
 según la versión del firmware.
 
+## Vistas y estado de conexión (octubre de 2026)
+
+- El botón **Conectar calculadora** aparece únicamente cuando no hay una
+  conexión USB confirmada. Después de conectar, desaparece y queda disponible
+  **Desconectar**; si falla o se pierde la conexión, se restablece **Conectar**.
+- El selector de **Lista / Cuadrícula** cambia solo la presentación del mismo
+  explorador USB. Lista mantiene su árbol de carpetas anidadas; cuadrícula
+  muestra tarjetas para las entradas de la carpeta actual, con iconos SVG,
+  selección múltiple y las mismas acciones de descarga, renombrado y borrado.
+- En cuadrícula, pulsar una carpeta accede a ella (con lectura USB diferida),
+  y **↑** regresa al directorio superior. Pulsar un archivo alterna su
+  selección. Las carpetas previamente cargadas se obtienen desde caché.
+- La selección de elementos se conserva al cambiar entre las dos vistas.
+  La vista elegida se guarda en el almacenamiento local del navegador y
+  se restaura al volver a abrir el administrador; no cambia ningún archivo
+  ni carpeta de la calculadora.
+
 ## Límites actuales
 
 - El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
