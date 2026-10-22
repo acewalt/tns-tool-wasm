@@ -36,7 +36,8 @@
       renameExtension:"Los documentos TNS deben conservar su extensión .tns.",
       deletePrompt:"¿Eliminar este elemento de la calculadora?", folderWarning:"Si es una carpeta, esta acción puede borrar su contenido.",
       folderZip:"Descargando carpeta como ZIP…", folderTooLarge:"La carpeta supera el límite de 300 documentos o 64 MB.",
-      folderTooDeep:"La estructura supera las 16 subcarpetas anidadas.", notConnected:"Conecta la calculadora para continuar."
+      folderTooDeep:"La estructura supera las 16 subcarpetas anidadas.", notConnected:"Conecta la calculadora para continuar.",
+      viewList:"Vista de lista", viewGrid:"Vista de cuadrícula"
     },
     en: {
       title:"TI-Nspire Manager", subtitle:"Native USB · TNS Tool WASM",
@@ -72,7 +73,8 @@
       renameExtension:"TNS documents must keep their .tns extension.",
       deletePrompt:"Delete this item from the calculator?", folderWarning:"If it is a folder, its contents may be deleted.",
       folderZip:"Downloading folder as ZIP…", folderTooLarge:"Folder exceeds 300 files or 64 MB.",
-      folderTooDeep:"This folder is nested more than 16 levels.", notConnected:"Connect the calculator first."
+      folderTooDeep:"This folder is nested more than 16 levels.", notConnected:"Connect the calculator first.",
+      viewList:"List view", viewGrid:"Grid view"
     },
     fr: {
       title:"Gestionnaire TI-Nspire", subtitle:"USB natif · TNS Tool WASM",
@@ -108,13 +110,14 @@
       renameExtension:"Les documents TNS doivent conserver l'extension .tns.",
       deletePrompt:"Supprimer cet élément de la calculatrice ?", folderWarning:"Si c'est un dossier, son contenu peut être supprimé.",
       folderZip:"Téléchargement du dossier en ZIP…", folderTooLarge:"Le dossier dépasse 300 fichiers ou 64 Mo.",
-      folderTooDeep:"Plus de 16 niveaux de dossiers.", notConnected:"Connectez d'abord la calculatrice."
+      folderTooDeep:"Plus de 16 niveaux de dossiers.", notConnected:"Connectez d'abord la calculatrice.",
+      viewList:"Vue en liste", viewGrid:"Vue en grille"
     }
   };
   const q=(selector,root=document)=>root?.querySelector(selector);
   const state={
     root:null,link:null,path:"/",files:[],chosen:new Set(),busy:false,
-    cache:new Map(),expanded:new Set(["/"]),transferStarted:0,
+    cache:new Map(),expanded:new Set(["/"]),transferStarted:0,view:"list",
     lastDownloadSaved:false,lastScreenshotReady:false
   };
   function tr(k){
@@ -162,7 +165,20 @@
     const online=Boolean(state.link?.connected);
     const disable=(s,val)=>{const e=q("[data-ti-"+s+"]",state.root);if(e)e.disabled=val;};
     disable("connect",state.busy||online);
+    // Hide Connect once there is a confirmed connection; show it again on
+    // explicit disconnect or a broken transport so reconnection is possible.
+    const connectButton=q("[data-ti-connect]",state.root);
+    if(connectButton)connectButton.hidden=online;
     disable("disconnect",state.busy||!online);
+    const disconnectButton=q("[data-ti-disconnect]",state.root);
+    if(disconnectButton)disconnectButton.hidden=!online;
+    for(const [view,selector] of [["list","[data-ti-view-list]"],["grid","[data-ti-view-grid]"]]){
+      const button=q(selector,state.root);
+      if(button){
+        button.setAttribute("aria-pressed",String(state.view===view));
+        button.classList.toggle("active",state.view===view);
+      }
+    }
     for(const action of ["refresh","mkdir","upload","current","capture"])disable(action,state.busy||!online);
     disable("up",state.busy||!online||state.path==="/");
     disable("receive",state.busy||!online||!selected().length||selected().some(f=>f.isDir));
@@ -175,7 +191,7 @@
     }
     const count=q("[data-ti-selected]",state.root);
     if(count)count.textContent=selected().length+"/"+allKnown().length;
-    for(const item of state.root.querySelectorAll?.(".ti-tree-row input, .ti-tree-row button")||[])
+    for(const item of state.root.querySelectorAll?.(".ti-tree-row input, .ti-tree-row button, .ti-grid-tile input, .ti-grid-tile button")||[])
       item.disabled=state.busy;
   }
   // Adapted from the Uiverse folder-tree concept, scoped to the manager.
@@ -184,6 +200,8 @@
     const host=q("[data-ti-rows]",state.root);
     if(!host)return;
     host.replaceChildren();
+    const table=q(".ti-manager-table",state.root);
+    if(table)table.dataset.view=state.view;
     q("[data-ti-path]",state.root).textContent=state.path;
     if(!state.link?.connected){
       const p=document.createElement("p");p.className="ti-manager-empty";
@@ -198,6 +216,75 @@
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><path d="M14 2v6h6"/></svg>';
       return el;
     };
+    // Shared individual actions preserve the existing SVG theme masks.
+    const makeFileActions=file=>{
+      const actions=document.createElement("div");
+      actions.className="ti-row-actions";
+      for(const [kind,label,handler,danger] of [
+        ["download",tr("downloadOne"),downloadOne,false],
+        ["rename",tr("renameOne"),renameOne,false],
+        ["delete",tr("deleteOne"),deleteOne,true]
+      ]){
+        const action=document.createElement("button");action.type="button";
+        action.className="ti-row-action"+(danger?" ti-row-action-danger":"");
+        const symbol=document.createElement("span");
+        symbol.className="ti-action-icon ti-action-icon-"+kind;
+        symbol.setAttribute("aria-hidden","true");
+        action.append(symbol);
+        action.title=label+" · "+file.name;
+        action.setAttribute("aria-label",label+" "+file.name);
+        action.addEventListener("click",event=>{
+          event.preventDefault();event.stopPropagation();
+          if(!state.busy)void handler(file);
+        });
+        actions.append(action);
+      }
+      return actions;
+    };
+    if(state.view==="grid"){
+      const gallery=document.createElement("div");gallery.className="ti-grid-gallery";
+      const entries=[...(state.cache.get(state.path)||[])].sort((a,b)=>
+        Number(b.isDir)-Number(a.isDir)||a.name.localeCompare(b.name));
+      if(!entries.length){
+        const empty=document.createElement("p");empty.className="ti-manager-empty";
+        empty.textContent=tr("empty");gallery.append(empty);
+      }
+      for(const file of entries){
+        const tile=document.createElement("div");
+        tile.className="ti-grid-tile";
+        tile.classList.toggle("selected",state.chosen.has(file.path));
+        tile.title=file.path;
+        const checkbox=document.createElement("input");checkbox.type="checkbox";
+        checkbox.className="ti-manager-item-check";
+        checkbox.setAttribute("aria-label",tr("select")+" "+file.name);
+        checkbox.checked=state.chosen.has(file.path);
+        checkbox.addEventListener("change",()=>{
+          if(state.busy){checkbox.checked=state.chosen.has(file.path);return;}
+          if(checkbox.checked)state.chosen.add(file.path);
+          else state.chosen.delete(file.path);
+          tile.classList.toggle("selected",checkbox.checked);
+          controls();
+        });
+        const openItem=document.createElement("button");openItem.type="button";
+        openItem.className="ti-grid-open";openItem.title=file.path;
+        openItem.append(icon(file.isDir,false));
+        const name=document.createElement("span");name.className="ti-grid-name";
+        name.textContent=file.name;
+        const metadata=document.createElement("small");metadata.className="ti-grid-meta";
+        metadata.textContent=file.isDir?tr("folder"):formatted(file.size);
+        openItem.append(name,metadata);
+        openItem.addEventListener("click",()=>{
+          if(state.busy)return;
+          if(file.isDir)void enterGridFolder(file.path);
+          else{checkbox.checked=!checkbox.checked;checkbox.dispatchEvent(new Event("change"));}
+        });
+        tile.append(checkbox,openItem,makeFileActions(file));
+        gallery.append(tile);
+      }
+      host.append(gallery);
+      controls();
+      return;
+    }
     const buildBranch=(path,depth)=>{
       const ul=document.createElement("ul");ul.className="ti-tree-list";
       const entries=[...(state.cache.get(path)||[])].sort((a,b)=>
@@ -240,31 +327,7 @@
         const type=document.createElement("span");type.textContent=file.isDir?tr("folder"):tr("document");
         const size=document.createElement("span");size.textContent=file.isDir?"—":formatted(file.size);
         const folder=document.createElement("span");folder.textContent=path;
-        const actions=document.createElement("div");
-        actions.className="ti-row-actions";
-        const addAction=(kind,label,handler,danger=false)=>{
-          const action=document.createElement("button");
-          action.type="button";
-          action.className="ti-row-action"+(danger?" ti-row-action-danger":"");
-          const icon=document.createElement("span");
-          // The SVG file is used as a CSS mask so its visible color inherits
-          // currentColor from the active light/dark theme, including hover.
-          icon.className="ti-action-icon ti-action-icon-"+kind;
-          icon.setAttribute("aria-hidden","true");
-          action.append(icon);
-          action.title=label+" · "+file.name;
-          action.setAttribute("aria-label",label+" "+file.name);
-          action.addEventListener("click",event=>{
-            event.preventDefault();
-            event.stopPropagation();
-            if(!state.busy)void handler(file);
-          });
-          actions.append(action);
-        };
-        addAction("download",tr("downloadOne"),downloadOne);
-        addAction("rename",tr("renameOne"),renameOne);
-        addAction("delete",tr("deleteOne"),deleteOne,true);
-        nameCell.append(b,actions);
+        nameCell.append(b,makeFileActions(file));
         r.append(cb,nameCell,type,size,folder);li.append(r);
         if(file.isDir){
           const wrapper=document.createElement("div");
@@ -279,6 +342,19 @@
     };
     host.append(buildBranch("/",0));
     controls();
+  }
+  async function enterGridFolder(path){
+    if(state.busy)return;
+    state.expanded.add(path);
+    setCurrentFolder(path);
+    if(!state.cache.has(path))await list(path);
+    else rows();
+  }
+  function setView(view){
+    if(view!=="list"&&view!=="grid")return;
+    state.view=view;
+    try{localStorage.setItem("tns-tool-calculator-view",view);}catch(_){}
+    rows();
   }
   async function toggleFolder(path) {
     if(state.busy)return;
@@ -663,7 +739,10 @@
       '<button type="button" data-ti-capture disabled></button><div data-ti-image class="ti-manager-image"></div>',
       '<p data-ti-browser-hint></p></aside>',
       '<main class="ti-manager-files"><div class="ti-manager-files-head"><h3 data-ti-folder-title></h3>',
-      '<div class="ti-manager-actions"><button type="button" data-ti-refresh disabled></button>',
+      '<div class="ti-manager-actions"><div class="ti-manager-view-switch" role="group" data-ti-view-group>',
+      '<button type="button" data-ti-view-list aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><path d="M4 6h.1M4 12h.1M4 18h.1" stroke-width="3"/></svg></button>',
+      '<button type="button" data-ti-view-grid aria-pressed="false"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3.5" y="3.5" width="7" height="7" rx="1.3"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.3"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.3"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.3"/></svg></button>',
+      '</div><button type="button" data-ti-refresh disabled></button>',
       '<button type="button" data-ti-mkdir disabled></button><button type="button" data-ti-receive disabled></button>',
       '<button type="button" data-ti-delete disabled></button></div></div>',
       '<div class="ti-manager-path"><button type="button" data-ti-up disabled>↑</button><code data-ti-path>/</code><span data-ti-selected>0/0</span></div>',
@@ -677,6 +756,10 @@
       '<a data-ti-help href="./docs/calculator-transfer.md" target="_blank" rel="noopener noreferrer"></a></footer></section>'
     ].join("");
     document.body.append(root);state.root=root;state.path="/";state.files=[];
+    try{
+      const saved=localStorage.getItem("tns-tool-calculator-view");
+      if(saved==="list"||saved==="grid")state.view=saved;
+    }catch(_){} 
     state.cache.clear();state.expanded=new Set(["/"]);state.chosen.clear();
     const labels={
       "#ti-manager-title":"title","[data-ti-subtitle]":"subtitle",
@@ -702,6 +785,13 @@
       if(control)control.textContent=emoji+" "+control.textContent;
     }
     q(".ti-manager-table",root).setAttribute("aria-label",tr("folders"));
+    q("[data-ti-view-group]",root).setAttribute("aria-label",tr("folders"));
+    for(const [view,key] of [["list","viewList"],["grid","viewGrid"]]){
+      const button=q("[data-ti-view-"+view+"]",root);
+      button.title=tr(key);
+      button.setAttribute("aria-label",tr(key));
+      button.addEventListener("click",()=>setView(view));
+    }
     q("[data-ti-close]",root).addEventListener("click",close);
     q("[data-ti-connect]",root).addEventListener("click",connect);
     q("[data-ti-disconnect]",root).addEventListener("click",disconnect);
