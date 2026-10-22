@@ -72,3 +72,6 @@
   .ti-manager-table .ti-tree-children>.ti-tree-list>.ti-tree-item:before{left:-8px;width:8px}
   .ti-manager-log progress[data-ti-bar]{width:75px}
 }
+
+.ti-manager-table .ti-tree-row button:disabled{opacity:.75;cursor:progress}
+.ti-manager-table .ti-tree-row input:disabled{cursor:progress}
