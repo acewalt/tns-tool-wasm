@@ -466,3 +466,86 @@
   .ti-manager-table .ti-grid-tile > .ti-manager-item-check,
   .ti-manager-actions .ti-manager-view-switch button{transition:none}
 }
+
+
+/* USB upload destination chooser. Lives inside the calculator manager, but
+   does not change the folder currently displayed in the main explorer. */
+.ti-manager-dialog{position:relative}
+.ti-destination-overlay{
+  position:absolute;inset:0;z-index:10;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;box-sizing:border-box;
+  background:rgba(6,12,26,.78);
+  backdrop-filter:blur(3px);
+}
+.ti-destination-dialog{
+  display:flex;flex-direction:column;gap:12px;
+  width:min(480px,100%);max-height:min(590px,95%);
+  min-height:0;padding:20px;box-sizing:border-box;
+  background:var(--panel);color:var(--text);
+  border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 18px 65px #0006;
+}
+.ti-destination-dialog h3{font-size:17px;margin:0;font-weight:800}
+.ti-destination-description{
+  margin:0;font-size:12px;color:var(--muted);
+  line-height:1.5;overflow-wrap:anywhere;
+  max-height:55px;overflow-y:auto;
+}
+.ti-destination-toolbar{display:flex;gap:8px;align-items:center;min-width:0}
+.ti-destination-nav{
+  display:grid;place-items:center;flex:0 0 35px;
+  height:35px;border:1px solid var(--line);
+  border-radius:7px;background:var(--button-bg);
+  color:var(--text);cursor:pointer;font-size:17px;
+}
+.ti-destination-nav:hover:not(:disabled){border-color:var(--accent)}
+.ti-destination-nav:disabled{opacity:.38;cursor:default}
+.ti-destination-path{
+  flex:1;min-width:0;min-height:35px;
+  display:flex;align-items:center;
+  background:var(--bg);color:var(--text);
+  padding:8px 11px;box-sizing:border-box;
+  border:1px solid var(--line);border-radius:7px;
+  font-size:12px;white-space:nowrap;overflow-x:auto;
+}
+.ti-destination-list{
+  display:flex;flex-direction:column;gap:4px;
+  flex:1;min-height:90px;overflow:auto;
+  padding:6px;background:var(--bg);
+  border:1px solid var(--line);border-radius:8px;
+  overscroll-behavior:contain;
+}
+.ti-destination-folder{
+  display:flex;align-items:center;gap:10px;width:100%;
+  min-height:40px;padding:8px 11px;
+  border:1px solid transparent;border-radius:7px;
+  background:transparent;color:var(--text);
+  font-size:13px;text-align:left;cursor:pointer;
+}
+.ti-destination-folder:hover,.ti-destination-folder:focus-visible{
+  background:var(--button-bg);border-color:var(--line);
+}
+.ti-destination-folder span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+.ti-destination-folder span:last-child{font-size:21px;color:var(--muted)}
+.ti-destination-folder-icon{width:20px;height:20px;flex:0 0 20px;color:var(--accent)}
+.ti-destination-folder-icon svg{width:20px;height:20px}
+.ti-destination-empty{padding:12px;margin:auto;color:var(--muted);font-size:12px;text-align:center}
+.ti-destination-notice{
+  font-size:12px;color:var(--muted);min-height:18px;
+  line-height:1.4;margin:0;overflow-wrap:anywhere;
+}
+.ti-destination-notice[data-error="1"]{color:#ef4444}
+.ti-destination-footer{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+.ti-destination-cancel,.ti-destination-confirm{
+  padding:10px 14px;border:1px solid var(--line);
+  border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;
+}
+.ti-destination-cancel{color:var(--text);background:var(--button-bg)}
+.ti-destination-confirm{background:var(--lime2);border-color:var(--lime2);color:#112010}
+.ti-destination-confirm:hover:not(:disabled){filter:brightness(1.06)}
+.ti-destination-dialog button:disabled{opacity:.44;cursor:not-allowed}
+@media(max-width:760px){
+  .ti-destination-overlay{padding:7px}
+  .ti-destination-dialog{padding:12px;max-height:95%;gap:9px}
+}
