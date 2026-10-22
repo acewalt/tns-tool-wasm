@@ -396,6 +396,9 @@
           data.set(chunk.subarray(1, 1 + n), offset); offset += n;
           onProgress(offset, count);
         }
+        // All document bytes have arrived, but TI-Nspire must still
+        // acknowledge the final command and disconnect the filesystem service.
+        onProgress(offset, count, "finalizing");
         await this.sendData(Uint8Array.of(0xff, 0));
         return data;
       });
@@ -413,6 +416,7 @@
           await this.sendData(concat(Uint8Array.of(5), chunk));
           onProgress(Math.min(data.length, offset + block), data.length);
         }
+        onProgress(data.length, data.length, "finalizing");
         const done = await this.recvData();
         ensure(done.length >= 2 && done[0] === 0xff && done[1] === 0, "La calculadora no confirmó el archivo recibido.");
       });
