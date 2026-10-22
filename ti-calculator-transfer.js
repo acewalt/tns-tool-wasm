@@ -141,6 +141,8 @@
     }
     const count=q("[data-ti-selected]",state.root);
     if(count)count.textContent=selected().length+"/"+allKnown().length;
+    for(const item of state.root.querySelectorAll?.(".ti-tree-row input, .ti-tree-row button")||[])
+      item.disabled=state.busy;
   }
   // Adapted from the Uiverse folder-tree concept, scoped to the manager.
   // Children are requested from the physical calculator only when expanded.
@@ -180,6 +182,7 @@
         cb.checked=state.chosen.has(file.path);
         cb.setAttribute("aria-label",tr("select")+" "+file.name);
         cb.addEventListener("change",()=>{
+          if(state.busy){cb.checked=state.chosen.has(file.path);return;}
           if(cb.checked)state.chosen.add(file.path);else state.chosen.delete(file.path);
           r.classList.toggle("selected",cb.checked);controls();
         });
@@ -192,6 +195,7 @@
         name.textContent=file.name;
         b.append(chevron,icon(file.isDir,expanded),name);
         b.addEventListener("click",()=>{
+          if(state.busy)return;
           if(file.isDir){void toggleFolder(file.path);}
           else{cb.checked=!cb.checked;cb.dispatchEvent(new Event("change"));}
         });
@@ -325,10 +329,16 @@
       for(const f of targets){
         say(tr("progress")+" "+f.name);
         state.transferStarted=Date.now();
+        let savedEarly=false;
         const data=await state.link.getFile(f.path,(n,total,phase)=>{
           updateTransfer(f.name,n,total,"download",phase);
+        },bytes=>{
+          // File payload is complete even when the device needs more time to
+          // acknowledge the terminal command. Save without unblocking USB.
+          try {saveFile(f.name,bytes);savedEarly=true;}
+          catch(error){log(String(error?.message||error));}
         });
-        saveFile(f.name,data);
+        if(!savedEarly)saveFile(f.name,data);
         log(f.name+" · "+formatted(data.length)+" · "+tr("downloaded"));
       }
       say(tr("downloaded"));
