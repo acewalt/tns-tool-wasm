@@ -1185,6 +1185,12 @@ function markNormalProjectActive() {
 window.TnsNormalProjectState = Object.freeze({
   hasProject: () => normalProjectSession.active,
 });
+function requireNormalProjectMode() {
+  // Ndless source projects do not share the XML/TNS document format.
+  if (window.NdlessProjectWorkspace?.getProject?.()) {
+    throw new Error("Cierra el proyecto Ndless antes de abrir o crear un documento TNS/XML normal.");
+  }
+}
 const pyDoctor = {
   lastOriginal: "",
   lastFixed: "",
@@ -1959,6 +1965,7 @@ function setPyDoctorEnabled(enabled) {
 
 async function loadXmlDoctorFiles(files, mode) {
   if (!files.length) return;
+  requireNormalProjectMode();
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
   xmlDoctor.sourceFileName = mode === "folder"
@@ -1980,6 +1987,7 @@ async function loadXmlDoctorFiles(files, mode) {
 
 async function openTnsInXmlDoctor(file) {
   if (!file) return;
+  requireNormalProjectMode();
   await ensureCryptoPackage();
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
@@ -8880,6 +8888,7 @@ function xmlDoctorHasProjectFiles() {
 }
 
 async function createEmptyXmlProjectForPageCreation() {
+  requireNormalProjectMode();
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
   xmlDoctor.sourceFileName = "documento.tns";
@@ -10102,6 +10111,7 @@ function showGraphModal(item) {
 }
 
 async function addPageFromFileMenu(kind) {
+  requireNormalProjectMode();
   await ensureXmlProjectForPageCreation();
 
   if (kind === "image") {
@@ -10146,6 +10156,7 @@ async function addPageFromFileMenu(kind) {
 }
 
 async function createNewXmlProject() {
+  requireNormalProjectMode();
   clearDir(xmlDoctor.sourcePath);
   clearDir(xmlDoctor.stagePath);
   xmlDoctor.sourceFileName = "documento.tns";
