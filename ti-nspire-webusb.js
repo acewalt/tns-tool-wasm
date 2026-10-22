@@ -379,7 +379,7 @@
         ensure(done[0] === 0xff && done[1] === 0, "No se pudo crear la carpeta.");
       });
     }
-    async getFile(path, onProgress = () => {}) {
+    async getFile(path, onProgress = () => {}, onBytesComplete = () => {}) {
       return this.usingService(SERVICE_FILES, async () => {
         await this.sendData(concat(Uint8Array.of(0x07, 0x01), pathField(path)));
         const info = await this.recvData();
@@ -396,8 +396,10 @@
           data.set(chunk.subarray(1, 1 + n), offset); offset += n;
           onProgress(offset, count);
         }
-        // All document bytes have arrived, but TI-Nspire must still
-        // acknowledge the final command and disconnect the filesystem service.
+        // All document bytes arrived. Let the browser save them immediately,
+        // while keeping the USB session busy until the end command completes.
+        // This callback must not start another calculator operation.
+        onBytesComplete(data);
         onProgress(offset, count, "finalizing");
         await this.sendData(Uint8Array.of(0xff, 0));
         return data;
