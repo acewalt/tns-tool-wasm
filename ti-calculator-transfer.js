@@ -239,11 +239,16 @@
         const folder=document.createElement("span");folder.textContent=path;
         const actions=document.createElement("div");
         actions.className="ti-row-actions";
-        const addAction=(emoji,label,handler,danger=false)=>{
+        const addAction=(kind,label,handler,danger=false)=>{
           const action=document.createElement("button");
           action.type="button";
           action.className="ti-row-action"+(danger?" ti-row-action-danger":"");
-          action.textContent=emoji;
+          const icon=document.createElement("span");
+          // The SVG file is used as a CSS mask so its visible color inherits
+          // currentColor from the active light/dark theme, including hover.
+          icon.className="ti-action-icon ti-action-icon-"+kind;
+          icon.setAttribute("aria-hidden","true");
+          action.append(icon);
           action.title=label+" · "+file.name;
           action.setAttribute("aria-label",label+" "+file.name);
           action.addEventListener("click",event=>{
@@ -253,9 +258,9 @@
           });
           actions.append(action);
         };
-        addAction("⬇️",tr("downloadOne"),downloadOne);
-        addAction("✏️",tr("renameOne"),renameOne);
-        addAction("🗑️",tr("deleteOne"),deleteOne,true);
+        addAction("download",tr("downloadOne"),downloadOne);
+        addAction("rename",tr("renameOne"),renameOne);
+        addAction("delete",tr("deleteOne"),deleteOne,true);
         nameCell.append(b,actions);
         r.append(cb,nameCell,type,size,folder);li.append(r);
         if(file.isDir){
