@@ -464,7 +464,7 @@
       return Promise.resolve(null);
     return new Promise(resolve=>{
       const originalFocus=document.activeElement;
-      const picker={active:true,path:state.path,loading:false,cancel:null};
+      const picker={active:true,path:state.path,loading:false,validated:false,cancel:null};
       const overlay=document.createElement("div");
       overlay.className="ti-destination-overlay";
       const panel=document.createElement("section");
@@ -514,11 +514,13 @@
         breadcrumb.textContent=picker.path;
         home.disabled=picker.loading||picker.path==="/";
         up.disabled=picker.loading||picker.path==="/";
-        confirmButton.disabled=picker.loading||!state.link?.connected;
+        confirmButton.disabled=picker.loading||!picker.validated||!state.link?.connected;
       };
       const enter=async path=>{
         if(!picker.active||picker.loading||!state.link?.connected)return;
-        picker.loading=true;notice.textContent=tr("destinationLoading");
+        const wasValidated=picker.validated;
+        picker.loading=true;picker.validated=false;
+        notice.textContent=tr("destinationLoading");notice.dataset.error="0";
         listing.replaceChildren();
         updateButtons();
         try{
@@ -527,6 +529,7 @@
           if(!picker.active)return;
           state.cache.set(path,entries);
           picker.path=path;
+          picker.validated=true;
           const folders=entries.filter(entry=>entry.isDir).sort((a,b)=>
             a.name.localeCompare(b.name));
           if(!folders.length){
@@ -552,6 +555,7 @@
           notice.textContent="";
         }catch(error){
           if(picker.active){
+            picker.validated=wasValidated;
             notice.textContent=tr("folderLoadError")+" "+(error.message||error);
             notice.dataset.error="1";
           }
@@ -561,7 +565,9 @@
         }
       };
       cancel.addEventListener("click",()=>finish(null));
-      confirmButton.addEventListener("click",()=>{if(!picker.loading)finish(picker.path);});
+      confirmButton.addEventListener("click",()=>{
+        if(!picker.loading&&picker.validated)finish(picker.path);
+      });
       home.addEventListener("click",()=>{void enter("/");});
       up.addEventListener("click",()=>{
         void enter(picker.path.split("/").slice(0,-1).join("/")||"/");
