@@ -433,6 +433,25 @@
         ensure(done[0] === 0xff && done[1] === 0, "No se pudo crear la carpeta.");
       });
     }
+    async renameEntry(oldPath, newPath) {
+      // TI-Nspire file-management protocol 0x21, subcommand 0x01:
+      // oldPath and newPath are both padded, null-terminated full paths.
+      // The device's status reply (FF 00) is required before updating the UI.
+      oldPath = pathName(oldPath);
+      newPath = pathName(newPath);
+      ensure(oldPath !== "/" && newPath !== "/", "No se puede renombrar la raíz.");
+      ensure(oldPath !== newPath, "El nombre nuevo debe ser diferente.");
+      ensure(newPath.split("/").slice(0,-1).join("/") ===
+        oldPath.split("/").slice(0,-1).join("/"),
+        "Solo se permite renombrar dentro de la misma carpeta.");
+      return this.usingService(SERVICE_FILES, async () => {
+        await this.sendData(concat(Uint8Array.of(0x21, 0x01),
+          pathField(oldPath), pathField(newPath)));
+        const reply = await this.recvData();
+        ensure(reply.length >= 2 && reply[0] === 0xff && reply[1] === 0,
+          "La calculadora rechazó el cambio de nombre.");
+      });
+    }
     async getFile(path, onProgress = () => {}, onBytesComplete = () => {}) {
       return this.usingService(SERVICE_FILES, async () => {
         await this.sendData(concat(Uint8Array.of(0x07, 0x01), pathField(path)));
