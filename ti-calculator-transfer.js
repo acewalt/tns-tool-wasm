@@ -27,6 +27,7 @@
       loadingFolder:"Leyendo carpeta…", finishing:"Finalizando y cerrando transferencia…",
       destination:"Carpeta de destino", receiving:"Recibiendo", sending:"Enviando",
       capturePending:"Solicitando captura a la calculadora…",
+      nativeSize:"Resolución original",
       savedReconnect:"Archivo guardado. La sesión USB dejó de responder: conecta nuevamente la calculadora.",
       captureSavedReconnect:"Captura obtenida. Reconecta la calculadora antes de otra operación.",
       reconnect:"La comunicación USB se interrumpió. Conecta nuevamente la calculadora."
@@ -56,6 +57,7 @@
       loadingFolder:"Reading folder…", finishing:"Finishing and closing transfer…",
       destination:"Destination folder", receiving:"Receiving", sending:"Sending",
       capturePending:"Requesting calculator screenshot…",
+      nativeSize:"Original resolution",
       savedReconnect:"File saved. USB session stopped responding: reconnect the calculator.",
       captureSavedReconnect:"Screenshot obtained. Reconnect the calculator before another operation.",
       reconnect:"USB communication was interrupted. Reconnect the calculator."
@@ -85,6 +87,7 @@
       loadingFolder:"Lecture du dossier…", finishing:"Finalisation du transfert…",
       destination:"Dossier cible", receiving:"Réception", sending:"Envoi",
       capturePending:"Demande de capture à la calculatrice…",
+      nativeSize:"Résolution d'origine",
       savedReconnect:"Fichier enregistré. Reconnectez la calculatrice.",
       captureSavedReconnect:"Capture obtenue. Reconnectez la calculatrice.",
       reconnect:"Communication USB interrompue. Reconnectez la calculatrice."
@@ -408,6 +411,12 @@
     const {width,height,pixels}=snapshot;
     const canvas=document.createElement("canvas");
     canvas.width=width;canvas.height=height;
+    // Preserve native 1 image pixel = 1 CSS pixel in the preview.
+    // The sidebar itself is wide enough for the 320x240 CX II display;
+    // smaller viewports scroll rather than shrinking the image.
+    canvas.style.width=width+"px";
+    canvas.style.height=height+"px";
+    canvas.className="ti-manager-native-screenshot";
     const ctx=canvas.getContext("2d"),img=ctx.createImageData(width,height);
     for(let i=0;i<width*height;i++){
       const p=i*4;
@@ -433,7 +442,10 @@
         a.click();setTimeout(()=>URL.revokeObjectURL(url),1500);
       },"image/png");
     });
-    host.append(canvas,btn);
+    const resolution=document.createElement("output");
+    resolution.className="ti-manager-resolution";
+    resolution.textContent=tr("nativeSize")+" · "+width+" × "+height+" px";
+    host.append(canvas,resolution,btn);
   }
   async function screenshot(){
     await working(async()=>{
