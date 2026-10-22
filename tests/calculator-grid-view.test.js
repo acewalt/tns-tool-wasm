@@ -83,8 +83,8 @@ assert.equal(controls["[data-ti-view-list]"].attributes["aria-pressed"],"false")
 let gallery=descendants(controls["[data-ti-rows]"]);
 let tiles=gallery.filter(n=>n.className==="ti-grid-tile");
 assert.equal(tiles.length,2);
-assert.equal(gallery.filter(n=>n.className==="ti-row-action").length,5);
-assert.equal(gallery.filter(n=>n.className==="ti-row-action ti-row-action-danger").length,1);
+assert.equal(gallery.filter(n=>n.className==="ti-row-action").length,4);
+assert.equal(gallery.filter(n=>n.className==="ti-row-action ti-row-action-danger").length,2);
 const check=gallery.find(n=>n.className==="ti-manager-item-check"&&
   n.attributes["aria-label"].includes("root.tns"));
 assert.ok(check);
