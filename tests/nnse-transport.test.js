@@ -66,6 +66,7 @@ class FakeNNSEUSB {
   answers=[];seq=100;rootIndex=0;uploaded=[];expected=0;prompts=0;seenFrames=[];
   file=Uint8Array.of(1,2,3,4);colorScreenshot=false;
   sendBareOnDownload=false;addStalePrefix=false;splitBulkReads=false;
+  splitScreenshot=false;suppressFinalAck=false;
   async open(){this.opened=true;}
   async close(){this.opened=false;}
   async claimInterface(){}
@@ -107,10 +108,12 @@ class FakeNNSEUSB {
       return {status:"ok"};
     }
     if(outer.service!==4)return {status:"ok"};
+    const cmd=proto.parsePacket(outer.payload,{bigEndianLength:true});
+    if(this.suppressFinalAck && cmd.data[0]===0xff && cmd.data[1]===0)
+      return {status:"ok"};
     this.answers.push(nnse.encodeFrame(0x84,new Uint8Array(0),{
       src:1,dest:0xfe,seq:outer.seq
     }));
-    const cmd=proto.parsePacket(outer.payload,{bigEndianLength:true});
     assert.equal(cmd.seq,0);
     const d=cmd.data,service=cmd.dstSid,dest=cmd.srcSid;
     if(cmd.srcSid===0x40de)return {status:"ok"};
@@ -132,16 +135,23 @@ class FakeNNSEUSB {
     else if(d[0]===0&&service===0x4024){
       if(this.colorScreenshot){
         this.respond(concat(Uint8Array.of(1),be32(5),Uint8Array.of(0,0,0,0,0,2,0,2)),service,dest);
-        this.respond(Uint8Array.of(2,1,0,0xf8,0xe0,0x07),service,dest);
+        if(this.splitScreenshot){
+          this.respond(Uint8Array.of(2,1,0,0xf8),service,dest);
+          this.respond(Uint8Array.of(2,0xe0,0x07),service,dest);
+        }else this.respond(Uint8Array.of(2,1,0,0xf8,0xe0,0x07),service,dest);
       }else{
         this.respond(concat(Uint8Array.of(1),be32(3),Uint8Array.of(0,0,0,0,0,2,0,2,4,0)),service,dest);
-        this.respond(Uint8Array.of(2,255,0x12,0x34),service,dest);
+        if(this.splitScreenshot){
+          this.respond(Uint8Array.of(2,255,0x12),service,dest);
+          this.respond(Uint8Array.of(2,0x34),service,dest);
+        }else this.respond(Uint8Array.of(2,255,0x12,0x34),service,dest);
       }
     }
     return {status:"ok"};
   }
   async transferIn(){
     let bytes=this.answers.shift();
+    if(!bytes && this.suppressFinalAck)return new Promise(()=>{});
     if(!bytes)throw Error("Unexpected USB read - test deadlock");
     if(this.splitBulkReads && bytes.length>40){
       this.answers.unshift(bytes.subarray(40));
@@ -188,10 +198,32 @@ assert.deepEqual(captureOrder.at(-2),["image",2,2]);
 assert.deepEqual(captureOrder.at(-1),[3,3,"finalizing"]);
 assert.deepEqual([snap.width,snap.height,snap.bpp],[2,2,4]);
 assert.deepEqual(Array.from(snap.pixels),[0x12,0x34]);
-fake.colorScreenshot=true;
+fake.colorScreenshot=true;fake.splitScreenshot=true;
 const color=await controller.screenshotRle();
 assert.deepEqual([color.width,color.height,color.bpp],[2,2,16]);
 assert.deepEqual(Array.from(color.pixels),[0,248,224,7,0,248,224,7]);
+fake.colorScreenshot=false;
+const splitGray=await controller.screenshotRle();
+assert.deepEqual(Array.from(splitGray.pixels),[0x12,0x34]);
 await controller.close();
 assert.equal(fake.opened,false);
-console.log("CX II NNSE framing, handshake, directory, upload, download, delete, screenshot: passed.");
+// Regression: a CX II can deliver every TNS byte but never ACK the terminal
+// FF00 command. Never leave the UI permanently disabled in that case.
+const stalledUSB=new FakeNNSEUSB();
+const stalled=new proto.NspireUSB(stalledUSB);
+await stalled.connect();
+stalled.usbReadTimeoutMs=25;
+stalledUSB.suppressFinalAck=true;
+let receivedBytes=false, timeoutDetected=false;
+try {
+  await stalled.getFile("/Examples/stalled.tns",()=>{},
+    data=>{receivedBytes=true;assert.deepEqual(Array.from(data),[1,2,3,4]);});
+} catch(error) {
+  timeoutDetected=/USB|calculadora|Conexión/.test(String(error.message));
+}
+assert.equal(receivedBytes,true,"File data must be available before cleanup ACK");
+assert.equal(timeoutDetected,true,"Stalled terminal ACK must be reported");
+assert.equal(stalled.broken,true,"Do not reuse a timed-out USB connection");
+assert.equal(stalled.connected,false);
+await stalled.close();
+console.log("CX II NNSE, compressed screenshot fragments, timeout recovery and file transfers: passed.");
