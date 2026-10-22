@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20261021-ndless-menu-restored-v1";
+  const V="20261022-normal-ndless-menu-v2";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
