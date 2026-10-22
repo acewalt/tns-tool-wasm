@@ -66,6 +66,7 @@ class FakeNNSEUSB {
   answers=[];seq=100;rootIndex=0;uploaded=[];expected=0;prompts=0;seenFrames=[];
   file=Uint8Array.of(1,2,3,4);colorScreenshot=false;
   sendBareOnDownload=false;addStalePrefix=false;splitBulkReads=false;
+  renameData=null;
   splitScreenshot=false;suppressFinalAck=false;suppressDisconnectAck=false;
   async open(){this.opened=true;}
   async close(){this.opened=false;}
@@ -118,7 +119,11 @@ class FakeNNSEUSB {
     assert.equal(cmd.seq,0);
     const d=cmd.data,service=cmd.dstSid,dest=cmd.srcSid;
     if(cmd.srcSid===0x40de)return {status:"ok"};
-    if(d[0]===13){this.rootIndex=0;this.respond(Uint8Array.of(255,0),service,dest);}
+    if(d[0]===0x21&&d[1]===0x01) {
+      this.renameData=d.slice();
+      this.respond(Uint8Array.of(255,0),service,dest);
+    }
+    else if(d[0]===13){this.rootIndex=0;this.respond(Uint8Array.of(255,0),service,dest);}
     else if(d[0]===14)this.respond(this.rootIndex++===0?dirRow("Examples"):Uint8Array.of(255,17),service,dest);
     else if([15,10,9,11].includes(d[0]))this.respond(Uint8Array.of(255,0),service,dest);
     else if(d[0]===3&&d[1]===1){
@@ -170,6 +175,15 @@ assert.equal(files[0].name,"Examples");
 assert.equal(files[0].isDir,true);
 assert.ok(fake.seenFrames.includes(0x82),"NNSE time request answered");
 await controller.makeDir("/Examples/New");
+await controller.renameEntry("/Examples/old.tns","/Examples/new.tns");
+assert.equal(fake.renameData[0],0x21);
+assert.equal(fake.renameData[1],0x01);
+const renameText=new TextDecoder().decode(fake.renameData);
+assert.match(renameText,/old\.tns/);
+assert.match(renameText,/new\.tns/);
+await controller.renameEntry("/Examples/OldFolder","/Examples/NewFolder");
+assert.throws(()=>controller.renameEntry("/","/renamed"),/raíz/);
+assert.throws(()=>controller.renameEntry("/Examples/a","/Other/a"),/misma carpeta/);
 await controller.putFile("/Examples/new.tns",Uint8Array.of(7,8,9));
 assert.deepEqual(fake.uploaded,[7,8,9]);
 assert.deepEqual(Array.from(await controller.getFile("/Examples/current.tns")),[1,2,3,4]);
