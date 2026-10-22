@@ -161,6 +161,14 @@ await controller.makeDir("/Examples/New");
 await controller.putFile("/Examples/new.tns",Uint8Array.of(7,8,9));
 assert.deepEqual(fake.uploaded,[7,8,9]);
 assert.deepEqual(Array.from(await controller.getFile("/Examples/current.tns")),[1,2,3,4]);
+const completionOrder=[];
+const early=await controller.getFile("/Examples/early.tns",
+  (_current,_total,phase)=>{if(phase==="finalizing")completionOrder.push("finalizing");},
+  data=>{completionOrder.push("bytes");assert.deepEqual(Array.from(data),[1,2,3,4]);}
+);
+completionOrder.push("resolved");
+assert.deepEqual(completionOrder,["bytes","finalizing","resolved"]);
+assert.deepEqual(Array.from(early),[1,2,3,4]);
 fake.addStalePrefix=true;fake.splitBulkReads=true;
 assert.deepEqual(Array.from(await controller.getFile("/Examples/with-stale-nnse.tns")),[1,2,3,4]);
 fake.addStalePrefix=false;fake.splitBulkReads=false;
