@@ -68,7 +68,7 @@ state.files=listing;state.cache.set("/",listing);
 win.TnsCalculatorTransfer.rows();
 const descendants=node=>[node,...(node.children||[]).flatMap(descendants)];
 const nodes=descendants(controls["[data-ti-rows]"]);
-const hoverButtons=nodes.filter(node=>node.className?.includes("ti-row-action"));
+const hoverButtons=nodes.filter(node=>node.className==="ti-row-action"||node.className==="ti-row-action ti-row-action-danger");
 assert.equal(hoverButtons.length,6,"Each file and folder needs 3 individual actions");
 const names=hoverButtons.map(node=>node.attributes["aria-label"]);
 for(const name of ["Descargar new.tns","Renombrar new.tns","Eliminar new.tns",
