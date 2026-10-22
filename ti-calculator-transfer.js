@@ -30,7 +30,13 @@
       nativeSize:"Resolución original",
       savedReconnect:"Archivo guardado. La sesión USB dejó de responder: conecta nuevamente la calculadora.",
       captureSavedReconnect:"Captura obtenida. Reconecta la calculadora antes de otra operación.",
-      reconnect:"La comunicación USB se interrumpió. Conecta nuevamente la calculadora."
+      reconnect:"La comunicación USB se interrumpió. Conecta nuevamente la calculadora.",
+      downloadOne:"Descargar", renameOne:"Renombrar", deleteOne:"Eliminar",
+      renamePrompt:"Nuevo nombre para", renameConflict:"Ya existe otro elemento con ese nombre.",
+      renameExtension:"Los documentos TNS deben conservar su extensión .tns.",
+      deletePrompt:"¿Eliminar este elemento de la calculadora?", folderWarning:"Si es una carpeta, esta acción puede borrar su contenido.",
+      folderZip:"Descargando carpeta como ZIP…", folderTooLarge:"La carpeta supera el límite de 300 documentos o 64 MB.",
+      folderTooDeep:"La estructura supera las 16 subcarpetas anidadas.", notConnected:"Conecta la calculadora para continuar."
     },
     en: {
       title:"TI-Nspire Manager", subtitle:"Native USB · TNS Tool WASM",
@@ -60,7 +66,13 @@
       nativeSize:"Original resolution",
       savedReconnect:"File saved. USB session stopped responding: reconnect the calculator.",
       captureSavedReconnect:"Screenshot obtained. Reconnect the calculator before another operation.",
-      reconnect:"USB communication was interrupted. Reconnect the calculator."
+      reconnect:"USB communication was interrupted. Reconnect the calculator.",
+      downloadOne:"Download", renameOne:"Rename", deleteOne:"Delete",
+      renamePrompt:"New name for", renameConflict:"An item with this name already exists.",
+      renameExtension:"TNS documents must keep their .tns extension.",
+      deletePrompt:"Delete this item from the calculator?", folderWarning:"If it is a folder, its contents may be deleted.",
+      folderZip:"Downloading folder as ZIP…", folderTooLarge:"Folder exceeds 300 files or 64 MB.",
+      folderTooDeep:"This folder is nested more than 16 levels.", notConnected:"Connect the calculator first."
     },
     fr: {
       title:"Gestionnaire TI-Nspire", subtitle:"USB natif · TNS Tool WASM",
@@ -90,7 +102,13 @@
       nativeSize:"Résolution d'origine",
       savedReconnect:"Fichier enregistré. Reconnectez la calculatrice.",
       captureSavedReconnect:"Capture obtenue. Reconnectez la calculatrice.",
-      reconnect:"Communication USB interrompue. Reconnectez la calculatrice."
+      reconnect:"Communication USB interrompue. Reconnectez la calculatrice.",
+      downloadOne:"Télécharger", renameOne:"Renommer", deleteOne:"Supprimer",
+      renamePrompt:"Nouveau nom pour", renameConflict:"Un élément porte déjà ce nom.",
+      renameExtension:"Les documents TNS doivent conserver l'extension .tns.",
+      deletePrompt:"Supprimer cet élément de la calculatrice ?", folderWarning:"Si c'est un dossier, son contenu peut être supprimé.",
+      folderZip:"Téléchargement du dossier en ZIP…", folderTooLarge:"Le dossier dépasse 300 fichiers ou 64 Mo.",
+      folderTooDeep:"Plus de 16 niveaux de dossiers.", notConnected:"Connectez d'abord la calculatrice."
     }
   };
   const q=(selector,root=document)=>root?.querySelector(selector);
@@ -202,6 +220,7 @@
           if(cb.checked)state.chosen.add(file.path);else state.chosen.delete(file.path);
           r.classList.toggle("selected",cb.checked);controls();
         });
+        const nameCell=document.createElement("div");nameCell.className="ti-manager-namecell";
         const b=document.createElement("button");b.type="button";b.className="ti-manager-filename ti-tree-label";
         b.title=file.path;
         const chevron=document.createElement("span");
@@ -218,7 +237,27 @@
         const type=document.createElement("span");type.textContent=file.isDir?tr("folder"):tr("document");
         const size=document.createElement("span");size.textContent=file.isDir?"—":formatted(file.size);
         const folder=document.createElement("span");folder.textContent=path;
-        r.append(cb,b,type,size,folder);li.append(r);
+        const actions=document.createElement("div");
+        actions.className="ti-row-actions";
+        const addAction=(emoji,label,handler,danger=false)=>{
+          const action=document.createElement("button");
+          action.type="button";
+          action.className="ti-row-action"+(danger?" ti-row-action-danger":"");
+          action.textContent=emoji;
+          action.title=label+" · "+file.name;
+          action.setAttribute("aria-label",label+" "+file.name);
+          action.addEventListener("click",event=>{
+            event.preventDefault();
+            event.stopPropagation();
+            if(!state.busy)void handler(file);
+          });
+          actions.append(action);
+        };
+        addAction("⬇️",tr("downloadOne"),downloadOne);
+        addAction("✏️",tr("renameOne"),renameOne);
+        addAction("🗑️",tr("deleteOne"),deleteOne,true);
+        nameCell.append(b,actions);
+        r.append(cb,nameCell,type,size,folder);li.append(r);
         if(file.isDir){
           const wrapper=document.createElement("div");
           wrapper.className="ti-tree-children-wrapper"+(expanded?" is-open":"");
@@ -360,26 +399,146 @@
     });
   }
   async function receive(){
-    if(!selected().length)return say(tr("emptySelection"),true);
     const targets=selected().filter(f=>!f.isDir);
+    if(!targets.length)return say(tr("emptySelection"),true);
     await working(async()=>{
-      for(const f of targets){
-        say(tr("progress")+" "+f.name);
-        state.transferStarted=Date.now();
-        let savedEarly=false;
-        const data=await state.link.getFile(f.path,(n,total,phase)=>{
-          updateTransfer(f.name,n,total,"download",phase);
-        },bytes=>{
-          // File payload is complete even when the device needs more time to
-          // acknowledge the terminal command. Save without unblocking USB.
-          try {saveFile(f.name,bytes);savedEarly=true;state.lastDownloadSaved=true;}
-          catch(error){log(String(error?.message||error));}
-        });
-        if(!savedEarly)saveFile(f.name,data);
-        log(f.name+" · "+formatted(data.length)+" · "+tr("downloaded"));
-      }
+      for(const file of targets)await downloadDocument(file);
       say(tr("downloaded"));
     });
+  }
+  function parentPath(path){
+    return path.split("/").slice(0,-1).join("/")||"/";
+  }
+  function dropFolderCache(path) {
+    for(const key of [...state.cache.keys()]){
+      if(key===path||key.startsWith(path+"/"))state.cache.delete(key);
+    }
+    for(const key of [...state.expanded]){
+      if(key===path||key.startsWith(path+"/"))state.expanded.delete(key);
+    }
+    for(const key of [...state.chosen]){
+      if(key===path||key.startsWith(path+"/"))state.chosen.delete(key);
+    }
+    if(state.path===path||state.path.startsWith(path+"/"))setCurrentFolder(parentPath(path));
+  }
+  async function refreshParent(path) {
+    const files=await state.link.listDir(path);
+    state.cache.set(path,files);
+    if(state.path===path)state.files=files;
+    rows();
+  }
+  async function downloadDocument(file){
+    state.transferStarted=Date.now();
+    let savedEarly=false;
+    const data=await state.link.getFile(file.path,(received,total,phase)=>{
+      updateTransfer(file.name,received,total,"download",phase);
+    },bytes=>{
+      try {
+        saveFile(file.name,bytes);
+        savedEarly=true;
+        state.lastDownloadSaved=true;
+      } catch(error) { log(String(error?.message||error)); }
+    });
+    if(!savedEarly){saveFile(file.name,data);state.lastDownloadSaved=true;}
+    log(file.name+" · "+formatted(data.length)+" · "+tr("downloaded"));
+  }
+  async function downloadFolder(folder){
+    const zip=window.TnsCalculatorZip;
+    if(!zip?.pack)throw Error("No se ha cargado el módulo ZIP.");
+    const MAX_FILES=300,MAX_BYTES=64*1024*1024,MAX_DEPTH=16;
+    const entries=[{path:folder.name+"/",isDir:true}];
+    const documents=[],stack=[{path:folder.path,relative:folder.name+"/",depth:0}];
+    let cumulative=0;
+    // Enumerate first to check size limits BEFORE downloading document bytes.
+    while(stack.length){
+      const item=stack.pop();
+      if(item.depth>MAX_DEPTH)throw Error(tr("folderTooDeep"));
+      say(tr("loadingFolder")+" "+item.path);
+      const children=state.cache.get(item.path)||await state.link.listDir(item.path);
+      state.cache.set(item.path,children);
+      for(const child of children){
+        const relative=item.relative+child.name+(child.isDir?"/":"");
+        if(child.isDir){
+          entries.push({path:relative,isDir:true});
+          stack.push({path:child.path,relative,depth:item.depth+1});
+        }else{
+          documents.push({file:child,relative});
+          cumulative+=child.size||0;
+          if(documents.length>MAX_FILES||cumulative>MAX_BYTES)
+            throw Error(tr("folderTooLarge"));
+        }
+      }
+      if(entries.length+documents.length>1000)throw Error(tr("folderTooLarge"));
+    }
+    const MAX_REMAINING=MAX_BYTES;
+    let total=0;
+    for(const {file,relative} of documents){
+      if(file.size===0){
+        entries.push({path:relative,data:new Uint8Array(0)});
+        continue;
+      }
+      state.transferStarted=Date.now();
+      say(tr("folderZip")+" "+file.name);
+      const data=await state.link.getFile(file.path,(received,count,phase)=>{
+        updateTransfer(file.name,received,count,"download",phase);
+      });
+      total+=data.length;
+      if(total>MAX_REMAINING)throw Error(tr("folderTooLarge"));
+      entries.push({path:relative,data});
+    }
+    const bytes=zip.pack(entries);
+    saveFile(folder.name+".zip",bytes,"application/zip");
+    state.lastDownloadSaved=true;
+    say(tr("downloaded"));
+  }
+  async function downloadOne(file){
+    if(!state.link?.connected||state.busy)return;
+    await working(async()=>{
+      if(file.isDir)await downloadFolder(file);
+      else await downloadDocument(file);
+      say(tr("downloaded"));
+    },file.isDir?tr("folderZip"):tr("receiving")+" "+file.name);
+  }
+  async function renameOne(file){
+    if(!state.link?.connected||state.busy)return;
+    const answer=prompt(tr("renamePrompt")+" "+file.name+":",file.name);
+    if(answer===null)return;
+    let name=answer.trim();
+    if(!name||name===file.name)return;
+    // Keep the TNS document type intact. Never rename an existing TNS to a
+    // different extension, and do not move it into another directory.
+    if(!file.isDir&&/\.tns$/i.test(file.name)){
+      if(!name.includes("."))name+=".tns";
+      else if(!/\.tns$/i.test(name)){say(tr("renameExtension"),true);return;}
+    }
+    const parent=parentPath(file.path);
+    let next;
+    try { next=window.TnsNspireUSB.childPath(parent,name); }
+    catch(error){say(error.message||String(error),true);return;}
+    if(state.cache.get(parent)?.some(item=>
+      item.path!==file.path&&item.name.toLowerCase()===name.toLowerCase())){
+      say(tr("renameConflict"),true);return;
+    }
+    if(next===file.path)return;
+    await working(async()=>{
+      await state.link.renameEntry(file.path,next);
+      state.chosen.delete(file.path);
+      if(file.isDir)dropFolderCache(file.path);
+      await refreshParent(parent);
+      say(tr("success"));
+    },tr("renameOne")+" "+file.name);
+  }
+  async function deleteOne(file){
+    if(!state.link?.connected||state.busy)return;
+    if(!confirm(tr("deletePrompt")+"\n"+file.path+
+       (file.isDir?"\n"+tr("folderWarning"):"")))return;
+    await working(async()=>{
+      await state.link.deleteEntry(file.path,file.isDir);
+      state.chosen.delete(file.path);
+      if(file.isDir)dropFolderCache(file.path);
+      await refreshParent(parentPath(file.path));
+      say(tr("success"));
+    },tr("deleteOne")+" "+file.name);
   }
   async function mkdir(){
     const name=prompt(tr("promptFolder"));
@@ -519,6 +678,14 @@
       "[data-ti-help]":"help"
     };
     for(const [sel,key]of Object.entries(labels))q(sel,root).textContent=tr(key);
+    for(const [selector,emoji]of Object.entries({
+      "[data-ti-mkdir]":"📁", "[data-ti-delete]":"🗑️",
+      "[data-ti-receive]":"⬇️","[data-ti-refresh]":"🔄",
+      "[data-ti-upload-text]":"📤"
+    })){
+      const control=q(selector,root);
+      if(control)control.textContent=emoji+" "+control.textContent;
+    }
     q(".ti-manager-table",root).setAttribute("aria-label",tr("folders"));
     q("[data-ti-close]",root).addEventListener("click",close);
     q("[data-ti-connect]",root).addEventListener("click",connect);
