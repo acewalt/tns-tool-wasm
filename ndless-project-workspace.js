@@ -79,10 +79,26 @@
   }
   function bindWorkspace(){const w=state.workspace;$("[data-project-new-file]",w).addEventListener("click",newFile);$("[data-project-import-files]",w).addEventListener("change",e=>{importFiles(e.target.files);e.target.value="";});$("[data-project-delete-file]",w).addEventListener("click",deleteActiveFile);$("[data-project-preview]",w).addEventListener("click",drawPreview);$("[data-project-validate]",w).addEventListener("click",()=>{saveCurrentFile();setRightTab("console");renderConsole();});$("[data-project-download]",w).addEventListener("click",downloadProject);$("[data-project-exit]",w).addEventListener("click",closeProject);$$('[data-project-tab]',w).forEach(b=>b.addEventListener("click",()=>setRightTab(b.dataset.projectTab)));}
 
+  function hasNormalProject(){
+    return window.TnsNormalProjectState?.hasProject?.() === true;
+  }
+  function syncNormalProjectMenu(){
+    const panel=$("#xml-doctor-panel .doctor-toolbar > .tool-menu > .menu-panel");
+    if(!panel)return;
+    // While editing a normal TNS/XML document, neither Ndless project entry
+    // point nor its separators should be shown. Preserve Ndless-only actions
+    // when an actual Ndless workspace is active.
+    const hidden=!state.project&&hasNormalProject();
+    $('[data-ndless-project-always]',panel).forEach(el=>{
+      el.hidden=hidden;
+      el.style.display=hidden?"none":"";
+    });
+  }
   function setFileMenuMode(active){
     const panel=$("#xml-doctor-panel .doctor-toolbar > .tool-menu > .menu-panel");if(!panel)return;
     Array.from(panel.children).forEach(el=>{if(el.dataset.ndlessProjectAction==="1")return;if(active){if(!state.menuRestore.has(el))state.menuRestore.set(el,el.style.display);el.style.display="none";}else if(state.menuRestore.has(el)){el.style.display=state.menuRestore.get(el);state.menuRestore.delete(el);}});
-    $$('[data-ndless-project-only]',panel).forEach(el=>el.hidden=!active);$$('[data-ndless-project-always]',panel).forEach(el=>el.hidden=false);
+    $('[data-ndless-project-only]',panel).forEach(el=>el.hidden=!active);
+    syncNormalProjectMenu();
   }
   function setToolbarMode(active){
     const panel=$("#xml-doctor-panel"),toolbar=$(".doctor-toolbar",panel);if(!panel||!toolbar)return;
@@ -91,6 +107,7 @@
     const page=$(".file-page-menu > .nested-trigger",panel);if(page){page.disabled=active;page.setAttribute("aria-disabled",active?"true":"false");page.title=active?tr("noPage"):"";}
   }
   function activateProject(project){
+    if(hasNormalProject()&&!state.project)return;
     closeProject(true);state.project=project;const panel=$("#xml-doctor-panel"),grid=$(".doctor-grid",panel),title=$(".doctor-toolbar h2",panel);if(!panel)return;
     panel.classList.add("ndless-project-mode");if(grid)grid.hidden=true;if(title){state.originalTitle=title.textContent;title.textContent=`Ndless Project · ${project.name}`;}
     setToolbarMode(true);setFileMenuMode(true);const host=document.createElement("div");host.innerHTML=workspaceHtml(project);state.workspace=host.firstElementChild;panel.appendChild(state.workspace);bindWorkspace();fileList();mountEditor();drawPreview();saveAutosave();
@@ -100,6 +117,7 @@
   }
 
   function wizard(){
+    if(hasNormalProject()&&!state.project)return;
     if(state.project&&!confirm(tr("replaceProject")))return;
     const ov=document.createElement("div");ov.className="ndless-project-dialog-overlay";ov.innerHTML=`<form class="ndless-project-dialog"><div class="ndless-project-dialog-head"><div><span>NDLESS</span><h3>${esc(tr("title"))}</h3></div><button type="button" data-dialog-close>×</button></div><label>${esc(tr("name"))}<input name="name" value="my-ndless-app" autocomplete="off"></label><div class="ndless-project-dialog-grid"><label>${esc(tr("language"))}<select name="language"><option value="c">${esc(tr("c"))}</option><option value="cpp">${esc(tr("cpp"))}</option></select></label><label>${esc(tr("template"))}<select name="template"><option value="basic">${esc(tr("basic"))}</option><option value="graphics">${esc(tr("graphics"))}</option><option value="console">${esc(tr("consoleTpl"))}</option></select></label></div><label>${esc(tr("target"))}<select name="target"><option value="bflt-r903">${esc(tr("legacy"))}</option><option value="zehn-modern">${esc(tr("modern"))}</option></select></label><p>${esc(tr("sdkFeature"))}</p><div class="ndless-project-dialog-actions"><button type="button" data-dialog-cancel>${esc(tr("cancel"))}</button><button class="primary" type="submit">${esc(tr("create"))}</button></div></form>`;document.body.appendChild(ov);
     const close=()=>ov.remove();$("[data-dialog-close]",ov).onclick=close;$("[data-dialog-cancel]",ov).onclick=close;ov.addEventListener("click",e=>{if(e.target===ov)close();});$("form",ov).addEventListener("submit",e=>{e.preventDefault();const fd=new FormData(e.currentTarget),p=core().createProject({name:fd.get("name"),language:fd.get("language"),template:fd.get("template"),target:fd.get("target")});close();activateProject(p);});
@@ -109,7 +127,8 @@
     if(!state.project)return;saveCurrentFile();const entries=core().exportEntries(state.project);if(!window.JSZip){alert("JSZip is not ready.");return;}const zip=new JSZip();for(const [name,text] of Object.entries(entries))zip.file(name,String(text));const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`${core().sanitizeProjectName(state.project.name)}-ndless-project.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderConsole([tr("downloaded")]);
   }
   async function openProjectZip(file){
-    if(!file)return;if(!window.JSZip){alert("JSZip is not ready.");return;}const zip=await JSZip.loadAsync(file),entries={};for(const [name,obj] of Object.entries(zip.files)){if(obj.dir||name.includes("../")||name.startsWith("/"))continue;if(!isTextFile(name)&&name!==".tnsproject.json")continue;entries[name]=await obj.async("text");}activateProject(core().importEntries(entries));renderConsole(["Project imported."]);
+    if(!file||hasNormalProject()&&!state.project)return;
+    if(!window.JSZip){alert("JSZip is not ready.");return;}const zip=await JSZip.loadAsync(file),entries={};for(const [name,obj] of Object.entries(zip.files)){if(obj.dir||name.includes("../")||name.startsWith("/"))continue;if(!isTextFile(name)&&name!==".tnsproject.json")continue;entries[name]=await obj.async("text");}activateProject(core().importEntries(entries));renderConsole(["Project imported."]);
   }
 
   function injectMenu(){
@@ -123,7 +142,11 @@
     const anchor=openTns?.nextSibling||$("#xml-new-btn",panel)?.nextSibling||panel.firstElementChild;
     const sectionEnd=document.createElement("div");sectionEnd.className="ti-file-action-separator";sectionEnd.setAttribute("role","separator");sectionEnd.setAttribute("aria-hidden","true");
     panel.insertBefore(sep,anchor);panel.insertBefore(btn,anchor);panel.insertBefore(open,anchor);panel.insertBefore(exp,anchor);panel.insertBefore(close,anchor);panel.insertBefore(sectionEnd,anchor);
+    syncNormalProjectMenu();
   }
-  function init(){if(!core())return setTimeout(init,100);if(!$("#xml-doctor-panel"))return setTimeout(init,100);injectMenu();document.addEventListener("click",e=>{if(state.project&&e.target.closest?.(".file-page-menu")){e.preventDefault();e.stopImmediatePropagation();}},true);window.NdlessProjectWorkspace=Object.freeze({newProject:wizard,openProjectZip,activateProject,closeProject,getProject:()=>state.project,downloadProject});}
+  function init(){if(!core())return setTimeout(init,100);if(!$("#xml-doctor-panel"))return setTimeout(init,100);injectMenu();
+    document.addEventListener("tns-normal-project-changed",syncNormalProjectMenu);
+    document.addEventListener("click",e=>{if(state.project&&e.target.closest?.(".file-page-menu")){e.preventDefault();e.stopImmediatePropagation();}},true);
+    window.NdlessProjectWorkspace=Object.freeze({newProject:wizard,openProjectZip,activateProject,closeProject,getProject:()=>state.project,downloadProject});}
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init,{once:true});else init();
 })();
