@@ -179,6 +179,31 @@ según la versión del firmware.
   se restaura al volver a abrir el administrador; no cambia ningún archivo
   ni carpeta de la calculadora.
 
+## Selector de destino para enviar documentos
+
+Ambos botones **Send TNS** (archivos locales) y **Send current TNS**
+(documento abierto en el editor) muestran primero un selector de carpetas
+de la TI-Nspire. Se inicia en el directorio que está activo en el
+explorador, pero navegar dentro del selector **no cambia** esa ruta ni
+la vista de lista/cuadrícula.
+
+- El selector solo muestra carpetas, lee subcarpetas del dispositivo
+  cuando hace falta y permite ir al nivel superior o a la raíz.
+- **Enviar aquí** confirma la ruta visible; **Cancelar**, Escape o un
+  clic fuera del selector abortan sin escribir datos en la calculadora.
+- La carpeta debe haberse consultado correctamente antes de poder confirmar.
+  El destino final se vuelve a leer por USB antes de iniciar el envío.
+- Si ya existe un nombre igual en el destino, el usuario debe confirmar
+  la sustitución. Esta verificación utiliza la carpeta seleccionada,
+  no la carpeta que se estaba examinando al abrir el selector.
+- Los archivos enviados actualizan la caché de su carpeta de destino;
+  el explorador principal sigue en la misma ubicación y vista.
+
+El selector no requiere servicios externos. Las pruebas automáticas
+verifican navegación anidada, cancelación, detección de sobrescrituras
+y ambos botones con un dispositivo simulado. La validación física
+sigue dependiendo de una TI-Nspire conectada.
+
 ## Límites actuales
 
 - El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
