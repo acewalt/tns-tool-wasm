@@ -25,7 +25,11 @@
       unready:"La calculadora todavía no ha confirmado la conexión.", help:"Ayuda USB",
       caution:"No desconectes el cable durante una transferencia.",
       loadingFolder:"Leyendo carpeta…", finishing:"Finalizando y cerrando transferencia…",
-      destination:"Carpeta de destino", receiving:"Recibiendo", sending:"Enviando"
+      destination:"Carpeta de destino", receiving:"Recibiendo", sending:"Enviando",
+      capturePending:"Solicitando captura a la calculadora…",
+      savedReconnect:"Archivo guardado. La sesión USB dejó de responder: conecta nuevamente la calculadora.",
+      captureSavedReconnect:"Captura obtenida. Reconecta la calculadora antes de otra operación.",
+      reconnect:"La comunicación USB se interrumpió. Conecta nuevamente la calculadora."
     },
     en: {
       title:"TI-Nspire Manager", subtitle:"Native USB · TNS Tool WASM",
@@ -50,7 +54,11 @@
       unready:"Calculator has not confirmed a connection.", help:"USB help",
       caution:"Do not unplug USB while transferring.",
       loadingFolder:"Reading folder…", finishing:"Finishing and closing transfer…",
-      destination:"Destination folder", receiving:"Receiving", sending:"Sending"
+      destination:"Destination folder", receiving:"Receiving", sending:"Sending",
+      capturePending:"Requesting calculator screenshot…",
+      savedReconnect:"File saved. USB session stopped responding: reconnect the calculator.",
+      captureSavedReconnect:"Screenshot obtained. Reconnect the calculator before another operation.",
+      reconnect:"USB communication was interrupted. Reconnect the calculator."
     },
     fr: {
       title:"Gestionnaire TI-Nspire", subtitle:"USB natif · TNS Tool WASM",
@@ -75,13 +83,18 @@
       unready:"La connexion n'est pas confirmée.", help:"Aide USB",
       caution:"Ne débranchez pas le câble pendant le transfert.",
       loadingFolder:"Lecture du dossier…", finishing:"Finalisation du transfert…",
-      destination:"Dossier cible", receiving:"Réception", sending:"Envoi"
+      destination:"Dossier cible", receiving:"Réception", sending:"Envoi",
+      capturePending:"Demande de capture à la calculatrice…",
+      savedReconnect:"Fichier enregistré. Reconnectez la calculatrice.",
+      captureSavedReconnect:"Capture obtenue. Reconnectez la calculatrice.",
+      reconnect:"Communication USB interrompue. Reconnectez la calculatrice."
     }
   };
   const q=(selector,root=document)=>root?.querySelector(selector);
   const state={
     root:null,link:null,path:"/",files:[],chosen:new Set(),busy:false,
-    cache:new Map(),expanded:new Set(["/"]),transferStarted:0
+    cache:new Map(),expanded:new Set(["/"]),transferStarted:0,
+    lastDownloadSaved:false,lastScreenshotReady:false
   };
   function tr(k){
     const language=String(document.documentElement.lang||"es").slice(0,2);
@@ -231,11 +244,32 @@
   }
   async function working(operation,message=tr("progress")){
     if(state.busy||!state.root)return;
-    state.busy=true;controls();say(message);
+    state.busy=true;
+    state.lastDownloadSaved=false;state.lastScreenshotReady=false;
+    controls();say(message);
     const progress=q("[data-ti-bar]",state.root);
     if(progress){progress.hidden=true;progress.value=0;}
     try{await operation();}
-    catch(e){say(tr("failed")+": "+(e.message||e),true);log(String(e.message||e));}
+    catch(e){
+      const broken=Boolean(state.link?.broken);
+      if(broken){
+        const oldLink=state.link;
+        state.link=null;state.files=[];state.cache.clear();
+        state.expanded=new Set(["/"]);state.chosen.clear();state.path="/";
+        q("[data-ti-device]",state.root).textContent="—";
+        // A WebUSB read may still be pending in Chromium. Close this handle
+        // best-effort, but never reuse it after a transport timeout.
+        void oldLink.close().catch(()=>{});
+        rows();
+        const message=state.lastDownloadSaved?tr("savedReconnect"):
+          state.lastScreenshotReady?tr("captureSavedReconnect"):tr("reconnect");
+        say(message,true);
+        log(message+" "+String(e.message||e));
+      }else{
+        say(tr("failed")+": "+(e.message||e),true);
+        log(String(e.message||e));
+      }
+    }
     finally{state.busy=false;controls();if(progress)progress.hidden=true;}
   }
   async function connect(){
@@ -335,7 +369,7 @@
         },bytes=>{
           // File payload is complete even when the device needs more time to
           // acknowledge the terminal command. Save without unblocking USB.
-          try {saveFile(f.name,bytes);savedEarly=true;}
+          try {saveFile(f.name,bytes);savedEarly=true;state.lastDownloadSaved=true;}
           catch(error){log(String(error?.message||error));}
         });
         if(!savedEarly)saveFile(f.name,data);
@@ -403,9 +437,24 @@
   }
   async function screenshot(){
     await working(async()=>{
-      const image=await state.link.screenshotRle();
-      renderScreenshot(image);say(tr("success"));
-    });
+      state.transferStarted=Date.now();
+      let renderedEarly=false;
+      const image=await state.link.screenshotRle((received,total,phase)=>{
+        if(phase==="requesting"){
+          say(tr("capturePending"));
+          log(tr("capturePending"));
+        }else{
+          updateTransfer("PNG",received,total,"download",phase);
+        }
+      },snapshot=>{
+        // Render as soon as the screen bitmap is complete; final USB service
+        // close can be delayed or fail independently of the image data.
+        renderScreenshot(snapshot);
+        renderedEarly=true;state.lastScreenshotReady=true;
+      });
+      if(!renderedEarly)renderScreenshot(image);
+      say(tr("success"));
+    },tr("capturePending"));
   }
   function close(){
     if(state.busy)return;
