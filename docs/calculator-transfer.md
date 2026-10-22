@@ -54,6 +54,30 @@ de carpetas y descarga de un TNS pequeño, después descarga de un
 TNS grande, y por último captura de pantalla. No uses WebTILP y esta
 página simultáneamente sobre la misma calculadora.
 
+## Árbol de carpetas y seguimiento de descargas
+
+El administrador integrado ahora usa una vista jerárquica inspirada en
+[ashif_6672 / Uiverse](https://uiverse.io/ashif_6672/nice-warthog-84)
+adaptada a los temas propios de TNS Tool WASM.
+
+- El directorio raíz se consulta al establecer conexión. Cada subcarpeta
+  se consulta **solo cuando se despliega por primera vez**.
+- Las subcarpetas cargadas se conservan en caché mientras permanezca abierta
+  la sesión; al contraer y reabrir una rama no se repite la transferencia USB.
+- La selección de archivos puede mantenerse entre carpetas abiertas, y la
+  ruta mostrada indica dónde se crearán carpetas o se enviarán archivos.
+- **Actualizar** vuelve a consultar el directorio elegido.
+- Durante la recepción se muestran bytes recibidos, porcentaje, tiempo
+  transcurrido y velocidad media. Una vez llegados todos los bytes aparece
+  la fase **Finalizando y cerrando transferencia**, que puede tardar aunque
+  el contador de datos haya llegado a 100%.
+
+Esto elimina consultas innecesarias al volver a desplegar carpetas, pero
+**no demuestra todavía una aceleración de la transferencia USB real**.
+La velocidad depende del número y tamaño de los paquetes que envíe el
+firmware CX II y de la latencia de los acuses de recibo NNSE.
+Compara archivos pequeños y grandes para medir la velocidad en hardware.
+
 ## Límites actuales
 
 - El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
