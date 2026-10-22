@@ -89,7 +89,7 @@
     // point nor its separators should be shown. Preserve Ndless-only actions
     // when an actual Ndless workspace is active.
     const hidden=!state.project&&hasNormalProject();
-    $('[data-ndless-project-always]',panel).forEach(el=>{
+    $$('[data-ndless-project-always]',panel).forEach(el=>{
       el.hidden=hidden;
       el.style.display=hidden?"none":"";
     });
@@ -97,7 +97,7 @@
   function setFileMenuMode(active){
     const panel=$("#xml-doctor-panel .doctor-toolbar > .tool-menu > .menu-panel");if(!panel)return;
     Array.from(panel.children).forEach(el=>{if(el.dataset.ndlessProjectAction==="1")return;if(active){if(!state.menuRestore.has(el))state.menuRestore.set(el,el.style.display);el.style.display="none";}else if(state.menuRestore.has(el)){el.style.display=state.menuRestore.get(el);state.menuRestore.delete(el);}});
-    $('[data-ndless-project-only]',panel).forEach(el=>el.hidden=!active);
+    $$('[data-ndless-project-only]',panel).forEach(el=>el.hidden=!active);
     syncNormalProjectMenu();
   }
   function setToolbarMode(active){
