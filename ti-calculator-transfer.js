@@ -481,7 +481,7 @@
       '<button type="button" data-ti-mkdir disabled></button><button type="button" data-ti-receive disabled></button>',
       '<button type="button" data-ti-delete disabled></button></div></div>',
       '<div class="ti-manager-path"><button type="button" data-ti-up disabled>↑</button><code data-ti-path>/</code><span data-ti-selected>0/0</span></div>',
-      '<div class="ti-manager-table"><div class="ti-manager-cols"><input type="checkbox" data-ti-all />',
+      '<div class="ti-manager-table" tabindex="0" role="region"><div class="ti-manager-cols"><input type="checkbox" data-ti-all />',
       '<span data-ti-name-label></span><span data-ti-type-label></span><span data-ti-size-label></span><span data-ti-location-label></span></div>',
       '<div data-ti-rows></div></div>',
       '<div class="ti-manager-footer-actions"><label><span data-ti-upload-text></span><input type="file" data-ti-upload multiple accept=".tns" disabled hidden /></label>',
@@ -507,6 +507,7 @@
       "[data-ti-help]":"help"
     };
     for(const [sel,key]of Object.entries(labels))q(sel,root).textContent=tr(key);
+    q(".ti-manager-table",root).setAttribute("aria-label",tr("folders"));
     q("[data-ti-close]",root).addEventListener("click",close);
     q("[data-ti-connect]",root).addEventListener("click",connect);
     q("[data-ti-disconnect]",root).addEventListener("click",disconnect);
