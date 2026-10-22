@@ -66,7 +66,7 @@ class FakeNNSEUSB {
   answers=[];seq=100;rootIndex=0;uploaded=[];expected=0;prompts=0;seenFrames=[];
   file=Uint8Array.of(1,2,3,4);colorScreenshot=false;
   sendBareOnDownload=false;addStalePrefix=false;splitBulkReads=false;
-  splitScreenshot=false;suppressFinalAck=false;
+  splitScreenshot=false;suppressFinalAck=false;suppressDisconnectAck=false;
   async open(){this.opened=true;}
   async close(){this.opened=false;}
   async claimInterface(){}
@@ -109,6 +109,7 @@ class FakeNNSEUSB {
     }
     if(outer.service!==4)return {status:"ok"};
     const cmd=proto.parsePacket(outer.payload,{bigEndianLength:true});
+    if(this.suppressDisconnectAck && cmd.srcSid===0x40de)return {status:"ok"};
     if(this.suppressFinalAck && cmd.data[0]===0xff && cmd.data[1]===0)
       return {status:"ok"};
     this.answers.push(nnse.encodeFrame(0x84,new Uint8Array(0),{
@@ -203,8 +204,16 @@ const color=await controller.screenshotRle();
 assert.deepEqual([color.width,color.height,color.bpp],[2,2,16]);
 assert.deepEqual(Array.from(color.pixels),[0,248,224,7,0,248,224,7]);
 fake.colorScreenshot=false;
+fake.suppressDisconnectAck=true;
 const splitGray=await controller.screenshotRle();
 assert.deepEqual(Array.from(splitGray.pixels),[0x12,0x34]);
+assert.equal(controller.connected,true,
+  "A successful screenshot without disconnect ACK should keep the device connected");
+assert.equal(controller.broken,false);
+fake.suppressDisconnectAck=false;
+const afterScreenFiles=await controller.listDir("/");
+assert.equal(afterScreenFiles[0].name,"Examples",
+  "Listing must still work immediately after an unacknowledged screenshot close");
 await controller.close();
 assert.equal(fake.opened,false);
 // Regression: a CX II can deliver every TNS byte but never ACK the terminal
