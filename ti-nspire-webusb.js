@@ -152,6 +152,7 @@
       this.connected = false; this.busy = false;
       this.nnse = null;
       this.broken = false;
+      this.oneWayServiceClose = false;
       this.usbDeadlineAt = 0;
       this.usbReadTimeoutMs = 12000;
     }
@@ -357,8 +358,25 @@
     }
     async disconnectService() {
       if (!this.activeService) return;
-      try { if (!this.broken) await this.sendData(be16(this.hostSid), 0x40de); }
-      finally { this.activeService = false; this.hostSid++; this.queue = []; }
+      try {
+        if (this.broken) return;
+        if (this.nnse && this.oneWayServiceClose) {
+          // CX II frequently omits the disconnect ACK after a successful
+          // screen capture. Do not wait indefinitely for this one-way message.
+          // The next operation still requires a validated reply and the NNSE
+          // parser will discard a late ACK for this packet by its sequence.
+          await this.nnse.sendStream(packet(be16(this.hostSid), {
+            srcSid: 0x40de, dstSid: this.deviceSid, seq: 0, bigEndianLength: true
+          }), { waitForAck: false });
+        } else {
+          await this.sendData(be16(this.hostSid), 0x40de);
+        }
+      } finally {
+        this.activeService = false;
+        this.oneWayServiceClose = false;
+        this.hostSid++;
+        this.queue = [];
+      }
     }
     async usingService(sid, fn) {
       ensure(!this.busy && !this.broken, "La conexión USB no está disponible. Reconecta la calculadora.");
@@ -499,7 +517,9 @@
         const image = { width, height, bpp, pixels };
         onImageReady(image);
         onProgress(received, compressedSize, "finalizing");
-        if (this.nnse) this.usbDeadlineAt = Date.now() + 8000;
+        // Screenshot bytes are complete. An NNSE service-disconnect ACK is
+        // not required to show this capture or proceed to a new transaction.
+        if (this.nnse) this.oneWayServiceClose = true;
         return image;
       });
     }
