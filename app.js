@@ -1173,6 +1173,18 @@ const xmlDoctor = {
   issueLines: new Map(),
   variableCatalog: [],
 };
+// Normal XML/TNS documents and Ndless projects are separate editor sessions.
+// This flag is set only after a normal document is successfully opened,
+// created or staged; the default (empty) editor leaves Ndless choices visible.
+const normalProjectSession = { active: false };
+function markNormalProjectActive() {
+  if (normalProjectSession.active) return;
+  normalProjectSession.active = true;
+  document.dispatchEvent(new Event("tns-normal-project-changed"));
+}
+window.TnsNormalProjectState = Object.freeze({
+  hasProject: () => normalProjectSession.active,
+});
 const pyDoctor = {
   lastOriginal: "",
   lastFixed: "",
@@ -1963,6 +1975,7 @@ async function loadXmlDoctorFiles(files, mode) {
   xmlDoctor.issueLines.clear();
   await scanXmlPrograms();
   setXmlTnsOutputFileName(xmlDoctor.sourceFileName);
+  markNormalProjectActive();
 }
 
 async function openTnsInXmlDoctor(file) {
@@ -1984,6 +1997,7 @@ decode_tns_file(Path("/work/xml_doctor_input.tns"), Path("${xmlDoctor.sourcePath
   xmlDoctor.issueLines.clear();
   await scanXmlPrograms();
   setXmlTnsOutputFileName(file.name);
+  markNormalProjectActive();
   xmlLog(`TNS abierto: ${file.name}`);
 }
 
@@ -2328,6 +2342,7 @@ else:
             shutil.copy2(item, target)
 `);
   xmlDoctor.stagePrepared = true;
+  markNormalProjectActive();
 }
 
 async function saveLuaScriptToStage(item, content) {
@@ -8884,6 +8899,7 @@ async function createEmptyXmlProjectForPageCreation() {
   xmlDoctor.issueLines.clear();
   await scanXmlPrograms();
   setXmlTnsOutputFileName("documento.tns");
+  markNormalProjectActive();
 }
 
 async function ensureXmlProjectForPageCreation() {
@@ -10144,6 +10160,7 @@ async function createNewXmlProject() {
   xmlDoctor.issueLines.clear();
   await scanXmlPrograms();
   setXmlTnsOutputFileName("documento.tns");
+  markNormalProjectActive();
 }
 
 async function createTnsFromXmlDoctor() {
