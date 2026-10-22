@@ -75,7 +75,29 @@ for(const name of ["Descargar new.tns","Renombrar new.tns","Eliminar new.tns",
                    "Descargar algebra","Renombrar algebra","Eliminar algebra"])
   assert.ok(names.includes(name),name);
 assert.ok(!hoverButtons.find(node=>node.attributes["aria-label"]==="Eliminar algebra").disabled);
+// Icons are real SVG assets rendered as currentColor masks, never emojis or
+// static PNGs that cannot follow the light/dark theme.
+for(const button of hoverButtons){
+  assert.equal(button.children.length,1,"Action must render one icon");
+  const icon=button.children[0];
+  const kind=button.attributes["aria-label"].startsWith("Descargar")?"download":
+    button.attributes["aria-label"].startsWith("Renombrar")?"rename":"delete";
+  assert.equal(icon.className,"ti-action-icon ti-action-icon-"+kind);
+  assert.equal(icon.attributes["aria-hidden"],"true");
+  assert.equal(button.textContent,"","No emoji text in icon-only actions");
+}
+for(const kind of ["download","rename","delete"]){
+  const svg=load("../assets/calculator-actions/"+kind+".svg");
+  assert.match(svg,/viewBox="0 0 24 24"/);
+  assert.match(svg,/stroke="currentColor"/);
+  assert.doesNotMatch(svg,/<(rect|image)[^>]+fill="(?:#|rgb)/i);
+}
 const style=load("../ti-calculator-transfer.css");
+for(const kind of ["download","rename","delete"])
+  assert.ok(style.includes('url("./assets/calculator-actions/'+kind+'.svg")'),
+    "Missing CSS mask URL for "+kind);
+assert.match(style,/background-color:currentColor/);
+
 assert.match(style,/\.ti-tree-row:hover \.ti-row-actions/);
 assert.match(style,/:focus-within \.ti-row-actions/);
 assert.match(style,/@media\(hover:none\)/);
