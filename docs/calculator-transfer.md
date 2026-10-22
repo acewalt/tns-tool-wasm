@@ -109,6 +109,28 @@ TI-Nspire CX II real tanto la captura de pantalla como la resincronización
 después de una descarga; WebUSB no permite cancelar con AbortSignal una
 lectura USB ya iniciada.
 
+## Captura nativa y cierre de sesión CX II (22 de octubre de 2026)
+
+La captura obtenida de la TI-Nspire CX II se representa en el canvas con sus
+dimensiones nativas de **320 × 240 píxeles** (o las dimensiones reales
+reportadas por otro modelo), en una zona lateral más amplia. La vista previa
+no aplica escalado automático; en pantallas estrechas es desplazable. Debajo
+se indica la resolución exacta.
+
+Después de recibir correctamente la captura, la sesión NNSE envía un mensaje
+de desconexión de servicio **sin esperar a un ACK terminal** que determinados
+firmwares omiten. Los paquetes tardíos se procesan o descartan según el
+número de secuencia al iniciar una nueva operación; esta última todavía debe
+recibir sus propias respuestas válidas. De este modo una captura correcta
+no debería forzar por sí sola una reconexión. Las operaciones restantes
+mantienen sus comprobaciones normales.
+
+La modificación incluye una prueba que simula ausencia del ACK de
+desconexión tras la captura, seguida por una consulta realista del directorio.
+**Pendiente:** verificar el comportamiento con una TI-Nspire CX II física;
+la simulación no demuestra compatibilidad con todas las versiones de
+firmware.
+
 ## Límites actuales
 
 - El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
