@@ -131,6 +131,37 @@ desconexión tras la captura, seguida por una consulta realista del directorio.
 la simulación no demuestra compatibilidad con todas las versiones de
 firmware.
 
+## Acciones individuales por elemento (22 de octubre de 2026)
+
+Cada fila de archivo y carpeta muestra, al pasar el mouse o al recibir
+el foco del teclado, tres botones con sus títulos accesibles:
+**⬇️ Descargar**, **✏️ Renombrar** y **🗑️ Eliminar**. En dispositivos
+táctiles aparecen siempre. Los botones principales de nueva carpeta,
+descarga y eliminación también muestran un icono.
+
+- **Archivo:** Descargar recibe únicamente ese documento TNS y mantiene
+  el guardado temprano antes del cierre del servicio. Renombrar envía el
+  comando TI-Nspire `0x21 0x01` con las rutas origen y destino; solo
+  actualiza la vista al recibir respuesta `FF 00`. Eliminar utiliza
+  el comando existente para archivos, con confirmación.
+- **Carpeta:** Descargar recorre sus subcarpetas y genera un ZIP sin
+  recomprimir los documentos. La exportación admite como máximo
+  300 documentos, 64 MiB y 16 niveles, para proteger la memoria y evitar
+  sesiones USB desproporcionadas. El nombre y la estructura de las
+  carpetas se conservan, incluidas las carpetas vacías.
+  Renombrar intenta el comando nativo `0x21` con la ruta completa; si
+  el firmware no lo admite, se informa el rechazo, sin copiar ni borrar
+  ningún elemento. Eliminar requiere una confirmación individual y está
+  sujeto a las reglas de eliminación de carpetas del firmware.
+- **Seguridad:** se impide renombrar la raíz, cambiar de carpeta durante
+  un renombrado o sustituir un nombre ya existente en el directorio
+  mostrado. Los documentos `.tns` mantienen su extensión.
+
+**Validación pendiente:** las operaciones nuevas pasan pruebas de
+transporte simulado y de interfaz, pero se deben comprobar con la
+calculadora física antes de confiar en el renombrado de directorios
+según la versión del firmware.
+
 ## Límites actuales
 
 - El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
