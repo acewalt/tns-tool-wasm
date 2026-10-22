@@ -75,3 +75,39 @@
 
 .ti-manager-table .ti-tree-row button:disabled{opacity:.75;cursor:progress}
 .ti-manager-table .ti-tree-row input:disabled{cursor:progress}
+
+/* Keep the modal within the viewport and put vertical scrolling on the file
+   explorer rather than letting the page behind the overlay consume wheel input. */
+.ti-manager-overlay{overflow:hidden;overscroll-behavior:contain}
+.ti-manager-dialog{
+  max-height:calc(100dvh - 24px);
+  min-height:0;
+  box-sizing:border-box;
+}
+.ti-manager-grid{min-height:0;overflow:hidden}
+.ti-manager-side,.ti-manager-files{min-height:0;overflow:hidden}
+.ti-manager-files-head,.ti-manager-path,.ti-manager-footer-actions,.ti-manager-log{flex-shrink:0}
+.ti-manager-table{
+  flex:1 1 0;
+  min-height:0;
+  height:0;
+  max-height:100%;
+  overflow-y:auto;
+  overflow-x:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:var(--muted) transparent;
+  touch-action:pan-x pan-y;
+}
+.ti-manager-table:focus-visible{outline:2px solid var(--lime2);outline-offset:2px}
+.ti-manager-table::-webkit-scrollbar{width:9px;height:9px}
+.ti-manager-table::-webkit-scrollbar-thumb{border-radius:8px;background:var(--muted)}
+.ti-manager-table::-webkit-scrollbar-track{background:transparent}
+.ti-manager-table .ti-tree-row button:disabled{opacity:.75;color:var(--text)}
+@media(max-width:760px){
+  .ti-manager-overlay{overflow:auto}
+  .ti-manager-dialog{max-height:98dvh}
+  .ti-manager-grid{overflow:auto;min-height:0}
+  .ti-manager-files{min-height:260px}
+  .ti-manager-table{height:260px;min-height:180px}
+}
