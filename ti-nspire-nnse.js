@@ -244,12 +244,20 @@
         default:return null;
       }
     }
-    async sendStream(navnet) {
+    async sendStream(navnet,{waitForAck=true}={}) {
       if(!(navnet instanceof Uint8Array)||navnet.length>MAX_PAYLOAD)
         fail("Trama NavNet demasiado grande para NNSE.");
       if(!this.ready)await this.handshake();
       const seq=this.nextSeq();
       const bytes=encodeFrame(STREAM,navnet,{seq,reqAck:1});
+      // Service disconnect is a one-way NavNet message. On CX II firmware,
+      // waiting for its NNSE ACK can hang even though the operation completed.
+      // Send it once and let the NEXT normal sendStream() consume/ignore any
+      // late matching ACK, without blocking this completed operation.
+      if(!waitForAck) {
+        await this.write(bytes);
+        return;
+      }
       // A service reply can precede the NNSE ACK. Queue it rather than
       // discarding the reply and then blocking forever in receiveRaw().
       for(let attempt=0;attempt<3;attempt++) {
