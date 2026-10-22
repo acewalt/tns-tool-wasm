@@ -184,21 +184,41 @@
   }
 
   async function fallbackTransition(nextTheme, button, x, y, radius) {
-    const ripple = document.createElement("div");
-    ripple.className = "tns-theme-fallback-ripple";
-    ripple.style.left = `${x}px`;
-    ripple.style.top = `${y}px`;
-    ripple.style.background = nextTheme === "dark" ? "#0b1220" : "#f6f8fb";
-    ripple.style.setProperty("--tns-ripple-scale", String(Math.max(1, radius / 6 + 3)));
-    document.body.appendChild(ripple);
-
-    requestAnimationFrame(() => requestAnimationFrame(() => ripple.classList.add("expand")));
-
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    applyTheme(nextTheme, button);
-    await new Promise((resolve) => setTimeout(resolve, 235));
-    ripple.classList.add("fade");
-    setTimeout(() => ripple.remove(), 190);
+    // A viewport-sized clip-path wipe does not depend on the browser's
+    // View Transitions API or any site's CSS transitions.
+    const layer = document.createElement("div");
+    layer.className = "tns-theme-circle-wipe";
+    Object.assign(layer.style, {
+      position: "fixed",
+      inset: "0",
+      zIndex: "2147483646",
+      pointerEvents: "none",
+      background: nextTheme === "dark" ? "#0b1220" : "#f6f8fb",
+      clipPath: `circle(0px at ${x}px ${y}px)`,
+      willChange: "clip-path, opacity",
+    });
+    document.body.appendChild(layer);
+    try {
+      const wipe = layer.animate(
+        {
+          clipPath: [
+            `circle(0px at ${x}px ${y}px)`,
+            `circle(${radius + 2}px at ${x}px ${y}px)`,
+          ],
+        },
+        { duration: 720, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "forwards" }
+      );
+      // Do not change the whole page halfway through the wipe.
+      await wipe.finished;
+      applyTheme(nextTheme, button);
+      const fade = layer.animate(
+        { opacity: [1, 0] },
+        { duration: 150, easing: "ease-out", fill: "forwards" }
+      );
+      await fade.finished;
+    } finally {
+      layer.remove();
+    }
   }
 
   async function switchTheme(button) {
@@ -210,25 +230,29 @@
     const x = rect.left + rect.width / 2;
     const y = rect.top + rect.height / 2;
     const radius = radiusFromPoint(x, y);
-    const reduceMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+    let applied = false;
 
     try {
-      if (!reduceMotion && typeof document.startViewTransition === "function") {
+      // This control has an explicitly requested circular reveal. Do not
+      // silently disable it on Windows installations configured with
+      // reduced system animations; an on-site opt-out remains available.
+      const disableReveal = localStorage.getItem("tns-theme-reveal") === "off";
+      if (disableReveal) {
+        applyTheme(nextTheme, button);
+        applied = true;
+        document.documentElement.dataset.tnsThemeRevealLast = "disabled";
+      } else if (typeof document.startViewTransition === "function") {
         try {
           const transition = document.startViewTransition(() => {
             applyTheme(nextTheme, button);
+            applied = true;
           });
-
-          // A transition may be skipped by the browser while another view
-          // transition is active. Never let a rejected ready promise silently
-          // turn the circular reveal into an instant color change.
           await transition.ready;
-
           const animation = document.documentElement.animate(
             {
               clipPath: [
                 `circle(0px at ${x}px ${y}px)`,
-                `circle(${radius}px at ${x}px ${y}px)`,
+                `circle(${radius + 2}px at ${x}px ${y}px)`,
               ],
             },
             {
@@ -238,25 +262,23 @@
               pseudoElement: "::view-transition-new(root)",
             }
           );
-
+          document.documentElement.dataset.tnsThemeRevealLast = "native";
           await Promise.allSettled([transition.finished, animation.finished]);
         } catch (error) {
-          // Unsupported pseudo-element animations, aborted transitions and
-          // competing view transitions still get a visible circular effect.
-          console.warn("Native theme reveal unavailable; using circle fallback.", error);
+          console.warn("Theme view transition unavailable. Using circular wipe.", error);
+          document.documentElement.dataset.tnsThemeRevealLast = "fallback";
           await fallbackTransition(nextTheme, button, x, y, radius);
+          applied = true;
         }
-      } else if (!reduceMotion) {
-        await fallbackTransition(nextTheme, button, x, y, radius);
       } else {
-        // Honor system accessibility preferences.
-        applyTheme(nextTheme, button);
+        document.documentElement.dataset.tnsThemeRevealLast = "fallback";
+        await fallbackTransition(nextTheme, button, x, y, radius);
+        applied = true;
       }
     } catch (error) {
-      // The theme control must remain operational even when animations fail.
-      console.warn("Theme reveal failed; applying the selected theme.", error);
-      applyTheme(nextTheme, button);
+      console.warn("Theme circular wipe failed; applying theme.", error);
     } finally {
+      if (!applied || currentTheme() !== nextTheme) applyTheme(nextTheme, button);
       switching = false;
     }
   }
