@@ -150,3 +150,75 @@
   .ti-manager-image{align-items:flex-start;overflow-x:auto;overflow-y:auto}
   .ti-manager-image canvas.ti-manager-native-screenshot{max-width:none;max-height:none}
 }
+
+/* Individual actions on mouse hover / keyboard focus (inspired by the
+   supplied TI-Nspire tree video). Scoped to the calculator manager. */
+.ti-manager-table .ti-manager-namecell{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  width:100%;
+}
+.ti-manager-table .ti-manager-namecell>.ti-manager-filename{
+  flex:1 1 auto;
+  min-width:0;
+}
+.ti-manager-table .ti-row-actions{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex:0 0 auto;
+  gap:3px;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translateX(5px);
+  transition:opacity .16s ease,transform .16s ease,visibility .16s;
+}
+.ti-manager-table .ti-tree-row:hover .ti-row-actions,
+.ti-manager-table .ti-tree-row:focus-within .ti-row-actions{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:none;
+}
+.ti-manager-table .ti-row-action{
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  padding:0;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:transparent;
+  color:var(--text);
+  font-size:14px;
+  line-height:1;
+  cursor:pointer;
+  transition:background-color .16s,border-color .16s,transform .16s;
+}
+.ti-manager-table .ti-row-action:hover,
+.ti-manager-table .ti-row-action:focus-visible{
+  border-color:var(--line);
+  background:var(--button-bg);
+  transform:translateY(-1px);
+}
+.ti-manager-table .ti-row-action-danger:hover,
+.ti-manager-table .ti-row-action-danger:focus-visible{
+  color:#fca5a5;
+  border-color:#b91c1c;
+  background:rgba(185,28,28,.12);
+}
+.ti-manager-table .ti-row-action:disabled{opacity:.35;cursor:wait;transform:none}
+@media(hover:none){
+  .ti-manager-table .ti-row-actions{
+    opacity:1;visibility:visible;pointer-events:auto;transform:none;
+  }
+}
+@media(max-width:760px){
+  .ti-manager-table .ti-row-action{width:26px;height:28px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+  .ti-manager-table .ti-row-actions,.ti-manager-table .ti-row-action{transition:none}
+}
