@@ -151,6 +151,9 @@
       this.readBuffer = new Uint8Array(0); this.queue = [];
       this.connected = false; this.busy = false;
       this.nnse = null;
+      this.broken = false;
+      this.usbDeadlineAt = 0;
+      this.usbReadTimeoutMs = 12000;
     }
     static async select() {
       ensure(navigator.usb?.requestDevice, "WebUSB no disponible. Abre la página en Chrome, Brave o Edge por HTTPS.");
@@ -203,27 +206,60 @@
     }
     async close() {
       this.connected = false;
-      // Send any pending service disconnect using its original USB framing
-      // before disposing of the NNSE transport.
-      try { if (this.activeService) await this.disconnectService(); } catch (_) {}
-      this.initialized = false;
+      // Do not initiate further USB traffic on a timed-out/broken connection.
+      if (!this.broken) {
+        try { if (this.activeService) await this.disconnectService(); } catch (_) {}
+      }
+      this.activeService = false; this.initialized = false;
       this.nnse?.reset(); this.nnse = null;
       this.queue = []; this.readBuffer = new Uint8Array(0);
-      try { if (this.device.opened) await this.device.releaseInterface(this.iface); } catch (_) {}
-      try { if (this.device.opened) await this.device.close(); } catch (_) {}
+      // USB transfers cannot be cancelled by AbortSignal. Best-effort release,
+      // bounded so the UI remains usable if Chromium still has a pending read.
+      const cleanup = async job => {
+        try { await Promise.race([job(), new Promise(resolve => setTimeout(resolve, 1500))]); }
+        catch (_) {}
+      };
+      if (this.device.opened) await cleanup(() => this.device.releaseInterface(this.iface));
+      if (this.device.opened) await cleanup(() => this.device.close());
+    }
+    async usbCall(operation) {
+      ensure(!this.broken, "La conexión USB requiere reconectarse.");
+      const remaining = this.usbDeadlineAt ? this.usbDeadlineAt - Date.now() : this.usbReadTimeoutMs;
+      if (remaining <= 0) {
+        this.broken = true; this.connected = false;
+        throw new NspireError("Tiempo de espera USB agotado. Reconecta la calculadora.");
+      }
+      let timer;
+      try {
+        return await Promise.race([
+          operation(),
+          new Promise((_, reject) => {
+            timer = setTimeout(() => reject(new NspireError(
+              "La calculadora dejó de responder por USB. Reconecta la calculadora."
+            )), Math.max(1, Math.min(remaining, this.usbReadTimeoutMs)));
+          })
+        ]);
+      } catch (error) {
+        // Treat timeouts or USB transport failures as terminal for this handle;
+        // never reuse it while Chromium may still have a pending USB transfer.
+        this.broken = true; this.connected = false;
+        throw error;
+      } finally {
+        clearTimeout(timer);
+      }
     }
     async out(bytes) {
-      const result = await this.device.transferOut(this.endpointOut, bytes);
+      const result = await this.usbCall(() => this.device.transferOut(this.endpointOut, bytes));
       ensure(result.status === "ok", "La transferencia USB OUT falló.");
       if (bytes.length > 0 && bytes.length % this.outPacketSize === 0) {
-        // Protocol packets aligned with USB max-packet size need termination.
-        const zlp = await this.device.transferOut(this.endpointOut, new Uint8Array(0));
+        const zlp = await this.usbCall(() => this.device.transferOut(this.endpointOut, new Uint8Array(0)));
         ensure(zlp.status === "ok", "Fallo terminando trama USB.");
       }
     }
     async readExact(n) {
       while (this.readBuffer.length < n) {
-        const response = await this.device.transferIn(this.endpointIn, Math.max(512, n - this.readBuffer.length));
+        const response = await this.usbCall(() =>
+          this.device.transferIn(this.endpointIn, Math.max(512, n - this.readBuffer.length)));
         ensure(response.status === "ok" && response.data?.byteLength, "La calculadora no respondió por USB.");
         const part = new Uint8Array(response.data.buffer, response.data.byteOffset, response.data.byteLength);
         this.readBuffer = concat(this.readBuffer, part);
@@ -321,11 +357,11 @@
     }
     async disconnectService() {
       if (!this.activeService) return;
-      try { await this.sendData(be16(this.hostSid), 0x40de); }
+      try { if (!this.broken) await this.sendData(be16(this.hostSid), 0x40de); }
       finally { this.activeService = false; this.hostSid++; this.queue = []; }
     }
     async usingService(sid, fn) {
-      ensure(!this.busy, "Ya hay otra operación sobre la calculadora.");
+      ensure(!this.busy && !this.broken, "La conexión USB no está disponible. Reconecta la calculadora.");
       this.busy = true;
       try {
         await this.initialize();
@@ -334,7 +370,7 @@
         return await fn();
       } finally {
         try { await this.disconnectService(); }
-        finally { this.busy = false; }
+        finally { this.usbDeadlineAt = 0; this.busy = false; }
       }
     }
     async listDir(path) {
@@ -401,6 +437,10 @@
         // This callback must not start another calculator operation.
         onBytesComplete(data);
         onProgress(offset, count, "finalizing");
+        // File contents are complete; the terminal command and service close
+        // may not receive their NNSE ACK. Bound this cleanup, then require a
+        // fresh USB connection instead of leaving controls disabled forever.
+        if (this.nnse) this.usbDeadlineAt = Date.now() + 8000;
         await this.sendData(Uint8Array.of(0xff, 0));
         return data;
       });
@@ -423,32 +463,42 @@
         ensure(done.length >= 2 && done[0] === 0xff && done[1] === 0, "La calculadora no confirmó el archivo recibido.");
       });
     }
-    async screenshotRle() {
+    async screenshotRle(onProgress = () => {}) {
       return this.usingService(SERVICE_SCREEN_RLE, async () => {
+        onProgress(0, 0, "requesting");
         await this.sendData(Uint8Array.of(0));
         const meta = await this.recvData();
         ensure(meta.length >= 13 && meta[0] === 1, "No hay respuesta de captura de pantalla.");
+        // The first 32-bit word is the compressed stream length, not the
+        // uncompressed pixel length. Read exactly that many bytes, then decode.
+        const compressedSize = u32(meta, 1);
         const width = u16(meta, 9), height = u16(meta, 11);
-        // Screen metadata need not contain a pixel-depth byte. Color Nspire
-        // screens use RGB565; the original Nspire uses packed 4-bit grayscale.
         const bpp = meta[13] === 4 || meta[13] === 16 ? meta[13] : (this.cx2 ? 16 : 4);
         ensure(width > 0 && width <= 640 && height > 0 && height <= 480 &&
           (bpp === 4 || bpp === 16), "Formato de captura de pantalla no compatible.");
+        ensure(compressedSize > 0 && compressedSize <= 1024 * 1024,
+          "Longitud RLE de pantalla fuera de límites.");
         const wanted = bpp === 16 ? width * height * 2 : Math.ceil(width * height / 2);
         const unitBytes = bpp === 16 ? 4 : 1;
-        const encoded = [];
-        let decoded = null;
-        for (let i = 0; i < 2048; i++) {
+        const encoded = new Uint8Array(compressedSize);
+        let received = 0;
+        onProgress(0, compressedSize, "receiving");
+        // The screenshot reply is a large virtual packet; NNSE may split it
+        // into multiple 0x02 fragments. Avoid repeated O(n²) concatenation.
+        for (let parts = 0; received < compressedSize && parts < 8192; parts++) {
           const part = await this.recvData();
           ensure(part.length > 1 && part[0] === 2, "Trama de captura desconocida.");
-          encoded.push(part.subarray(1));
-          const all = concat(...encoded);
-          try { decoded = decodeRle(all, wanted, unitBytes); break; }
-          catch (e) { if (!/incompleta|truncado/.test(e.message)) throw e; }
-          ensure(all.length <= 1024 * 1024, "Captura excesiva.");
+          const count = part.length - 1;
+          ensure(received + count <= compressedSize, "Captura RLE excede tamaño anunciado.");
+          encoded.set(part.subarray(1), received);
+          received += count;
+          onProgress(received, compressedSize, "receiving");
         }
-        ensure(decoded, "Captura de pantalla incompleta.");
-        return { width, height, bpp, pixels: decoded };
+        ensure(received === compressedSize, "Captura RLE incompleta.");
+        const pixels = decodeRle(encoded, wanted, unitBytes);
+        onProgress(received, compressedSize, "finalizing");
+        if (this.nnse) this.usbDeadlineAt = Date.now() + 8000;
+        return { width, height, bpp, pixels };
       });
     }
   }
