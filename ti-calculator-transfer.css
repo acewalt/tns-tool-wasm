@@ -253,3 +253,34 @@
   -webkit-mask-image:url("./assets/calculator-actions/delete.svg");
   mask-image:url("./assets/calculator-actions/delete.svg");
 }
+
+/* Windows Explorer-style selection: reserve the checkbox's space to keep
+   filenames aligned, but reveal it only on hover/focus or while selected.
+   On touch screens there is no reliable hover, so keep it visible. */
+@media (hover:hover) and (pointer:fine){
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check{
+    opacity:0;
+    transform:scale(.85);
+    pointer-events:none;
+    transition:opacity .15s ease,transform .15s ease;
+  }
+  .ti-manager-table .ti-tree-row:hover > .ti-manager-item-check,
+  .ti-manager-table .ti-tree-row:focus-within > .ti-manager-item-check,
+  .ti-manager-table .ti-tree-row.selected > .ti-manager-item-check,
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check:checked,
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check:focus-visible{
+    opacity:1;
+    transform:scale(1);
+    pointer-events:auto;
+  }
+}
+@media (hover:none), (pointer:coarse){
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check{
+    opacity:1;
+    pointer-events:auto;
+    transform:none;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check{transition:none}
+}
