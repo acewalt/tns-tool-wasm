@@ -582,9 +582,9 @@
   }
   async function send(name,data,directory,knownNames){
     if(!state.link?.connected)throw Error(tr("unready"));
-    if(!/\\.tns$/i.test(name))throw Error(tr("files")+" .tns");
+    if(!/\.tns$/i.test(name))throw Error(tr("files")+" .tns");
     const dest=window.TnsNspireUSB.childPath(directory,name);
-    if(knownNames.has(name.toLowerCase())&&!confirm(tr("overwrite")+"\\n"+dest))
+    if(knownNames.has(name.toLowerCase())&&!confirm(tr("overwrite")+"\n"+dest))
       return false;
     state.transferStarted=Date.now();
     await state.link.putFile(dest,data,(n,total,phase)=>{
