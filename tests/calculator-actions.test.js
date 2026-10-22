@@ -75,6 +75,27 @@ for(const name of ["Descargar new.tns","Renombrar new.tns","Eliminar new.tns",
                    "Descargar algebra","Renombrar algebra","Eliminar algebra"])
   assert.ok(names.includes(name),name);
 assert.ok(!hoverButtons.find(node=>node.attributes["aria-label"]==="Eliminar algebra").disabled);
+// Each checkbox occupies its usual column but is visually hidden until
+// hover, keyboard focus, or selected. Verify selection is persistent.
+const checks=nodes.filter(node=>node.className==="ti-manager-item-check");
+assert.equal(checks.length,2,"Every row must retain an accessible checkbox");
+const fileCheck=checks.find(node=>node.attributes["aria-label"].includes("new.tns"));
+assert.ok(fileCheck);
+assert.equal(fileCheck.checked,false);
+fileCheck.checked=true;
+fileCheck.dispatchEvent({type:"change"});
+assert.ok(state.chosen.has("/new.tns"),"Clicking a checkbox must select its document");
+assert.equal(win.TnsCalculatorTransfer.selected().length,1);
+win.TnsCalculatorTransfer.rows();
+const refreshed=descendants(controls["[data-ti-rows]"]);
+assert.ok(refreshed.some(node=>node.className==="ti-manager-item-check" &&
+  node.attributes["aria-label"].includes("new.tns") && node.checked),
+  "A selected checkbox remains checked when the tree is rebuilt");
+const updatedCheck=refreshed.find(node=>node.className==="ti-manager-item-check" &&
+  node.attributes["aria-label"].includes("new.tns"));
+updatedCheck.checked=false;
+updatedCheck.dispatchEvent({type:"change"});
+assert.equal(win.TnsCalculatorTransfer.selected().length,0);
 // Icons are real SVG assets rendered as currentColor masks, never emojis or
 // static PNGs that cannot follow the light/dark theme.
 for(const button of hoverButtons){
@@ -101,6 +122,12 @@ assert.match(style,/background-color:currentColor/);
 assert.match(style,/\.ti-tree-row:hover \.ti-row-actions/);
 assert.match(style,/:focus-within \.ti-row-actions/);
 assert.match(style,/@media\(hover:none\)/);
+assert.match(style,/@media \(hover:hover\) and \(pointer:fine\)/);
+assert.match(style,/\.ti-tree-row:hover > \.ti-manager-item-check/);
+assert.match(style,/\.ti-tree-row:focus-within > \.ti-manager-item-check/);
+assert.match(style,/\.ti-tree-row\.selected > \.ti-manager-item-check/);
+assert.match(style,/\.ti-manager-item-check:checked/);
+assert.match(style,/@media \(hover:none\), \(pointer:coarse\)/);
 const html=load("../index.html");
 assert.match(html,/ti-calculator-zip\.js/);
 console.log("Calculator per-item hover actions and safe folder ZIP validation passed.");
