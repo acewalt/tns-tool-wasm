@@ -92,6 +92,14 @@ assert.equal(window.NdlessProjectWorkspace.getProject(),null,
 await window.NdlessProjectWorkspace.openProjectZip({name:"ndless-project.zip"});
 assert.equal(window.NdlessProjectWorkspace.getProject(),null);
 
+// A simulated active Ndless project also blocks any normal XML import/page
+// operation. An empty editor still permits normal documents.
+assert.doesNotThrow(()=>vm.runInContext("requireNormalProjectMode()",context));
+const originalWorkspace=window.NdlessProjectWorkspace;
+window.NdlessProjectWorkspace={getProject:()=>({name:"open-ndless"})};
+assert.throws(()=>vm.runInContext("requireNormalProjectMode()",context),/Cierra el proyecto Ndless/);
+window.NdlessProjectWorkspace=originalWorkspace;
+
 // Releasing the normal session (fresh empty editor) restores both choices.
 vm.runInContext("normalProjectSession.active=false",context);
 document.dispatchEvent({type:"tns-normal-project-changed"});
@@ -107,5 +115,16 @@ for(const token of [
   const endNext=app.indexOf("\n}",pos);
   assert.ok(app.slice(pos,endNext+2).includes("markNormalProjectActive()"),
     "Normal project marker missing from "+token);
+}
+for(const token of [
+  "async function loadXmlDoctorFiles", "async function openTnsInXmlDoctor",
+  "async function createNewXmlProject", "async function createEmptyXmlProjectForPageCreation",
+  "async function addPageFromFileMenu"
+]){
+  const start=app.indexOf(token);
+  assert.ok(start>=0,"Missing normal entry point: "+token);
+  const nextFunction=app.indexOf("\n}",start);
+  assert.ok(app.slice(start,nextFunction+2).includes("requireNormalProjectMode()"),
+    "Normal editor must be blocked during Ndless workspace: "+token);
 }
 console.log("Ndless choices hidden only during normal TNS/XML sessions; projects stay exclusive.");
