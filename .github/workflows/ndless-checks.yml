@@ -19,6 +19,8 @@ on:
       - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
       - 'index.html'
+      - 'theme-transition-toggle.js'
+      - 'tests/theme-transition-toggle.test.js'
       - 'ti-calculator-transfer.js'
       - 'ti-nspire-webusb.js'
       - 'ti-calculator-transfer.css'
@@ -43,6 +45,8 @@ on:
       - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
       - 'index.html'
+      - 'theme-transition-toggle.js'
+      - 'tests/theme-transition-toggle.test.js'
       - 'ti-calculator-transfer.js'
       - 'ti-nspire-webusb.js'
       - 'ti-calculator-transfer.css'
@@ -112,6 +116,8 @@ jobs:
           node --check ti-calculator-transfer.js
           node --check ti-nspire-webusb.js
           python -m py_compile tools/calculator-transfer/bridge.py tests/test_calculator_bridge.py
+      - name: Circular theme reveal regression tests
+        run: node tests/theme-transition-toggle.test.js
       - name: Calculator transfer regression tests
         run: |
           node tests/calculator-transfer-ui.test.js
