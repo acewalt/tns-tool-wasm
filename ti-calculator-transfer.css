@@ -111,3 +111,42 @@
   .ti-manager-files{min-height:260px}
   .ti-manager-table{height:260px;min-height:180px}
 }
+
+/* TI-Nspire CX II screen is 320 x 240. Do not shrink the preview:
+   each source pixel occupies exactly one CSS pixel at 100% browser zoom. */
+@media(min-width:800px){
+  .ti-manager-dialog{width:min(1310px,100%)}
+  .ti-manager-grid{grid-template-columns:minmax(352px,366px) minmax(0,1fr)}
+}
+.ti-manager-side{min-height:0}
+.ti-manager-image{
+  width:100%;
+  flex:0 0 auto;
+  min-height:0;
+  max-height:360px;
+  align-items:center;
+  justify-content:flex-start;
+  overflow:auto;
+  scrollbar-width:thin;
+}
+.ti-manager-image canvas.ti-manager-native-screenshot{
+  display:block;
+  flex:0 0 auto;
+  min-width:0;
+  max-width:none;
+  max-height:none;
+  height:auto;
+  image-rendering:pixelated;
+}
+.ti-manager-image .ti-manager-resolution{
+  display:block;
+  font-size:11px;
+  text-align:center;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.ti-manager-image button{flex:0 0 auto}
+@media(max-width:799px){
+  .ti-manager-image{align-items:flex-start;overflow-x:auto;overflow-y:auto}
+  .ti-manager-image canvas.ti-manager-native-screenshot{max-width:none;max-height:none}
+}
