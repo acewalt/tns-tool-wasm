@@ -5,7 +5,8 @@ import vm from "node:vm";
 const load=file=>fs.readFileSync(new URL(file,import.meta.url),"utf8");
 const win={};
 const sandbox=vm.createContext({
-  window:win,navigator:{},Uint8Array,ArrayBuffer,DataView,Date,TextEncoder,TextDecoder,Error,console
+  window:win,navigator:{},Uint8Array,ArrayBuffer,DataView,Date,TextEncoder,TextDecoder,Error,console,
+  setTimeout,clearTimeout
 });
 vm.runInContext(load("../ti-nspire-nnse.js"),sandbox);
 vm.runInContext(load("../ti-nspire-webusb.js"),sandbox);
@@ -130,10 +131,10 @@ class FakeNNSEUSB {
     }
     else if(d[0]===0&&service===0x4024){
       if(this.colorScreenshot){
-        this.respond(concat(Uint8Array.of(1),be32(8),Uint8Array.of(0,0,0,0,0,2,0,2)),service,dest);
+        this.respond(concat(Uint8Array.of(1),be32(5),Uint8Array.of(0,0,0,0,0,2,0,2)),service,dest);
         this.respond(Uint8Array.of(2,1,0,0xf8,0xe0,0x07),service,dest);
       }else{
-        this.respond(concat(Uint8Array.of(1),be32(2),Uint8Array.of(0,0,0,0,0,2,0,2,4,0)),service,dest);
+        this.respond(concat(Uint8Array.of(1),be32(3),Uint8Array.of(0,0,0,0,0,2,0,2,4,0)),service,dest);
         this.respond(Uint8Array.of(2,255,0x12,0x34),service,dest);
       }
     }
@@ -178,7 +179,13 @@ fake.file=Uint8Array.from({length:1900},(_,i)=>i&255);
 assert.deepEqual(Array.from(await controller.getFile("/Examples/multiblock.tns")),Array.from(fake.file));
 fake.sendBareOnDownload=false;fake.file=Uint8Array.of(1,2,3,4);
 await controller.deleteEntry("/Examples/new.tns");
-const snap=await controller.screenshotRle();
+const captureOrder=[];
+const snap=await controller.screenshotRle(
+  (current,total,phase)=>captureOrder.push([current,total,phase]),
+  image=>{captureOrder.push(["image",image.width,image.height]);}
+);
+assert.deepEqual(captureOrder.at(-2),["image",2,2]);
+assert.deepEqual(captureOrder.at(-1),[3,3,"finalizing"]);
 assert.deepEqual([snap.width,snap.height,snap.bpp],[2,2,4]);
 assert.deepEqual(Array.from(snap.pixels),[0x12,0x34]);
 fake.colorScreenshot=true;
