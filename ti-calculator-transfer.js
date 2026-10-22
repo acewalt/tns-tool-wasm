@@ -521,6 +521,13 @@
     }
     if(next===file.path)return;
     await working(async()=>{
+      // Recheck the actual device directory immediately before renaming:
+      // cached lists may be stale if the user changed files on the handheld.
+      const current=await state.link.listDir(parent);
+      state.cache.set(parent,current);
+      if(current.some(item=>item.path!==file.path &&
+        item.name.toLowerCase()===name.toLowerCase()))
+        throw Error(tr("renameConflict"));
       await state.link.renameEntry(file.path,next);
       state.chosen.delete(file.path);
       if(file.isDir)dropFolderCache(file.path);
@@ -679,7 +686,7 @@
     };
     for(const [sel,key]of Object.entries(labels))q(sel,root).textContent=tr(key);
     for(const [selector,emoji]of Object.entries({
-      "[data-ti-mkdir]":"📁", "[data-ti-delete]":"🗑️",
+      "[data-ti-mkdir]":"📁➕", "[data-ti-delete]":"🗑️",
       "[data-ti-receive]":"⬇️","[data-ti-refresh]":"🔄",
       "[data-ti-upload-text]":"📤"
     })){
