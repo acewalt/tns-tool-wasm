@@ -83,6 +83,32 @@ La velocidad depende del número y tamaño de los paquetes que envíe el
 firmware CX II y de la latencia de los acuses de recibo NNSE.
 Compara archivos pequeños y grandes para medir la velocidad en hardware.
 
+## Recuperación de USB, pantalla y desplazamiento (22 de octubre de 2026)
+
+- El árbol de documentos tiene **su propio desplazamiento vertical**. Su
+  contenedor flex permite crecer en altura y desplazar los elementos anidados
+  con la rueda del mouse, el panel táctil o el teclado.
+- En CX II, después de recibir todos los bytes de un TNS o una captura,
+  el protocolo puede tardar en confirmar el fin de la operación. El archivo
+  y la imagen se ofrecen al navegador **antes** de esperar a esa confirmación.
+- El cierre de descargas y capturas dispone de un límite de aproximadamente
+  ocho segundos; cada operación de entrada USB dispone de un límite de
+  doce segundos en condiciones normales. Si la calculadora no responde,
+  **se invalida la sesión** y se solicita reconectar. No se inicia otra
+  operación usando la conexión posiblemente desincronizada.
+- La captura RLE ya no intenta descomprimir datos en cada paquete. Lee el
+  tamaño comprimido anunciado, reúne los fragmentos y descomprime una sola
+  vez; muestra el progreso de recepción y permite guardar PNG.
+- Si falla la finalización después de que el archivo o la imagen se hayan
+  entregado, se informa del resultado y de la necesidad de reconectar,
+  en vez de mantener los botones permanentemente desactivados.
+
+**Importante:** la nueva estrategia USB se ha probado con hardware simulado,
+incluidos timeouts y capturas fragmentadas. Es necesario verificar en una
+TI-Nspire CX II real tanto la captura de pantalla como la resincronización
+después de una descarga; WebUSB no permite cancelar con AbortSignal una
+lectura USB ya iniciada.
+
 ## Límites actuales
 
 - El protocolo USB de TI-Nspire tiene variantes. Desde el 21-10-2026 se incorpora una implementación NNSE para CX II en USB configuración 1, que encapsula paquetes NavNet, gestiona petición de dirección, sincronización de hora, acuses NNSE y paquetes de datos. **Solo se ha validado mediante pruebas USB simuladas; sigue pendiente una validación física en Windows, Chrome/Brave y calculadora TI-Nspire CX II.**
