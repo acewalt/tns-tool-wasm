@@ -68,9 +68,14 @@ adaptada a los temas propios de TNS Tool WASM.
   ruta mostrada indica dónde se crearán carpetas o se enviarán archivos.
 - **Actualizar** vuelve a consultar el directorio elegido.
 - Durante la recepción se muestran bytes recibidos, porcentaje, tiempo
-  transcurrido y velocidad media. Una vez llegados todos los bytes aparece
-  la fase **Finalizando y cerrando transferencia**, que puede tardar aunque
-  el contador de datos haya llegado a 100%.
+  transcurrido y velocidad media. Los bytes completos del archivo se ofrecen
+  inmediatamente al navegador para guardar el TNS, **antes de esperar** al
+  comando de finalización del protocolo. La sesión USB sigue bloqueada
+  durante **Finalizando y cerrando transferencia**; no desconectes el cable
+  ni intentes otra operación mientras tanto.
+- Los controles de selección y navegación quedan temporalmente bloqueados
+  durante una operación USB, de modo que no cambie el archivo seleccionado
+  mientras la calculadora completa la transferencia.
 
 Esto elimina consultas innecesarias al volver a desplegar carpetas, pero
 **no demuestra todavía una aceleración de la transferencia USB real**.
