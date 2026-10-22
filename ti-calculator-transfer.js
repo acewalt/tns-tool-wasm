@@ -37,7 +37,12 @@
       deletePrompt:"¿Eliminar este elemento de la calculadora?", folderWarning:"Si es una carpeta, esta acción puede borrar su contenido.",
       folderZip:"Descargando carpeta como ZIP…", folderTooLarge:"La carpeta supera el límite de 300 documentos o 64 MB.",
       folderTooDeep:"La estructura supera las 16 subcarpetas anidadas.", notConnected:"Conecta la calculadora para continuar.",
-      viewList:"Vista de lista", viewGrid:"Vista de cuadrícula"
+      viewList:"Vista de lista", viewGrid:"Vista de cuadrícula",
+      chooseDestination:"Elegir carpeta de destino", destinationFor:"Archivos para enviar",
+      sendHere:"Enviar aquí", cancelSend:"Cancelar", rootFolder:"Raíz de la calculadora",
+      noSubfolders:"Esta carpeta no contiene subcarpetas.", folderLoadError:"No se pudo leer esta carpeta.",
+      destinationLoading:"Buscando carpetas…", targetPath:"Guardar en",
+      cancelled:"Envío cancelado", chooseFolder:"Abrir carpeta", backFolder:"Carpeta anterior"
     },
     en: {
       title:"TI-Nspire Manager", subtitle:"Native USB · TNS Tool WASM",
@@ -74,7 +79,12 @@
       deletePrompt:"Delete this item from the calculator?", folderWarning:"If it is a folder, its contents may be deleted.",
       folderZip:"Downloading folder as ZIP…", folderTooLarge:"Folder exceeds 300 files or 64 MB.",
       folderTooDeep:"This folder is nested more than 16 levels.", notConnected:"Connect the calculator first.",
-      viewList:"List view", viewGrid:"Grid view"
+      viewList:"List view", viewGrid:"Grid view",
+      chooseDestination:"Choose destination folder", destinationFor:"Files to send",
+      sendHere:"Send here", cancelSend:"Cancel", rootFolder:"Calculator root",
+      noSubfolders:"No subfolders in this folder.", folderLoadError:"Could not read this folder.",
+      destinationLoading:"Loading folders…", targetPath:"Save to",
+      cancelled:"Transfer cancelled", chooseFolder:"Open folder", backFolder:"Parent folder"
     },
     fr: {
       title:"Gestionnaire TI-Nspire", subtitle:"USB natif · TNS Tool WASM",
@@ -111,14 +121,19 @@
       deletePrompt:"Supprimer cet élément de la calculatrice ?", folderWarning:"Si c'est un dossier, son contenu peut être supprimé.",
       folderZip:"Téléchargement du dossier en ZIP…", folderTooLarge:"Le dossier dépasse 300 fichiers ou 64 Mo.",
       folderTooDeep:"Plus de 16 niveaux de dossiers.", notConnected:"Connectez d'abord la calculatrice.",
-      viewList:"Vue en liste", viewGrid:"Vue en grille"
+      viewList:"Vue en liste", viewGrid:"Vue en grille",
+      chooseDestination:"Choisir le dossier de destination", destinationFor:"Fichiers à envoyer",
+      sendHere:"Envoyer ici", cancelSend:"Annuler", rootFolder:"Racine de la calculatrice",
+      noSubfolders:"Aucun sous-dossier.", folderLoadError:"Impossible de lire le dossier.",
+      destinationLoading:"Chargement des dossiers…", targetPath:"Enregistrer dans",
+      cancelled:"Envoi annulé", chooseFolder:"Ouvrir le dossier", backFolder:"Dossier parent"
     }
   };
   const q=(selector,root=document)=>root?.querySelector(selector);
   const state={
     root:null,link:null,path:"/",files:[],chosen:new Set(),busy:false,
     cache:new Map(),expanded:new Set(["/"]),transferStarted:0,view:"list",
-    lastDownloadSaved:false,lastScreenshotReady:false
+    lastDownloadSaved:false,lastScreenshotReady:false,destinationPicker:null
   };
   function tr(k){
     const language=String(document.documentElement.lang||"es").slice(0,2);
@@ -163,13 +178,14 @@
   function controls(){
     if(!state.root)return;
     const online=Boolean(state.link?.connected);
+    const locked=state.busy||Boolean(state.destinationPicker);
     const disable=(s,val)=>{const e=q("[data-ti-"+s+"]",state.root);if(e)e.disabled=val;};
-    disable("connect",state.busy||online);
+    disable("connect",locked||online);
     // Hide Connect once there is a confirmed connection; show it again on
     // explicit disconnect or a broken transport so reconnection is possible.
     const connectButton=q("[data-ti-connect]",state.root);
     if(connectButton)connectButton.hidden=online;
-    disable("disconnect",state.busy||!online);
+    disable("disconnect",locked||!online);
     const disconnectButton=q("[data-ti-disconnect]",state.root);
     if(disconnectButton)disconnectButton.hidden=!online;
     for(const [view,selector] of [["list","[data-ti-view-list]"],["grid","[data-ti-view-grid]"]]){
@@ -179,20 +195,20 @@
         button.classList.toggle("active",state.view===view);
       }
     }
-    for(const action of ["refresh","mkdir","upload","current","capture"])disable(action,state.busy||!online);
-    disable("up",state.busy||!online||state.path==="/");
-    disable("receive",state.busy||!online||!selected().length||selected().some(f=>f.isDir));
-    disable("delete",state.busy||!online||!selected().length);
+    for(const action of ["refresh","mkdir","upload","current","capture"])disable(action,locked||!online);
+    disable("up",locked||!online||state.path==="/");
+    disable("receive",locked||!online||!selected().length||selected().some(f=>f.isDir));
+    disable("delete",locked||!online||!selected().length);
     const all=q("[data-ti-all]",state.root);
     if(all) {
-      all.disabled=state.busy||!online||state.files.length===0;
+      all.disabled=locked||!online||state.files.length===0;
       all.checked=state.files.length>0&&state.files.every(f=>state.chosen.has(f.path));
       all.indeterminate=state.files.some(f=>state.chosen.has(f.path))&&!all.checked;
     }
     const count=q("[data-ti-selected]",state.root);
     if(count)count.textContent=selected().length+"/"+allKnown().length;
     for(const item of state.root.querySelectorAll?.(".ti-tree-row input, .ti-tree-row button, .ti-grid-tile input, .ti-grid-tile button")||[])
-      item.disabled=state.busy;
+      item.disabled=locked;
   }
   // Adapted from the Uiverse folder-tree concept, scoped to the manager.
   // Children are requested from the physical calculator only when expanded.
@@ -441,45 +457,186 @@
       say(tr("connected"));rows();
     });
   }
-  async function send(name,data){
+  // This chooser does not alter state.path. It only returns a real directory
+  // path selected from the connected calculator (or null on cancellation).
+  function chooseDestination(fileNames){
+    if(!state.root||!state.link?.connected||state.busy||state.destinationPicker)
+      return Promise.resolve(null);
+    return new Promise(resolve=>{
+      const originalFocus=document.activeElement;
+      const picker={active:true,path:state.path,loading:false,cancel:null};
+      const overlay=document.createElement("div");
+      overlay.className="ti-destination-overlay";
+      const panel=document.createElement("section");
+      panel.className="ti-destination-dialog";
+      panel.setAttribute("role","dialog");
+      panel.setAttribute("aria-modal","true");
+      panel.setAttribute("aria-label",tr("chooseDestination"));
+      const heading=document.createElement("h3");heading.textContent=tr("chooseDestination");
+      const description=document.createElement("p");
+      description.className="ti-destination-description";
+      description.textContent=tr("destinationFor")+": "+fileNames.join(", ");
+      const toolbar=document.createElement("div");toolbar.className="ti-destination-toolbar";
+      const home=document.createElement("button");home.type="button";
+      home.className="ti-destination-nav";home.textContent="⌂";
+      home.title=tr("rootFolder");home.setAttribute("aria-label",tr("rootFolder"));
+      const up=document.createElement("button");up.type="button";
+      up.className="ti-destination-nav";up.textContent="↑";
+      up.title=tr("backFolder");up.setAttribute("aria-label",tr("backFolder"));
+      const breadcrumb=document.createElement("code");breadcrumb.className="ti-destination-path";
+      toolbar.append(home,up,breadcrumb);
+      const listing=document.createElement("div");
+      listing.className="ti-destination-list";
+      listing.setAttribute("role","list");
+      const notice=document.createElement("p");
+      notice.className="ti-destination-notice";
+      notice.setAttribute("role","status");
+      const footer=document.createElement("div");
+      footer.className="ti-destination-footer";
+      const cancel=document.createElement("button");cancel.type="button";
+      cancel.className="ti-destination-cancel";cancel.textContent=tr("cancelSend");
+      const confirmButton=document.createElement("button");confirmButton.type="button";
+      confirmButton.className="ti-destination-confirm";confirmButton.textContent=tr("sendHere");
+      footer.append(cancel,confirmButton);
+      panel.append(heading,description,toolbar,listing,notice,footer);
+      overlay.append(panel);
+      const finish=value=>{
+        if(!picker.active)return;
+        picker.active=false;
+        overlay.remove();
+        if(state.destinationPicker===picker)state.destinationPicker=null;
+        controls();
+        try{originalFocus?.focus?.();}catch(_){}
+        resolve(value);
+      };
+      picker.cancel=()=>finish(null);
+      const updateButtons=()=>{
+        breadcrumb.textContent=picker.path;
+        home.disabled=picker.loading||picker.path==="/";
+        up.disabled=picker.loading||picker.path==="/";
+        confirmButton.disabled=picker.loading||!state.link?.connected;
+      };
+      const enter=async path=>{
+        if(!picker.active||picker.loading||!state.link?.connected)return;
+        picker.loading=true;notice.textContent=tr("destinationLoading");
+        listing.replaceChildren();
+        updateButtons();
+        try{
+          // Folder information may already be cached from the main explorer.
+          const entries=state.cache.get(path)||await state.link.listDir(path);
+          if(!picker.active)return;
+          state.cache.set(path,entries);
+          picker.path=path;
+          const folders=entries.filter(entry=>entry.isDir).sort((a,b)=>
+            a.name.localeCompare(b.name));
+          if(!folders.length){
+            const empty=document.createElement("p");
+            empty.className="ti-destination-empty";
+            empty.textContent=tr("noSubfolders");
+            listing.append(empty);
+          }
+          for(const folder of folders){
+            const item=document.createElement("button");item.type="button";
+            item.className="ti-destination-folder";
+            item.setAttribute("aria-label",tr("chooseFolder")+" "+folder.name);
+            const symbol=document.createElement("span");
+            symbol.className="ti-destination-folder-icon";
+            symbol.setAttribute("aria-hidden","true");
+            symbol.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.7-.9l-.8-1.2A2 2 0 0 0 8 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2z"/></svg>';
+            const label=document.createElement("span");label.textContent=folder.name;
+            const arrow=document.createElement("span");arrow.textContent="›";
+            item.append(symbol,label,arrow);
+            item.addEventListener("click",()=>{void enter(folder.path);});
+            listing.append(item);
+          }
+          notice.textContent="";
+        }catch(error){
+          if(picker.active){
+            notice.textContent=tr("folderLoadError")+" "+(error.message||error);
+            notice.dataset.error="1";
+          }
+        }finally{
+          picker.loading=false;
+          if(picker.active)updateButtons();
+        }
+      };
+      cancel.addEventListener("click",()=>finish(null));
+      confirmButton.addEventListener("click",()=>{if(!picker.loading)finish(picker.path);});
+      home.addEventListener("click",()=>{void enter("/");});
+      up.addEventListener("click",()=>{
+        void enter(picker.path.split("/").slice(0,-1).join("/")||"/");
+      });
+      overlay.addEventListener("keydown",event=>{
+        if(event.key==="Escape"){event.preventDefault();event.stopPropagation();finish(null);}
+      });
+      // Clicking outside the dialog cancels without transferring any bytes.
+      overlay.addEventListener("click",event=>{
+        if(event.target===overlay)finish(null);
+      });
+      state.destinationPicker=picker;
+      q(".ti-manager-dialog",state.root).append(overlay);
+      controls();
+      cancel.focus();
+      void enter(picker.path);
+    });
+  }
+  async function send(name,data,directory,knownNames){
     if(!state.link?.connected)throw Error(tr("unready"));
-    if(!/\.tns$/i.test(name))throw Error(tr("files")+" .tns");
-    const dest=window.TnsNspireUSB.childPath(state.path,name);
-    if(state.files.some(f=>f.name.toLowerCase()===name.toLowerCase())&&!confirm(tr("overwrite")))return false;
+    if(!/\\.tns$/i.test(name))throw Error(tr("files")+" .tns");
+    const dest=window.TnsNspireUSB.childPath(directory,name);
+    if(knownNames.has(name.toLowerCase())&&!confirm(tr("overwrite")+"\\n"+dest))
+      return false;
     state.transferStarted=Date.now();
     await state.link.putFile(dest,data,(n,total,phase)=>{
       updateTransfer(name,n,total,"upload",phase);
     });
+    knownNames.add(name.toLowerCase());
     return true;
   }
+  async function refreshUploadDestination(directory){
+    const files=await state.link.listDir(directory);
+    state.cache.set(directory,files);
+    if(state.path===directory)state.files=files;
+    state.chosen.clear();
+    rows();
+  }
   async function upload(files){
-    if(!files.length)return;
+    if(!files.length||state.busy||!state.link?.connected)return;
+    const directory=await chooseDestination(files.map(file=>file.name));
+    if(directory===null){say(tr("cancelled"));return;}
     await working(async()=>{
+      const currentEntries=await state.link.listDir(directory);
+      state.cache.set(directory,currentEntries);
+      const knownNames=new Set(currentEntries.map(f=>f.name.toLowerCase()));
       let uploaded=0;
       for(const file of files){
         const data=new Uint8Array(await file.arrayBuffer());
-        if(await send(file.name,data))uploaded++;
+        if(await send(file.name,data,directory,knownNames))uploaded++;
       }
-      if(!uploaded)return;
-      state.files=await state.link.listDir(state.path);
-      state.cache.set(state.path,state.files);
-      state.chosen.clear();rows();
-      say(tr("success"));
+      if(!uploaded){say(tr("cancelled"));return;}
+      await refreshUploadDestination(directory);
+      say(tr("success")+" · "+directory);
     });
   }
   async function current(){
-    if(!state.link?.connected)return;
+    if(!state.link?.connected||state.busy)return;
+    const createButton=document.querySelector("#xml-create-tns-btn");
+    const builder=window.TnsFileSaveExperimental?.buildXmlDoctorArtifact;
+    if(!createButton||createButton.disabled||typeof builder!=="function")
+      return say(tr("exportUnavailable"),true);
+    const directory=await chooseDestination([tr("sendCurrent")]);
+    if(directory===null){say(tr("cancelled"));return;}
     await working(async()=>{
-      const createButton=document.querySelector("#xml-create-tns-btn");
-      if(!createButton||createButton.disabled)throw Error(tr("exportUnavailable"));
-      const builder=window.TnsFileSaveExperimental?.buildXmlDoctorArtifact;
-      if(typeof builder!=="function")throw Error(tr("exportUnavailable"));
-      const a=await builder();
-      if(!a?.ok||!a.bytes?.length)throw Error(tr("exportUnavailable"));
-      if(!(await send(a.filename,new Uint8Array(a.bytes))))return;
-      state.files=await state.link.listDir(state.path);
-      state.cache.set(state.path,state.files);
-      state.chosen.clear();rows();say(tr("success"));
+      const artifact=await builder();
+      if(!artifact?.ok||!artifact.bytes?.length)throw Error(tr("exportUnavailable"));
+      const currentEntries=await state.link.listDir(directory);
+      state.cache.set(directory,currentEntries);
+      const knownNames=new Set(currentEntries.map(f=>f.name.toLowerCase()));
+      if(!(await send(artifact.filename,new Uint8Array(artifact.bytes),directory,knownNames))){
+        say(tr("cancelled"));return;
+      }
+      await refreshUploadDestination(directory);
+      say(tr("success")+" · "+directory);
     });
   }
   async function receive(){
@@ -720,6 +877,7 @@
   }
   function close(){
     if(state.busy)return;
+    if(state.destinationPicker)state.destinationPicker.cancel();
     const link=state.link;state.root?.remove();state.root=null;
     state.link=null;state.files=[];state.cache.clear();state.chosen.clear();
     if(link)void link.close().catch(console.error);
@@ -821,6 +979,9 @@
     if(event.target.closest?.("#xml-transfer-calculator-btn")){event.preventDefault();open();}
   });
   document.addEventListener("keydown",event=>{
+    if(event.key==="Escape"&&state.destinationPicker){
+      event.preventDefault();state.destinationPicker.cancel();return;
+    }
     if(event.key==="Escape"&&state.root&&!state.busy)close();
   });
   window.TnsCalculatorTransfer=Object.freeze({open,close});
