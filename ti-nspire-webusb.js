@@ -463,7 +463,7 @@
         ensure(done.length >= 2 && done[0] === 0xff && done[1] === 0, "La calculadora no confirmó el archivo recibido.");
       });
     }
-    async screenshotRle(onProgress = () => {}) {
+    async screenshotRle(onProgress = () => {}, onImageReady = () => {}) {
       return this.usingService(SERVICE_SCREEN_RLE, async () => {
         onProgress(0, 0, "requesting");
         await this.sendData(Uint8Array.of(0));
@@ -496,9 +496,11 @@
         }
         ensure(received === compressedSize, "Captura RLE incompleta.");
         const pixels = decodeRle(encoded, wanted, unitBytes);
+        const image = { width, height, bpp, pixels };
+        onImageReady(image);
         onProgress(received, compressedSize, "finalizing");
         if (this.nnse) this.usbDeadlineAt = Date.now() + 8000;
-        return { width, height, bpp, pixels };
+        return image;
       });
     }
   }
