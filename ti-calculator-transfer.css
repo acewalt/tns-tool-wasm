@@ -284,3 +284,185 @@
 @media (prefers-reduced-motion:reduce){
   .ti-manager-table .ti-tree-row > .ti-manager-item-check{transition:none}
 }
+
+
+/* Independent list/grid switch in the calculator explorer toolbar. */
+.ti-manager-toolbar [data-ti-connect][hidden],
+.ti-manager-toolbar [data-ti-disconnect][hidden]{display:none!important}
+.ti-manager-view-switch{
+  display:inline-flex;
+  gap:2px;
+  align-items:center;
+  padding:3px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  flex:0 0 auto;
+}
+.ti-manager-actions .ti-manager-view-switch button{
+  display:grid;
+  place-items:center;
+  width:31px;
+  height:29px;
+  padding:5px;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+  transition:background-color .16s ease,color .16s ease;
+}
+.ti-manager-actions .ti-manager-view-switch button:hover{
+  background:var(--button-bg);
+  color:var(--text);
+}
+.ti-manager-actions .ti-manager-view-switch button.active,
+.ti-manager-actions .ti-manager-view-switch button[aria-pressed="true"]{
+  border-color:var(--line);
+  background:var(--button-bg);
+  color:var(--text);
+  box-shadow:0 1px 3px #0001;
+}
+.ti-manager-view-switch svg{width:17px;height:17px;display:block;pointer-events:none}
+
+/* Icon tiles use the same USB directory data and individual SVG actions as
+   the existing tree. Only entries in the current directory appear in grid. */
+.ti-manager-table[data-view="grid"] .ti-manager-cols{display:none}
+.ti-manager-table[data-view="grid"]{overflow-y:auto;overflow-x:hidden}
+.ti-manager-table .ti-grid-gallery{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(142px,1fr));
+  align-content:start;
+  align-items:stretch;
+  gap:12px;
+  padding:14px;
+  min-height:100%;
+  box-sizing:border-box;
+}
+.ti-manager-table .ti-grid-tile{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  min-width:0;
+  min-height:165px;
+  padding:11px 8px 8px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--bg);
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.ti-manager-table .ti-grid-tile:hover,
+.ti-manager-table .ti-grid-tile:focus-within{
+  background:var(--button-bg);
+  border-color:var(--accent);
+}
+.ti-manager-table .ti-grid-tile.selected{
+  background:color-mix(in srgb,var(--lime2) 12%,var(--bg));
+  border-color:var(--lime2);
+  box-shadow:inset 0 0 0 1px var(--lime2);
+}
+.ti-manager-table .ti-grid-open{
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:4px;
+  min-height:0;
+  min-width:0;
+  padding:8px 2px 3px;
+  border:0;
+  border-radius:6px;
+  background:none;
+  color:var(--text);
+  text-align:center;
+  cursor:pointer;
+}
+.ti-manager-table .ti-grid-open:hover{background:transparent}
+.ti-manager-table .ti-grid-open .ti-tree-icon{
+  width:52px;
+  height:52px;
+  color:var(--accent);
+  flex:0 0 52px;
+}
+.ti-manager-table .ti-grid-open .ti-tree-icon svg{width:50px;height:50px}
+.ti-manager-table .ti-grid-name{
+  max-width:100%;
+  min-height:18px;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+}
+.ti-manager-table .ti-grid-meta{
+  font-size:10px;
+  line-height:1.3;
+  color:var(--muted);
+  margin-top:auto;
+}
+.ti-manager-table .ti-grid-tile > .ti-manager-item-check{
+  position:absolute;
+  z-index:1;
+  top:9px;
+  left:9px;
+  width:16px;
+  height:16px;
+  margin:0;
+  accent-color:var(--lime2);
+  cursor:pointer;
+}
+.ti-manager-table .ti-grid-tile .ti-row-actions{
+  justify-content:center;
+  gap:8px;
+  padding-top:6px;
+  min-height:31px;
+}
+.ti-manager-table .ti-grid-tile:hover .ti-row-actions,
+.ti-manager-table .ti-grid-tile:focus-within .ti-row-actions{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:none;
+}
+@media(hover:hover) and (pointer:fine){
+  .ti-manager-table .ti-grid-tile > .ti-manager-item-check{
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .16s ease;
+  }
+  .ti-manager-table .ti-grid-tile:hover > .ti-manager-item-check,
+  .ti-manager-table .ti-grid-tile:focus-within > .ti-manager-item-check,
+  .ti-manager-table .ti-grid-tile.selected > .ti-manager-item-check,
+  .ti-manager-table .ti-grid-tile > .ti-manager-item-check:checked{
+    opacity:1;
+    pointer-events:auto;
+  }
+}
+@media(hover:none),(pointer:coarse){
+  .ti-manager-table .ti-grid-tile > .ti-manager-item-check{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .ti-manager-table .ti-grid-tile .ti-row-actions{
+    opacity:1;visibility:visible;pointer-events:auto;transform:none;
+  }
+}
+@media(max-width:760px){
+  .ti-manager-table .ti-grid-gallery{
+    grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+    gap:9px;
+    padding:10px;
+  }
+  .ti-manager-table .ti-grid-tile{min-height:155px}
+}
+@media(prefers-reduced-motion:reduce){
+  .ti-manager-table .ti-grid-tile,
+  .ti-manager-table .ti-grid-tile > .ti-manager-item-check,
+  .ti-manager-actions .ti-manager-view-switch button{transition:none}
+}
