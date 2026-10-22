@@ -213,8 +213,11 @@
         r.classList.toggle("selected",state.chosen.has(file.path));
         r.classList.toggle("ti-tree-destination",file.isDir&&state.path===file.path);
         const cb=document.createElement("input");cb.type="checkbox";
+        cb.className="ti-manager-item-check";
         cb.checked=state.chosen.has(file.path);
         cb.setAttribute("aria-label",tr("select")+" "+file.name);
+        // The checkbox is revealed by the hovered or focused row in CSS,
+        // and stays visible while checked (Windows Explorer style).
         cb.addEventListener("change",()=>{
           if(state.busy){cb.checked=state.chosen.has(file.path);return;}
           if(cb.checked)state.chosen.add(file.path);else state.chosen.delete(file.path);
