@@ -222,3 +222,34 @@
 @media(prefers-reduced-motion:reduce){
   .ti-manager-table .ti-row-actions,.ti-manager-table .ti-row-action{transition:none}
 }
+
+/* Theme-aware per-item SVG masks. The external vector assets stay editable
+   and the icon picks up currentColor from the surrounding button. */
+.ti-manager-table .ti-row-action .ti-action-icon{
+  display:block;
+  width:18px;
+  height:18px;
+  flex:0 0 18px;
+  background-color:currentColor;
+  color:inherit;
+  -webkit-mask-repeat:no-repeat;
+  mask-repeat:no-repeat;
+  -webkit-mask-position:center;
+  mask-position:center;
+  -webkit-mask-size:contain;
+  mask-size:contain;
+  overflow:visible;
+  pointer-events:none;
+}
+.ti-manager-table .ti-action-icon-download{
+  -webkit-mask-image:url("./assets/calculator-actions/download.svg");
+  mask-image:url("./assets/calculator-actions/download.svg");
+}
+.ti-manager-table .ti-action-icon-rename{
+  -webkit-mask-image:url("./assets/calculator-actions/rename.svg");
+  mask-image:url("./assets/calculator-actions/rename.svg");
+}
+.ti-manager-table .ti-action-icon-delete{
+  -webkit-mask-image:url("./assets/calculator-actions/delete.svg");
+  mask-image:url("./assets/calculator-actions/delete.svg");
+}
