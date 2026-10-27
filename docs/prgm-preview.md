@@ -5,8 +5,10 @@ Abre un documento TNS en Syntax Doctor, selecciona un bloque `Prgm` y pulsa
 actual del editor, incluidos los cambios que todavía no has guardado.
 
 La pantalla simula 320 × 240 píxeles con barra de documento e historial de texto.
-**Vista ampliada** aumenta la misma pantalla sin cambiar la resolución ni volver
-a ejecutar el programa. `Request` abre un cuadro de entrada dentro de la pantalla;
+**Vista ampliada** ofrece un área de hasta 800 × 600, como Lua/LÖVE, y oculta la
+barra de calculadora. La letra, las filas y el popup mantienen su tamaño; el texto
+se distribuye usando el ancho disponible. No vuelve a ejecutar el programa ni
+descarta lo escrito en la entrada. `Request` abre un cuadro dentro de la pantalla;
 Enter acepta y Esc cancela esa entrada. Cancelar conserva el valor anterior de
 la variable, si existe, y permite continuar como indica el manual de TI.
 
@@ -28,9 +30,11 @@ las variables de la ejecución anterior.
   `ceiling`, `iPart`, `min`, `max`, `ln`, `log`, `exp`, `mod`, `remain`, `dim`,
   `left`, `right`, `mid` y factorial.
 
-`ClrIO` se acepta como extensión de compatibilidad y limpia la salida. El preview
-lo avisa porque no es una instrucción del catálogo TI-Nspire consultado. El
-historial del dispositivo puede diferir. La presentación de resultados usa seis
+`ClrIO` no es una instrucción del catálogo TI-Nspire consultado. El preview lo
+avisa y lo omite para conservar el historial, como en las capturas de referencia:
+los menús y las respuestas anteriores siguen disponibles al desplazarse. La
+salida mantiene su margen y el espacio de la barra de desplazamiento desde el
+inicio. La presentación de resultados usa seis
 cifras significativas; los cálculos internos usan números JavaScript de doble
 precisión.
 
