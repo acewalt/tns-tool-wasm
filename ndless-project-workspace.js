@@ -117,6 +117,7 @@
   }
 
   function wizard(){
+    if(window.TnsNdlessDesktopRequired?.open())return;
     if(hasNormalProject()&&!state.project)return;
     if(state.project&&!confirm(tr("replaceProject")))return;
     const ov=document.createElement("div");ov.className="ndless-project-dialog-overlay";ov.innerHTML=`<form class="ndless-project-dialog"><div class="ndless-project-dialog-head"><div><span>NDLESS</span><h3>${esc(tr("title"))}</h3></div><button type="button" data-dialog-close>×</button></div><label>${esc(tr("name"))}<input name="name" value="my-ndless-app" autocomplete="off"></label><div class="ndless-project-dialog-grid"><label>${esc(tr("language"))}<select name="language"><option value="c">${esc(tr("c"))}</option><option value="cpp">${esc(tr("cpp"))}</option></select></label><label>${esc(tr("template"))}<select name="template"><option value="basic">${esc(tr("basic"))}</option><option value="graphics">${esc(tr("graphics"))}</option><option value="console">${esc(tr("consoleTpl"))}</option></select></label></div><label>${esc(tr("target"))}<select name="target"><option value="bflt-r903">${esc(tr("legacy"))}</option><option value="zehn-modern">${esc(tr("modern"))}</option></select></label><p>${esc(tr("sdkFeature"))}</p><div class="ndless-project-dialog-actions"><button type="button" data-dialog-cancel>${esc(tr("cancel"))}</button><button class="primary" type="submit">${esc(tr("create"))}</button></div></form>`;document.body.appendChild(ov);
@@ -128,6 +129,7 @@
     if(!state.project)return;saveCurrentFile();const entries=core().exportEntries(state.project);if(!window.JSZip){alert("JSZip is not ready.");return;}const zip=new JSZip();for(const [name,text] of Object.entries(entries))zip.file(name,String(text));const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`${core().sanitizeProjectName(state.project.name)}-ndless-project.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderConsole([tr("downloaded")]);
   }
   async function openProjectZip(file){
+    if(window.TnsNdlessDesktopRequired?.open())return;
     if(!file||hasNormalProject()&&!state.project)return;
     if(!window.JSZip){alert("JSZip is not ready.");return;}const zip=await JSZip.loadAsync(file),entries={};for(const [name,obj] of Object.entries(zip.files)){if(obj.dir||name.includes("../")||name.startsWith("/"))continue;if(!isTextFile(name)&&name!==".tnsproject.json")continue;entries[name]=await obj.async("text");}activateProject(core().importEntries(entries));renderConsole(["Project imported."]);
   }

@@ -1088,8 +1088,17 @@ function createStatsVisitorId() {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
-function getStatsVisitorId() {
+let desktopStatsIdentityPromise;
+function desktopStatsIdentity() {
+  return desktopStatsIdentityPromise ||= Promise.resolve().then(() => window.TnsDesktop.statsIdentity());
+}
+
+async function getStatsVisitorId() {
   try {
+    if (window.TnsDesktop) {
+      const identity = await desktopStatsIdentity();
+      return identity.enabled && /^[A-Za-z0-9_-]{16,80}$/.test(identity.visitorId) ? identity.visitorId : "";
+    }
     const existing = localStorage.getItem(STATS_VISITOR_ID_STORAGE_KEY);
     if (existing && /^[A-Za-z0-9_-]{16,80}$/.test(existing)) return existing;
     const visitorId = createStatsVisitorId();
@@ -1104,7 +1113,7 @@ function getStatsVisitorId() {
 async function recordTodayVisit() {
   if (!STATS_API_BASE_URL) return;
   const today = new Date().toISOString().slice(0, 10);
-  const visitorId = getStatsVisitorId();
+  const visitorId = await getStatsVisitorId();
   if (!visitorId) return;
   try {
     if (localStorage.getItem(STATS_VISIT_DATE_STORAGE_KEY) === today) return;
@@ -1132,6 +1141,7 @@ async function recordTodayVisit() {
 async function recordSuccessfulTnsGeneration() {
   if (!STATS_API_BASE_URL) return;
   try {
+    if (window.TnsDesktop && !(await desktopStatsIdentity()).enabled) return;
     const payload = await fetchStatsJson("/api/generated", {
       method: "POST",
       keepalive: true,
