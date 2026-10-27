@@ -19,9 +19,10 @@
   const VAR_BASE = 0x50000000;
   const VAR_SIZE = 0x00010000;
   const EXIT_ADDR = 0x7fff0000;
+  const LCD_THUNKS = EXIT_ADDR + 0x100;
 
   const SCREEN_PTR = 0xC0000010;
-  const SCREEN_MODE = 0xC000001C;
+  const SCREEN_MODE = 0xC0000018; // CX PL111 control (classic PL110 uses +0x1C).
   const SCREEN_INT = 0xC0000020;
   const CONTRAST = 0x900F0020;
   const KEYPAD_BASE = 0x900E0000;
@@ -201,7 +202,9 @@
     const chunks = [];
     let pos = ptr;
     for (let left=max; left>0;) {
-      const take = Math.min(left, 256);
+      // A valid C string can end immediately below an unmapped page (small
+      // stack locals do this). Never over-read the page before finding NUL.
+      const take = Math.min(left, 256, PAGE-(pos&(PAGE-1)));
       const bytes = readMem(e, pos, take);
       const end = bytes.indexOf(0);
       if (end >= 0) { chunks.push(bytes.subarray(0,end)); break; }
@@ -221,9 +224,9 @@
     return count;
   }
 
-  function normalizePath(value) {
+  function normalizePath(value, base="/documents") {
     let path = String(value || "").replace(/\\/g,"/").replace(/^A:/i,"");
-    if (!path.startsWith("/")) path = "/documents/" + path;
+    if (!path.startsWith("/")) path = base + "/" + path;
     path = path.replace(/\/+/,"/");
     const parts=[];
     for (const part of path.split("/")) {
@@ -253,6 +256,9 @@
     Digit6:[0x14,0x008], Numpad6:[0x14,0x008], Digit7:[0x16,0x080], Numpad7:[0x16,0x080],
     Digit8:[0x16,0x020], Numpad8:[0x16,0x020], Digit9:[0x16,0x008], Numpad9:[0x16,0x008],
     KeyA:[0x1C,0x040], KeyB:[0x1C,0x010], KeyC:[0x1C,0x004], KeyD:[0x1A,0x100], KeyE:[0x1A,0x040], KeyF:[0x1A,0x010], KeyG:[0x1A,0x004],
+    KeyH:[0x18,0x100],KeyI:[0x18,0x040],KeyJ:[0x18,0x010],KeyK:[0x18,0x004],KeyL:[0x16,0x100],KeyM:[0x16,0x040],KeyN:[0x16,0x010],KeyO:[0x16,0x004],
+    KeyP:[0x14,0x100],KeyQ:[0x14,0x040],KeyR:[0x14,0x010],KeyS:[0x14,0x004],KeyT:[0x12,0x100],KeyU:[0x12,0x040],KeyV:[0x12,0x010],KeyW:[0x12,0x004],KeyX:[0x10,0x100],KeyY:[0x10,0x040],KeyZ:[0x10,0x010],
+    Home:[0x1C,0x008],F1:[0x1C,0x020],ContextMenu:[0x1C,0x020],Comma:[0x12,0x001],
   });
 
   function setKeyMatrix(session, row, col, pressed) {
@@ -290,10 +296,15 @@
   function mapHardware(e, uc) {
     for (const page of [0x90090000,0x900B0000,0x900C0000,0x900D0000,0x900E0000,0x900F0000,0xC0000000,0xDC000000]) mapPage(e,uc,page,PAGE);
     mapPage(e,uc,FB_BASE,FB_BYTES);
-    writeMemU32(e,SCREEN_PTR,FB_BASE); writeMemU32(e,SCREEN_MODE,0); writeMemU32(e,SCREEN_INT,0);
+    writeMemU32(e,SCREEN_PTR,FB_BASE); writeMemU32(e,SCREEN_MODE,0x10c); writeMemU32(e,SCREEN_INT,0);
+    for(let i=0;i<16;i++){const c=Math.round((15-i)*31/15);writeMemU16(e,0xC0000200+i*2,c|(c<<5)|(c<<10));}
+    for(let type=0;type<7;type++){const code=new Uint8Array(8);w32(code,0,0xef400100+type);w32(code,4,0xe12fff1e);writeMem(e,LCD_THUNKS+type*8,code);}
     writeMemU32(e,CONTRAST,0x80); writeMemU32(e,TIMER2_TOP,0xffffffff); writeMemU32(e,TIMER2_VALUE_CX,0xffffffff);
     writeMemU32(e,TIMER2_VALUE_CLASSIC,0); writeMemU32(e,RTC_VALUE,Math.floor(Date.now()/1000)>>>0);
     writeMemU32(e,TIMER2_TOP+0x10,1);
+    // ON is active-low; a zero-initialized peripheral means "pressed" and
+    // immediately quits games which poll on_key_pressed().
+    writeMemU32(e,0x900B0028,16);
   }
   function updateHardware(session) {
     const elapsedMs = performance.now() - session.startedAt;
@@ -312,6 +323,13 @@
     const freed=[];
     const fileHandles = new Map();
     const logs = [];
+    let cwd="/documents";
+    const directories=new Set(["/","/documents"]),directoryHandles=new Map(),searchHandles=new Map();
+    const resolvePath=value=>normalizePath(value,cwd);
+    function syncDirectories(){for(const file of mountedFiles.values()){let dir=file.path;while((dir=dir.slice(0,dir.lastIndexOf('/'))))directories.add(dir);}}
+    function children(path){syncDirectories();const prefix=path==='/'?'/':path+'/';const names=new Set();for(const name of [...directories,...mountedFiles.keys()]){if(name.startsWith(prefix)){const rest=name.slice(prefix.length);if(rest)names.add(rest.split('/')[0]);}}return[...names].sort();}
+    function changeDirectory(path){syncDirectories();const next=resolvePath(path);if(!directories.has(next)){setErrno(2);return -1;}cwd=next;return 0;}
+    function searchNext(ptr){const search=searchHandles.get(ptr),name=search?.names[search.index++];if(name==null)return -1;const path=normalizePath(name,search.path),entry=new Uint8Array(308);entry.set(encodeText(name).subarray(0,265),13);entry[279]=directories.has(path)?16:0;w32(entry,288,mountedFiles.get(path)?.bytes.length||0);writeMem(e,ptr,entry);return 0;}
 
     function reg(n) { return e.reg_read_i32(uc[`ARM_REG_R${n}`]) >>> 0; }
     function setReg(n,v) { e.reg_write_i32(uc[`ARM_REG_R${n}`], Number(v)|0); }
@@ -370,7 +388,7 @@
       try { writeMemU32(e,(handle.ptr+12)>>>0,handle.eof?0x10:0); } catch (_) {}
     }
     function openFile(pathValue, modeValue) {
-      const path=normalizePath(pathValue), mode=String(modeValue||"r");
+      const path=resolvePath(pathValue), mode=String(modeValue||"r");
       let file=mountedFiles.get(path);
       if (!file && /[wa+]/.test(mode)) file=mountVirtualFile(path,new Uint8Array(0),{writable:true});
       if (!file) { setErrno(2); return 0; }
@@ -409,8 +427,8 @@
       if(h.pos>=h.file.bytes.length){h.eof=true;updateHandleFlags(h);return -1;} return h.file.bytes[h.pos++];
     }
     function statFile(pathPtr,outPtr) {
-      const file=getVirtualFile(readCString(e,pathPtr)); if(!file){setErrno(2);return -1;}
-      const b=new Uint8Array(36); w16(b,0,1);w32(b,4,0);w32(b,8,0x81A4);w16(b,12,1);w16(b,14,0);w16(b,16,0);w16(b,18,1);w32(b,20,file.bytes.length);w32(b,24,file.mtime);w32(b,28,file.mtime);w32(b,32,file.mtime);writeMem(e,outPtr,b);return 0;
+      syncDirectories();const path=resolvePath(readCString(e,pathPtr)),file=mountedFiles.get(path),isDir=directories.has(path); if(!file&&!isDir){setErrno(2);return -1;}
+      const b=new Uint8Array(36); w16(b,0,1);w32(b,4,0);w32(b,8,isDir?0x41ed:0x81A4);w16(b,12,1);w16(b,14,0);w16(b,16,0);w16(b,18,1);w32(b,20,file?.bytes.length||0);w32(b,24,file?.mtime||0);w32(b,28,file?.mtime||0);w32(b,32,file?.mtime||0);writeMem(e,outPtr,b);return 0;
     }
 
     function ascii2utf16(dst,src,maxBytes) {
@@ -420,10 +438,11 @@
 
     function decodeSwi(intno) {
       const pc=e.reg_read_i32(uc.ARM_REG_PC)>>>0;
+      if(e.reg_read_i32(uc.ARM_REG_CPSR)&32){for(const at of [(pc-2)>>>0,pc]){try{const ins=readMemU16(e,at);if((ins&0xff00)===0xdf00)return ins&255;}catch(_){}}return null;}
       for(const at of [(pc-4)>>>0,pc]){
-        try{const ins=readMemU32(e,at);if((ins>>>24)===0xef)return ins&0x00ffffff;}catch(_){}
+        try{const ins=readMemU32(e,at);if(((ins>>>24)&15)===15)return ins&0x00ffffff;}catch(_){}
       }
-      return Number(intno)>>>0;
+      return null;
     }
     function unsupported(nr) {
       const pc=e.reg_read_i32(uc.ARM_REG_PC)>>>0;
@@ -446,20 +465,17 @@
       if(baseNr===2){ret(1);return true;} // virtual CX/color hardware
       if(baseNr===3){ret(0);return true;}
       if(baseNr===5){ret(0);return true;}
-      if(baseNr===6){ret(2003);return true;} // old-enough to keep nDoom RGB565 path, new-enough for Ndless APIs
+      if(baseNr===6){ret(2022);return true;} // Modern LCD API, also required by current community projects.
       if(baseNr===7){ret(0);return true;}
       if(baseNr===8){ret(1);return true;}
       if(baseNr===9){ret(0);return true;}
       if(baseNr===10||baseNr===11)return false;
-      if(baseNr===12){ret(1);return true;}
-      if(baseNr===13){
-        const ptr=reg(0),type=reg(1);
-        if(type!==0)throw Object.assign(new Error(`Unsupported LCD format ${type}. Expected RGB565.`),{code:"NDLESS_LCD_UNSUPPORTED"});
-        writeMem(e,FB_BASE,readMem(e,ptr,FB_BYTES));writeMemU32(e,SCREEN_PTR,FB_BASE);session.blits=(session.blits||0)+1;
-        ret(0);return true;
-      }
+      if(baseNr===12){const nr=reg(0),id=nr&~SYSCALL_FLAG_MASK;const supported=(nr&SYSCALL_ISEMU)?false:(nr&SYSCALL_ISVAR)?[59,61,71,72,73].includes(id):(nr&SYSCALL_ISEXT)?[2,3,5,6,7,8,9,12,13,14,15].includes(id):(id<=20||id>=22&&id<=29||id>=31&&id<=58||id>=60&&id<=70||[74,89,95,96,97].includes(id));ret(supported?1:0);return true;}
+      // This syscall returns a function pointer cached and called by libndls.
+      // It does not take the pixel buffer itself.
+      if(baseNr===13){const type=reg(0);ret(type<7?LCD_THUNKS+type*8:0);return true;}
       if(baseNr===14){ret(0);return true;} // SCR_320x240_565
-      if(baseNr===15){if(reg(0)!==0)throw Object.assign(new Error(`Unsupported LCD format ${reg(0)}. Expected RGB565.`),{code:"NDLESS_LCD_UNSUPPORTED"});ret(1);return true;}
+      if(baseNr===15){const type=reg(0);if(type!==0xffffffff&&type>6)throw Object.assign(new Error(`Unsupported LCD format ${type}.`),{code:"NDLESS_LCD_UNSUPPORTED"});const mode=type===1?2:type===4?3:type===5||type===6?4:6;writeMemU32(e,SCREEN_MODE,(readMemU32(e,SCREEN_MODE)&~14)|(mode<<1));ret(1);return true;}
       return false;
     }
 
@@ -481,22 +497,26 @@
         case 12: {const s=formatC(a1,2),bytes=encodeText(s),hp=a0;if(hp===VAR_STDOUT||hp===VAR_STDERR)appendLog(s);else{const tmp=allocRaw(bytes.length,false);writeMem(e,tmp,bytes);fwrite(tmp,1,bytes.length,hp);}ret(s.length);return true;}
         case 13: ret(ascii2utf16(a0,a1,a2)); return true;
         case 14: ret(0); return true;
-        case 15: case 16: case 17: return false;
+        case 15: {syncDirectories();const path=resolvePath(readCString(e,a0));if(directories.has(path)){setErrno(17);ret(-1);}else{directories.add(path);ret(0);}return true;}
+        case 16: {const path=resolvePath(readCString(e,a0));if(!directories.has(path)||children(path).length){setErrno(39);ret(-1);}else{directories.delete(path);ret(0);}return true;}
+        case 17: ret(changeDirectory(readCString(e,a0)));return true;
         case 18: ret(statFile(a0,a1)); return true;
-        case 19: {mountedFiles.delete(normalizePath(readCString(e,a0)));ret(0);return true;}
-        case 20: {const old=normalizePath(readCString(e,a0)),neo=normalizePath(readCString(e,a1)),file=mountedFiles.get(old);if(!file){ret(-1);return true;}mountedFiles.delete(old);file.path=neo;mountedFiles.set(neo,file);ret(0);return true;}
+        case 19: {ret(mountedFiles.delete(resolvePath(readCString(e,a0)))?0:-1);return true;}
+        case 20: {const old=resolvePath(readCString(e,a0)),neo=resolvePath(readCString(e,a1)),file=mountedFiles.get(old);if(!file){ret(-1);return true;}mountedFiles.delete(old);file.path=neo;mountedFiles.set(neo,file);ret(0);return true;}
         case 21: return false;
         case 22: {appendLog(readCString(e,a0));ret(0);return true;}
-        case 23: case 24: case 25: return false;
+        case 23: {const pattern=readCString(e,a1),full=resolvePath(pattern),slash=full.lastIndexOf('/'),path=full.slice(0,slash)||'/',glob=full.slice(slash+1);const expression=glob==='*.*'?'.*':glob.replace(/[.+^${}()|[\]\\]/g,'\\$&').replace(/\*/g,'.*').replace(/\?/g,'.');const rx=new RegExp('^'+expression+'$','i');searchHandles.set(a0,{path,names:children(path).filter(name=>rx.test(name)),index:0});ret(searchNext(a0));return true;}
+        case 24: ret(searchNext(a0));return true;
+        case 25: searchHandles.delete(a0);ret(0);return true;
         case 26: {const x=readCString(e,a0),y=readCString(e,a1);ret(x<y?-1:x>y?1:0);return true;}
         case 27: {const s=readCString(e,a1);writeCString(e,a0,s);ret(a0);return true;}
         case 28: {let x=readCString(e,a0),y=readCString(e,a1);writeCString(e,a0,x+y.slice(0,a2));ret(a0);return true;}
         case 29: ret(encodeText(readCString(e,a0)).length); return true;
-        case 30: return false;
+        case 30: throw Object.assign(new Error(`TI-Nspire dialog: ${readCString(e,a1)} — ${readCString(e,a2)}`),{code:"NDLESS_OS_DIALOG"});
         case 31: {const s=readCString(e,a0),ch=String.fromCharCode(a1&255),i=s.lastIndexOf(ch);ret(i<0?0:(a0+i));return true;}
         case 32: {const s=formatC(a1,0,a2);writeCString(e,a0,s);ret(s.length);return true;}
         case 33: ret(fseek(a0,a1,a2)); return true;
-        case 34: {writeCString(e,a1,"A:\\documents");ret(1);return true;}
+        case 34: {writeCString(e,a1,"A:"+cwd.replace(/\//g,"\\"));ret(0);return true;}
         case 35: ret(readMemU32(e,a0)); return true;
         case 36: ret(readMemU16(e,a0)); return true;
         case 37: {const bytes=encodeText(readCString(e,a1));const n=a2>>>0,out=new Uint8Array(n);out.set(bytes.subarray(0,n));writeMem(e,a0,out);ret(a0);return true;}
@@ -515,26 +535,30 @@
         case 50: ret(reallocRaw(a0,a1));return true;
         case 51: {const s=readCString(e,a0),set=readCString(e,a1);let i=-1;for(let j=0;j<s.length;j++)if(set.includes(s[j])){i=j;break;}ret(i<0?0:a0+i);return true;}
         case 52: ret(fgetc(a0));return true;
-        case 53: return false;
+        case 53: ret(changeDirectory(readCString(e,a0))===0?1:0);return true;
         case 54: {const b=Uint8Array.of(a0&255),tmp=allocRaw(1,false);writeMem(e,tmp,b);fwrite(tmp,1,1,a1);ret(a0&255);return true;}
         case 55: {const b=readMem(e,a1,a2);writeMem(e,a0,b);ret(a0);return true;}
         case 56: {const b=readMem(e,a0,a1);b.reverse();writeMem(e,a0,b);ret(a0);return true;}
         case 57: {const s=readCString(e,a0),i=s.indexOf(String.fromCharCode(a1&255));ret(i<0?0:a0+i);return true;}
         case 58: {const x=readCString(e,a0).slice(0,a2),y=readCString(e,a1).slice(0,a2);ret(x<y?-1:x>y?1:0);return true;}
         case 60: ret(openFile(readCString(e,a0),readCString(e,a1)));return true;
+        case 61: ret(VAR_ERRNO);return true;
         case 62: {const c=String.fromCharCode(a0&255);ret(c.toUpperCase().charCodeAt(0));return true;}
         case 63: {const s=readCString(e,a0),m=s.match(/^[\s]*[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/),val=m?Number(m[0]):0;if(a1)writeMemU32(e,a1,(a0+(m?m[0].length:0))>>>0);retDouble(val);return true;}
         case 64: {const s=readCString(e,a0),base=a2||10,m=s.match(/^[\s]*[+-]?[0-9A-Za-z]+/),v=m?parseInt(m[0],base):0;if(a1)writeMemU32(e,a1,(a0+(m?m[0].length:0))>>>0);ret(Number.isFinite(v)?v:0);return true;}
-        case 65: {const h=fileHandle(a1);if(h&&a0!==0xffffffff){h.ungot=a0&255;h.eof=false;updateHandleFlags(h);ret(a0&255);}else ret(-1);return true;}
+        case 65: {const h=fileHandle(a0);if(h&&h.pos>0){h.pos--;h.eof=false;h.ungot=null;updateHandleFlags(h);ret(0);}else ret(-1);return true;}
         case 66: {const p=mallocCString(`errno ${a0|0}`);ret(p);return true;}
         case 67: {const s=readCString(e,a0)+readCString(e,a1);writeCString(e,a0,s);ret(a0);return true;}
         case 68: {const s=readCString(e,a0),needle=readCString(e,a1),i=s.indexOf(needle);ret(i<0?0:a0+i);return true;}
         case 69: ret(0);return true;
-        case 70: {mountedFiles.delete(normalizePath(readCString(e,a0)));ret(0);return true;}
+        case 70: {ret(mountedFiles.delete(resolvePath(readCString(e,a0)))?0:-1);return true;}
         case 74: {const h=fileHandle(a0);ret(h?.error?1:0);return true;}
         case 75: case 76: case 77: case 78: case 79: case 88: return false;
         case 89: {const h=fileHandle(a0);ret(h?h.pos:-1);return true;}
-        case 93: case 94: case 95: case 96: case 97: return false;
+        case 93: case 94: return false;
+        case 95: {const path=resolvePath(readCString(e,a0));syncDirectories();if(!directories.has(path)){setErrno(2);ret(0);return true;}const ptr=allocRaw(8);directoryHandles.set(ptr,{names:children(path),index:0,entry:allocRaw(512)});ret(ptr);return true;}
+        case 96: {const dir=directoryHandles.get(a0);if(!dir){setErrno(9);ret(0);return true;}const name=dir.names[dir.index++];if(name==null){ret(0);return true;}writeCString(e,dir.entry,name,512);ret(dir.entry);return true;}
+        case 97: {const dir=directoryHandles.get(a0);if(!dir){ret(-1);return true;}freeRaw(dir.entry);freeRaw(a0);directoryHandles.delete(a0);ret(0);return true;}
         default:return false;
       }
     }
@@ -544,11 +568,19 @@
       e.emu_stop();
     }
     function dispatchInterrupt(intno) {
-      const nr=decodeSwi(intno)>>>0; session.lastSyscall=nr; session.syscallCount++;
-      const isVar=!!(nr&SYSCALL_ISVAR),isExt=!!(nr&SYSCALL_ISEXT),baseNr=nr&~SYSCALL_FLAG_MASK;
+      const decoded=decodeSwi(intno);
+      if(decoded==null){session.pendingError=Object.assign(new Error(`ARM CPU exception ${intno} (not a software syscall).`),{code:"NDLESS_CPU_EXCEPTION"});return;}
+      const nr=decoded>>>0; session.lastSyscall=nr; session.syscallCount++;
+      const isVar=!!(nr&SYSCALL_ISVAR),isExt=!!(nr&SYSCALL_ISEXT),isEmu=!!(nr&SYSCALL_ISEMU),baseNr=nr&~SYSCALL_FLAG_MASK;
       let ok=false;
       try {
-        if(isVar) ok=handleVariable(baseNr);
+        if(isEmu&&baseNr>=0x100&&baseNr<0x107){
+          const type=baseNr-0x100,size=type===1?FB_BYTES/4:type===4?FB_BYTES/2:FB_BYTES;
+          let bytes=readMem(e,reg(0),size);
+          if(type===2||type===6){const transposed=new Uint8Array(FB_BYTES);for(let x=0;x<320;x++)for(let y=0;y<240;y++){const source=(x*240+y)*2,dest=(y*320+x)*2;transposed[dest]=bytes[source];transposed[dest+1]=bytes[source+1];}bytes=transposed;}
+          writeMem(e,FB_BASE,bytes);writeMemU32(e,SCREEN_PTR,FB_BASE);session.blits=(session.blits||0)+1;ret(0);ok=true;
+        }
+        else if(isVar) ok=handleVariable(baseNr);
         else if(isExt) ok=handleExtended(baseNr);
         else ok=handleStandard(baseNr);
       } catch(error) {
@@ -575,9 +607,22 @@
   }
 
   function currentFramebuffer(session) {
-    const candidates=[]; try{candidates.push(readMemU32(session.e,SCREEN_PTR));}catch(_){} candidates.push(FB_BASE);
-    for(const ptr of candidates){if(!ptr)continue;try{const bytes=readMem(session.e,ptr,FB_BYTES);if(bytes.length===FB_BYTES)return{ptr:ptr>>>0,bytes};}catch(_){}}
-    return null;
+    const ptr=readMemU32(session.e,SCREEN_PTR);
+    try{
+      if(!ptr)throw new Error('The LCD framebuffer pointer is null.');
+      const control=readMemU32(session.e,SCREEN_MODE),mode=(control>>>1)&7,bgr=!!(control&0x100);
+      if(mode===6&&bgr)return{ptr:ptr>>>0,bytes:readMem(session.e,ptr,FB_BYTES)};
+      if(![2,3,4,6].includes(mode))throw new Error(`Unsupported LCD controller mode ${mode}.`);
+      const raw=readMem(session.e,ptr,mode===2?FB_BYTES/4:mode===3?FB_BYTES/2:FB_BYTES),out=new Uint8Array(FB_BYTES);
+      const palette=mode<4?readMem(session.e,0xC0000200,512):null;
+      for(let i=0;i<76800;i++){
+        let word=mode===2?u16(palette,((raw[i>>>1]>>>((i&1)*4))&15)*2):mode===3?u16(palette,raw[i]*2):u16(raw,i*2);
+        if(mode===6){word=((word&31)<<11)|(word&0x7e0)|(word>>>11);}
+        else{const low=word&31,high=(word>>>10)&31,g=(word>>>5)&31,r=bgr?high:low,b=bgr?low:high;word=(r<<11)|((g*2+(g>>>4))<<5)|b;}
+        w16(out,i*2,word);
+      }
+      return{ptr:ptr>>>0,bytes:out};
+    }catch(error){throw Object.assign(new Error(`LCD framebuffer error at 0x${ptr.toString(16)}: ${String(error.message||error)}`),{code:'NDLESS_FRAMEBUFFER_ERROR'});}
   }
   function setKey(session, code, pressed) {
     const map=KEYMAP[code];if(map)setKeyMatrix(session,map[0],map[1],pressed);
@@ -592,7 +637,8 @@
       const pc=session.e.reg_read_i32(session.uc.ARM_REG_PC)>>>0;
       if(pc===EXIT_ADDR){session.exitCode=session.e.reg_read_i32(session.uc.ARM_REG_R0)|0;return{...stateSnapshot(session),exited:true,exitCode:session.exitCode};}
       session.pendingError=null;
-      session.e.emu_start(pc,EXIT_ADDR,0,instructions);
+      const thumb=(session.e.reg_read_i32(session.uc.ARM_REG_CPSR)&32)?1:0;
+      session.e.emu_start(pc|thumb,EXIT_ADDR,0,instructions);
       session.instructions+=instructions;
       if(session.pendingInterrupt!=null){const intr=session.pendingInterrupt;session.pendingInterrupt=null;session.kernel.dispatchInterrupt(intr);}
       if(session.pendingError)throw session.pendingError;

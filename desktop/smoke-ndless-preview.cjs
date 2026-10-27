@@ -47,7 +47,13 @@ async function run(win,report,animation){
   const start=performance.now();await new Promise(r=>requestAnimationFrame(r));const uiResponseMs=performance.now()-start;
   if(uiResponseMs>300)throw Error('Infinite ARM program blocked the editor');
   model.setValue(lcd(0x07e0));await wait(()=>pixel()[1]===255&&pixel()[0]===0);
-  const out={ok:true,initial,edited,animationColors:colors.size,keyboard:true,pause:true,sourceError:true,immediateInvalidation:true,infiniteLoopStopped:true,uiResponseMs};
+  model.setValue('#include <os.h>\\n#include <stdio.h>\\n#include <string.h>\\nstatic unsigned short p[76800];\\nint main(int argc,char**argv){char b[32]={0};FILE*f=argc>1?fopen(argv[1],"rb"):0;if(f){fread(b,1,31,f);fclose(f);}for(int i=0;i<76800;i++)p[i]=!strcmp(b,"RESOURCE_OK")?0x07e0:0xf800;lcd_init(0);lcd_blit(p,0);while(!isKeyPressed(KEY_NSPIRE_ESC)){}return 0;}');
+  await wait(()=>window.NdlessLivePreview.state.stage==='running'&&pixel()[0]===255);
+  const resources=document.querySelector('[data-live-resources]'),transfer=new DataTransfer();transfer.items.add(new File(['RESOURCE_OK'],'stage with space.txt'));resources.files=transfer.files;resources.dispatchEvent(new Event('change'));
+  await wait(()=>pixel()[1]===255&&pixel()[0]===0);
+  if(!document.querySelector('[data-live-args]').value.includes('stage with space.txt'))throw Error('Resource path argument is missing');
+  document.querySelector('[data-live-clear-resources]').click();await wait(()=>pixel()[0]===255&&pixel()[1]===0);
+  const out={ok:true,initial,edited,animationColors:colors.size,keyboard:true,pause:true,sourceError:true,immediateInvalidation:true,infiniteLoopStopped:true,uiResponseMs,resources:true,quotedArguments:true,clearResources:true};
   workspace.closeProject();if(window.NdlessLivePreview.state!==null)throw Error('Closing workspace retained ARM execution');
   return out;
  })()`);

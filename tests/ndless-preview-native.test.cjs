@@ -26,6 +26,7 @@ test('real SDK + isolated ARM preview stress: C, C++, multifile, doubles, animat
         if(fixture.kind==='unsupported'){assert.equal(message.code,'NDLESS_SWI_UNSUPPORTED');assert.equal(message.syscall,0x123456);done();}
         else if(fixture.kind==='lcd'){assert.equal(message.code,'NDLESS_LCD_UNSUPPORTED');done();}
         else if(fixture.kind==='memory'){assert.match(message.error,/UNMAPPED|memory/i);done();}
+        else if(fixture.kind==='framebuffer'){assert.equal(message.code,'NDLESS_FRAMEBUFFER_ERROR');done();}
         else done(Error(fixture.name+': '+message.error));return;
        }
        if(message.logs?.length)logs=message.logs;
@@ -38,6 +39,8 @@ test('real SDK + isolated ARM preview stress: C, C++, multifile, doubles, animat
        if(fixture.kind==='fractal'&&colors.size>=15)done();
        if(fixture.kind==='arm'&&b.readUInt16LE(10000)===31)done();
        if(fixture.kind==='allocation'&&b.readUInt16LE(10000)===0xffe0)done();
+       if(fixture.kind==='abi'&&b.readUInt16LE(10000)===0x07e0&&logs.join('').includes('THUMB_OK')&&logs.join('').includes('CONDITIONAL_OK'))done();
+       if(fixture.kind==='stack'&&b.readUInt16LE(10000)===0x07e0)done();
        if(fixture.kind==='animation'&&colors.size===1&&b.readUInt16LE(10000)!==0){
         if(!sentKey){worker.postMessage({type:'key',code:'Enter',down:true});sentKey=true;}
         if((b.readUInt16LE(10000)&0x7e0)===0x7e0)green=true;

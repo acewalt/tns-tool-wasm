@@ -19,7 +19,14 @@ on:
       - 'ndless-arm-preview-worker.js'
       - 'ndless-live-*.js'
       - 'tests/ndless-live-session.test.js'
-      - 'tests/ndless-preview-native.test.cjs'
+      - 'tests/ndless-preview-*.test.cjs'
+      - 'tests/helpers/ndless-native.cjs'
+      - 'tests/fixtures/nes-homebrew.cjs'
+      - 'tests/fixtures/sprite-bmp.cjs'
+      - 'examples/ndless-games/**'
+      - 'tools/ndless-community-preview.cjs'
+      - 'tools/package-ndless-games.cjs'
+      - 'ndless-project-workspace.css'
       - 'tests/fixtures/ndless-preview-projects.cjs'
       - 'tests/helpers/ndless-preview-worker.cjs'
       - 'ndless-project-sdk-enhancements-v2.js'
@@ -151,7 +158,25 @@ jobs:
         shell: pwsh
         run: |
           $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
-          node --test tests/ndless-preview-native.test.cjs
+          node --test --test-concurrency=1 tests/ndless-preview-native.test.cjs tests/ndless-preview-lcd-files.test.cjs tests/ndless-preview-games.test.cjs
+      - name: Play pinned nDoom and NesNspire builds through the ARM preview
+        shell: pwsh
+        run: |
+          $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
+          $env:TNS_COMMUNITY_CACHE = Join-Path $env:RUNNER_TEMP 'community-preview'
+          node tools/ndless-community-preview.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Ndless-community-game-evidence
+          path: |
+            ${{ runner.temp }}/community-preview/report.json
+            ${{ runner.temp }}/community-preview/*.png
+            ${{ runner.temp }}/community-preview/nes-log.txt
+            ${{ runner.temp }}/community-preview/failure.txt
+          if-no-files-found: ignore
+      - name: Export original playable source projects
+        run: node tools/package-ndless-games.cjs
       - name: Pack Windows portable folder ZIP (extract once)
         run: npm run desktop:build:win
         env:

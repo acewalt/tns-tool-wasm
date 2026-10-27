@@ -16,4 +16,4 @@ globalThis.importScripts=(...urls)=>{for(const url of urls){
 }};
 vm.runInThisContext(fs.readFileSync(path.join(root,'ndless-arm-preview-worker.js'),'utf8'),{filename:'ndless-arm-preview-worker.js'});
 parentPort.on('message',data=>globalThis.onmessage({data}));
-globalThis.onmessage({data:{type:'start',bytes:workerData.bytes,engine:'unicorn.js',wasm:'unicorn.wasm'}});
+globalThis.onmessage({data:{type:'start',bytes:workerData.bytes,files:workerData.files,args:workerData.args,engine:'unicorn.js',wasm:'unicorn.wasm'}});

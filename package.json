@@ -1,6 +1,6 @@
 {
   "name": "tns-tool-wasm",
-  "version": "0.1.11",
+  "version": "0.1.12",
   "private": true,
   "type": "module",
   "scripts": {
@@ -19,7 +19,9 @@
     "desktop:test": "node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs tests/desktop-sdk-runtime.test.cjs",
     "test:calculator-session": "node tests/calculator-session.test.js && node tests/nnse-transport.test.js",
     "test:prgm": "node --test tests/prgm-preview.test.js",
-    "test:ndless-preview": "node --test tests/ndless-live-session.test.js && node tests/ndless-arm-runtime.test.js && node --test tests/ndless-preview-native.test.cjs"
+    "test:ndless-preview": "node --test tests/ndless-live-session.test.js && node tests/ndless-arm-runtime.test.js && node --test --test-concurrency=1 tests/ndless-preview-native.test.cjs tests/ndless-preview-lcd-files.test.cjs tests/ndless-preview-games.test.cjs",
+    "test:ndless-games": "node --test --test-concurrency=1 tests/ndless-preview-games.test.cjs",
+    "test:ndless-community": "node tools/ndless-community-preview.cjs"
   },
   "engines": {
     "node": ">=18"

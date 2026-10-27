@@ -25,7 +25,7 @@
     register("ndless-c",["Ndless C","C"]);register("ndless-cpp",["Ndless C++","C++"]);
   }
   function editorLanguage(name){if(/\.(cpp|cc|cxx|hpp|hh)$/i.test(name))return"ndless-cpp";if(/\.(c|h|S|s)$/i.test(name))return"ndless-c";return"plaintext";}
-  function isTextFile(name){return /^(?:Makefile|.*\.(?:c|cpp|cc|cxx|h|hpp|hh|S|s|txt|md|json|mk))$/i.test(name);}
+  function isTextFile(name){return /^(?:Makefile|LICENSE(?:\.[a-z]+)?|.*\.(?:c|cpp|cc|cxx|h|hpp|hh|hxx|inc|S|s|txt|md|json|mk))$/i.test(name);}
 
   function saveCurrentFile(){if(!state.project||!state.editor)return;const name=state.project.activeFile;if(name&&isTextFile(name))state.project.files[name]=state.editor.getValue();saveAutosave();}
   function saveAutosave(){if(!state.project)return;try{localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(state.project));}catch(_){} }
