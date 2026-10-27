@@ -18,7 +18,7 @@ async function download(url,relative){
   await writeFile(target,buffer);
   console.log('Vendored '+relative+' ('+Math.ceil(buffer.length/1024)+' KB)');
 }
-for(const file of ['pyodide.js','pyodide.mjs','pyodide.asm.js','pyodide.asm.wasm','python_stdlib.zip','pyodide-lock.json']){
+for(const file of ['pyodide.js','pyodide.asm.js','pyodide.asm.wasm','python_stdlib.zip','pyodide-lock.json']){
   await download(BASE+file,'pyodide/'+file);
 }
 const lock=JSON.parse(await readFile(join(out,'pyodide','pyodide-lock.json'),'utf8'));
