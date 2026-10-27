@@ -1,0 +1,6 @@
+const {contextBridge,ipcRenderer}=require('electron');
+contextBridge.exposeInMainWorld('TnsDesktop',Object.freeze({
+  platform:'windows',
+  compilerStatus:()=>ipcRenderer.invoke('tns:compiler-status'),
+  buildNdless:(project)=>ipcRenderer.invoke('tns:ndless-build',project),
+}));
