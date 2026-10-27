@@ -36,15 +36,16 @@
     const v=core().validateProject(state.project),lines=[`> ${state.project.name}`,`target: ${core().TARGETS[state.project.target]?.label||state.project.target}`,v.valid?`✓ ${tr("valid")}`:`✕ ${tr("invalid")}`];
     v.errors.forEach(x=>lines.push(`ERROR: ${x}`));v.warnings.forEach(x=>lines.push(`WARN: ${x}`));extra.forEach(x=>lines.push(String(x)));out.textContent=lines.join("\n");
   }
-  function drawPreview(){
+  function drawPreview(force=false){
     if(!state.project||!state.workspace)return;saveCurrentFile();
-    const src=Object.entries(state.project.files).filter(([n])=>/\.(?:c|cpp|cc|cxx)$/i.test(n)).map(([,s])=>s).join("\n");
-    const result=core().previewFromSource(src),canvas=$("[data-ndless-project-canvas]",state.workspace),note=$("[data-preview-note]",state.workspace);
-    if(!canvas)return;canvas.width=result.width;canvas.height=result.height;const ctx=canvas.getContext("2d");ctx.imageSmoothingEnabled=false;
-    for(const cmd of result.commands){if(cmd.type==="clear"){ctx.fillStyle=`rgb(${cmd.color.join(",")})`;ctx.fillRect(0,0,canvas.width,canvas.height);}else if(cmd.type==="text"){ctx.fillStyle=`rgb(${cmd.color.join(",")})`;ctx.font="11px monospace";ctx.textBaseline="top";String(cmd.text).split("\n").forEach((line,i)=>ctx.fillText(line,cmd.x,cmd.y+i*12));}}
-    note.textContent=result.warnings[0]||tr("previewNote");renderConsole();
+    const canvas=$("[data-ndless-project-canvas]",state.workspace),note=$("[data-preview-note]",state.workspace);
+    if(!canvas)return;
+    if(window.NdlessLivePreview)window.NdlessLivePreview.render(state.project,{workspace:state.workspace,canvas,note,force:force===true});
+    else{canvas.width=320;canvas.height=240;note.textContent="Cargando preview ARM…";}
+    renderConsole();
   }
-  function schedulePreview(){clearTimeout(state.previewTimer);state.previewTimer=setTimeout(drawPreview,220);}
+  // The live coordinator debounces compilation, but invalidates old frames now.
+  function schedulePreview(){drawPreview();}
 
   function mountEditor(){
     if(!state.workspace||!state.project)return;disposeEditor();const host=$("[data-ndless-project-editor]",state.workspace),name=state.project.activeFile;const value=state.project.files[name]??"";
@@ -61,7 +62,7 @@
       const b=document.createElement("button");b.type="button";b.className=name===state.project.activeFile?"active":"";b.innerHTML=`<span>${esc(name)}</span><small>${/\.cpp$/i.test(name)?"C++":/\.[ch]$/i.test(name)?"C":name==="Makefile"?"BUILD":"FILE"}</small>`;b.addEventListener("click",()=>{saveCurrentFile();state.project.activeFile=name;fileList();mountEditor();});box.appendChild(b);
     });
   }
-  function newFile(){const name=prompt(tr("fileName"),state.project.language==="cpp"?"new_file.cpp":"new_file.c");if(!name)return;const safe=String(name).trim().replace(/[\\/:*?"<>|]+/g,"_");if(!safe)return;if(state.project.files[safe]!=null){alert("File already exists.");return;}saveCurrentFile();state.project.files[safe]="";state.project.activeFile=safe;saveAutosave();fileList();mountEditor();}
+  function newFile(){const name=prompt(tr("fileName"),state.project.language==="cpp"?"new_file.cpp":"new_file.c");if(!name)return;const safe=String(name).trim().replace(/[\\/:*?"<>|]+/g,"_");if(!safe)return;if(state.project.files[safe]!=null){alert("File already exists.");return;}saveCurrentFile();state.project.files[safe]="";state.project.activeFile=safe;saveAutosave();fileList();mountEditor();drawPreview();}
   async function importFiles(input){const files=Array.from(input||[]);if(!files.length)return;saveCurrentFile();for(const f of files){if(f.size>2_000_000)continue;state.project.files[f.name]=await f.text();state.project.activeFile=f.name;}saveAutosave();fileList();mountEditor();drawPreview();}
   function deleteActiveFile(){const name=state.project?.activeFile;if(!name||name==="Makefile"||name==="README_BUILD.md")return;if(!confirm(`${tr("deleteFile")}: ${name}?`))return;disposeEditor();delete state.project.files[name];state.project.activeFile=Object.keys(state.project.files).find(n=>/\.(c|cpp)$/i.test(n))||Object.keys(state.project.files)[0];saveAutosave();fileList();mountEditor();drawPreview();}
 
@@ -77,7 +78,7 @@
     const target=core().TARGETS[project.target];
     return `<div class="ndless-project-workspace"><div class="ndless-project-topbar"><div class="ndless-project-identity"><span>NDLESS PROJECT</span><strong>${esc(project.name)}</strong><small>${esc(target?.label||project.target)}</small></div><div class="ndless-project-actions"><button type="button" data-project-preview>${esc(tr("runPreview"))}</button><button type="button" data-project-validate>${esc(tr("validate"))}</button><button type="button" class="primary" data-project-download>${esc(tr("download"))}</button><button type="button" data-project-exit>${esc(tr("exit"))}</button></div></div><div class="ndless-project-body"><aside class="ndless-project-files"><div class="ndless-project-section-head"><b>${esc(tr("files"))}</b><div><button type="button" data-project-new-file title="${esc(tr("newFile"))}">＋</button><label title="${esc(tr("importFiles"))}">⇧<input data-project-import-files type="file" multiple accept=".c,.cpp,.cc,.cxx,.h,.hpp,.S,.s,.txt,.md,.json" hidden></label><button type="button" data-project-delete-file title="${esc(tr("deleteFile"))}">−</button></div></div><div class="ndless-project-file-list" data-project-files></div><div class="ndless-project-sdk-note">${esc(tr("sdkFeature"))}</div></aside><section class="ndless-project-editor"><header><div><small>${esc(tr("editor"))}</small><strong data-active-file>—</strong></div><span data-active-language>C</span></header><div class="ndless-project-monaco" data-ndless-project-editor></div></section><aside class="ndless-project-right"><div class="ndless-project-tabs"><button class="active" data-project-tab="preview">${esc(tr("preview"))}</button><button data-project-tab="console">${esc(tr("console"))}</button><button data-project-tab="build">${esc(tr("build"))}</button></div><section data-project-pane="preview" class="ndless-project-preview"><h3>${esc(tr("browserPreview"))}</h3><div class="ndless-project-screen"><canvas data-ndless-project-canvas width="320" height="240"></canvas></div><p data-preview-note>${esc(tr("previewNote"))}</p></section><section data-project-pane="console" hidden><pre class="ndless-project-console" data-project-console></pre></section><section data-project-pane="build" hidden><div class="ndless-project-build" data-project-build></div></section></aside></div></div>`;
   }
-  function bindWorkspace(){const w=state.workspace;$("[data-project-new-file]",w).addEventListener("click",newFile);$("[data-project-import-files]",w).addEventListener("change",e=>{importFiles(e.target.files);e.target.value="";});$("[data-project-delete-file]",w).addEventListener("click",deleteActiveFile);$("[data-project-preview]",w).addEventListener("click",drawPreview);$("[data-project-validate]",w).addEventListener("click",()=>{saveCurrentFile();setRightTab("console");renderConsole();});$("[data-project-download]",w).addEventListener("click",downloadProject);$("[data-project-exit]",w).addEventListener("click",closeProject);$$('[data-project-tab]',w).forEach(b=>b.addEventListener("click",()=>setRightTab(b.dataset.projectTab)));}
+  function bindWorkspace(){const w=state.workspace;$("[data-project-new-file]",w).addEventListener("click",newFile);$("[data-project-import-files]",w).addEventListener("change",e=>{importFiles(e.target.files);e.target.value="";});$("[data-project-delete-file]",w).addEventListener("click",deleteActiveFile);$("[data-project-preview]",w).addEventListener("click",()=>drawPreview(true));$("[data-project-validate]",w).addEventListener("click",()=>{saveCurrentFile();setRightTab("console");renderConsole();});$("[data-project-download]",w).addEventListener("click",downloadProject);$("[data-project-exit]",w).addEventListener("click",closeProject);$$('[data-project-tab]',w).forEach(b=>b.addEventListener("click",()=>setRightTab(b.dataset.projectTab)));}
 
   function hasNormalProject(){
     return window.TnsNormalProjectState?.hasProject?.() === true;
@@ -113,6 +114,7 @@
     setToolbarMode(true);setFileMenuMode(true);const host=document.createElement("div");host.innerHTML=workspaceHtml(project);state.workspace=host.firstElementChild;panel.appendChild(state.workspace);bindWorkspace();fileList();mountEditor();drawPreview();saveAutosave();
   }
   function closeProject(restore=true){
+    window.NdlessLivePreview?.stop();clearTimeout(state.previewTimer);
     if(!state.project&&!state.workspace)return;saveCurrentFile();disposeEditor();state.workspace?.remove();state.workspace=null;state.project=null;const panel=$("#xml-doctor-panel"),grid=$(".doctor-grid",panel),title=$(".doctor-toolbar h2",panel);panel?.classList.remove("ndless-project-mode");if(grid)grid.hidden=false;if(title&&restore)title.textContent=state.originalTitle||"Syntax Doctor XML";setToolbarMode(false);setFileMenuMode(false);
   }
 

@@ -4,8 +4,8 @@ await import('../ndless-arm-runtime-v2.js');
 const runtime = globalThis.NdlessArmRuntime;
 assert.ok(runtime, 'NdlessArmRuntime should be exposed globally');
 assert.equal(runtime.version, 2);
-assert.match(runtime.ENGINE_JS, /@alexaltea\/unicorn-js@2\.1\.4\/dist\/unicorn_arm\.js$/);
-assert.match(runtime.ENGINE_WASM, /@alexaltea\/unicorn-js@2\.1\.4\/dist\/unicorn_arm\.wasm$/);
+assert.match(runtime.ENGINE_JS, /@alexaltea\/unicorn-js@1\.0\.3\/dist\/unicorn\.js$/);
+assert.match(runtime.ENGINE_WASM, /@alexaltea\/unicorn-js@1\.0\.3\/dist\/unicorn\.wasm$/);
 
 const base = 0x10000000;
 const source = new Uint8Array(40);

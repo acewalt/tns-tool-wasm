@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20261027-desktop-menu-enabled";
+  const V="20261027-ndless-live-compiled-preview";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
@@ -90,6 +90,7 @@
     .then(() => loadScript('script[data-ndless-project-core-enhancements="true"]', `./ndless-project-core-enhancements.js?v=${V}`, "ndlessProjectCoreEnhancements"))
     .then(() => loadScript('script[data-ndless-framebuffer-preview="true"]', `./ndless-framebuffer-preview.js?v=${V}`, "ndlessFramebufferPreview"))
     .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
+    .then(() => loadScript('script[data-ndless-live-session="true"]', `./ndless-live-session.js?v=${V}`, "ndlessLiveSession"))
     .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=${V}`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-arm-runtime-v2="true"]', `./ndless-arm-runtime-v2.js?v=${V}`, "ndlessArmRuntimeV2"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
@@ -100,7 +101,8 @@
     .then(() => loadScript('script[data-ndless-browser-compiler="true"]', `./ndless-browser-compiler.js?v=${V}`, "ndlessBrowserCompiler"))
     .then(() => loadScript('script[data-ndless-browser-live-preview="true"]', `./ndless-browser-live-preview.js?v=${V}`, "ndlessBrowserLivePreview"))
     .then(() => loadScript('script[data-ndless-build-auto-install="true"]', `./ndless-build-auto-install.js?v=${V}`, "ndlessBuildAutoInstall"))
-    .then(() => loadScript('script[data-ndless-build-ui="true"]', `./ndless-build-ui.js?v=${V}`, "ndlessBuildUi"));
+    .then(() => loadScript('script[data-ndless-build-ui="true"]', `./ndless-build-ui.js?v=${V}`, "ndlessBuildUi"))
+    .then(() => loadScript('script[data-ndless-live-preview="true"]', `./ndless-live-preview.js?v=${V}`, "ndlessLivePreview"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
