@@ -6,13 +6,14 @@ test('modern LCD callback ABI, all seven SDK formats, orientation and legacy CX 
  for(let type=0;type<7;type++)await t.test('lcd-format-'+type,{timeout:20000},async()=>{
   const fill=type===1?'memset(p,0xf0,sizeof(p));':type===4?'for(int i=0;i<76800;i++)((unsigned char*)p)[i]=1+(i&1);':type===2||type===6?`for(int x=0;x<320;x++)for(int y=0;y<240;y++)p[x*240+y]=((x&31)<<${type===2?11:10})|((y&${type===2?63:31})<<5)|7;`:`for(int i=0;i<76800;i++)p[i]=${type===5?'0x7c00':'0xf800'};`;
   const source=`#include <os.h>
+#include <stdio.h>
 static unsigned short p[320*240];
 int main(){if(on_key_pressed())return 90;if(!lcd_init(${type}))return 1;${fill}
 ${type===4?'((volatile unsigned short*)0xc0000200)[1]=0x7c00;((volatile unsigned short*)0xc0000200)[2]=0x03e0;':''}
-lcd_blit(p,${type});while(!isKeyPressed(KEY_NSPIRE_ESC)){}lcd_init(SCR_TYPE_INVALID);return 0;}`;
+lcd_blit(p,${type});printf("LCD_READY ${type}\\n");fflush(stdout);while(!isKeyPressed(KEY_NSPIRE_ESC)){}lcd_init(SCR_TYPE_INVALID);return 0;}`;
   const artifact=await build('lcd-format-'+type,{'main.c':source});
   const expected=type===1?0xffff:type===2||type===6?7:0xf800;
-  const result=await preview({bytes:artifact.bytes,observe(m){return m.frame&&pixel(m.frame,0,0)===expected;}});
+  const result=await preview({bytes:artifact.bytes,observe(m,{stats}){const frame=m.frame||stats.lastFrame;return frame&&stats.logs.join('').includes('LCD_READY '+type)&&pixel(frame,0,0)===expected;}});
   const f=result.lastFrame;assert.equal(pixel(f,0,0),expected);
   if(type===1)assert.equal(pixel(f,1,0),0);
   if(type===4)assert.equal(pixel(f,1,0),0x07e0);
