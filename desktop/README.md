@@ -5,6 +5,11 @@ The UI and source files are loaded from the same repository via an ephemeral
 loopback HTTP origin. This preserves existing fetch(), workers, and WebUSB.
 The renderer is sandboxed, context-isolated, and has no Node.js access.
 
+Syntax Doctor also includes the shared numerical [Prgm preview](../docs/prgm-preview.md).
+The extracted-ZIP acceptance check opens its actual toolbar button, exercises
+the supplied physics program and invalid-input recovery, tests Enter and zoom,
+refreshes unsaved source, and repeats in a narrow browser window without a native bridge.
+
 The Windows workflow extracts the public ZIP, compares its ASAR with the build,
 opens the extracted application, waits for Pyodide and Monaco, opens the actual
 File menu and clicks its visible New Ndless Project button, then creates C and

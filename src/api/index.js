@@ -1,4 +1,5 @@
 export { getCapabilities, TNS_TOOL_VERSION } from "../core/capabilities.js";
+export {createPrgmPreview, runPrgmPreview, evaluatePrgmExpression} from '../prgm/runtime.js';
 
 export {
   addLuaScriptApp,

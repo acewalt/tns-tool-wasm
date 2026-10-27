@@ -107,11 +107,15 @@ if(primaryInstance) app.whenReady().then(async()=>{
         return{results,durationMs:performance.now()-started};
       })()`);
     }
+    report.prgmPreview=await require('./smoke-prgm.cjs').checkPrgm(win,smokeReport);
     const browser=new BrowserWindow({width:1440,height:1000,show:false,
       webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,offscreen:true}});
     try{
       await loadLocalApp(browser,origin);
       report.browserRequirement=await require('./smoke-web.cjs').checkBrowserRequirement(browser,smokeReport+'.web.png');
+      await browser.webContents.executeJavaScript('window.TnsNdlessDesktopRequired.close()');
+      browser.setContentSize(430,860);
+      report.browserPrgmPreview=await require('./smoke-prgm.cjs').checkPrgm(browser,smokeReport+'.mobile');
       await require('node:fs/promises').writeFile(smokeReport,JSON.stringify(report,null,2));
     }finally{browser.destroy();}
     app.quit();

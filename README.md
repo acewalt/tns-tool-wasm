@@ -1,6 +1,6 @@
 # TNS Tool WASM
 
-**TNS Tool WASM es una herramienta web experimental para trabajar con contenido de TI-Nspire/Lua. Algunas funciones, como Ndless, están en desarrollo experimental. El proyecto contempla un posible port a PC para superar ciertas limitaciones inherentes al entorno web.**
+**TNS Tool WASM es una herramienta web experimental para trabajar con contenido de TI-Nspire/Lua. Algunas funciones, como Ndless, están en desarrollo experimental. TNS Tool Portable para Windows incluye el entorno nativo de compilación Ndless.**
 
 TNS Tool WASM is an experimental browser-based toolkit for TI-Nspire workflows.
 
@@ -11,6 +11,18 @@ It runs directly in the browser with Pyodide/WebAssembly and JavaScript, so it c
 ## Live Demo
 
 https://acewalt.github.io/tns-tool-wasm/
+
+## Windows portable download
+
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/latest/download/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/latest)
+
+Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
+
+Cierra la versión anterior, extrae todo el ZIP en una carpeta nueva y abre **TNS Tool Portable.exe**. La versión aparece en el título. El SDK de Ndless viene incluido.
+
+## TI-BASIC Prgm preview
+
+Open a normal TNS in Syntax Doctor, select a `Prgm` block, and click **Prgm Preview** beside Run syntax. The interactive 320×240 view includes Request input, step/run/stop controls, variables, zoom and source-line errors. It simulates numerical TI-BASIC text programs; symbolic CAS, units, graphics and external functions are not emulated. [Coverage and CLI/API usage](docs/prgm-preview.md).
 
 ## Feedback
 
@@ -481,13 +493,9 @@ Graph parsing and expression compatibility are still experimental and will conti
 
 ### Ndless project support
 
-TNS Tool WASM also includes an experimental **Ndless project** workflow for creating and working with native Ndless projects directly from the browser.
+Native Ndless projects are created, edited and compiled in **TNS Tool Portable for Windows** using its bundled ARM SDK. The web version displays a desktop requirement dialog for New/Open Ndless Project and links to the public Windows ZIP above.
 
-This area is currently in a **very experimental stage**. Native ARM toolchains, SDK integration, compilation, filesystem behavior, process execution, and other low-level tasks are significantly more constrained inside a browser/WebAssembly environment than on a normal desktop system.
-
-Because of those WebAssembly and browser limitations, I am also considering a dedicated **PC/desktop port** of the Ndless project workflow. A native desktop version would be more viable for this part of the project because it could interact directly with the compiler toolchain, local filesystem, SDKs, and native processes without the restrictions imposed by the web sandbox.
-
-The web implementation will continue to be useful for experimentation, inspection, project editing, and testing, but the Ndless build workflow should currently be considered unstable and subject to major changes.
+The portable build is extracted and tested before publication: the visible File menu must open the project wizard, C/C++ editors must mount, and both starters must compile through the shipped native compiler. Browser previews remain partial simulations; execution on a calculator requires active Ndless and compatible hardware.
 
 ## Current limitations and planned work
 

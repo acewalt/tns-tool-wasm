@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 
-const source = fs.readFileSync(new URL("../ti-cas-hybrid-fallback-v1.js", import.meta.url), "utf8");
+const source = fs.readFileSync(new URL("../ti-cas-hybrid-fallback-v1.js", import.meta.url), "utf8").replace(/\r\n/g, '\n');
 let captured = null;
 const windowObject = {
   createLuaJsPreviewRuntime: async (code, ctx, canvas, logEl, symbols) => {
@@ -20,7 +20,8 @@ assert.ok(hybrid, "TnsCasHybrid should be installed");
 assert.match(hybrid.version, /hybrid-v2$/);
 assert.equal(hybrid.translateIntegralAlias("integral((y+2)/(y-1),y)"), "integrate((y+2)/(y-1),y)");
 assert.deepEqual(
-  hybrid.parseCall("deSolve(y'=-((x^2+1)*(y-1))/((x-3)*(y+2)),x,y)", ["deSolve"]).args,
+  // Compare data, not the distinct Array prototype of the VM context.
+  Array.from(hybrid.parseCall("deSolve(y'=-((x^2+1)*(y-1))/((x-3)*(y+2)),x,y)", ["deSolve"]).args),
   ["y'=-((x^2+1)*(y-1))/((x-3)*(y+2))", "x", "y"]
 );
 assert.match(source, /__tns_out\s*=\s*_result/);
