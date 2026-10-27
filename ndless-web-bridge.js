@@ -30,7 +30,7 @@
   }
 
   async function status(options = {}) {
-    if (window.TnsDesktop?.compilerStatus) return window.TnsDesktop.compilerStatus();
+    if (window.TnsDesktop?.compilerStatus) return {...await window.TnsDesktop.compilerStatus(),webBridge:true};
     if (platform() !== "windows") return original?.status ? original.status(options) : { connected:false, toolchainReady:false, platform:platform() || "unknown" };
     const scoped = timeoutSignal(options.timeoutMs || 850, options.signal);
     try {
