@@ -89,6 +89,17 @@
   }
 
   async function ensureCompiler(ui,signal){
+    if (window.TnsDesktop) {
+      const s=await status(signal);
+      if (!ready(s)) {
+        const e=new Error(s?.missing?.join(", ") || "El compilador Ndless no está disponible en esta versión portable.");
+        e.code="DESKTOP_TOOLCHAIN_MISSING";
+        throw e;
+      }
+      ui.setStep(1,"completed","Compilador ARM/Ndless integrado y listo.");
+      ui.summary("Compilador portable listo.","Compilando el proyecto directamente en el equipo.");
+      return s;
+    }
     const bridge=window.NdlessLocalBridge; if(!bridge?.webBridge||!bridge?.status||!bridge?.downloadCompiler||!bridge?.build)throw new Error("Ndless Web Compiler bridge todavía no está cargado.");
     let s=await status(signal); if(ready(s)){setInstalled();ui.setStep(1,"completed","Ndless Web Compiler ya está abierto y listo.");ui.summary("Compilador listo.","Preparando el ZIP del proyecto.");return s;}
 
