@@ -67,10 +67,10 @@ function makeServer(root, vendor) {
         fs.readFile(file,'utf8',(readError,script)=>{
           if(readError){res.writeHead(500);res.end();return;}
           // Preserve PDF import without network access in the desktop package.
-          const updated=script.replaceAll(
-            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/',
-            originForRequest(req)+'/__desktop/pdfjs/'
-          );
+          const pdfBase=originForRequest(req)+'/__desktop/pdfjs/';
+          const updated=script
+            .replace(/const PDFJS_URL = \`[^\`]+\`;/, 'const PDFJS_URL = "'+pdfBase+'pdf.min.js";')
+            .replace(/const PDFJS_WORKER_URL = \`[^\`]+\`;/, 'const PDFJS_WORKER_URL = "'+pdfBase+'pdf.worker.min.js";');
           res.writeHead(200,headers);
           res.end(req.method==='HEAD'?undefined:updated);
         });
