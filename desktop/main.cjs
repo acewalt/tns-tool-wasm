@@ -9,7 +9,10 @@ let win=null,server=null,origin='';
 if(!app.requestSingleInstanceLock()) app.quit();
 else app.on('second-instance',()=>{ if(win){if(win.isMinimized())win.restore();win.focus();} });
 
-function trusted(url){ return !!origin && typeof url==='string' && url.startsWith(origin); }
+function trusted(url){
+  if(!origin || typeof url!=='string')return false;
+  try { return new URL(url).origin===new URL(origin).origin; } catch { return false; }
+}
 function deviceAllowed(device) {
   return Number(device?.vendorId)===TI_VENDOR && TI_PRODUCTS.has(Number(device?.productId));
 }
