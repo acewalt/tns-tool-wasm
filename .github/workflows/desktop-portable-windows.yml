@@ -7,6 +7,19 @@ on:
       - 'electron-builder.json'
       - 'package.json'
       - 'ndless-web-bridge.js'
+      - 'ndless-project-workspace.js'
+      - 'ndless-project-core.js'
+      - 'ndless-project-sdk-enhancements-v2.js'
+      - 'multi-image-upload.js'
+      - 'tests/desktop-portable.test.cjs'
+      - 'tests/desktop-native-build.test.cjs'
+      - 'ti-calculator-transfer.js'
+      - 'ti-calculator-transfer.css'
+      - 'ti-nspire-webusb.js'
+      - 'tests/calculator-session.test.js'
+      - 'tests/nnse-transport.test.js'
+      - 'tests/calculator-upload-destination.test.js'
+      - 'index.html'
       - '.github/workflows/desktop-portable-windows.yml'
 
 permissions:
@@ -21,6 +34,9 @@ jobs:
         with:
           node-version: '22'
       - run: node --test tests/desktop-portable.test.cjs
+      - run: node tests/calculator-upload-destination.test.js
+      - run: npm run test:calculator-session
+      - run: node tests/ndless-project.test.js
       - run: node --check desktop/main.cjs && node --check desktop/compiler.cjs && node --check ndless-web-bridge.js
 
   portable-windows:
@@ -54,6 +70,8 @@ jobs:
           $statusOutput = & $compilerPath --status-json 2>&1
           Write-Host "Status exit=$LASTEXITCODE output=$statusOutput"
           if ($LASTEXITCODE -ne 0) { Write-Warning 'Compiler status probe failed. Smoke build will determine compatibility.' }
+      - name: Prepare official Ndless target headers, libraries and PRG loaders
+        run: python desktop/prepare-compiler.py
       - name: Compile a real Ndless C example using bundled ARM SDK
         shell: pwsh
         run: |
@@ -95,13 +113,30 @@ jobs:
         run: |
           $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
           node -e "const c=require('./desktop/compiler.cjs'); c.status(process.env.TNS_DESKTOP_COMPILER).then(s=>{console.log(JSON.stringify(s)); if(!s.toolchainReady) process.exitCode=1})"
-      - name: Pack Windows portable executable
+      - name: Compile C and C++ allocation through desktop adapter
+        shell: pwsh
+        run: |
+          $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
+          node --test tests/desktop-native-build.test.cjs
+      - name: Pack Windows portable folder ZIP (extract once)
         run: npm run desktop:build:win
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Open packaged app and create Ndless C and C++ projects
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:TNS_DESKTOP_SMOKE_REPORT = Join-Path $env:RUNNER_TEMP 'portable-smoke.json'
+          $exe = (Resolve-Path 'release/portable/win-unpacked/TNS Tool Portable.exe').Path
+          $proc = Start-Process -FilePath $exe -WindowStyle Hidden -PassThru
+          if (!$proc.WaitForExit(90000)) { $proc.Kill(); throw 'Packaged app smoke test timed out' }
+          if (!(Test-Path $env:TNS_DESKTOP_SMOKE_REPORT)) { throw 'Packaged app did not report startup' }
+          $report = Get-Content $env:TNS_DESKTOP_SMOKE_REPORT -Raw | ConvertFrom-Json
+          $report | ConvertTo-Json -Depth 10 | Write-Host
+          if ($proc.ExitCode -ne 0 -or !$report.ok) { throw 'Packaged Ndless workspace failed' }
       - uses: actions/upload-artifact@v4
         with:
           name: TNS-Tool-Portable-Windows-x64
-          path: release/portable/*.exe
+          path: release/portable/*.zip
           if-no-files-found: error
           retention-days: 30

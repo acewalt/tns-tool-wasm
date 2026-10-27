@@ -21,16 +21,40 @@
 
   function starterSource(language="c", template="basic") {
     const cpp = language === "cpp";
-    if (template === "graphics") {
-      return `#define OLD_SCREEN_API\n#include <libndls.h>\n#include <SDL/SDL.h>\n\nint main(void) {\n    SDL_Init(SDL_INIT_VIDEO);\n    SDL_Surface *screen = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE);\n    nSDL_Font *font = nSDL_LoadFont(NSDL_FONT_TINYTYPE, 29, 43, 61);\n\n    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, 18, 34, 48));\n    nSDL_DrawString(screen, font, 20, 22, \"Hello Ndless!\");\n    nSDL_DrawString(screen, font, 20, 48, \"Edit me in Monaco\");\n    SDL_Flip(screen);\n    wait_key_pressed();\n    SDL_Quit();\n    return 0;\n}\n`;
-    }
     if (template === "console") {
       return `#define OLD_SCREEN_API\n#include <libndls.h>\n#include <nspireio2.h>\n\nint main(void) {\n    nio_console console;\n    lcd_ingray();\n    clrscr();\n    nio_InitConsole(&console, 53, 29, 0, 0, 0, 15);\n    nio_DrawConsole(&console);\n    nio_printf(&console, \"Ndless project ready!\\n\");\n    nio_printf(&console, \"Press a key to exit.\");\n    wait_key_pressed();\n    nio_CleanUp(&console);\n    return 0;\n}\n`;
     }
-    if (cpp) {
-      return `#define OLD_SCREEN_API\n#include <cstdio>\n#include <libndls.h>\n\nclass App {\npublic:\n    void run() {\n        clrscr();\n        std::printf(\"Hello from C++ Ndless!\\n\");\n        wait_key_pressed();\n    }\n};\n\nint main(void) {\n    App app;\n    app.run();\n    return 0;\n}\n`;
+    // printf writes to stdout; it does not create an on-screen console.
+    // Use the SDK's SDL video path so new hardware needs no legacy framebuffer.
+    const graphics = template === "graphics";
+    const text = cpp && !graphics ? "Hello from C++ Ndless!" : "Hello Ndless!";
+    return `#include <os.h>
+#include <SDL/SDL.h>
+
+int main(void) {
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) return 1;
+    SDL_Surface *screen = SDL_SetVideoMode(320, 240, has_colors ? 16 : 8, SDL_SWSURFACE);
+    if (!screen) { SDL_Quit(); return 1; }
+    nSDL_Font *font = nSDL_LoadFont(NSDL_FONT_TINYTYPE, ${graphics ? "235, 245, 255" : "29, 43, 61"});
+    if (!font) { SDL_Quit(); return 1; }
+
+    SDL_FillRect(screen, NULL, SDL_MapRGB(screen->format, ${graphics ? "18, 34, 48" : "184, 200, 222"}));
+    nSDL_DrawString(screen, font, 20, 22, "${text}");
+${graphics ? '    nSDL_DrawString(screen, font, 20, 48, "Edit me in Monaco");\n' : ''}    nSDL_DrawString(screen, font, 20, 78, "Press ESC to exit.");
+    SDL_Flip(screen);
+
+    SDL_Event event;
+    int done = 0;
+    while (!done && SDL_WaitEvent(&event)) {
+        if (event.type == SDL_QUIT ||
+            (event.type == SDL_KEYDOWN && event.key.keysym.sym == SDLK_ESCAPE))
+            done = 1;
     }
-    return `#define OLD_SCREEN_API\n#include <stdio.h>\n#include <libndls.h>\n\nint main(void) {\n    assert_ndless_rev(801);\n    clrscr();\n    printf(\"Hello Ndless!\\n\");\n    wait_key_pressed();\n    return 0;\n}\n`;
+    nSDL_FreeFont(font);
+    SDL_Quit();
+    return 0;
+}
+`;
   }
 
   function makefileFor(project) {
@@ -118,8 +142,10 @@
     if(/\bclrscr\s*\(/.test(src)&&!fill)bg=[255,255,255];
     commands.push({type:"clear",color:bg});
     let matched=false;
+    const font=src.match(/nSDL_LoadFont\s*\([^,]+,\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)/);
+    const fontColor=font ? font.slice(1,4).map(Number) : [235,245,255];
     const draw=/nSDL_DrawString\s*\([^,]+,[^,]+,\s*(-?\d+)\s*,\s*(-?\d+)\s*,\s*"((?:\\.|[^"\\])*)"\s*\)/g;
-    for(let m;(m=draw.exec(src));){matched=true;commands.push({type:"text",x:+m[1],y:+m[2],text:decodeCString(m[3]),color:[235,245,255]});}
+    for(let m;(m=draw.exec(src));){matched=true;commands.push({type:"text",x:+m[1],y:+m[2],text:decodeCString(m[3]),color:fontColor});}
     const generic=/\b(?:printf|puts|nio_printf)\s*\((?:[^";]*?,\s*)?"((?:\\.|[^"\\])*)"[^;]*?\)/g;
     let y=8;
     for(let m;(m=generic.exec(src));){matched=true;for(const line of decodeCString(m[1]).split("\n")){if(line)commands.push({type:"text",x:6,y,text:line,color:[20,28,38]});y+=12;}}

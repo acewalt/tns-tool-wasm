@@ -7,6 +7,44 @@ const path=require('node:path');
 const http=require('node:http');
 const {makeServer,listen,resolveRequest}=require('../desktop/server.cjs');
 const compiler=require('../desktop/compiler.cjs');
+const {loadLocalApp}=require('../desktop/startup.cjs');
+
+test('PRG packaging retains the complete Zehn and rejects truncated output',()=>{
+  const zehn=Buffer.alloc(36);zehn.write('Zehn');zehn.writeUInt32LE(1,4);
+  zehn.writeUInt32LE(36,8);zehn.writeUInt32LE(36,24);
+  const loader=Buffer.from([80,82,71,0,0,0,0,0]);
+  const result=compiler.packagePrg(zehn,loader);
+  assert.deepEqual(result.subarray(loader.length),zehn);
+  assert.throws(()=>compiler.packagePrg(zehn.subarray(0,35),loader),/truncado/);
+  assert.throws(()=>compiler.packagePrg(zehn,Buffer.alloc(8)),/cargador/);
+});
+
+test('a second instance quits without starting another server or window',()=>{
+  let quits=0;
+  const app={requestSingleInstanceLock:()=>false,quit:()=>quits++,on:()=>{},
+    whenReady:()=>{throw new Error('A second instance must not start');}};
+  require('node:vm').runInNewContext(fs.readFileSync(path.join(__dirname,'../desktop/main.cjs'),'utf8'),{
+    require:id=>id==='electron'?{app}:require(id.startsWith('./')?'../desktop/'+id.slice(2):id),
+  });
+  assert.equal(quits,1);
+});
+
+test('initial Chromium ERR_FAILED is retried before startup succeeds',async()=>{
+  let attempts=0;const delays=[];
+  const win={isDestroyed:()=>false,loadURL:async url=>{
+    assert.equal(url,'http://127.0.0.1:12345/');
+    if(++attempts<3)throw Object.assign(new Error('ERR_FAILED'),{errno:-2});
+  }};
+  await loadLocalApp(win,'http://127.0.0.1:12345/',async ms=>delays.push(ms));
+  assert.equal(attempts,3);assert.deepEqual(delays,[250,500]);
+});
+test('persistent and non-network navigation errors are surfaced',async()=>{
+  for(const errno of [-2,-6]){
+    let attempts=0;const error=Object.assign(new Error('navigation failed'),{errno});
+    await assert.rejects(loadLocalApp({isDestroyed:()=>false,loadURL:async()=>{attempts++;throw error;}},'http://127.0.0.1:12345/',async()=>{}),e=>e===error);
+    assert.equal(attempts,errno===-2?3:1);
+  }
+});
 
 test('desktop path resolver prevents traversal and hidden source files',()=>{
   const root=path.resolve('repo'),vendor=path.resolve('vendor');

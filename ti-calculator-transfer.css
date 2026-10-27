@@ -493,6 +493,16 @@
   max-height:55px;overflow-y:auto;
 }
 .ti-destination-toolbar{display:flex;gap:8px;align-items:center;min-width:0}
+.ti-destination-new-folder,.ti-destination-create-form button{
+  padding:8px;border:1px solid var(--line);border-radius:7px;
+  background:var(--button-bg);color:var(--text);font-size:12px;cursor:pointer;
+}
+.ti-destination-create-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ti-destination-create-form[hidden]{display:none}
+.ti-destination-folder-name{
+  flex:1;min-width:100px;width:100%;box-sizing:border-box;padding:9px;
+  border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--text);
+}
 .ti-destination-nav{
   display:grid;place-items:center;flex:0 0 35px;
   height:35px;border:1px solid var(--line);
@@ -549,3 +559,4 @@
   .ti-destination-overlay{padding:7px}
   .ti-destination-dialog{padding:12px;max-height:95%;gap:9px}
 }
+.ti-manager-overlay[hidden]{display:none}

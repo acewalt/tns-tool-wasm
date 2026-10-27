@@ -15,7 +15,7 @@
   const decoder = new TextDecoder("utf-8", { fatal: false });
 
   class NspireError extends Error {
-    constructor(message) { super(message); this.name = "NspireError"; }
+    constructor(message, code) { super(message); this.name = "NspireError"; if (code) this.code = code; }
   }
   function ensure(condition, message) {
     if (!condition) throw new NspireError(message);
@@ -155,6 +155,9 @@
       this.oneWayServiceClose = false;
       this.usbDeadlineAt = 0;
       this.usbReadTimeoutMs = 12000;
+      this.screenshotTimeoutMs = 15000;
+      this.serviceCloseTimeoutMs = 1500;
+      this.closing = null;
     }
     static async select() {
       ensure(navigator.usb?.requestDevice, "WebUSB no disponible. Abre la página en Chrome, Brave o Edge por HTTPS.");
@@ -206,7 +209,12 @@
       }
     }
     async close() {
+      if (this.closing) return this.closing;
       this.connected = false;
+      this.closing = this.closeDevice();
+      return this.closing;
+    }
+    async closeDevice() {
       // Do not initiate further USB traffic on a timed-out/broken connection.
       if (!this.broken) {
         try { if (this.activeService) await this.disconnectService(); } catch (_) {}
@@ -217,10 +225,13 @@
       // USB transfers cannot be cancelled by AbortSignal. Best-effort release,
       // bounded so the UI remains usable if Chromium still has a pending read.
       const cleanup = async job => {
-        try { await Promise.race([job(), new Promise(resolve => setTimeout(resolve, 1500))]); }
+        let timer;
+        try { await Promise.race([job(), new Promise(resolve => { timer=setTimeout(resolve, 1500); })]); }
         catch (_) {}
+        finally { clearTimeout(timer); }
       };
-      if (this.device.opened) await cleanup(() => this.device.releaseInterface(this.iface));
+      // USBDevice.close releases interfaces and aborts pending transfers. Close
+      // first: releaseInterface may itself wait behind the timed-out read.
       if (this.device.opened) await cleanup(() => this.device.close());
     }
     async usbCall(operation) {
@@ -228,7 +239,7 @@
       const remaining = this.usbDeadlineAt ? this.usbDeadlineAt - Date.now() : this.usbReadTimeoutMs;
       if (remaining <= 0) {
         this.broken = true; this.connected = false;
-        throw new NspireError("Tiempo de espera USB agotado. Reconecta la calculadora.");
+        throw new NspireError("Tiempo de espera USB agotado. Vuelve a pulsar Conectar.", "USB_TIMEOUT");
       }
       let timer;
       try {
@@ -236,7 +247,7 @@
           operation(),
           new Promise((_, reject) => {
             timer = setTimeout(() => reject(new NspireError(
-              "La calculadora dejó de responder por USB. Reconecta la calculadora."
+              "La calculadora dejó de responder por USB. Vuelve a pulsar Conectar.", "USB_TIMEOUT"
             )), Math.max(1, Math.min(remaining, this.usbReadTimeoutMs)));
           })
         ]);
@@ -244,6 +255,7 @@
         // Treat timeouts or USB transport failures as terminal for this handle;
         // never reuse it while Chromium may still have a pending USB transfer.
         this.broken = true; this.connected = false;
+        if (error instanceof NspireError && /espera|responder/.test(error.message)) error.code = "USB_TIMEOUT";
         throw error;
       } finally {
         clearTimeout(timer);
@@ -339,7 +351,7 @@
       if (this.nnse) {
         for (let attempt = 0; attempt < 64; attempt++) {
           const response = parsePacket(await this.nnse.receiveRaw(), { bigEndianLength: true });
-          if (response.dstSid === this.hostSid) return response.data;
+          if (response.dstSid === this.hostSid && response.srcSid === this.deviceSid) return response.data;
           // Discard delayed messages from an earlier filesystem operation.
         }
         throw new NspireError("La TI-Nspire CX II no respondió al servicio solicitado.");
@@ -360,6 +372,7 @@
       if (!this.activeService) return;
       try {
         if (this.broken) return;
+        this.usbDeadlineAt = Math.min(this.usbDeadlineAt || Infinity, Date.now() + this.serviceCloseTimeoutMs);
         if (this.nnse && this.oneWayServiceClose) {
           // CX II frequently omits the disconnect ACK after a successful
           // screen capture. Do not wait indefinitely for this one-way message.
@@ -378,9 +391,10 @@
         this.queue = [];
       }
     }
-    async usingService(sid, fn) {
-      ensure(!this.busy && !this.broken, "La conexión USB no está disponible. Reconecta la calculadora.");
+    async usingService(sid, fn, { timeoutMs = 0 } = {}) {
+      ensure(!this.busy && !this.broken && !this.closing, "La conexión USB no está disponible. Reconecta la calculadora.");
       this.busy = true;
+      this.usbDeadlineAt = timeoutMs ? Date.now() + timeoutMs : 0;
       try {
         await this.initialize();
         this.deviceSid = sid;
@@ -502,6 +516,9 @@
     }
     async screenshotRle(onProgress = () => {}, onImageReady = () => {}) {
       return this.usingService(SERVICE_SCREEN_RLE, async () => {
+        // Screen service disconnect has no required application-level reply,
+        // including when metadata is invalid or capture fails part-way through.
+        if (this.nnse) this.oneWayServiceClose = true;
         onProgress(0, 0, "requesting");
         await this.sendData(Uint8Array.of(0));
         const meta = await this.recvData();
@@ -540,7 +557,7 @@
         // not required to show this capture or proceed to a new transaction.
         if (this.nnse) this.oneWayServiceClose = true;
         return image;
-      });
+      }, { timeoutMs: this.screenshotTimeoutMs });
     }
   }
   window.TnsNspireUSB = Object.freeze({

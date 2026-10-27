@@ -1,0 +1,38 @@
+name: Calculator USB regressions
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'ti-nspire-*.js'
+      - 'ti-calculator-*.js'
+      - 'ti-calculator-transfer.css'
+      - 'ndless-project-*.js'
+      - 'tests/calculator-*.test.js'
+      - 'tests/nnse-transport.test.js'
+      - 'tests/ndless-project.test.js'
+      - '.github/workflows/calculator-usb.yml'
+  pull_request:
+    paths:
+      - 'ti-nspire-*.js'
+      - 'ti-calculator-*.js'
+      - 'tests/calculator-*.test.js'
+      - 'tests/nnse-transport.test.js'
+      - '.github/workflows/calculator-usb.yml'
+permissions:
+  contents: read
+jobs:
+  usb:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node tests/calculator-transfer-ui.test.js
+      - run: node tests/calculator-tree.test.js
+      - run: node tests/calculator-grid-view.test.js
+      - run: node tests/calculator-upload-destination.test.js
+      - run: node tests/calculator-actions.test.js
+      - run: node tests/calculator-session.test.js
+      - run: node tests/nnse-transport.test.js
+      - run: node tests/ndless-project.test.js

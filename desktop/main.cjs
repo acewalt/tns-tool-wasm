@@ -2,11 +2,15 @@ const path=require('node:path');
 const {app,BrowserWindow,session,ipcMain,dialog,shell}=require('electron');
 const {makeServer,listen}=require('./server.cjs');
 const compiler=require('./compiler.cjs');
+const {loadLocalApp}=require('./startup.cjs');
+const {performance}=require('node:perf_hooks');
+const bootStarted=performance.now();
 
 const TI_VENDOR=0x0451;
 const TI_PRODUCTS=new Set([0xe012,0xe022]);
 let win=null,server=null,origin='';
-if(!app.requestSingleInstanceLock()) app.quit();
+const primaryInstance=app.requestSingleInstanceLock();
+if(!primaryInstance) app.quit();
 else app.on('second-instance',()=>{ if(win){if(win.isMinimized())win.restore();win.focus();} });
 
 function trusted(url){
@@ -51,7 +55,7 @@ function registerNativeBridge(){
     onlyLocal(event);return compiler.build(exe,payload);
   });
 }
-app.whenReady().then(async()=>{
+if(primaryInstance) app.whenReady().then(async()=>{
   const root=app.getAppPath();
   const vendor=app.isPackaged?path.join(process.resourcesPath,'vendor'):path.join(root,'desktop','vendor');
   server=makeServer(root,vendor);
@@ -59,17 +63,27 @@ app.whenReady().then(async()=>{
   configureUSB(session.defaultSession);
   registerNativeBridge();
   win=new BrowserWindow({width:1440,height:900,minWidth:900,minHeight:620,
-    title:'TNS Tool Portable',show:false,
+    title:'TNS Tool Portable',show:false,icon:path.join(__dirname,'assets','icon.png'),
     webPreferences:{preload:path.join(__dirname,'preload.cjs'),
       nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
-  win.once('ready-to-show',()=>win.show());
+  const smokeReport=process.env.TNS_DESKTOP_SMOKE_REPORT;
+  if(smokeReport)win.webContents.on('console-message',(_event,level,message)=>console.log(level,message));
+  if(!smokeReport)win.once('ready-to-show',()=>win.show());
   win.webContents.setWindowOpenHandler(({url})=>{
     if(url.startsWith('https://'))shell.openExternal(url).catch(()=>{});
     return {action:'deny'};
   });
   win.webContents.on('will-navigate',(event,url)=>{if(!trusted(url))event.preventDefault();});
-  await win.loadURL(origin);
+  await loadLocalApp(win,origin);
+  if(smokeReport){
+    await require('./smoke.cjs').checkWorkspace(win,smokeReport,{pageLoadedMs:performance.now()-bootStarted});
+    app.quit();
+  }
 }).catch(error=>{
+  if(process.env.TNS_DESKTOP_SMOKE_REPORT){
+    require('node:fs').writeFileSync(process.env.TNS_DESKTOP_SMOKE_REPORT,JSON.stringify({ok:false,error:error.stack}));
+    app.exit(1);return;
+  }
   dialog.showErrorBox('TNS Tool Portable',error.message);
   app.quit();
 });
