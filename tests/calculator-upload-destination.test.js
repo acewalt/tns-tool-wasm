@@ -166,4 +166,54 @@ assert.equal(state.destinationPicker,null);
 assert.equal(ui.get("[data-ti-current]").disabled,false,
   "Manager controls must be re-enabled after picker cancellation");
 assert.ok(visited.includes("/math/nested")&&visited.includes("/notes"));
+
+// Create in the chosen destination, await the calculator acknowledgement,
+// enter the new folder and only upload after explicit confirmation.
+const created=[];
+let acknowledgeCreation;
+device.makeDir=async path=>{
+  created.push(path);
+  await new Promise(resolve=>{acknowledgeCreation=resolve;});
+  directories[path]=[];
+  const parts=path.split("/"),name=parts.pop(),parent=parts.join("/")||"/";
+  directories[parent].push({name,path,isDir:true,size:0});
+};
+const createUpload=manager.upload([file]);await flush();
+byClass("ti-destination-new-folder").click();
+assert.equal(byClass("ti-destination-create-form").hidden,false);
+const nameInput=byClass("ti-destination-folder-name");
+const submit=()=>byClass("ti-destination-create-form").dispatchEvent({type:"submit",preventDefault(){}});
+nameInput.value="nested";submit();await flush();
+assert.equal(created.length,0,"Existing names must not create a USB request");
+nameInput.value="../escape";submit();await flush();
+assert.equal(created.length,0,"Invalid names must not create a USB request");
+nameInput.value="new-games";submit();await flush();
+assert.deepEqual(created,["/math/new-games"]);
+assert.equal(byClass("ti-destination-confirm").disabled,true);
+byClass("ti-destination-cancel").click();
+assert.ok(state.destinationPicker,"An in-flight folder creation must hold the USB lock");
+assert.equal(written.length,3);
+acknowledgeCreation();await flush();
+assert.equal(state.destinationPicker.path,"/math/new-games");
+assert.equal(byClass("ti-destination-create-form").hidden,true);
+assert.equal(byClass("ti-destination-confirm").disabled,false);
+assert.ok(state.cache.get("/math").some(entry=>entry.path==="/math/new-games"));
+assert.equal(state.path,"/math","Creating a destination must not navigate the main explorer");
+byClass("ti-destination-confirm").click();await createUpload;
+assert.equal(written[3].path,"/math/new-games/test.tns");
+
+// A rejected creation leaves the chooser open, with no upload or fake folder.
+device.makeDir=async()=>{throw Error("USB mkdir refused");};
+const failedCreation=manager.upload([file]);await flush();
+byClass("ti-destination-new-folder").click();
+byClass("ti-destination-folder-name").value="refused";submit();await flush();
+assert.equal(state.destinationPicker.path,"/math");
+assert.match(byClass("ti-destination-notice").textContent,/USB mkdir refused/);
+assert.equal(byClass("ti-destination-confirm").disabled,false);
+assert.equal(written.length,4);
+byClass("ti-destination-create-cancel").click();
+assert.equal(byClass("ti-destination-create-form").hidden,true);
+byClass("ti-destination-cancel").click();await failedCreation;
+assert.equal(state.destinationPicker,null);
+assert.equal(written.length,4);
 console.log("Both TNS uploads select destination, check overwrites and cancel without USB writes.");

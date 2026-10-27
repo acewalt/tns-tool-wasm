@@ -68,8 +68,9 @@ class FakeNNSEUSB {
   sendBareOnDownload=false;addStalePrefix=false;splitBulkReads=false;
   renameData=null;
   splitScreenshot=false;suppressFinalAck=false;suppressDisconnectAck=false;
+  stallScreen=false;stallClose=false;staleScreenBeforeFiles=false;closeCount=0;
   async open(){this.opened=true;}
-  async close(){this.opened=false;}
+  async close(){this.closeCount++;this.opened=false;}
   async claimInterface(){}
   async releaseInterface(){}
   async selectConfiguration(value){
@@ -110,6 +111,7 @@ class FakeNNSEUSB {
     }
     if(outer.service!==4)return {status:"ok"};
     const cmd=proto.parsePacket(outer.payload,{bigEndianLength:true});
+    if(this.stallClose && cmd.srcSid===0x40de)return new Promise(()=>{});
     if(this.suppressDisconnectAck && cmd.srcSid===0x40de)return {status:"ok"};
     if(this.suppressFinalAck && cmd.data[0]===0xff && cmd.data[1]===0)
       return {status:"ok"};
@@ -123,7 +125,11 @@ class FakeNNSEUSB {
       this.renameData=d.slice();
       this.respond(Uint8Array.of(255,0),service,dest);
     }
-    else if(d[0]===13){this.rootIndex=0;this.respond(Uint8Array.of(255,0),service,dest);}
+    else if(d[0]===13){
+      this.rootIndex=0;
+      if(this.staleScreenBeforeFiles)this.respond(Uint8Array.of(2,255,0x12,0x34),0x4024,dest);
+      this.respond(Uint8Array.of(255,0),service,dest);
+    }
     else if(d[0]===14)this.respond(this.rootIndex++===0?dirRow("Examples"):Uint8Array.of(255,17),service,dest);
     else if([15,10,9,11].includes(d[0]))this.respond(Uint8Array.of(255,0),service,dest);
     else if(d[0]===3&&d[1]===1){
@@ -139,6 +145,7 @@ class FakeNNSEUSB {
         this.respond(concat(Uint8Array.of(5),this.file.subarray(offset,offset+1200)),service,dest);
     }
     else if(d[0]===0&&service===0x4024){
+      if(this.stallScreen)return {status:"ok"};
       if(this.colorScreenshot){
         this.respond(concat(Uint8Array.of(1),be32(5),Uint8Array.of(0,0,0,0,0,2,0,2)),service,dest);
         if(this.splitScreenshot){
@@ -157,7 +164,7 @@ class FakeNNSEUSB {
   }
   async transferIn(){
     let bytes=this.answers.shift();
-    if(!bytes && this.suppressFinalAck)return new Promise(()=>{});
+    if(!bytes && (this.suppressFinalAck||this.stallScreen))return new Promise(()=>{});
     if(!bytes)throw Error("Unexpected USB read - test deadlock");
     if(this.splitBulkReads && bytes.length>40){
       this.answers.unshift(bytes.subarray(40));
@@ -230,6 +237,33 @@ assert.equal(afterScreenFiles[0].name,"Examples",
   "Listing must still work immediately after an unacknowledged screenshot close");
 await controller.close();
 assert.equal(fake.opened,false);
+assert.equal(fake.closeCount,1);
+await controller.close();
+assert.equal(fake.closeCount,1,'Closing a retired handle must be idempotent');
+
+const repeatedUSB=new FakeNNSEUSB(),repeated=new proto.NspireUSB(repeatedUSB);
+await repeated.connect();repeatedUSB.suppressDisconnectAck=true;
+for(let i=0;i<5;i++)assert.equal((await repeated.screenshotRle()).width,2);
+repeatedUSB.suppressDisconnectAck=false;repeatedUSB.staleScreenBeforeFiles=true;
+assert.equal((await repeated.listDir('/'))[0].name,'Examples',
+  'A late screen packet addressed to the current host SID must not become a file reply');
+await repeated.close();
+
+const silentUSB=new FakeNNSEUSB(),silent=new proto.NspireUSB(silentUSB);
+await silent.connect();silent.screenshotTimeoutMs=20;silentUSB.stallScreen=true;
+await assert.rejects(silent.screenshotRle(),error=>error.code==='USB_TIMEOUT');
+assert.equal(silent.busy,false,'Screen timeout must release the operation lock');
+assert.equal(silent.connected,false);
+await silent.close();
+assert.equal(silentUSB.closeCount,1,'Close the timed-out handle before reusing the USB device');
+
+const closeUSB=new FakeNNSEUSB(),closing=new proto.NspireUSB(closeUSB);
+await closing.connect();closing.serviceCloseTimeoutMs=20;closeUSB.stallClose=true;
+let screenDelivered=false;
+await assert.rejects(closing.screenshotRle(()=>{},()=>{screenDelivered=true;}),error=>error.code==='USB_TIMEOUT');
+assert.equal(screenDelivered,true,'Completed screenshot must survive stalled service cleanup');
+assert.equal(closing.busy,false);
+await closing.close();
 // Regression: a CX II can deliver every TNS byte but never ACK the terminal
 // FF00 command. Never leave the UI permanently disabled in that case.
 const stalledUSB=new FakeNNSEUSB();

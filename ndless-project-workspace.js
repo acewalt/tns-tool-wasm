@@ -102,7 +102,7 @@
   }
   function setToolbarMode(active){
     const panel=$("#xml-doctor-panel"),toolbar=$(".doctor-toolbar",panel);if(!panel||!toolbar)return;
-    const hide=[...$('.doctor-toolbar > .tool-menu',panel).slice(1),$("#xml-syntax-btn"),$("#xml-programs"),$("#xml-line-label"),$(".xml-output-file-name",panel)].filter(Boolean);
+    const hide=[...$$('.doctor-toolbar > .tool-menu',panel).slice(1),$("#xml-syntax-btn"),$("#xml-programs"),$("#xml-line-label"),$(".xml-output-file-name",panel)].filter(Boolean);
     hide.forEach(el=>{if(active){if(!state.toolbarRestore.has(el))state.toolbarRestore.set(el,el.style.display);el.style.display="none";}else if(state.toolbarRestore.has(el)){el.style.display=state.toolbarRestore.get(el);state.toolbarRestore.delete(el);}});
     const page=$(".file-page-menu > .nested-trigger",panel);if(page){page.disabled=active;page.setAttribute("aria-disabled",active?"true":"false");page.title=active?tr("noPage"):"";}
   }
@@ -120,6 +120,7 @@
     if(hasNormalProject()&&!state.project)return;
     if(state.project&&!confirm(tr("replaceProject")))return;
     const ov=document.createElement("div");ov.className="ndless-project-dialog-overlay";ov.innerHTML=`<form class="ndless-project-dialog"><div class="ndless-project-dialog-head"><div><span>NDLESS</span><h3>${esc(tr("title"))}</h3></div><button type="button" data-dialog-close>×</button></div><label>${esc(tr("name"))}<input name="name" value="my-ndless-app" autocomplete="off"></label><div class="ndless-project-dialog-grid"><label>${esc(tr("language"))}<select name="language"><option value="c">${esc(tr("c"))}</option><option value="cpp">${esc(tr("cpp"))}</option></select></label><label>${esc(tr("template"))}<select name="template"><option value="basic">${esc(tr("basic"))}</option><option value="graphics">${esc(tr("graphics"))}</option><option value="console">${esc(tr("consoleTpl"))}</option></select></label></div><label>${esc(tr("target"))}<select name="target"><option value="bflt-r903">${esc(tr("legacy"))}</option><option value="zehn-modern">${esc(tr("modern"))}</option></select></label><p>${esc(tr("sdkFeature"))}</p><div class="ndless-project-dialog-actions"><button type="button" data-dialog-cancel>${esc(tr("cancel"))}</button><button class="primary" type="submit">${esc(tr("create"))}</button></div></form>`;document.body.appendChild(ov);
+    if(window.TnsDesktop)$("[name=target]",ov).value="zehn-modern";
     const close=()=>ov.remove();$("[data-dialog-close]",ov).onclick=close;$("[data-dialog-cancel]",ov).onclick=close;ov.addEventListener("click",e=>{if(e.target===ov)close();});$("form",ov).addEventListener("submit",e=>{e.preventDefault();const fd=new FormData(e.currentTarget),p=core().createProject({name:fd.get("name"),language:fd.get("language"),template:fd.get("template"),target:fd.get("target")});close();activateProject(p);});
   }
 

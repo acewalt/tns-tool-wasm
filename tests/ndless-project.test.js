@@ -14,6 +14,9 @@ assert.equal(legacy.name, 'My-App');
 assert.ok(legacy.files['main.c']);
 assert.ok(/nspire-ld-bflt/.test(legacy.files.Makefile));
 assert.ok(core.validateProject(legacy).valid);
+const basicPreview = core.previewFromSource(legacy.files['main.c']);
+assert.deepEqual(basicPreview.commands.find(cmd => cmd.text === 'Hello Ndless!')?.color, [29,43,61]);
+assert.ok(basicPreview.commands.some(cmd => cmd.text === 'Press ESC to exit.'));
 
 const modern = core.createProject({ name: 'Game', language: 'cpp', template: 'graphics', target: 'zehn-modern' });
 assert.ok(modern.files['main.cpp']);

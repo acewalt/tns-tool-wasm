@@ -10,7 +10,7 @@
       connected:"Calculadora conectada", failed:"Error de comunicación",
       note:"WebUSB requiere Chrome, Edge o Brave y un controlador USB compatible. No utiliza servicios externos.",
       folders:"Archivos y carpetas", model:"Calculadora", capture:"Captura de pantalla",
-      captureHint:"Captura RLE experimental: escala de grises y color RGB565. Depende del modelo y firmware.",
+      captureHint:"Captura RLE del sistema. Una app nativa Ndless puede suspender USB mientras está abierta; en ese caso sal con Esc antes de reintentar.",
       files:"Archivos", refresh:"Actualizar", newFolder:"Nueva carpeta", send:"Enviar TNS",
       sendCurrent:"Enviar TNS actual", receive:"Recibir seleccionados", remove:"Eliminar seleccionados",
       select:"Seleccionar", name:"Nombre", type:"Tipo", size:"Tamaño", location:"Carpeta",
@@ -23,14 +23,15 @@
       emptySelection:"Selecciona documentos para recibir.", exportUnavailable:"No está disponible el generador del documento TNS actual.",
       screenshotUnsupported:"La calculadora no entregó una captura RLE compatible.", saveImage:"Guardar PNG",
       unready:"La calculadora todavía no ha confirmado la conexión.", help:"Ayuda USB",
-      caution:"No desconectes el cable durante una transferencia.",
+      caution:"Cerrar conserva la conexión. Pulsa Desconectar para liberarla. No retires el cable durante una transferencia.",
       loadingFolder:"Leyendo carpeta…", finishing:"Finalizando y cerrando transferencia…",
       destination:"Carpeta de destino", receiving:"Recibiendo", sending:"Enviando",
       capturePending:"Solicitando captura a la calculadora…",
       nativeSize:"Resolución original",
-      savedReconnect:"Archivo guardado. La sesión USB dejó de responder: conecta nuevamente la calculadora.",
-      captureSavedReconnect:"Captura obtenida. Reconecta la calculadora antes de otra operación.",
-      reconnect:"La comunicación USB se interrumpió. Conecta nuevamente la calculadora.",
+      savedReconnect:"Archivo guardado. Pulsa Conectar para continuar; puedes dejar el cable conectado.",
+      captureSavedReconnect:"Captura obtenida. Pulsa Conectar para continuar; no hace falta retirar el cable.",
+      reconnect:"La comunicación USB se interrumpió. Pulsa Conectar para reintentar.",
+      captureUnavailable:"La calculadora no respondió a la captura. Si hay una app Ndless abierta, sal con Esc. Después pulsa Conectar; puedes dejar el cable conectado.",
       downloadOne:"Descargar", renameOne:"Renombrar", deleteOne:"Eliminar",
       renamePrompt:"Nuevo nombre para", renameConflict:"Ya existe otro elemento con ese nombre.",
       renameExtension:"Los documentos TNS deben conservar su extensión .tns.",
@@ -42,7 +43,9 @@
       sendHere:"Enviar aquí", cancelSend:"Cancelar", rootFolder:"Raíz de la calculadora",
       noSubfolders:"Esta carpeta no contiene subcarpetas.", folderLoadError:"No se pudo leer esta carpeta.",
       destinationLoading:"Buscando carpetas…", targetPath:"Guardar en",
-      cancelled:"Envío cancelado", chooseFolder:"Abrir carpeta", backFolder:"Carpeta anterior"
+      cancelled:"Envío cancelado", chooseFolder:"Abrir carpeta", backFolder:"Carpeta anterior",
+      createFolder:"Crear carpeta", folderCreating:"Creando carpeta…", folderCreateError:"No se pudo crear la carpeta.",
+      folderNameRequired:"Escribe un nombre de carpeta.", folderExists:"Ya existe un elemento con ese nombre."
     },
     en: {
       title:"TI-Nspire Manager", subtitle:"Native USB · TNS Tool WASM",
@@ -52,7 +55,7 @@
       connected:"Calculator connected", failed:"Communication error",
       note:"WebUSB requires Chrome, Edge or Brave and a compatible USB driver. No external service.",
       folders:"Calculator files and folders", model:"Calculator", capture:"Screen capture",
-      captureHint:"Experimental RLE screenshot: grayscale and RGB565 colour. Depends on model and firmware.",
+      captureHint:"OS RLE capture. A running native Ndless app may suspend USB; exit it with Esc before retrying in that case.",
       files:"Files", refresh:"Refresh", newFolder:"New folder", send:"Send TNS",
       sendCurrent:"Send current TNS", receive:"Receive selected", remove:"Delete selected",
       select:"Select", name:"Name", type:"Type", size:"Size", location:"Folder",
@@ -71,7 +74,8 @@
       capturePending:"Requesting calculator screenshot…",
       nativeSize:"Original resolution",
       savedReconnect:"File saved. USB session stopped responding: reconnect the calculator.",
-      captureSavedReconnect:"Screenshot obtained. Reconnect the calculator before another operation.",
+      captureSavedReconnect:"Screenshot obtained. Click Connect to continue; leave the cable plugged in.",
+      captureUnavailable:"The calculator did not respond to the screenshot request. If a native Ndless app is running, exit it with Esc, then click Connect. Leave the cable plugged in.",
       reconnect:"USB communication was interrupted. Reconnect the calculator.",
       downloadOne:"Download", renameOne:"Rename", deleteOne:"Delete",
       renamePrompt:"New name for", renameConflict:"An item with this name already exists.",
@@ -84,7 +88,9 @@
       sendHere:"Send here", cancelSend:"Cancel", rootFolder:"Calculator root",
       noSubfolders:"No subfolders in this folder.", folderLoadError:"Could not read this folder.",
       destinationLoading:"Loading folders…", targetPath:"Save to",
-      cancelled:"Transfer cancelled", chooseFolder:"Open folder", backFolder:"Parent folder"
+      cancelled:"Transfer cancelled", chooseFolder:"Open folder", backFolder:"Parent folder",
+      createFolder:"Create folder", folderCreating:"Creating folder…", folderCreateError:"Could not create folder.",
+      folderNameRequired:"Enter a folder name.", folderExists:"An item with that name already exists."
     },
     fr: {
       title:"Gestionnaire TI-Nspire", subtitle:"USB natif · TNS Tool WASM",
@@ -94,7 +100,7 @@
       connected:"Calculatrice connectée", failed:"Erreur de communication",
       note:"WebUSB requiert Chrome, Edge ou Brave et un pilote USB compatible.",
       folders:"Fichiers et dossiers", model:"Calculatrice", capture:"Capture d'écran",
-      captureHint:"Capture RLE expérimentale : niveaux de gris et couleur RGB565, selon le modèle.",
+      captureHint:"Capture RLE du système. Une application Ndless native peut suspendre USB ; quittez-la avec Échap avant de réessayer.",
       files:"Fichiers", refresh:"Actualiser", newFolder:"Nouveau dossier", send:"Envoyer TNS",
       sendCurrent:"Envoyer TNS actuel", receive:"Recevoir sélection", remove:"Supprimer sélection",
       select:"Sélectionner", name:"Nom", type:"Type", size:"Taille", location:"Dossier",
@@ -113,7 +119,8 @@
       capturePending:"Demande de capture à la calculatrice…",
       nativeSize:"Résolution d'origine",
       savedReconnect:"Fichier enregistré. Reconnectez la calculatrice.",
-      captureSavedReconnect:"Capture obtenue. Reconnectez la calculatrice.",
+      captureSavedReconnect:"Capture obtenue. Cliquez sur Connecter sans débrancher le câble.",
+      captureUnavailable:"La calculatrice ne répond pas à la capture. Si une application Ndless native est ouverte, quittez-la avec Échap, puis cliquez sur Connecter sans débrancher le câble.",
       reconnect:"Communication USB interrompue. Reconnectez la calculatrice.",
       downloadOne:"Télécharger", renameOne:"Renommer", deleteOne:"Supprimer",
       renamePrompt:"Nouveau nom pour", renameConflict:"Un élément porte déjà ce nom.",
@@ -126,14 +133,17 @@
       sendHere:"Envoyer ici", cancelSend:"Annuler", rootFolder:"Racine de la calculatrice",
       noSubfolders:"Aucun sous-dossier.", folderLoadError:"Impossible de lire le dossier.",
       destinationLoading:"Chargement des dossiers…", targetPath:"Enregistrer dans",
-      cancelled:"Envoi annulé", chooseFolder:"Ouvrir le dossier", backFolder:"Dossier parent"
+      cancelled:"Envoi annulé", chooseFolder:"Ouvrir le dossier", backFolder:"Dossier parent",
+      createFolder:"Créer le dossier", folderCreating:"Création du dossier…", folderCreateError:"Impossible de créer le dossier.",
+      folderNameRequired:"Saisissez un nom de dossier.", folderExists:"Un élément porte déjà ce nom."
     }
   };
   const q=(selector,root=document)=>root?.querySelector(selector);
   const state={
     root:null,link:null,path:"/",files:[],chosen:new Set(),busy:false,
     cache:new Map(),expanded:new Set(["/"]),transferStarted:0,view:"list",
-    lastDownloadSaved:false,lastScreenshotReady:false,destinationPicker:null
+    lastDownloadSaved:false,lastScreenshotReady:false,destinationPicker:null,
+    lastDevice:null,selecting:false
   };
   function tr(k){
     const language=String(document.documentElement.lang||"es").slice(0,2);
@@ -178,7 +188,7 @@
   function controls(){
     if(!state.root)return;
     const online=Boolean(state.link?.connected);
-    const locked=state.busy||Boolean(state.destinationPicker);
+    const locked=state.busy||state.selecting||Boolean(state.destinationPicker);
     const disable=(s,val)=>{const e=q("[data-ti-"+s+"]",state.root);if(e)e.disabled=val;};
     disable("connect",locked||online);
     // Hide Connect once there is a confirmed connection; show it again on
@@ -399,14 +409,16 @@
         state.link=null;state.files=[];state.cache.clear();
         state.expanded=new Set(["/"]);state.chosen.clear();state.path="/";
         q("[data-ti-device]",state.root).textContent="—";
-        // A WebUSB read may still be pending in Chromium. Close this handle
-        // best-effort, but never reuse it after a transport timeout.
-        void oldLink.close().catch(()=>{});
+        // Finish releasing the old USB handle before enabling Connect. An
+        // unawaited close can otherwise close a newly reopened device.
+        state.lastDevice=oldLink.detached ? null : oldLink.device || state.lastDevice;
+        await oldLink.close().catch(()=>{});
         rows();
-        const message=state.lastDownloadSaved?tr("savedReconnect"):
-          state.lastScreenshotReady?tr("captureSavedReconnect"):tr("reconnect");
-        say(message,true);
-        log(message+" "+String(e.message||e));
+        const notice=state.lastDownloadSaved?tr("savedReconnect"):
+          state.lastScreenshotReady?tr("captureSavedReconnect"):
+          e.code==="USB_TIMEOUT"&&message===tr("capturePending")?tr("captureUnavailable"):tr("reconnect");
+        say(notice,true);
+        log(notice+" "+String(e.message||e));
       }else{
         say(tr("failed")+": "+(e.message||e),true);
         log(String(e.message||e));
@@ -415,16 +427,20 @@
     finally{state.busy=false;controls();if(progress)progress.hidden=true;}
   }
   async function connect(){
-    if(state.busy)return;
+    if(state.busy||state.selecting||state.link?.connected)return;
     let device;
     // Do not delay requestDevice; it requires the originating click activation.
+    state.selecting=true;controls();
     try{
       if(!window.TnsNspireUSB?.NspireUSB)throw Error("El controlador WebUSB aún no está cargado.");
-      device=await window.TnsNspireUSB.NspireUSB.select();
+      device=state.lastDevice ? new window.TnsNspireUSB.NspireUSB(state.lastDevice) :
+        await window.TnsNspireUSB.NspireUSB.select();
     }
     catch(e){if(e.name!=="NotFoundError")say(e.message||String(e),true);return;}
+    finally{state.selecting=false;controls();}
     await working(async()=>{
       state.link=device;
+      state.lastDevice=device.device;
       say(tr("connecting"));
       state.files=await device.connect();
       state.cache.clear();state.cache.set("/",state.files);
@@ -464,7 +480,7 @@
       return Promise.resolve(null);
     return new Promise(resolve=>{
       const originalFocus=document.activeElement;
-      const picker={active:true,path:state.path,loading:false,validated:false,cancel:null};
+      const picker={active:true,path:state.path,loading:false,creating:false,validated:false,entries:[],cancel:null};
       const overlay=document.createElement("div");
       overlay.className="ti-destination-overlay";
       const panel=document.createElement("section");
@@ -485,6 +501,18 @@
       up.title=tr("backFolder");up.setAttribute("aria-label",tr("backFolder"));
       const breadcrumb=document.createElement("code");breadcrumb.className="ti-destination-path";
       toolbar.append(home,up,breadcrumb);
+      const newFolder=document.createElement("button");newFolder.type="button";
+      newFolder.className="ti-destination-new-folder";newFolder.textContent=tr("newFolder");
+      toolbar.append(newFolder);
+      const creation=document.createElement("form");creation.className="ti-destination-create-form";creation.hidden=true;
+      const folderName=document.createElement("input");folderName.type="text";folderName.maxLength=170;
+      folderName.className="ti-destination-folder-name";folderName.placeholder=tr("promptFolder");
+      folderName.setAttribute("aria-label",tr("promptFolder"));
+      const createButton=document.createElement("button");createButton.type="submit";
+      createButton.className="ti-destination-create-confirm";createButton.textContent=tr("createFolder");
+      const cancelCreation=document.createElement("button");cancelCreation.type="button";
+      cancelCreation.className="ti-destination-create-cancel";cancelCreation.textContent=tr("cancelSend");
+      creation.append(folderName,createButton,cancelCreation);
       const listing=document.createElement("div");
       listing.className="ti-destination-list";
       listing.setAttribute("role","list");
@@ -498,10 +526,10 @@
       const confirmButton=document.createElement("button");confirmButton.type="button";
       confirmButton.className="ti-destination-confirm";confirmButton.textContent=tr("sendHere");
       footer.append(cancel,confirmButton);
-      panel.append(heading,description,toolbar,listing,notice,footer);
+      panel.append(heading,description,toolbar,creation,listing,notice,footer);
       overlay.append(panel);
       const finish=value=>{
-        if(!picker.active)return;
+        if(!picker.active||picker.creating)return;
         picker.active=false;
         overlay.remove();
         if(state.destinationPicker===picker)state.destinationPicker=null;
@@ -515,6 +543,9 @@
         home.disabled=picker.loading||picker.path==="/";
         up.disabled=picker.loading||picker.path==="/";
         confirmButton.disabled=picker.loading||!picker.validated||!state.link?.connected;
+        newFolder.disabled=picker.loading||!picker.validated||!state.link?.connected;
+        folderName.disabled=picker.loading;createButton.disabled=picker.loading;
+        cancelCreation.disabled=picker.loading;cancel.disabled=picker.creating;
       };
       const enter=async path=>{
         if(!picker.active||picker.loading||!state.link?.connected)return;
@@ -529,6 +560,7 @@
           if(!picker.active)return;
           state.cache.set(path,entries);
           picker.path=path;
+          picker.entries=entries;
           picker.validated=true;
           const folders=entries.filter(entry=>entry.isDir).sort((a,b)=>
             a.name.localeCompare(b.name));
@@ -564,6 +596,42 @@
           if(picker.active)updateButtons();
         }
       };
+      newFolder.addEventListener("click",()=>{
+        if(newFolder.disabled)return;
+        creation.hidden=false;folderName.value="";folderName.focus();
+      });
+      cancelCreation.addEventListener("click",()=>{creation.hidden=true;newFolder.focus();});
+      creation.addEventListener("submit",async event=>{
+        event.preventDefault();
+        if(picker.loading||!picker.validated||!state.link?.connected)return;
+        const name=folderName.value.trim(),parent=picker.path;
+        let path;
+        try{
+          if(!name)throw Error(tr("folderNameRequired"));
+          path=window.TnsNspireUSB.childPath(parent,name);
+          if(picker.entries.some(entry=>entry.name.toLowerCase()===name.toLowerCase()))
+            throw Error(tr("folderExists"));
+        }catch(error){notice.textContent=error.message;notice.dataset.error="1";folderName.focus();return;}
+        picker.loading=true;picker.creating=true;updateButtons();
+        notice.textContent=tr("folderCreating");notice.dataset.error="0";
+        try{
+          await state.link.makeDir(path);
+          // A USB acknowledgement must precede navigation or any file upload.
+          state.cache.delete(parent);state.cache.delete(path);
+          const entries=await state.link.listDir(parent);
+          state.cache.set(parent,entries);picker.entries=entries;
+          if(parent===state.path){state.files=entries;rows();}
+          creation.hidden=true;
+          picker.creating=false;picker.loading=false;
+          await enter(path);
+        }catch(error){
+          notice.textContent=tr("folderCreateError")+" "+(error.message||error);
+          notice.dataset.error="1";
+        }finally{
+          picker.creating=false;picker.loading=false;
+          if(picker.active)updateButtons();
+        }
+      });
       cancel.addEventListener("click",()=>finish(null));
       confirmButton.addEventListener("click",()=>{
         if(!picker.loading&&picker.validated)finish(picker.path);
@@ -573,7 +641,11 @@
         void enter(picker.path.split("/").slice(0,-1).join("/")||"/");
       });
       overlay.addEventListener("keydown",event=>{
-        if(event.key==="Escape"){event.preventDefault();event.stopPropagation();finish(null);}
+        if(event.key==="Escape"){
+          event.preventDefault();event.stopPropagation();
+          if(picker.creating)return;
+          if(!creation.hidden){creation.hidden=true;newFolder.focus();}else finish(null);
+        }
       });
       // Clicking outside the dialog cancels without transferring any bytes.
       overlay.addEventListener("click",event=>{
@@ -884,12 +956,12 @@
   function close(){
     if(state.busy)return;
     if(state.destinationPicker)state.destinationPicker.cancel();
-    const link=state.link;state.root?.remove();state.root=null;
-    state.link=null;state.files=[];state.cache.clear();state.chosen.clear();
-    if(link)void link.close().catch(console.error);
+    // Hiding the manager must not tear down a healthy USB session. Retain the
+    // bitmap, folder and selection too; Disconnect is the explicit release.
+    if(state.root)state.root.hidden=true;
   }
   function open(){
-    if(state.root)return;
+    if(state.root){state.root.hidden=false;controls();return;}
     const root=document.createElement("div");root.className="ti-manager-overlay";
     root.innerHTML=[
       '<section class="ti-manager-dialog" role="dialog" aria-modal="true" aria-labelledby="ti-manager-title">',
@@ -989,6 +1061,17 @@
       event.preventDefault();state.destinationPicker.cancel();return;
     }
     if(event.key==="Escape"&&state.root&&!state.busy)close();
+  });
+  if(typeof navigator!=="undefined")navigator.usb?.addEventListener?.("disconnect",event=>{
+    const link=state.link;
+    if(event.device===state.lastDevice)state.lastDevice=null;
+    if(!link||link.device!==event.device)return;
+    link.detached=true;link.broken=true;link.connected=false;
+    if(!state.busy)void working(async()=>{
+      await link.close();state.link=null;state.files=[];state.cache.clear();state.chosen.clear();
+      q("[data-ti-device]",state.root).textContent="—";
+      rows();say(tr("reconnect"),true);
+    });
   });
   window.TnsCalculatorTransfer=Object.freeze({open,close});
 })();

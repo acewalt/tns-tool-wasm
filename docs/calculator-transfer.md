@@ -223,3 +223,44 @@ sigue dependiendo de una TI-Nspire conectada.
 - `tests/nnse-transport.test.js` — validaciones de tramas y handshakes NNSE, listado, envío, descarga, borrado y datos RLE con hardware simulado.
 
 Los scripts históricos `tools/calculator-transfer/bridge.py` y su prueba Python permanecen por compatibilidad del repositorio, **pero el módulo de la página ya no los utiliza**.
+
+## Crear una carpeta al enviar
+
+En «Elegir carpeta de destino», pulsa «Nueva carpeta», escribe el nombre y
+confirma «Crear carpeta». La aplicación espera la confirmación de la calculadora,
+actualiza la lista y entra en la nueva carpeta. Pulsa «Enviar aquí» para transferir
+el TNS. Crear una carpeta por sí solo no envía el archivo. Se rechazan nombres
+inválidos y nombres que ya aparecen en la carpeta actual.
+
+## Sesión y capturas consecutivas (27-10-2026)
+
+- Cerrar el administrador oculta la ventana y conserva la conexión, carpeta,
+  selección e imagen. Al reabrirlo no vuelve a negociar USB. «Desconectar» sí
+  libera el dispositivo.
+- La captura tiene un plazo total de 15 segundos; su cierre de servicio tiene
+  un presupuesto de 1,5 segundos. Un fallo libera los controles y conserva la
+  última captura válida.
+- Antes de habilitar «Conectar», se espera el cierre del handle anterior. Un
+  reintento reutiliza el dispositivo autorizado y no exige retirar el cable.
+  No se reintentan automáticamente escrituras ni borrados.
+- Se filtran respuestas atrasadas por servicio y sesión, no solo por destino.
+- Las pruebas incluyen cinco capturas consecutivas, mensajes de otro servicio,
+  un dispositivo silencioso, cierre de servicio bloqueado y la carrera entre
+  liberar/reabrir USB. Electron comprueba además tres capturas RGB565 y la
+  reapertura del panel con una calculadora simulada.
+
+### Capturar una aplicación nativa Ndless
+
+El [cargador de Ndless](https://github.com/ndless-nspire/Ndless/blob/master/ndless/src/resources/ploaderhook.c)
+desactiva las interrupciones antes de llamar al programa y las restaura después.
+Por ello una aplicación nativa puede suspender el servicio USB de captura del
+sistema mientras está abierta. Un cambio en la web no habilita por sí solo ese
+servicio dentro del programa. Si no responde, salir del ejemplo con Esc y pulsar
+«Conectar» permite reintentar desde el sistema, dejando el cable conectado. Para
+capturar la imagen nativa en ese caso se necesita soporte dentro de la propia
+aplicación (por ejemplo guardar su superficie SDL), que no implementa este módulo.
+
+El usuario confirmó que el nuevo ejemplo SDL permanece abierto en su CX II CAS
+con SO 6.2.0.333 y Ndless activo. La recuperación y las capturas consecutivas de
+esta revisión aún requieren comprobación física; las pruebas automatizadas no
+equivalen a esa comprobación.
