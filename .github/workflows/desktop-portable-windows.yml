@@ -60,15 +60,30 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $dir = Join-Path $env:RUNNER_TEMP 'ndless-portable-smoke'
           New-Item -ItemType Directory -Force -Path $dir | Out-Null
-          'int main(void) { return 0; }' | Set-Content -Encoding ascii (Join-Path $dir 'main.c')
+          @'
+          #define OLD_SCREEN_API
+          #include <stdio.h>
+          #include <libndls.h>
+          int main(void) {
+              assert_ndless_rev(801);
+              clrscr();
+              printf("Hello portable Ndless!\\n");
+              wait_key_pressed();
+              return 0;
+          }
+          '@ | Set-Content -Encoding ascii (Join-Path $dir 'main.c')
           $zip = Join-Path $env:RUNNER_TEMP 'ndless-portable-smoke.zip'
           Compress-Archive -Path (Join-Path $dir 'main.c') -DestinationPath $zip -Force
           $exe = 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe'
           $tns = Join-Path $env:RUNNER_TEMP 'smoke.tns'
           $compilerPath = (Resolve-Path $exe).Path
           $zipPath = (Resolve-Path $zip).Path
-          $proc = Start-Process -FilePath $compilerPath -ArgumentList '--build-zip',"`"$zipPath`"","`"$tns`"",'smoke' -Wait -PassThru
+          $stdout = Join-Path $env:RUNNER_TEMP 'ndless-stdout.txt'
+          $stderr = Join-Path $env:RUNNER_TEMP 'ndless-stderr.txt'
+          $proc = Start-Process -FilePath $compilerPath -ArgumentList '--build-zip',"`"$zipPath`"","`"$tns`"",'smoke' -Wait -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
           Write-Host "Native compiler exit=$($proc.ExitCode)"
+          if(Test-Path $stdout){Get-Content $stdout | Write-Host}
+          if(Test-Path $stderr){Get-Content $stderr | Write-Host}
           if ($proc.ExitCode -ne 0) { throw "Native Ndless C build failed (exit $($proc.ExitCode))" }
           $bytes = [IO.File]::ReadAllBytes($tns)
           if ($bytes.Length -lt 40 -or [Text.Encoding]::ASCII.GetString($bytes,0,4) -ne 'Zehn') {
