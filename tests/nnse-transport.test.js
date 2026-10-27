@@ -82,6 +82,7 @@ class FakeNNSEUSB {
   splitScreenshot=false;suppressFinalAck=false;suppressDisconnectAck=false;
   stallScreen=false;stallClose=false;staleScreenBeforeFiles=false;closeCount=0;
   strictScreenSequence=false;expectedHostSeq=null;rejectedSequences=[];
+  fullScreenshot=false;screenCount=0;
   async open(){this.opened=true;}
   async close(){this.closeCount++;this.opened=false;}
   async claimInterface(){}
@@ -167,7 +168,20 @@ class FakeNNSEUSB {
     else if(d[0]===0&&service===0x4024){
       if(this.strictScreenSequence&&this.expectedHostSeq===null)this.expectedHostSeq=(outer.seq+1)&65535;
       if(this.stallScreen)return {status:"ok"};
-      if(this.colorScreenshot){
+      if(this.fullScreenshot){
+        const shot=++this.screenCount,encoded=new Uint8Array(300*513);
+        for(let block=0;block<300;block++){
+          encoded[block*513]=129; // literal run of 128 RGB565 pixel pairs
+          for(let j=0;j<512;j++)encoded[block*513+1+j]=(shot+block+j)&255;
+        }
+        this.respond(concat(Uint8Array.of(1),be32(encoded.length),
+          Uint8Array.of(0,0,0,0,1,64,0,240,16,0)),service,dest);
+        for(let at=0;at<encoded.length;at+=1024){
+          this.respond(concat(Uint8Array.of(2),encoded.subarray(at,at+1024)),service,dest);
+          if(at===0)this.answers.push(nnse.encodeFrame(8,Uint8Array.of(1),
+            {src:1,dest:0xfe,seq:this.seq++,reqAck:1}));
+        }
+      }else if(this.colorScreenshot){
         this.respond(concat(Uint8Array.of(1),be32(5),Uint8Array.of(0,0,0,0,0,2,0,2)),service,dest);
         if(this.splitScreenshot){
           this.respond(Uint8Array.of(2,1,0,0xf8),service,dest);
@@ -276,11 +290,26 @@ await repeated.close();
 // the first image, then ignore the close and second request if ACKs consumed
 // the host's outgoing sequence. USB transferOut still reports success.
 const strictUSB=new FakeNNSEUSB(),strict=new proto.NspireUSB(strictUSB);
-await strict.connect();strictUSB.strictScreenSequence=true;strict.screenshotTimeoutMs=40;
+await strict.connect();strictUSB.strictScreenSequence=true;strict.screenshotTimeoutMs=100;
 for(let i=0;i<5;i++)assert.equal((await strict.screenshotRle()).width,2);
 assert.deepEqual(strictUSB.rejectedSequences,[],'Screenshot ACKs must not create outgoing sequence gaps');
 assert.equal((await strict.listDir('/'))[0].name,'Examples');
 await strict.close();
+
+const fullUSB=new FakeNNSEUSB(),full=new proto.NspireUSB(fullUSB);
+await full.connect();fullUSB.strictScreenSequence=true;
+fullUSB.fullScreenshot=true;fullUSB.splitBulkReads=true;full.screenshotTimeoutMs=2000;
+for(let i=1;i<=3;i++){
+  const image=await full.screenshotRle();
+  assert.deepEqual([image.width,image.height,image.bpp],[320,240,16]);
+  assert.equal(image.pixels.length,153600);
+  assert.equal(image.pixels[0],i,'Each screenshot must contain the newly received image');
+  assert.equal(image.pixels.at(-1),(i+299+511)&255);
+}
+assert.deepEqual(fullUSB.rejectedSequences,[],
+  'Full screenshots and interleaved NNSE control messages must keep consecutive host IDs');
+assert.equal((await full.listDir('/'))[0].name,'Examples');
+await full.close();
 
 const silentUSB=new FakeNNSEUSB(),silent=new proto.NspireUSB(silentUSB);
 await silent.connect();silent.screenshotTimeoutMs=20;silentUSB.stallScreen=true;
