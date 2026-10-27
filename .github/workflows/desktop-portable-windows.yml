@@ -50,6 +50,24 @@ jobs:
           if ($actual -ne $expected) { throw "Compiler SHA256 mismatch: $actual" }
           & $out --status-json
           if ($LASTEXITCODE -ne 0) { throw "Bundled compiler status failed" }
+      - name: Compile a real Ndless C example using bundled ARM SDK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = Join-Path $env:RUNNER_TEMP 'ndless-portable-smoke'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          'int main(void) { return 0; }' | Set-Content -Encoding ascii (Join-Path $dir 'main.c')
+          $zip = Join-Path $env:RUNNER_TEMP 'ndless-portable-smoke.zip'
+          Compress-Archive -Path (Join-Path $dir 'main.c') -DestinationPath $zip -Force
+          $exe = 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe'
+          $tns = Join-Path $env:RUNNER_TEMP 'smoke.tns'
+          & $exe --build-zip $zip $tns 'smoke'
+          if ($LASTEXITCODE -ne 0) { throw "Native Ndless C build failed" }
+          $bytes = [IO.File]::ReadAllBytes($tns)
+          if ($bytes.Length -lt 40 -or [Text.Encoding]::ASCII.GetString($bytes,0,4) -ne 'Zehn') {
+            throw "Invalid modern Zehn output"
+          }
+          Write-Host "Built real Ndless example: $($bytes.Length) bytes"
       - name: Pack Windows portable executable
         run: npm run desktop:build:win
         env:
