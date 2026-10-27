@@ -1,0 +1,27 @@
+{
+  "appId": "com.acewalt.tnstool.portable",
+  "productName": "TNS Tool Portable",
+  "asar": true,
+  "directories": { "output": "release/portable" },
+  "files": [
+    "**/*",
+    "!desktop/vendor/**",
+    "!tools/**",
+    "!tests/**",
+    "!docs/**",
+    "!cloudflare/**",
+    "!.github/**",
+    "!node_modules/.cache/**",
+    "!*.zip",
+    "!release/**"
+  ],
+  "extraResources": [
+    { "from": "desktop/vendor", "to": "vendor", "filter": ["**/*", "!compiler/**"] },
+    { "from": "desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe", "to": "compiler/TNS-Tool-Compiler-Windows-x64.exe" }
+  ],
+  "win": {
+    "target": [{ "target": "portable", "arch": ["x64"] }],
+    "artifactName": "TNS-Tool-Portable-${version}-${arch}.${ext}"
+  },
+  "compression": "normal"
+}
