@@ -20,10 +20,22 @@ The portable includes Unicorn.js 1.0.3 (GPL-2.0), with SHA256-verified JavaScrip
 WASM and license, and requires no CDN for this feature. Version 2.1.4 reproduced
 a WASM translator trap in the official SDK's SDL keyboard initialization, so it
 is not used by this preview. SWIs are serviced between CPU slices, including
-modern RGB565 lcd_blit, memory allocation, file and common C string operations.
+modern LCD callback ABI, memory allocation, file and common C string operations.
+The seven SDK screen formats are accepted, including transposed RGB565/RGB555,
+packed 4-bit grayscale and indexed 8-bit palettes. Output is converted to RGB565.
+Legacy CX control uses 0xC0000018. ARM conditional SVC and Thumb SVC instructions
+are handled with their execution mode preserved between CPU slices.
+
+Open **Program files and arguments** below the screen to load WAD, NES, BMP or
+other resources (up to 64 MiB combined). These files live in the preview's virtual
+`/documents` directory for this workspace session. The first file is passed as
+a quoted argument automatically; edit arguments as needed. Relative paths,
+directories, directory enumeration, stat, errno and virtual saves are supported.
+Resources and virtual saves are not written back to the computer or autosaved
+with the project. Clear resources removes them and recompiles without arguments.
 
 This is a partial Ndless execution environment, not a TI-Nspire OS emulator.
-OS services outside the implemented kernel, other LCD formats and hardware
+OS services outside the implemented kernel, unsupported LCD modes and hardware
 peripherals can fail explicitly. Speed and timing are simulated; successful
 preview execution does not replace testing on a physical calculator. Compiling
 large projects takes time, so "live" means recompilation after an edit followed
@@ -40,7 +52,9 @@ On Windows, after preparing desktop vendor assets and the SDK, set
 `TNS_DESKTOP_COMPILER` to the bundled compiler executable and run:
 
 ```
-node --test tests/ndless-preview-native.test.cjs
+node --test --test-concurrency=1 tests/ndless-preview-native.test.cjs tests/ndless-preview-lcd-files.test.cjs tests/ndless-preview-games.test.cjs
+node tools/ndless-community-preview.cjs
+node tools/package-ndless-games.cjs
 ```
 
 The fixtures exercise SDL gradients and dynamically calculated text, double
@@ -49,4 +63,8 @@ keyboard changes, C with ARM assembly, unsupported SWIs, invalid memory,
 infinite loops, and invalid C source. The same worker script runs in Node's
 adapter and Electron. The portable release additionally tests editor changes,
 frame invalidation, animation, pause/resume, keyboard and error recovery inside
-the app extracted from the public ZIP before publishing it.
+the app extracted from the public ZIP before publishing it. Resource upload,
+quoted paths containing spaces, and clearing resources are also checked there.
+The community suite fetches pinned public sources and SHA256-verified Freedoom
+data, compiles nDoom and NesNspire, and plays them through the same ARM worker.
+See [game audit](NDLESS_GAME_PREVIEW_AUDIT.md) for results and limits.

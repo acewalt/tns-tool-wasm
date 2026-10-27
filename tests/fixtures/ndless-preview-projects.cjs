@@ -43,9 +43,16 @@ static unsigned short pixels[320*240];
 int main(){unsigned total=0;for(unsigned i=0;i<9000;i++){volatile unsigned char*p=malloc(8192);if(!p)return 3;p[8191]=7;total+=p[8191];free((void*)p);}
 for(unsigned i=0;i<320*240;i++)pixels[i]=total==63000?0xffe0:0xf800;
 lcd_init(SCR_320x240_565);lcd_blit(pixels,SCR_320x240_565);while(!isKeyPressed(KEY_NSPIRE_ESC)){}return 0;}`},kind:'allocation'},
- {name:'unsupported-lcd',files:{'main.c':'int main(){register unsigned r0 __asm__("r0")=1;__asm__ volatile("swi 0x20000f":"+r"(r0));return 0;}'},kind:'lcd'},
+ {name:'unsupported-lcd',files:{'main.c':'int main(){register unsigned r0 __asm__("r0")=99;__asm__ volatile("swi 0x20000f":"+r"(r0));return 0;}'},kind:'lcd'},
  {name:'unsupported-swi',files:{'main.c':'int main(){__asm__ volatile("swi 0x123456");return 0;}'},kind:'unsupported'},
+ {name:'conditional-thumb-swi',files:{'main.c':`#include <os.h>
+static unsigned short pixels[76800];
+__attribute__((target("thumb"),noinline)) static void thumb_test(){register const char*r0 __asm__("r0")="THUMB_OK";__asm__ volatile("svc 22":"+r"(r0)::"memory","cc");for(volatile int i=0;i<200000;i++){} }
+int main(){register const char*r0 __asm__("r0")="CONDITIONAL_OK";__asm__ volatile("cmp r0,r0\\nsvceq 22":"+r"(r0)::"memory","cc");thumb_test();for(int i=0;i<76800;i++)pixels[i]=0x07e0;lcd_init(0);lcd_blit(pixels,0);while(!isKeyPressed(KEY_NSPIRE_ESC)){}return 0;}`},kind:'abi'},
  {name:'invalid-memory',files:{'main.c':'int main(){*(volatile int*)0x12340000=7;return 0;}'},kind:'memory'},
+ {name:'invalid-framebuffer',files:{'main.c':'int main(){*(volatile unsigned*)0xc0000010=0x12340000;for(;;)__asm__ volatile("nop");}'},kind:'framebuffer'},
+ {name:'stack-string-page',files:{'main.c':`#include <os.h>
+static unsigned short p[76800];int main(){volatile char local[8]="STACK";register const char*r0 __asm__("r0")=(const char*)local;register const char*r1 __asm__("r1")="STACK";__asm__ volatile("swi 26":"+r"(r0):"r"(r1):"memory","cc");if((unsigned)r0)return 1;for(int i=0;i<76800;i++)p[i]=0x07e0;lcd_init(0);lcd_blit(p,0);while(!isKeyPressed(KEY_NSPIRE_ESC)){}return 0;}`},kind:'stack'},
  {name:'infinite-loop',files:{'main.c':'int main(){for(;;)__asm__ volatile("nop");}'},kind:'infinite'},
  {name:'invalid-source',files:{'main.c':'int main(void){ this is not C; }'},kind:'compile-error'}
 ];

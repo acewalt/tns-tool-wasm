@@ -8,3 +8,9 @@
 .ndless-live-preview-controls pre{white-space:pre-wrap;overflow:auto;max-height:180px;padding:8px;background:#070d17;border-radius:7px;font-size:11px}
 [data-ndless-project-canvas]:focus{outline:2px solid #9aee28;outline-offset:3px}
 [data-preview-stage="compile-error"],[data-preview-stage="error"]{color:#fb7185;white-space:pre-wrap;max-height:220px;overflow:auto}
+.ndless-live-resources{padding:9px;border:1px solid #365375;border-radius:8px;font-size:11px}
+.ndless-live-resources summary{cursor:pointer;font-weight:700}
+.ndless-live-resources label,.ndless-live-resources small{display:block;margin-top:8px}
+.ndless-live-resources input{box-sizing:border-box;width:100%;min-width:0;margin-top:5px;font:inherit}
+.ndless-live-resources input[type="text"]{background:#0b1525;color:#dceaff;border:1px solid #365375;border-radius:5px;padding:6px}
+.ndless-live-resources button{margin-top:9px;padding:5px 8px;background:#203d5f;color:#dceaff;border:1px solid #365375;border-radius:6px;font:inherit;cursor:pointer}
