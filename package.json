@@ -11,13 +11,20 @@
     "lua-test": "node cli/lua-test.js",
     "lua-suite": "node cli/lua-suite.js",
     "lua-preview": "node cli/tns-tool.js lua preview",
-    "tns": "node cli/tns-tool.js tns"
+    "tns": "node cli/tns-tool.js tns",
+    "desktop:dev": "electron .",
+    "desktop:vendor": "node desktop/prepare-vendor.mjs",
+    "desktop:build:win": "electron-builder --win portable --x64",
+    "desktop:test": "node --test tests/desktop-portable.test.cjs"
   },
   "engines": {
     "node": ">=18"
   },
   "devDependencies": {
     "monaco-editor": "^0.56.0",
-    "vite": "^8.2.2"
-  }
+    "vite": "^8.2.2",
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "main": "desktop/main.cjs"
 }
