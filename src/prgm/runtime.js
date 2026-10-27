@@ -171,7 +171,7 @@ export function compilePrgm(source) {
         op.kind=key(match[1]);const args=split(match[2],',').map(s=>s.trim());
         if(op.kind.startsWith('request')){if(args.length<2||args.length>4)fail('SYNTAX_ERROR','Request requiere mensaje, variable y hasta dos opciones.');op.prompt=parsed(args[0]);op.name=variable(args[1]);op.flag=args[2]?parsed(args[2]):null;op.statusName=args[3]?variable(args[3]):null;}
         else {if(!args[0])fail('SYNTAX_ERROR','Disp requiere una expresión.');op.args=args.map(parsed);if(op.kind==='dispat'&&args.length<2)fail('SYNTAX_ERROR','DispAt requiere fila y contenido.');}
-      }else if(/^ClrIO$/i.test(text)){op.kind='clear';warnings.push({code:'COMPAT_CLRIO',line:stmt.line,message:'ClrIO se simula como extensión de compatibilidad; no forma parte del catálogo TI-Nspire.'});}
+      }else if(/^ClrIO$/i.test(text)){op.kind='clear';warnings.push({code:'COMPAT_CLRIO',line:stmt.line,message:'ClrIO no es una instrucción TI-Nspire; se omite y se conserva el historial.'});}
       else if((match=/^If\s+(.+?)\s+Then$/i.exec(text))){op.kind='if';op.expr=parsed(match[1]);stack.push({kind:'if',start:i,branch:i,ends:[],hasElse:false});}
       else if((match=/^If\s+(.+)$/i.exec(text))){op.kind='ifSingle';op.expr=parsed(match[1]);}
       else if((match=/^ElseIf\s+(.+?)\s+Then$/i.exec(text))||/^Else$/i.test(text)){
@@ -229,7 +229,7 @@ export class PrgmPreview {
         const args=op.args.map(n=>this.ev(n));
         if(op.kind==='disp')this.append(args.map(formatPrgmValue).join('\u2009'));
         else {const row=number(args.shift());if(!Number.isInteger(row)||row<1||row>8)fail('DOMAIN_ERROR','DispAt requiere una fila entre 1 y 8.');while(this.output.length<row)this.append('');this.output[row-1]={text:args.map(formatPrgmValue).join('\u2009'),kind:'disp',line:op.line};}
-      }else if(op.kind==='clear'){this.output=[];this.event({type:'clear',line:op.line});}
+      }else if(op.kind==='clear'){this.event({type:'compatibility',command:'ClrIO',ignored:true,line:op.line});}
       else if(op.kind==='request'||op.kind==='requeststr') {
         const prompt=this.ev(op.prompt);if(typeof prompt!=='string')fail('TYPE_ERROR','El mensaje Request debe ser texto.');
         this.pending={kind:op.kind,prompt,variable:op.name,display:op.flag?this.ev(op.flag)!==0:true,statusVariable:op.statusName,line:op.line};this.status='waiting';

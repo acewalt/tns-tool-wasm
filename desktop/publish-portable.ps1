@@ -9,6 +9,7 @@ if (!$report.ok -or $report.version -ne $version -or @($report.cases | Where-Obj
     throw 'A matching successful test of the public ZIP is required before publishing'
 }
 if (!$report.prgmPreview.ok -or !$report.browserPrgmPreview.ok) { throw 'Prgm preview desktop/browser acceptance is required' }
+if (!$report.prgmPreview.stableHistory -or !$report.prgmPreview.expandedCanvas -or !$report.browserPrgmPreview.stableHistory -or !$report.browserPrgmPreview.expandedCanvas) { throw 'Prgm history and expanded canvas acceptance is required' }
 $stage = Join-Path $env:RUNNER_TEMP 'portable-release-assets'
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 $asset = Join-Path $stage 'TNS-Tool-Portable-Windows-x64.zip'
@@ -25,6 +26,8 @@ Descarga **TNS-Tool-Portable-Windows-x64.zip**, extrae todo el archivo en una ca
 El SDK Ndless está incluido. Se prepara una vez al usar el compilador; no requiere descargar ni instalar herramientas adicionales.
 
 Incluye Preview Prgm en Syntax Doctor: pantalla de 320×240, Request interactivo, vista ampliada, ejecución por pasos, variables y errores con línea. La ruta MRUA del ejemplo de física se verifica en escritorio y navegador. Es una simulación numérica parcial, sin CAS simbólico, unidades ni gráficos.
+
+El historial conserva los menús y respuestas anteriores, con márgenes estables y popup centrado. La vista ampliada ofrece hasta 800×600 sin escalar la letra ni el cuadro de entrada, como el preview Lua/LÖVE.
 
 Este ZIP se extrajo y probó antes de publicarlo: creación de proyectos C/C++ mediante el botón visible del menú, editor, compilación ARM por IPC y pruebas de capturas USB simuladas. La recuperación USB aún requiere validación física en cada equipo.
 

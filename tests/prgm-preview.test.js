@@ -8,6 +8,7 @@ test('real 602-line physics program waits for menus and accepts calculator expre
   assert.equal(s.status,'waiting');assert.equal(s.pending.variable,'opcion');assert.match(s.text,/MENU PRINCIPAL/);
   assert.equal(s.variables.opcion,undefined);
   p.answer('1');s=p.run();assert.equal(s.pending.variable,'seleccion');assert.match(s.text,/1:Velocidad/);
+  assert.match(s.text,/MENU PRINCIPAL/);assert.match(s.text,/op: 1/);
   p.answer('1');p.run();p.answer('100');p.run();p.answer('2*10');s=p.run();
   assert.equal(s.status,'done');assert.equal(s.variables.velocidad,5);assert.match(s.text,/v=5 m\/s/);
 });
@@ -82,4 +83,10 @@ test('step and stop retain output and Request has its actual source line',()=>{
   const p=createPrgmPreview('Disp "one"\nRequest "n:",n\nDisp n');
   assert.equal(p.step().text,'one');const waiting=p.step();assert.equal(waiting.pending.line,2);assert.equal(waiting.line,2);
   assert.equal(p.stop().status,'stopped');assert.equal(p.run().text,'one');
+});
+test('ClrIO preserves the TI-Nspire history seen in the reference calculator',()=>{
+  const s=runPrgmPreview('Disp "menu":Request "op:",n:ClrIO:Disp "submenu"',[1]);
+  assert.equal(s.text,'menu\nop: 1\nsubmenu');assert.equal(s.warnings[0].code,'COMPAT_CLRIO');
+  const video=runPrgmPreview(physics,[1,2,3,45,2,2,3]);
+  assert.match(video.text,/MENU PRINCIPAL/);assert.match(video.text,/op: 1/);assert.match(video.text,/op: 2/);assert.match(video.text,/\(a\)=14.3333 m\/s\^2/);
 });

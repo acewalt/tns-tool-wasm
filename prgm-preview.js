@@ -1,9 +1,9 @@
-import {createPrgmPreview,formatPrgmValue} from './src/prgm/runtime.js';
+import {createPrgmPreview,formatPrgmValue} from './src/prgm/runtime.js?v=20261027-prgm-layout-v2';
 
 const COPY={
-  es:{title:'Preview Prgm',note:'Simulación numérica TI-BASIC · entradas, menús y salida de texto.',run:'Ejecutar',pause:'Pausar',step:'Paso',stop:'Detener',restart:'Reiniciar / actualizar',expand:'Vista ampliada',normal:'Tamaño calculadora',close:'Cerrar',variables:'Variables',empty:'Todavía no hay valores.',copy:'Copiar salida',copied:'Salida copiada.',ok:'OK',cancel:'Cancelar',done:'Hecho',line:'Línea',ready:'Listo',waiting:'Esperando entrada',paused:'Pausado',running:'Ejecutando',stopped:'Detenido',error:'Error',support:'Cobertura del preview',help:'Prgm sin parámetros; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, asignaciones, listas y matemáticas numéricas. ClrIO limpia la salida como extensión de compatibilidad. No reproduce CAS simbólico, unidades, gráficos ni funciones externas; las instrucciones no soportadas se indican con su línea.',keys:'Enter: aceptar · Esc: cancelar entrada · ↑/↓: desplazar salida',angle:'Ángulos (reinicia)',request:'Entrada del programa',viewLine:'Ver línea en editor'},
-  en:{title:'Prgm Preview',note:'TI-BASIC numerical simulation · input, menus and text output.',run:'Run',pause:'Pause',step:'Step',stop:'Stop',restart:'Restart / refresh',expand:'Expanded view',normal:'Calculator size',close:'Close',variables:'Variables',empty:'No values yet.',copy:'Copy output',copied:'Output copied.',ok:'OK',cancel:'Cancel',done:'Done',line:'Line',ready:'Ready',waiting:'Waiting for input',paused:'Paused',running:'Running',stopped:'Stopped',error:'Error',support:'Preview coverage',help:'Prgm without parameters; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, assignments, lists and numerical math. ClrIO clears output as a compatibility extension. Symbolic CAS, units, graphics and external functions are not simulated; unsupported instructions report their line.',keys:'Enter: accept · Esc: cancel input · ↑/↓: scroll output',angle:'Angles (restarts)',request:'Program input',viewLine:'Show line in editor'},
-  fr:{title:'Aperçu Prgm',note:'Simulation numérique TI-BASIC · saisie, menus et sortie texte.',run:'Exécuter',pause:'Pause',step:'Pas',stop:'Arrêter',restart:'Recommencer / actualiser',expand:'Vue agrandie',normal:'Taille calculatrice',close:'Fermer',variables:'Variables',empty:'Aucune valeur.',copy:'Copier la sortie',copied:'Sortie copiée.',ok:'OK',cancel:'Annuler',done:'Terminé',line:'Ligne',ready:'Prêt',waiting:'Saisie attendue',paused:'En pause',running:'En cours',stopped:'Arrêté',error:'Erreur',support:'Fonctions simulées',help:'Prgm sans paramètres ; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, affectations, listes et calcul numérique. ClrIO efface la sortie comme extension de compatibilité. Le CAS symbolique, les unités, les graphiques et les fonctions externes ne sont pas simulés ; les instructions non prises en charge indiquent leur ligne.',keys:'Entrée : valider · Échap : annuler · ↑/↓ : défiler',angle:'Angles (redémarre)',request:'Saisie du programme',viewLine:'Voir la ligne dans l’éditeur'}
+  es:{title:'Preview Prgm',note:'Simulación numérica TI-BASIC · entradas, menús y salida de texto.',run:'Ejecutar',pause:'Pausar',step:'Paso',stop:'Detener',restart:'Reiniciar / actualizar',expand:'Vista ampliada',normal:'Tamaño calculadora',close:'Cerrar',variables:'Variables',empty:'Todavía no hay valores.',copy:'Copiar salida',copied:'Salida copiada.',ok:'OK',cancel:'Cancelar',done:'Hecho',line:'Línea',ready:'Listo',waiting:'Esperando entrada',paused:'Pausado',running:'Ejecutando',stopped:'Detenido',error:'Error',support:'Cobertura del preview',help:'Prgm sin parámetros; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, asignaciones, listas y matemáticas numéricas. ClrIO se omite para conservar el historial TI-Nspire. No reproduce CAS simbólico, unidades, gráficos ni funciones externas; las instrucciones no soportadas se indican con su línea.',keys:'Enter: aceptar · Esc: cancelar entrada · ↑/↓: desplazar salida',angle:'Ángulos (reinicia)',request:'Entrada del programa',viewLine:'Ver línea en editor'},
+  en:{title:'Prgm Preview',note:'TI-BASIC numerical simulation · input, menus and text output.',run:'Run',pause:'Pause',step:'Step',stop:'Stop',restart:'Restart / refresh',expand:'Expanded view',normal:'Calculator size',close:'Close',variables:'Variables',empty:'No values yet.',copy:'Copy output',copied:'Output copied.',ok:'OK',cancel:'Cancel',done:'Done',line:'Line',ready:'Ready',waiting:'Waiting for input',paused:'Paused',running:'Running',stopped:'Stopped',error:'Error',support:'Preview coverage',help:'Prgm without parameters; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, assignments, lists and numerical math. ClrIO is ignored to preserve TI-Nspire history. Symbolic CAS, units, graphics and external functions are not simulated; unsupported instructions report their line.',keys:'Enter: accept · Esc: cancel input · ↑/↓: scroll output',angle:'Angles (restarts)',request:'Program input',viewLine:'Show line in editor'},
+  fr:{title:'Aperçu Prgm',note:'Simulation numérique TI-BASIC · saisie, menus et sortie texte.',run:'Exécuter',pause:'Pause',step:'Pas',stop:'Arrêter',restart:'Recommencer / actualiser',expand:'Vue agrandie',normal:'Taille calculatrice',close:'Fermer',variables:'Variables',empty:'Aucune valeur.',copy:'Copier la sortie',copied:'Sortie copiée.',ok:'OK',cancel:'Annuler',done:'Terminé',line:'Ligne',ready:'Prêt',waiting:'Saisie attendue',paused:'En pause',running:'En cours',stopped:'Arrêté',error:'Erreur',support:'Fonctions simulées',help:'Prgm sans paramètres ; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, affectations, listes et calcul numérique. ClrIO est ignoré pour conserver l’historique TI-Nspire. Le CAS symbolique, les unités, les graphiques et les fonctions externes ne sont pas simulés ; les instructions non prises en charge indiquent leur ligne.',keys:'Entrée : valider · Échap : annuler · ↑/↓ : défiler',angle:'Angles (redémarre)',request:'Saisie du programme',viewLine:'Voir la ligne dans l’éditeur'}
 };
 let active=null;
 function open(initial,options={}) {
@@ -29,20 +29,47 @@ function open(initial,options={}) {
   $('[data-request]').setAttribute('aria-label',t.request);
   document.body.append(overlay);const oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
   let runtime=null, snapshot=null, timer=null, automatic=false, expanded=false, closed=false, requestToken='', renderedText='', data=initial;
-  function scale(){const available=$('.prgm-preview-center').clientWidth;const factor=Math.max(.45,Math.min(expanded?2:1,available/320,(window.innerHeight-235)/240));$('.prgm-preview-screen-shell').style.setProperty('--prgm-scale',String(factor));}
-  const resize=new ResizeObserver(scale);resize.observe($('.prgm-preview-center'));window.addEventListener('resize',scale);
-  function close(){if(closed)return;closed=true;clearTimeout(timer);runtime?.stop();resize.disconnect();window.removeEventListener('resize',scale);document.removeEventListener('keydown',keys,true);overlay.remove();document.body.style.overflow=oldOverflow;previous?.focus();if(active?.close===close)active=null;}
+  const history=$('.prgm-preview-history'), output=$('[data-output]'), shell=$('.prgm-preview-screen-shell');
+  function layout(){
+    const available=$('.prgm-preview-center').clientWidth;
+    const width=Math.max(1,Math.min(expanded?800:320,available));
+    const height=expanded?width*3/4:240;
+    const bottom=history.scrollHeight-history.clientHeight-history.scrollTop<2;
+    shell.style.width=width+'px';shell.style.height=height+'px';
+    $('.prgm-preview-size-label').textContent=Math.round(width)+' × '+Math.round(height);
+    if(bottom)history.scrollTop=history.scrollHeight;
+  }
+  const resize=new ResizeObserver(layout);resize.observe($('.prgm-preview-center'));window.addEventListener('resize',layout);
+  function close(){if(closed)return;closed=true;clearTimeout(timer);runtime?.stop();resize.disconnect();window.removeEventListener('resize',layout);document.removeEventListener('keydown',keys,true);overlay.remove();document.body.style.overflow=oldOverflow;previous?.focus();if(active?.close===close)active=null;}
+  function followOutput(){
+    // Follow the latest result only when it is outside the viewport. Keeping
+    // existing row nodes also preserves selection and avoids scroll anchoring jumps.
+    const target=$('[data-finish]').hidden?output.lastElementChild:$('[data-finish]');
+    if(!target)return;
+    const edge=target.getBoundingClientRect().bottom-history.getBoundingClientRect().top+history.scrollTop;
+    if(edge>history.scrollTop+history.clientHeight)history.scrollTop=edge-history.clientHeight;
+  }
   function render(state,inputError=null){
     const changed=renderedText!==state.text||snapshot?.status!==state.status;
     snapshot=state;const request=state.pending;
     $('[data-document]').textContent=(data.documentName||data.name||'documento').replace(/\.tns$/i,'').slice(0,30);
     $('[data-mode]').textContent=state.angleMode;$('[data-call]').textContent=state.name+'()';
-    if(renderedText!==state.text){const out=$('[data-output]');out.replaceChildren();for(const row of state.output){const el=document.createElement('div');el.className='prgm-preview-output-row '+row.kind;el.textContent=row.text||'\u00a0';out.append(el);}renderedText=state.text;$('.prgm-preview-history').scrollTop=999999;}
+    if(renderedText!==state.text){
+      while(output.children.length>state.output.length)output.lastElementChild.remove();
+      state.output.forEach((row,index)=>{
+        let el=output.children[index];
+        if(!el){el=document.createElement('div');output.append(el);}
+        const text=row.text||'\u00a0', kind='prgm-preview-output-row '+row.kind;
+        if(el.textContent!==text)el.textContent=text;
+        if(el.className!==kind)el.className=kind;
+      });
+      renderedText=state.text;
+    }
     $('[data-finish]').hidden=!['done','stopped','error'].includes(state.status);$('[data-finish]').textContent=state.error?state.error.message:state.status==='done'?t.done:t.stopped;
-    if(changed)$('.prgm-preview-history').scrollTop=999999;
+    if(changed)followOutput();
     const error=inputError||state.error;$('[data-error]').hidden=!error;$('[data-error]').textContent=error?`${t.line} ${error.line||state.line} · ${error.message}`:'';
     $('[data-request]').hidden=!request;
-    if(request){$('[data-prompt]').textContent=request.prompt;const token=state.executed+':'+request.line;if(requestToken!==token){requestToken=token;$('[data-input]').value='';$('[data-input]').focus();}}
+    if(request){$('[data-prompt]').textContent=request.prompt;const token=state.executed+':'+request.line;if(requestToken!==token){requestToken=token;$('[data-input]').value='';$('[data-input]').focus({preventScroll:true});}}
     else requestToken='';
     const status=automatic&&state.status==='paused'?'running':state.status;
     $('[data-status]').textContent=`${t[status]||status} · ${t.line} ${state.line||1}`;
@@ -60,7 +87,7 @@ function open(initial,options={}) {
   function tick(){if(closed||!automatic)return;const state=runtime.run(250);if(state.status!=='paused')automatic=false;render(state);if(automatic)timer=setTimeout(tick,0);}
   function run(){clearTimeout(timer);automatic=true;tick();}
   function restart(){clearTimeout(timer);automatic=false;data=options.readSource?.()||initial;renderedText='\0';requestToken='';runtime=createPrgmPreview(data.source,{name:data.name,angleMode:$('[data-angle]').value});render(runtime.snapshot());run();}
-  function answer(cancel=false){if(!runtime?.pending)return;const state=runtime.answer($('[data-input]').value,{cancel});if(state.inputError){render(state,state.inputError);$('[data-input]').focus();return;}render(state);run();}
+  function answer(cancel=false){if(!runtime?.pending)return;const state=runtime.answer($('[data-input]').value,{cancel});if(state.inputError){render(state,state.inputError);$('[data-input]').focus({preventScroll:true});return;}run();}
   function scroll(direction){$('.prgm-preview-history').scrollBy({top:direction*48,behavior:'smooth'});}
   function keys(event){
     if(event.key==='Tab'){const controls=[...modal.querySelectorAll('button:not(:disabled),input:not([hidden]),select,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}return;}
@@ -69,7 +96,7 @@ function open(initial,options={}) {
     else if(event.key==='Enter'&&runtime.pending&&!['BUTTON','SELECT'].includes(event.target.tagName)){event.preventDefault();event.stopImmediatePropagation();answer();}
   }
   $('[data-close]').onclick=close;overlay.onclick=e=>{if(e.target===overlay)close();};
-  $('[data-expand]').onclick=()=>{expanded=!expanded;modal.classList.toggle('expanded',expanded);$('[data-expand]').textContent=expanded?t.normal:t.expand;$('[data-expand]').setAttribute('aria-pressed',String(expanded));scale();};
+  $('[data-expand]').onclick=()=>{expanded=!expanded;modal.classList.toggle('expanded',expanded);$('[data-expand]').textContent=expanded?t.normal:t.expand;$('[data-expand]').setAttribute('aria-pressed',String(expanded));layout();};
   $('[data-run]').onclick=()=>{if(automatic){automatic=false;clearTimeout(timer);render(runtime.snapshot());}else run();};
   $('[data-step]').onclick=()=>{automatic=false;clearTimeout(timer);render(runtime.step());};
   $('[data-stop]').onclick=()=>{automatic=false;clearTimeout(timer);render(runtime.stop());};
@@ -79,6 +106,6 @@ function open(initial,options={}) {
   overlay.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>scroll(Number(b.dataset.scroll)));
   $('[data-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(snapshot.text);$('[data-status]').textContent=t.copied;}catch(error){$('[data-error]').hidden=false;$('[data-error]').textContent=error.message;}};
   $('[data-line]').onclick=()=>options.revealLine?.(snapshot.error?.line||snapshot.pending?.line||snapshot.line);
-  document.addEventListener('keydown',keys,true);modal.focus();active={close,getSnapshot:()=>runtime.snapshot()};scale();restart();return active;
+  document.addEventListener('keydown',keys,true);modal.focus();active={close,getSnapshot:()=>runtime.snapshot()};layout();restart();return active;
 }
 window.TnsPrgmPreview=Object.freeze({open,close:()=>active?.close(),getSnapshot:()=>active?.getSnapshot()||null});
