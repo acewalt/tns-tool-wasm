@@ -1,0 +1,62 @@
+name: Desktop Portable Windows (experimental)
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'electron-builder.json'
+      - 'package.json'
+      - 'ndless-web-bridge.js'
+      - '.github/workflows/desktop-portable-windows.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/desktop-portable.test.cjs
+      - run: node --check desktop/main.cjs && node --check desktop/compiler.cjs && node --check ndless-web-bridge.js
+
+  portable-windows:
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install JS build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Vendor runtime dependencies
+        run: npm run desktop:vendor
+      - name: Download pinned, bundled Ndless v4 compiler
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = 'desktop/vendor/compiler'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $out = Join-Path $dir 'TNS-Tool-Compiler-Windows-x64.exe'
+          $url = 'https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-compiler-v4/TNS-Tool-Compiler-Windows-x64.exe'
+          Invoke-WebRequest -Uri $url -OutFile $out
+          $actual = (Get-FileHash -Algorithm SHA256 $out).Hash.ToLowerInvariant()
+          $expected = 'b7de803d2fbd9799689cf7cdf1f7c8575d712dd57f6755ba36b16c04c07fdb2f'
+          if ($actual -ne $expected) { throw "Compiler SHA256 mismatch: $actual" }
+          & $out --status-json
+          if ($LASTEXITCODE -ne 0) { throw "Bundled compiler status failed" }
+      - name: Pack Windows portable executable
+        run: npm run desktop:build:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TNS-Tool-Portable-Windows-x64
+          path: release/portable/*.exe
+          if-no-files-found: error
+          retention-days: 30
