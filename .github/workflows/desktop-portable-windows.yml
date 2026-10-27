@@ -15,6 +15,7 @@ on:
       - 'multi-image-upload.js'
       - 'tests/desktop-portable.test.cjs'
       - 'tests/desktop-stats.test.cjs'
+      - 'tests/desktop-sdk-runtime.test.cjs'
       - 'tests/ndless-desktop-required.test.js'
       - 'tests/desktop-native-build.test.cjs'
       - 'ti-calculator-transfer.js'
@@ -37,7 +38,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs
+      - run: node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs tests/desktop-sdk-runtime.test.cjs
       - run: node tests/calculator-upload-destination.test.js
       - run: npm run test:calculator-session
       - run: node tests/ndless-project.test.js
@@ -132,6 +133,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $env:TNS_DESKTOP_SMOKE_REPORT = Join-Path $env:RUNNER_TEMP 'portable-smoke.json'
+          $env:TNS_DESKTOP_SMOKE_BUILD = '1'
           $exe = (Resolve-Path 'release/portable/win-unpacked/TNS Tool Portable.exe').Path
           $proc = Start-Process -FilePath $exe -WindowStyle Hidden -PassThru
           if (!$proc.WaitForExit(90000)) { $proc.Kill(); throw 'Packaged app smoke test timed out' }
@@ -139,6 +141,8 @@ jobs:
           $report = Get-Content $env:TNS_DESKTOP_SMOKE_REPORT -Raw | ConvertFrom-Json
           $report | ConvertTo-Json -Depth 10 | Write-Host
           if ($proc.ExitCode -ne 0 -or !$report.ok) { throw 'Packaged Ndless workspace failed' }
+      - name: Validate ZIP integrity and extraction path budget
+        run: python desktop/check-portable.py
       - uses: actions/upload-artifact@v4
         with:
           name: TNS-Tool-Portable-Windows-x64

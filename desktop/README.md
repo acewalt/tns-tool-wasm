@@ -12,7 +12,8 @@ the normal editor returns. Set `TNS_DESKTOP_SMOKE_REPORT` to an absolute JSON
 output path to run the same hidden acceptance check locally. The application
 exits after writing the result. It also exercises destination folder creation
 and upload using a simulated calculator in the real dialog. This check does
-not perform a native build or a physical USB transfer.
+not perform a physical USB transfer. Set `TNS_DESKTOP_SMOKE_BUILD=1` as well to
+prepare the shipped SDK and compile C and C++ starters through native IPC.
 
 The acceptance check also opens a window without the native bridge and verifies
 that New/Open Ndless Project displays the desktop requirement dialog. It saves
@@ -46,8 +47,14 @@ Run the GitHub Actions workflow **Desktop Portable Windows**. It downloads
 and SHA256-verifies the canonical v4 self-contained compiler, vendors browser
 dependencies, builds an Electron portable folder ZIP, and uploads the artifact.
 Extract the entire ZIP once, then run `TNS Tool Portable.exe` from that folder.
-Keep its resources and DLLs together. This avoids unpacking the compiler SDK
-into a temporary directory on every launch. The optional
+Keep its resources and DLLs together. Deep C++ include paths are stored inside
+`resources/compiler/sdk.bin.gz` so Explorer can extract the portable ZIP without
+error 0x80010135. The first compiler request verifies the bundle and prepares it
+once under `%LOCALAPPDATA%/TNS/sdk/<content-id>`. Subsequent requests and launches
+reuse that versioned cache. Opening the app does not unpack the SDK. The cache
+uses additional disk space and remains on that Windows profile when the app is
+moved. No runtime download is needed. Fortran is omitted; C/C++/assembly, LTO,
+all C++ headers and the official target libraries remain bundled. The optional
 `npm run desktop:build:single-exe` still creates the slower self-extracting variant.
 The compiler and runtime ship inside the portable folder: the user should
 not have to separately install Rust, WSL, Ndless SDK, or the old web bridge.

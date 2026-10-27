@@ -86,6 +86,22 @@ if(primaryInstance) app.whenReady().then(async()=>{
   await loadLocalApp(win,origin);
   if(smokeReport){
     const report=await require('./smoke.cjs').checkWorkspace(win,smokeReport,{pageLoadedMs:performance.now()-bootStarted,origin});
+    if(process.env.TNS_DESKTOP_SMOKE_BUILD){
+      report.nativeBuild=await win.webContents.executeJavaScript(`(async()=>{
+        const started=performance.now(),results=[];
+        const status=await window.TnsDesktop.compilerStatus();
+        if(!status.toolchainReady)throw Error(status.missing?.join(', ')||'Bundled SDK not ready');
+        for(const language of ['c','cpp']){
+          const project=window.NdlessProjectCore.createProject({language,template:'basic',target:'zehn-modern'});
+          const zip=new window.JSZip();
+          for(const [name,content] of Object.entries(window.NdlessProjectCore.exportEntries(project)))zip.file(name,content);
+          const result=await window.TnsDesktop.buildNdless({name:'packaged-'+language,zip:await zip.generateAsync({type:'uint8array'})});
+          if(!result.ok||result.format!=='prg-zehn'||result.bytes.length<1000)throw Error('Packaged '+language+' build failed');
+          results.push({language,bytes:result.bytes.length,format:result.format});
+        }
+        return{results,durationMs:performance.now()-started};
+      })()`);
+    }
     const browser=new BrowserWindow({width:1440,height:1000,show:false,
       webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false}});
     try{

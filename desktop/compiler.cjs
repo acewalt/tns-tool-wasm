@@ -39,6 +39,7 @@ function run(exe,args,timeoutMs=180000) {
 }
 async function status(exe) {
   try {
+    exe=await require('./sdk-runtime.cjs').ensureRuntime(exe);
     await fs.access(exe);
     const {stdout}=await run(exe,['--status-json'],20000);
     const info=JSON.parse(stdout.trim());
@@ -75,6 +76,7 @@ async function build(exe,payload) {
   const zip=Buffer.from(payload.zip || []);
   if(!zip.length || zip.length>MAX_ZIP || zip.subarray(0,2).toString()!=='PK')
     throw new Error('ZIP del proyecto inválido o superior a 32 MiB.');
+  exe=await require('./sdk-runtime.cjs').ensureRuntime(exe);
   const temp=await fs.mkdtemp(path.join(os.tmpdir(),'tns-desktop-'));
   const input=path.join(temp,'project.zip'),output=path.join(temp,name+'.tns');
   try {

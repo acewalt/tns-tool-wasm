@@ -26,6 +26,8 @@ int main(void){int *p=malloc(sizeof(int));if(!p)return 1;*p=42;printf("C: %d\\n"
 #include <vector>
 #include <libndls.h>
 int main(){std::vector<int> values{1,2,3};std::printf("C++: %u\\n",(unsigned)values.size());wait_key_pressed();return 0;}`]];
+    cases.push(['cpp-deep-headers','main.cpp',`#include <ext/pb_ds/assoc_container.hpp>
+int main(){__gnu_pbds::gp_hash_table<int,int> values;values[1]=42;return values[1]!=42;}`]);
     for(const language of ['c','cpp'])for(const template of ['basic','graphics']){
       const project=window.NdlessProjectCore.createProject({language,template,target:'zehn-modern'});
       cases.push([language+'-'+template,project.activeFile,project.files[project.activeFile],true]);

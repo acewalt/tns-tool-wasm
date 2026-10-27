@@ -8,8 +8,11 @@ Conserva el ejecutable junto con las carpetas resources y locales y los demas
 archivos. Puedes mover la carpeta completa. No abras la app desde dentro del ZIP.
 No necesita instalar Node, Python, Rust ni el SDK de Ndless por separado.
 
-Este formato abre directamente desde la carpeta y evita descomprimir el SDK
-completo en una carpeta temporal en cada inicio.
+Este formato abre directamente desde la carpeta. El SDK viaja comprimido para
+evitar el error 0x80010135 del extractor de Windows por rutas demasiado largas.
+Al usar Ndless por primera vez, prepara el SDK en una ruta corta dentro de
+LOCALAPPDATA\TNS\sdk. Los siguientes usos reutilizan esa copia; no se descomprime
+en cada inicio y no necesita descargar nada. Esa primera preparacion puede tardar.
 
 Para ejecutar programas nativos TNS en la calculadora, Ndless debe estar activo.
 Las nuevas plantillas Basico y Graficos usan SDL y permanecen abiertas hasta ESC.

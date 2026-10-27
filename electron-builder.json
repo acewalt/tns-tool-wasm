@@ -18,7 +18,8 @@
   "extraResources": [
     { "from": "desktop/vendor", "to": "vendor", "filter": ["**/*", "!compiler/**"] },
     { "from": "desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe", "to": "compiler/TNS-Tool-Compiler-Windows-x64.exe" },
-    { "from": "desktop/vendor/compiler/runtime", "to": "compiler/runtime", "filter": ["**/*"] }
+    { "from": "desktop/vendor/compiler/sdk.bin.gz", "to": "compiler/sdk.bin.gz" },
+    { "from": "desktop/vendor/compiler/sdk.json", "to": "compiler/sdk.json" }
   ],
   "extraFiles": [{ "from": "desktop/PORTABLE-LEEME.txt", "to": "LEEME.txt" }],
   "win": {
@@ -26,5 +27,5 @@
     "target": [{ "target": "zip", "arch": ["x64"] }],
     "artifactName": "TNS-Tool-Portable-${version}-${arch}.${ext}"
   },
-  "compression": "normal"
+  "compression": "maximum"
 }

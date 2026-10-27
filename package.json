@@ -1,6 +1,6 @@
 {
   "name": "tns-tool-wasm",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,7 +16,7 @@
     "desktop:vendor": "node desktop/prepare-vendor.mjs",
     "desktop:build:win": "electron-builder --win zip --x64",
     "desktop:build:single-exe": "electron-builder --win portable --x64",
-    "desktop:test": "node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs",
+    "desktop:test": "node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs tests/desktop-sdk-runtime.test.cjs",
     "test:calculator-session": "node tests/calculator-session.test.js && node tests/nnse-transport.test.js"
   },
   "engines": {

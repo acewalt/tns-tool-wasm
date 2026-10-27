@@ -145,6 +145,8 @@ def prepare(folder, sdk_file=None):
     # The core locates ./runtime first, avoiding stale per-user runtime caches.
     # Keep only the native host core; the corrected runtime ships beside it.
     executable.write_bytes(blob[:start])
+    from sdk_bundle import pack
+    manifest["bundle"] = pack(folder)
     print(json.dumps(manifest, indent=2))
 
 
