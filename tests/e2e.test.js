@@ -20,6 +20,17 @@ const capabilities = runJson(["capabilities", "--json"]);
 assert.equal(capabilities.success, true);
 assert.equal(capabilities.capabilities.lua.callFunction, true);
 assert.equal(capabilities.capabilities.tns.inspect, true);
+assert.equal(capabilities.capabilities.prgm.preview, true);
+const physicsPreview = runJson(['prgm','preview',path.join(repoRoot,'examples/physics-prgm.tib'),'--inputs','[1,2,6,2,56,5,41]','--json']);
+assert.equal(physicsPreview.status,'done');
+assert.ok(physicsPreview.text.includes('(t)=0.70966 s'));
+const pendingPrgm = runJson(['prgm','preview','-','--json'],'Prgm\nRequest "n:",n\nDisp n\nEndPrgm');
+assert.equal(pendingPrgm.status,'waiting');
+assert.equal(pendingPrgm.pending.variable,'n');
+const failedPrgm = spawnSync(process.execPath,[cli,'prgm','preview','-','--json'],{cwd:repoRoot,input:'Prgm\nDisp x\nEndPrgm',encoding:'utf8'});
+assert.equal(failedPrgm.status,4);
+assert.equal(failedPrgm.stderr.trim(),'');
+assert.equal(JSON.parse(failedPrgm.stdout).error.line,2);
 
 const mocks = runJson(["lua", "mocks", "--json"]);
 assert.equal(mocks.success, true);

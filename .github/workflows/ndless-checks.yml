@@ -19,6 +19,13 @@ on:
       - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
       - 'index.html'
+      - 'app.js'
+      - 'prgm-preview.*'
+      - 'src/prgm/**'
+      - 'src/api/index.js'
+      - 'cli/tns-tool.js'
+      - 'tests/prgm-preview.test.js'
+      - 'examples/physics-prgm.tib'
       - 'theme-transition-toggle.js'
       - 'tests/theme-transition-toggle.test.js'
       - 'ti-calculator-transfer.js'
@@ -45,6 +52,13 @@ on:
       - 'tests/custom-content-*.test.js'
       - 'multi-image-upload.js'
       - 'index.html'
+      - 'app.js'
+      - 'prgm-preview.*'
+      - 'src/prgm/**'
+      - 'src/api/index.js'
+      - 'cli/tns-tool.js'
+      - 'tests/prgm-preview.test.js'
+      - 'examples/physics-prgm.tib'
       - 'theme-transition-toggle.js'
       - 'tests/theme-transition-toggle.test.js'
       - 'ti-calculator-transfer.js'
@@ -139,5 +153,7 @@ jobs:
           node tests/ndless-arm-runtime.test.js
       - name: General smoke tests
         run: node tests/smoke.test.js
+      - name: TI-BASIC Prgm preview
+        run: node --test tests/prgm-preview.test.js
       - name: CLI e2e tests
         run: node tests/e2e.test.js

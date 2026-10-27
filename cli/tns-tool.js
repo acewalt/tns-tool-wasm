@@ -10,6 +10,7 @@ import {
   inspectTns,
   runLuaPreview,
   runLuaSuite,
+  runPrgmPreview,
   validateLua
 } from "../src/api/index.js";
 import { readJsonInput, readTextInput } from "../src/adapters/node/files.js";
@@ -44,6 +45,21 @@ async function main(args) {
 
   if (command === "tns") {
     return runTnsCommand(args);
+  }
+  if (command === 'prgm') {
+    if (args.shift() !== 'preview') return invalidArgs('Use prgm preview <file|-> [--inputs "[...]"] [--json]');
+    const input = args.shift();
+    if (!input) return invalidArgs('prgm preview requires a source file or - for stdin');
+    const rawInputs = takeOption(args, '--inputs') || '[]';
+    let inputs;
+    try { inputs = JSON.parse(rawInputs); if (!Array.isArray(inputs)) throw Error(); }
+    catch { return invalidArgs('--inputs must be a JSON array'); }
+    const angleMode = takeOption(args, '--angle') || 'RAD';
+    if (!['RAD','DEG'].includes(angleMode) || args.length) return invalidArgs('Valid options: --inputs JSON --angle RAD|DEG --json');
+    const source = await safeReadText(input);
+    if (!source.success) return {output: source, exitCode: EXIT_CODES.INVALID_FILE};
+    const result = runPrgmPreview(source.text, inputs, {angleMode});
+    return {output: result, exitCode: result.success && !result.inputError ? EXIT_CODES.OK : EXIT_CODES.RUNTIME_ERROR};
   }
 
   return {
@@ -280,6 +296,7 @@ Commands:
   lua suite           Run a JSON test suite against a ScriptApp.
   lua preview         Run paint/events and capture draw output.
   lua mocks           List simulated TI-Nspire APIs.
+  prgm preview        Simulate a TI-BASIC Prgm; --inputs JSON --angle RAD|DEG.
   tns inspect         Inspect a .tns or extracted XML project.
   tns extract         Decode a .tns into XML.
   tns build           Build a .tns from XML.

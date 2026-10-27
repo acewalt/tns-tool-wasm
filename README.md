@@ -20,6 +20,10 @@ Close any older version, extract the entire ZIP into a new folder, and open **TN
 
 Cierra la versión anterior, extrae todo el ZIP en una carpeta nueva y abre **TNS Tool Portable.exe**. La versión aparece en el título. El SDK de Ndless viene incluido.
 
+## TI-BASIC Prgm preview
+
+Open a normal TNS in Syntax Doctor, select a `Prgm` block, and click **Prgm Preview** beside Run syntax. The interactive 320×240 view includes Request input, step/run/stop controls, variables, zoom and source-line errors. It simulates numerical TI-BASIC text programs; symbolic CAS, units, graphics and external functions are not emulated. [Coverage and CLI/API usage](docs/prgm-preview.md).
+
 ## Feedback
 
 Bug reports, questions, suggestions, and test files are welcome.

@@ -5,6 +5,7 @@ export function getCapabilities() {
     success: true,
     version: TNS_TOOL_VERSION,
     capabilities: {
+      prgm: {preview: true, interactiveInput: true, numericalExpressions: true, symbolicCAS: false, jsonOutput: true, stdin: true},
       lua: {
         syntaxCheck: true,
         execute: true,

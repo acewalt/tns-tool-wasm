@@ -249,6 +249,7 @@ const I18N = {
     libraryAccess: "Acceso a libreria",
     arguments: "Argumentos",
     runSyntax: "Ejecutar sintaxis",
+    previewPrgm: "Preview Prgm",
     format: "Format",
     resolve: "Resolver",
     showChanges: "Mostrar cambios",
@@ -521,6 +522,7 @@ const I18N = {
     libraryAccess: "Library access",
     arguments: "Arguments",
     runSyntax: "Run syntax",
+    previewPrgm: "Prgm Preview",
     format: "Format",
     resolve: "Resolve",
     showChanges: "Show changes",
@@ -793,6 +795,7 @@ const I18N = {
     libraryAccess: "Acces bibliotheque",
     arguments: "Arguments",
     runSyntax: "Analyser la syntaxe",
+    previewPrgm: "Aperçu Prgm",
     format: "Format",
     resolve: "Resoudre",
     showChanges: "Voir changements",
@@ -1776,6 +1779,7 @@ function updateXmlLineNumbers() {
   gutter.scrollTop = code.scrollTop;
   updateXmlLineLabel();
   updateXmlHighlight();
+  syncPrgmPreviewButton();
 }
 
 function updateDoctorLineNumbers(prefix, issueLines) {
@@ -1956,6 +1960,26 @@ function setXmlDoctorEnabled(enabled) {
   document.querySelector("#xml-programs").disabled = !enabled;
   document.querySelector("#xml-code").disabled = !enabled;
   setStaticCodeEditorReadOnly("#xml-code", !enabled);
+  syncPrgmPreviewButton();
+}
+
+function syncPrgmPreviewButton() {
+  const button = document.querySelector('#xml-prgm-preview-btn');
+  if (!button) return;
+  const source = document.querySelector('#xml-code');
+  const isPrgm = !source.disabled && (/^\s*Prgm\b/im.test(source.value) || /\b=\s*Prgm\b/i.test(source.value));
+  button.hidden = !isPrgm;
+  button.disabled = !isPrgm;
+}
+
+function openXmlPrgmPreview() {
+  if (!window.TnsPrgmPreview) { xmlLog('El preview Prgm todavía está cargando.'); return; }
+  const readSource = () => ({source: document.querySelector('#xml-code').value,
+    name: xmlDoctor.current?.program_name || 'programa', documentName: xmlDoctor.outputFileName});
+  window.TnsPrgmPreview.open(readSource(), {readSource, revealLine: line => {
+    window.TnsPrgmPreview.close();
+    goToXmlLine(line);
+  }});
 }
 
 function setXmlDoctorDocumentActionsEnabled(enabled) {
@@ -2096,6 +2120,7 @@ function selectXmlProgram(index) {
   if (!xmlDoctor.current) return;
   const code = document.querySelector("#xml-code");
   code.value = xmlDoctor.current.code;
+  syncPrgmPreviewButton();
   xmlDoctor.lastDiff = "";
   xmlDoctor.embedded = false;
   xmlDoctor.lastReport = null;
@@ -18230,6 +18255,8 @@ function wireEvents() {
   document.querySelector("#xml-toggle-btn").addEventListener("click", () => {
     toggleExclusivePanel(panelForTool("xml"));
   });
+  document.querySelector('#xml-prgm-preview-btn').addEventListener('click', openXmlPrgmPreview);
+  document.querySelector('#xml-code').addEventListener('input', syncPrgmPreviewButton);
   document.querySelector("#xml-tns-file").addEventListener("change", (event) => openTnsInXmlDoctor(event.target.files[0]).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-folder").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "folder").catch((err) => xmlLog(`ERROR: ${err.message}`)));
