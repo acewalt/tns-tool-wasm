@@ -8,6 +8,10 @@ async function checkBrowserRequirement(win,screenshot){
     }
     if(window.TnsDesktop)throw Error('Browser gate test must not have a native preload');
     if(document.querySelector('#xml-doctor-panel').classList.contains('collapsed'))document.querySelector('#xml-toggle-btn').click();
+    while(!document.body.classList.contains('app-active') || getComputedStyle(document.querySelector('#xml-doctor-panel')).opacity!=='1'){
+      if(Date.now()>end)throw Error('Web editor opening transition did not finish');
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
     const menu=document.querySelector('#xml-doctor-panel .doctor-toolbar > .tool-menu');
     if(!menu.classList.contains('open'))menu.querySelector('button').click();
     await new Promise(resolve=>setTimeout(resolve,350));

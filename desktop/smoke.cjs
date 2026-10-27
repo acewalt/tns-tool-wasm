@@ -13,7 +13,10 @@ async function checkWorkspace(win,report,startup={}){
     const workspace=window.NdlessProjectWorkspace;
     if(document.querySelector('#xml-doctor-panel').classList.contains('collapsed'))
       document.querySelector('#xml-toggle-btn').click();
-    await new Promise(resolve=>setTimeout(resolve,400));
+    while(!document.body.classList.contains('app-active') || getComputedStyle(document.querySelector('#xml-doctor-panel')).opacity!=='1'){
+      if(Date.now()>deadline)throw Error('Editor opening transition did not finish');
+      await new Promise(resolve=>setTimeout(resolve,50));
+    }
     const cases=[];
     for(const language of ['c','cpp']){
       const fileMenu=document.querySelector('#xml-doctor-panel .doctor-toolbar > .tool-menu');
@@ -27,7 +30,7 @@ async function checkWorkspace(win,report,startup={}){
       if(newButton.querySelector('.ndless-project-off-badge'))throw Error('Desktop project button still has the maintenance badge');
       const bounds=newButton.getBoundingClientRect();
       const hit=document.elementFromPoint(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
-      if(!newButton.contains(hit))throw Error('New Ndless Project is covered: '+JSON.stringify({bounds:bounds.toJSON(),hit:hit?.outerHTML.slice(0,200)}));
+      if(!newButton.contains(hit))throw Error('New Ndless Project is covered: '+JSON.stringify({language,body:document.body.className,menu:fileMenu.className,opacity:getComputedStyle(menuPanel).opacity,bounds:bounds.toJSON(),hit:hit?.outerHTML.slice(0,200)}));
       newButton.click();
       const form=document.querySelector('.ndless-project-dialog');
       if(!form)throw Error('Clicking New Ndless Project did not open the wizard');

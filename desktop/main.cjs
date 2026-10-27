@@ -75,7 +75,8 @@ if(primaryInstance) app.whenReady().then(async()=>{
     title:'TNS Tool Portable '+app.getVersion(),show:false,icon:path.join(__dirname,'assets','icon.png'),
     webPreferences:{preload:path.join(__dirname,'preload.cjs'),
       nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,
-      backgroundThrottling:!Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT)}});
+      backgroundThrottling:!Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT),
+      offscreen:Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT)}});
   win.on('page-title-updated',event=>event.preventDefault());
   const smokeReport=process.env.TNS_DESKTOP_SMOKE_REPORT;
   if(smokeReport)win.webContents.on('console-message',(_event,level,message)=>console.log(level,message));
@@ -107,7 +108,7 @@ if(primaryInstance) app.whenReady().then(async()=>{
       })()`);
     }
     const browser=new BrowserWindow({width:1440,height:1000,show:false,
-      webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false}});
+      webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,offscreen:true}});
     try{
       await loadLocalApp(browser,origin);
       report.browserRequirement=await require('./smoke-web.cjs').checkBrowserRequirement(browser,smokeReport+'.web.png');
