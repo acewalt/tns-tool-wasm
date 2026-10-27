@@ -8,6 +8,9 @@ async function checkBrowserRequirement(win,screenshot){
     }
     if(window.TnsDesktop)throw Error('Browser gate test must not have a native preload');
     if(document.querySelector('#xml-doctor-panel').classList.contains('collapsed'))document.querySelector('#xml-toggle-btn').click();
+    const menu=document.querySelector('#xml-doctor-panel .doctor-toolbar > .tool-menu');
+    if(!menu.classList.contains('open'))menu.querySelector('button').click();
+    await new Promise(resolve=>setTimeout(resolve,350));
     const button=document.querySelector('#xml-new-ndless-project');
     if(!button || button.disabled)throw Error('Desktop notice entry must be accessible');
     button.click();
@@ -15,7 +18,7 @@ async function checkBrowserRequirement(win,screenshot){
     if(!dialog || dialog.getBoundingClientRect().width<300 || document.querySelector('.ndless-project-dialog'))
       throw Error('Browser opened a project instead of the desktop recommendation');
     const download=dialog.querySelector('[data-desktop-download]').href;
-    if(!download.startsWith('https://github.com/acewalt/tns-tool-wasm/actions/workflows/desktop-portable-windows.yml'))
+    if(download!=='https://github.com/acewalt/tns-tool-wasm/releases/latest/download/TNS-Tool-Portable-Windows-x64.zip')
       throw Error('Wrong desktop download destination');
     await document.fonts.ready;
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));

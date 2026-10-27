@@ -72,9 +72,11 @@ if(primaryInstance) app.whenReady().then(async()=>{
   configureUSB(session.defaultSession);
   registerNativeBridge();
   win=new BrowserWindow({width:1440,height:900,minWidth:900,minHeight:620,
-    title:'TNS Tool Portable',show:false,icon:path.join(__dirname,'assets','icon.png'),
+    title:'TNS Tool Portable '+app.getVersion(),show:false,icon:path.join(__dirname,'assets','icon.png'),
     webPreferences:{preload:path.join(__dirname,'preload.cjs'),
-      nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true}});
+      nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,
+      backgroundThrottling:!Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT)}});
+  win.on('page-title-updated',event=>event.preventDefault());
   const smokeReport=process.env.TNS_DESKTOP_SMOKE_REPORT;
   if(smokeReport)win.webContents.on('console-message',(_event,level,message)=>console.log(level,message));
   if(!smokeReport)win.once('ready-to-show',()=>win.show());
@@ -86,6 +88,8 @@ if(primaryInstance) app.whenReady().then(async()=>{
   await loadLocalApp(win,origin);
   if(smokeReport){
     const report=await require('./smoke.cjs').checkWorkspace(win,smokeReport,{pageLoadedMs:performance.now()-bootStarted,origin});
+    report.version=app.getVersion();report.windowTitle=win.getTitle();
+    if(report.windowTitle!=='TNS Tool Portable '+report.version)throw Error('Portable version is missing from window title');
     if(process.env.TNS_DESKTOP_SMOKE_BUILD){
       report.nativeBuild=await win.webContents.executeJavaScript(`(async()=>{
         const started=performance.now(),results=[];
@@ -111,8 +115,9 @@ if(primaryInstance) app.whenReady().then(async()=>{
     }finally{browser.destroy();}
     app.quit();
   }
-}).catch(error=>{
+}).catch(async error=>{
   if(process.env.TNS_DESKTOP_SMOKE_REPORT){
+    try{if(win&&!win.isDestroyed())await require('node:fs/promises').writeFile(process.env.TNS_DESKTOP_SMOKE_REPORT+'.error.png',(await win.webContents.capturePage()).toPNG());}catch(_){}
     require('node:fs').writeFileSync(process.env.TNS_DESKTOP_SMOKE_REPORT,JSON.stringify({ok:false,error:error.stack}));
     app.exit(1);return;
   }

@@ -127,4 +127,14 @@ for(const token of [
   assert.ok(app.slice(start,nextFunction+2).includes("requireNormalProjectMode()"),
     "Normal editor must be blocked during Ndless workspace: "+token);
 }
-console.log("Ndless choices hidden only during normal TNS/XML sessions; projects stay exclusive.");
+// Desktop must enable the actual menu entry without relying on the later
+// generic app-ready button reset. The browser keeps its desktop notice gate.
+filePanel.children=[newNormal,openNormal];
+document.readyState='complete';window.TnsDesktop={};
+vm.runInContext(workspace,context);
+const desktopButton=filePanel.querySelector('#xml-new-ndless-project');
+assert.equal(desktopButton.disabled,false,'Desktop New Project must be clickable immediately');
+assert.equal(desktopButton.title,'');
+assert.ok(!desktopButton.innerHTML.includes('off-badge'));
+assert.ok(desktopButton.listeners.click?.length,'Base wizard must have a click handler before SDK enhancements load');
+console.log("Ndless choices stay exclusive and the desktop menu entry is enabled immediately.");

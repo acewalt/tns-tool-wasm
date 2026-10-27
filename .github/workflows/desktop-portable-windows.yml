@@ -17,6 +17,7 @@ on:
       - 'tests/desktop-stats.test.cjs'
       - 'tests/desktop-sdk-runtime.test.cjs'
       - 'tests/ndless-desktop-required.test.js'
+      - 'tests/normal-ndless-menu-exclusivity.test.js'
       - 'tests/desktop-native-build.test.cjs'
       - 'ti-calculator-transfer.js'
       - 'ti-calculator-transfer.css'
@@ -36,6 +37,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -44,14 +47,19 @@ jobs:
       - run: npm run test:calculator-session
       - run: node tests/ndless-project.test.js
       - run: node tests/ndless-desktop-required.test.js
+      - run: node tests/normal-ndless-menu-exclusivity.test.js
       - run: node --check desktop/main.cjs && node --check desktop/compiler.cjs && node --check ndless-web-bridge.js
 
   portable-windows:
     needs: test
     runs-on: windows-latest
     timeout-minutes: 45
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -129,21 +137,43 @@ jobs:
         run: npm run desktop:build:win
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
-      - name: Open packaged app and create Ndless C and C++ projects
+      - name: Validate ZIP integrity and extraction path budget
+        run: python desktop/check-portable.py
+      - name: Extract public ZIP and exercise the actual project menu
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $env:TNS_DESKTOP_SMOKE_REPORT = Join-Path $env:RUNNER_TEMP 'portable-smoke.json'
           $env:TNS_DESKTOP_SMOKE_BUILD = '1'
-          $exe = (Resolve-Path 'release/portable/win-unpacked/TNS Tool Portable.exe').Path
-          $proc = Start-Process -FilePath $exe -WindowStyle Hidden -PassThru
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $zip = (Resolve-Path "release/portable/TNS-Tool-Portable-$version-x64.zip").Path
+          $extracted = Join-Path $env:RUNNER_TEMP 'portable-from-public-zip'
+          Expand-Archive -LiteralPath $zip -DestinationPath $extracted
+          $expected = (Get-FileHash 'release/portable/win-unpacked/resources/app.asar').Hash
+          $actual = (Get-FileHash (Join-Path $extracted 'resources/app.asar')).Hash
+          if ($expected -ne $actual) { throw 'Public ZIP differs from packaged app' }
+          $exe = Join-Path $extracted 'TNS Tool Portable.exe'
+          $profile = Join-Path $env:RUNNER_TEMP 'portable-acceptance-profile'
+          $proc = Start-Process -FilePath $exe -ArgumentList "--user-data-dir=`"$profile`"" -WindowStyle Hidden -PassThru
           if (!$proc.WaitForExit(90000)) { $proc.Kill(); throw 'Packaged app smoke test timed out' }
           if (!(Test-Path $env:TNS_DESKTOP_SMOKE_REPORT)) { throw 'Packaged app did not report startup' }
           $report = Get-Content $env:TNS_DESKTOP_SMOKE_REPORT -Raw | ConvertFrom-Json
           $report | ConvertTo-Json -Depth 10 | Write-Host
           if ($proc.ExitCode -ne 0 -or !$report.ok) { throw 'Packaged Ndless workspace failed' }
-      - name: Validate ZIP integrity and extraction path budget
-        run: python desktop/check-portable.py
+          if ($report.version -ne $version) { throw 'Downloaded portable has the wrong version' }
+          if (@($report.cases | Where-Object { $_.entry -ne 'visible-menu-click' }).Count) { throw 'Project test bypassed the visible menu' }
+      - name: Publish the verified Windows download
+        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+        shell: pwsh
+        run: ./desktop/publish-portable.ps1
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Portable-acceptance-report
+          path: ${{ runner.temp }}/portable-smoke.json*
+          if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:
           name: TNS-Tool-Portable-Windows-x64

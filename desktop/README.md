@@ -5,8 +5,10 @@ The UI and source files are loaded from the same repository via an ephemeral
 loopback HTTP origin. This preserves existing fetch(), workers, and WebUSB.
 The renderer is sandboxed, context-isolated, and has no Node.js access.
 
-The Windows workflow also opens the packaged ASAR application, waits for
-Pyodide and Monaco, creates C and C++ projects through the project form,
+The Windows workflow extracts the public ZIP, compares its ASAR with the build,
+opens the extracted application, waits for Pyodide and Monaco, opens the actual
+File menu and clicks its visible New Ndless Project button, then creates C and
+C++ projects through the project form,
 checks the visible editor and file tree, and closes each project to verify
 the normal editor returns. Set `TNS_DESKTOP_SMOKE_REPORT` to an absolute JSON
 output path to run the same hidden acceptance check locally. The application
@@ -19,6 +21,12 @@ The acceptance check also opens a window without the native bridge and verifies
 that New/Open Ndless Project displays the desktop requirement dialog. It saves
 a screenshot beside the JSON report. Diagnostic runs never post visits or
 generated-document statistics to the production service.
+
+The desktop project menu is enabled when the native bridge is present; it must
+not depend on the asynchronous app-ready reset of all buttons. Acceptance tests
+check disabled state, the maintenance badge and pointer hit-testing before
+clicking. The application title includes its version. A native desktop wizard
+screenshot is saved as well as the web notice screenshot.
 
 Desktop visitor identity is stored once in `userData/tns-tool/stats-identity.json`
 and read through the trusted native bridge. Changing the local server port or
@@ -57,6 +65,12 @@ Run the GitHub Actions workflow **Desktop Portable Windows**. It downloads
 and SHA256-verifies the canonical v4 self-contained compiler, vendors browser
 dependencies, builds an Electron portable folder ZIP, and uploads the artifact.
 Extract the entire ZIP once, then run `TNS Tool Portable.exe` from that folder.
+After the extracted-ZIP acceptance test passes, internal repository builds
+publish a versioned GitHub Release with `TNS-Tool-Portable-Windows-x64.zip` and
+its SHA256 checksum, marked as the latest release. The web notice links directly
+to that public ZIP; it no longer asks users to choose a workflow artifact.
+Release publication is skipped for fork pull requests and refuses to reuse a
+version belonging to a different source commit.
 Keep its resources and DLLs together. Deep C++ include paths are stored inside
 `resources/compiler/sdk.bin.gz` so Explorer can extract the portable ZIP without
 error 0x80010135. The first compiler request verifies the bundle and prepares it

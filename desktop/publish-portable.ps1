@@ -1,0 +1,41 @@
+$ErrorActionPreference = 'Stop'
+$version = (Get-Content -LiteralPath 'package.json' -Raw | ConvertFrom-Json).version
+if ($version -notmatch '^\d+\.\d+\.\d+$') { throw 'Invalid portable version' }
+$commit = (git rev-parse HEAD).Trim()
+$tag = "tns-tool-portable-v$version"
+$zip = (Resolve-Path "release/portable/TNS-Tool-Portable-$version-x64.zip").Path
+$report = Get-Content (Join-Path $env:RUNNER_TEMP 'portable-smoke.json') -Raw | ConvertFrom-Json
+if (!$report.ok -or $report.version -ne $version -or @($report.cases | Where-Object { $_.entry -ne 'visible-menu-click' }).Count) {
+    throw 'A matching successful test of the public ZIP is required before publishing'
+}
+$stage = Join-Path $env:RUNNER_TEMP 'portable-release-assets'
+New-Item -ItemType Directory -Force -Path $stage | Out-Null
+$asset = Join-Path $stage 'TNS-Tool-Portable-Windows-x64.zip'
+Copy-Item -LiteralPath $zip -Destination $asset
+$hash = (Get-FileHash -LiteralPath $asset -Algorithm SHA256).Hash.ToLowerInvariant()
+$checksum = Join-Path $stage 'TNS-Tool-Portable-Windows-x64.sha256.txt'
+"$hash  TNS-Tool-Portable-Windows-x64.zip" | Set-Content -LiteralPath $checksum -Encoding utf8
+$notes = Join-Path $stage 'notes.md'
+@"
+TNS Tool Portable **$version** para Windows x64.
+
+Descarga **TNS-Tool-Portable-Windows-x64.zip**, extrae todo el archivo en una carpeta y abre **TNS Tool Portable.exe**. La versión aparece en el título de la ventana.
+
+El SDK Ndless está incluido. Se prepara una vez al usar el compilador; no requiere descargar ni instalar herramientas adicionales.
+
+Este ZIP se extrajo y probó antes de publicarlo: creación de proyectos C/C++ mediante el botón visible del menú, editor, compilación ARM por IPC y pruebas de capturas USB simuladas. La recuperación USB aún requiere validación física en cada equipo.
+
+Código fuente: $commit
+
+SHA256: $hash
+"@ | Set-Content -LiteralPath $notes -Encoding utf8
+$existing = gh release view $tag --repo $env:GITHUB_REPOSITORY --json targetCommitish 2>$null
+if ($LASTEXITCODE -eq 0) {
+    if (($existing | ConvertFrom-Json).targetCommitish -ne $commit) { throw 'This version already belongs to another commit; bump the version' }
+    gh release upload $tag $asset $checksum --repo $env:GITHUB_REPOSITORY --clobber
+    if ($LASTEXITCODE -ne 0) { throw 'Release asset upload failed' }
+    gh release edit $tag --repo $env:GITHUB_REPOSITORY --notes-file $notes --latest
+} else {
+    gh release create $tag $asset $checksum --repo $env:GITHUB_REPOSITORY --target $commit --title "TNS Tool Portable $version" --notes-file $notes --latest
+}
+if ($LASTEXITCODE -ne 0) { throw 'Portable release publication failed' }

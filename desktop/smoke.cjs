@@ -2,10 +2,11 @@ const fs=require('node:fs/promises');
 async function checkWorkspace(win,report,startup={}){
   const result=await win.webContents.executeJavaScript(`(async()=>{
     const deadline=Date.now()+30000;
-    while(!window.NdlessProjectWorkspace || !window.TnsMonacoEditor || !window.JSZip || document.querySelector('#xml-toggle-btn')?.disabled){
+    while(!window.NdlessProjectWorkspace || !window.TnsMonacoEditor || !window.JSZip || document.querySelector('#xml-toggle-btn')?.disabled || document.querySelector('#startup-loader')){
       if(Date.now()>deadline)throw new Error('Browser runtime did not become ready');
       await new Promise(resolve=>setTimeout(resolve,100));
     }
+    await window.NdlessRuntimeReady;
     const uiReadyMs=performance.now();
     const statsIdentity=await window.TnsDesktop.statsIdentity();
     if(statsIdentity.enabled)throw new Error('Smoke runs must not register real visitors');
@@ -15,8 +16,21 @@ async function checkWorkspace(win,report,startup={}){
     await new Promise(resolve=>setTimeout(resolve,400));
     const cases=[];
     for(const language of ['c','cpp']){
-      workspace.newProject();
+      const fileMenu=document.querySelector('#xml-doctor-panel .doctor-toolbar > .tool-menu');
+      const menuTrigger=fileMenu.querySelector('button');
+      const menuPanel=fileMenu.querySelector('.menu-panel');
+      if(!fileMenu.classList.contains('open'))menuTrigger.click();
+      await new Promise(resolve=>setTimeout(resolve,350));
+      const newButton=document.getElementById('xml-new-ndless-project');
+      if(!newButton||newButton.disabled||newButton.hidden||newButton.getBoundingClientRect().height<1)
+        throw Error('Visible New Ndless Project button is disabled or hidden');
+      if(newButton.querySelector('.ndless-project-off-badge'))throw Error('Desktop project button still has the maintenance badge');
+      const bounds=newButton.getBoundingClientRect();
+      const hit=document.elementFromPoint(bounds.x+bounds.width/2,bounds.y+bounds.height/2);
+      if(!newButton.contains(hit))throw Error('New Ndless Project is covered: '+JSON.stringify({bounds:bounds.toJSON(),hit:hit?.outerHTML.slice(0,200)}));
+      newButton.click();
       const form=document.querySelector('.ndless-project-dialog');
+      if(!form)throw Error('Clicking New Ndless Project did not open the wizard');
       form.elements.namedItem('language').value=language;
       if(form.elements.namedItem('target').value!=='zehn-modern')
         throw new Error('Desktop new projects must default to the supported modern target');
@@ -30,7 +44,7 @@ async function checkWorkspace(win,report,startup={}){
         throw new Error('Ndless workspace did not mount for '+language+': '+JSON.stringify({host:!!host,height:host?.getBoundingClientRect().height,editor:!!editor,source,expected:project.activeFile,panel:document.querySelector('#xml-doctor-panel')?.className}));
       if(!host.querySelector('[data-project-files]')?.textContent.includes(project.activeFile))
         throw new Error('Project file tree is missing');
-      cases.push({language,source,editor:true});
+      cases.push({language,source,editor:true,entry:'visible-menu-click'});
       workspace.closeProject();
       const grid=document.querySelector('#xml-doctor-panel .doctor-grid');
       if(grid.hidden || getComputedStyle(grid).display==='none')throw new Error('Normal editor was not restored');
@@ -100,6 +114,17 @@ async function checkWorkspace(win,report,startup={}){
       destination:{created,sent,simulatedUSB:true},screenshots:{captures,reopenKeptConnection:true,simulatedUSB:true}};
   })()`);
   if(!result.desktopBridge)throw new Error('Sandboxed desktop preload bridge is missing');
+  await win.webContents.executeJavaScript(`(async()=>{
+    const menu=document.querySelector('#xml-doctor-panel .doctor-toolbar > .tool-menu');
+    if(!menu.classList.contains('open'))menu.querySelector('button').click();
+    document.getElementById('xml-new-ndless-project').click();
+    if(!document.querySelector('.ndless-project-dialog'))throw Error('Final visible wizard check failed');
+    await document.fonts.ready;
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    await new Promise(resolve=>setTimeout(resolve,350));
+  })()`);
+  await fs.writeFile(report+'.desktop.png',(await win.webContents.capturePage()).toPNG());
+  await win.webContents.executeJavaScript(`document.querySelector('.ndless-project-dialog-actions [data-close], [data-dialog-cancel]').click()`);
   await fs.writeFile(report,JSON.stringify({...result,startup},null,2));
   return {...result,startup};
 }

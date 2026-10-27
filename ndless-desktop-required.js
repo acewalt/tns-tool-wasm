@@ -4,17 +4,17 @@
     es:{tag:'Proyectos Ndless',title:'Continúa en la versión de escritorio',
       body:'Para crear y abrir proyectos Ndless se requiere TNS Tool Portable. La versión web tiene limitaciones del navegador y no incluye el entorno completo de compilación ARM.',
       steps:['Descarga TNS Tool Portable para Windows.','Extrae todo el ZIP en una carpeta.','Abre TNS Tool Portable.exe y continúa con tu proyecto.'],
-      download:'Ver descargas en GitHub',close:'Cerrar',note:'Abre la compilación más reciente y descarga TNS-Tool-Portable-Windows-x64. GitHub puede solicitar que inicies sesión.',badge:'Requiere la versión de escritorio'},
+      download:'Descargar para Windows',close:'Cerrar',note:'Descarga pública para Windows x64. La versión aparece en el título de la aplicación.',badge:'Requiere la versión de escritorio'},
     en:{tag:'Ndless projects',title:'Continue in the desktop version',
       body:'Creating and opening Ndless projects requires TNS Tool Portable. The web version has browser limitations and does not include the full ARM build environment.',
       steps:['Download TNS Tool Portable for Windows.','Extract the entire ZIP into a folder.','Open TNS Tool Portable.exe and continue with your project.'],
-      download:'View downloads on GitHub',close:'Close',note:'Open the latest build and download TNS-Tool-Portable-Windows-x64. GitHub may ask you to sign in.',badge:'Requires the desktop version'},
+      download:'Download for Windows',close:'Close',note:'Public download for Windows x64. The version is shown in the application title.',badge:'Requires the desktop version'},
     fr:{tag:'Projets Ndless',title:'Continuez dans la version de bureau',
       body:'La création et l’ouverture de projets Ndless nécessitent TNS Tool Portable. La version web est limitée par le navigateur et ne contient pas l’environnement complet de compilation ARM.',
       steps:['Téléchargez TNS Tool Portable pour Windows.','Extrayez tout le ZIP dans un dossier.','Ouvrez TNS Tool Portable.exe et poursuivez votre projet.'],
-      download:'Voir les téléchargements sur GitHub',close:'Fermer',note:'Ouvrez la compilation la plus récente et téléchargez TNS-Tool-Portable-Windows-x64. GitHub peut demander une connexion.',badge:'Version de bureau requise'}
+      download:'Télécharger pour Windows',close:'Fermer',note:'Téléchargement public pour Windows x64. La version figure dans le titre de l’application.',badge:'Version de bureau requise'}
   };
-  const download='https://github.com/acewalt/tns-tool-wasm/actions/workflows/desktop-portable-windows.yml?query=branch%3Afeature%2Fdesktop-portable-ndless';
+  const download='https://github.com/acewalt/tns-tool-wasm/releases/latest/download/TNS-Tool-Portable-Windows-x64.zip';
   const desktop=()=>Boolean(window.TnsDesktop);
   let overlay=null,previousFocus=null;
   const text=()=>copy[String(document.documentElement.lang||'es').slice(0,2)]||copy.es;
