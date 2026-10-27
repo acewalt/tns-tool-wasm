@@ -2,8 +2,10 @@
   "use strict";
 
   const root = typeof window !== "undefined" ? window : globalThis;
-  const ENGINE_JS = "https://cdn.jsdelivr.net/npm/@alexaltea/unicorn-js@2.1.4/dist/unicorn_arm.js";
-  const ENGINE_WASM = "https://cdn.jsdelivr.net/npm/@alexaltea/unicorn-js@2.1.4/dist/unicorn_arm.wasm";
+  // 2.1.4 traps inside its WASM translator on the SDK's SDL keyboard initializer.
+  // Pin the engine exercised by the compiled C/C++/SDL regression suite.
+  const ENGINE_JS = "https://cdn.jsdelivr.net/npm/@alexaltea/unicorn-js@1.0.3/dist/unicorn.js";
+  const ENGINE_WASM = "https://cdn.jsdelivr.net/npm/@alexaltea/unicorn-js@1.0.3/dist/unicorn.wasm";
   const PAGE = 0x1000;
   const APP_BASE = 0x10000000;
   const STACK_BASE = 0x20000000;
@@ -115,6 +117,7 @@
     if (!Zehn?.findZehn || !Zehn?.inflateExecutable) throw new Error("Ndless Zehn parser is not loaded.");
     const parsed = Zehn.findZehn(bytes);
     if (!parsed?.valid) throw new Error(`A valid Zehn v1 TNS is required${parsed?.reason ? ` (${parsed.reason})` : ""}.`);
+    if(parsed.header.allocSize>64*1024*1024)throw Object.assign(new Error("Preview executable exceeds the 64 MiB image limit."),{code:"NDLESS_MEMORY_LIMIT"});
     const executable = await Zehn.inflateExecutable(bytes, parsed);
     const allocation = Math.max(executable.length, parsed.header.allocSize - parsed.layout.metaSize);
     const image = relocateImage(executable, parsed.relocs, base, allocation);
@@ -148,7 +151,7 @@
       if (typeof document !== "undefined" && typeof root.MUnicorn !== "function") await loadClassicScript(ENGINE_JS);
       const factory = root.MUnicorn;
       if (typeof factory !== "function") throw new Error("Unicorn.js ARM factory was not exposed as MUnicorn.");
-      const uc = await factory({ locateFile:path => String(path).endsWith(".wasm") ? ENGINE_WASM : path });
+      const uc = await factory({ locateFile:path => String(path).endsWith(".wasm") ? (root.NdlessUnicornAssets?.wasm || ENGINE_WASM) : path });
       if (!uc?.Unicorn || uc.ARCH_ARM == null) throw new Error("Unicorn.js ARM module initialized without the expected API.");
       return uc;
     })().catch(error => { enginePromise = null; throw error; });
@@ -175,8 +178,9 @@
   }
 
   function mapPage(e, uc, address, size = PAGE) { e.mem_map(address >>> 0, align(size), uc.PROT_ALL); }
-  function readMem(e, address, size) { return asBytes(e.mem_read(address >>> 0, Number(size) >>> 0)); }
-  function writeMem(e, address, bytes) { e.mem_write(address >>> 0, asBytes(bytes)); }
+  function checkedSize(size){if(!Number.isSafeInteger(size)||size<0||size>HEAP_SIZE)throw Object.assign(new Error(`Invalid preview memory size: ${size}`),{code:"NDLESS_MEMORY_LIMIT"});return size;}
+  function readMem(e, address, size) { return asBytes(e.mem_read(address >>> 0, checkedSize(Number(size)))); }
+  function writeMem(e, address, bytes) { const data=asBytes(bytes);checkedSize(data.length);e.mem_write(address >>> 0, data); }
   function readMemU16(e, address) { return u16(readMem(e, address, 2), 0); }
   function writeMemU16(e, address, value) { const b = new Uint8Array(2); w16(b,0,value); writeMem(e,address,b); }
   function readMemU32(e, address) { return u32(readMem(e, address, 4), 0); }
@@ -265,6 +269,7 @@
     const key = (event, pressed) => {
       const map = KEYMAP[event.code];
       if (!map || !session.running && !session.paused) return;
+      if (pressed && document.activeElement !== session.canvas) return;
       if (pressed) held.add(event.code); else held.delete(event.code);
       setKeyMatrix(session,map[0],map[1],pressed);
       if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space","Tab"].includes(event.code)) event.preventDefault();
@@ -283,11 +288,12 @@
   }
 
   function mapHardware(e, uc) {
-    for (const page of [0x90090000,0x900C0000,0x900D0000,0x900E0000,0x900F0000,0xC0000000]) mapPage(e,uc,page,PAGE);
+    for (const page of [0x90090000,0x900B0000,0x900C0000,0x900D0000,0x900E0000,0x900F0000,0xC0000000,0xDC000000]) mapPage(e,uc,page,PAGE);
     mapPage(e,uc,FB_BASE,FB_BYTES);
     writeMemU32(e,SCREEN_PTR,FB_BASE); writeMemU32(e,SCREEN_MODE,0); writeMemU32(e,SCREEN_INT,0);
     writeMemU32(e,CONTRAST,0x80); writeMemU32(e,TIMER2_TOP,0xffffffff); writeMemU32(e,TIMER2_VALUE_CX,0xffffffff);
     writeMemU32(e,TIMER2_VALUE_CLASSIC,0); writeMemU32(e,RTC_VALUE,Math.floor(Date.now()/1000)>>>0);
+    writeMemU32(e,TIMER2_TOP+0x10,1);
   }
   function updateHardware(session) {
     const elapsedMs = performance.now() - session.startedAt;
@@ -303,6 +309,7 @@
     const { e, uc } = session;
     let heapNext = HEAP_BASE + PAGE;
     const allocations = new Map();
+    const freed=[];
     const fileHandles = new Map();
     const logs = [];
 
@@ -316,13 +323,15 @@
       return readMemU32(e,(sp()+stackIndex*4)>>>0);
     }
     function allocRaw(size, zero = true) {
-      const n = align8(Math.max(1,Number(size)||1));
+      const n = align8(Math.max(1,checkedSize(Number(size)||0)));
+      const reuse=freed.findIndex(block=>block.size>=n);
+      if(reuse>=0){const block=freed.splice(reuse,1)[0];allocations.set(block.ptr,block.size);if(zero)writeMem(e,block.ptr,new Uint8Array(n));return block.ptr;}
       if (heapNext + n > HEAP_BASE + HEAP_SIZE) throw new Error(`Ndless emulated heap exhausted while allocating ${n} bytes.`);
       const ptr = heapNext >>> 0; heapNext = (heapNext+n)>>>0; allocations.set(ptr,n);
       if (zero) writeMem(e,ptr,new Uint8Array(n));
       return ptr;
     }
-    function freeRaw(ptr) { allocations.delete(Number(ptr)>>>0); }
+    function freeRaw(ptr) {const address=Number(ptr)>>>0,size=allocations.get(address);if(size){freed.push({ptr:address,size});allocations.delete(address);}}
     function reallocRaw(ptr,size) {
       const old = Number(ptr)>>>0, n=Math.max(1,Number(size)||1);
       if (!old) return allocRaw(n);
@@ -334,14 +343,16 @@
     function setErrno(value) { writeMemU32(e,VAR_ERRNO,Number(value)||0); }
     function appendLog(text) { const s=String(text); logs.push(s); if(logs.length>200) logs.shift(); session.lastLog=s; }
 
-    function formatC(fmtPtr, firstReg) {
+    function formatC(fmtPtr, firstReg, vaPointer=null) {
       const fmt = readCString(e,fmtPtr,65536);
       let argIndex=0;
-      const take = () => rawArg(argIndex++,firstReg);
-      return fmt.replace(/%([#0\- +]*)(\d+)?(?:\.(\d+))?(?:hh|h|ll|l|z|t|j)?([diuoxXcsp%])/g,(all,flags,widthRaw,precisionRaw,type) => {
+      const take = () => vaPointer==null?rawArg(argIndex++,firstReg):readMemU32(e,vaPointer+(argIndex++)*4);
+      const double = () => {if(((vaPointer==null?firstReg:vaPointer/4)+argIndex)%2)argIndex++;const b=new ArrayBuffer(8),d=new DataView(b);d.setUint32(0,take(),true);d.setUint32(4,take(),true);return d.getFloat64(0,true);};
+      return fmt.replace(/%([#0\- +]*)(\d+)?(?:\.(\d+))?(?:hh|h|l|z|t|j)?([diuoxXcspfeEgG%])/g,(all,flags,widthRaw,precisionRaw,type) => {
         if(type === "%") return "%";
-        const v=take(); let out="";
-        if(type === "s") { out=readCString(e,v,1<<20); if(precisionRaw) out=out.slice(0,+precisionRaw); }
+        const v=/[feEgG]/.test(type)?double():take(); let out="";
+        if(/[feEgG]/.test(type)){const precision=Math.min(100,precisionRaw==null?6:+precisionRaw);out=type==='f'?v.toFixed(precision):/[eE]/.test(type)?v.toExponential(precision):v.toPrecision(Math.max(1,precision));if(/[EG]/.test(type))out=out.toUpperCase();}
+        else if(type === "s") { out=readCString(e,v,1<<20); if(precisionRaw) out=out.slice(0,+precisionRaw); }
         else if(type === "c") out=String.fromCharCode(v&255);
         else if(type === "d" || type === "i") out=String(v|0);
         else if(type === "u") out=String(v>>>0);
@@ -374,7 +385,7 @@
     function fread(ptr,size,count,handlePtr) {
       const h=fileHandle(handlePtr); if(!h) {setErrno(9); return 0;}
       const item=Math.max(0,size>>>0), items=Math.max(0,count>>>0), total=item*items; if(!item||!items)return 0;
-      let out=new Uint8Array(total), written=0;
+      let out=new Uint8Array(checkedSize(total)), written=0;
       if(h.ungot!=null && written<total){out[written++]=h.ungot;h.ungot=null;}
       const available=Math.max(0,h.file.bytes.length-h.pos), take=Math.min(total-written,available);
       if(take){out.set(h.file.bytes.subarray(h.pos,h.pos+take),written);h.pos+=take;written+=take;}
@@ -410,7 +421,7 @@
     function decodeSwi(intno) {
       const pc=e.reg_read_i32(uc.ARM_REG_PC)>>>0;
       for(const at of [(pc-4)>>>0,pc]){
-        try{const ins=readMemU32(e,at);if((ins&0xff000000)===0xef000000)return ins&0x00ffffff;}catch(_){}
+        try{const ins=readMemU32(e,at);if((ins>>>24)===0xef)return ins&0x00ffffff;}catch(_){}
       }
       return Number(intno)>>>0;
     }
@@ -420,6 +431,7 @@
       session.lastSyscall=nr; try{e.emu_stop();}catch(_){}
     }
     function ret(value=0){setReg(0,value>>>0);}
+    function retDouble(value){const b=new ArrayBuffer(8),d=new DataView(b);d.setFloat64(0,value,true);setReg(0,d.getUint32(0,true));setReg(1,d.getUint32(4,true));}
 
     function handleVariable(baseNr){
       if(baseNr===59){ret(VAR_KEYPAD_TYPE);return true;}
@@ -430,7 +442,7 @@
       return false;
     }
     function handleExtended(baseNr){
-      if(baseNr===0){ret(0);return true;} // nl_osvalue
+      if(baseNr===0)return false; // OS pointers require the real TI-Nspire OS.
       if(baseNr===2){ret(1);return true;} // virtual CX/color hardware
       if(baseNr===3){ret(0);return true;}
       if(baseNr===5){ret(0);return true;}
@@ -438,12 +450,16 @@
       if(baseNr===7){ret(0);return true;}
       if(baseNr===8){ret(1);return true;}
       if(baseNr===9){ret(0);return true;}
-      if(baseNr===10){ret(-1);return true;}
-      if(baseNr===11){ret(0);return true;}
+      if(baseNr===10||baseNr===11)return false;
       if(baseNr===12){ret(1);return true;}
-      if(baseNr===13){ret(0);return true;}
+      if(baseNr===13){
+        const ptr=reg(0),type=reg(1);
+        if(type!==0)throw Object.assign(new Error(`Unsupported LCD format ${type}. Expected RGB565.`),{code:"NDLESS_LCD_UNSUPPORTED"});
+        writeMem(e,FB_BASE,readMem(e,ptr,FB_BYTES));writeMemU32(e,SCREEN_PTR,FB_BASE);session.blits=(session.blits||0)+1;
+        ret(0);return true;
+      }
       if(baseNr===14){ret(0);return true;} // SCR_320x240_565
-      if(baseNr===15){ret(1);return true;}
+      if(baseNr===15){if(reg(0)!==0)throw Object.assign(new Error(`Unsupported LCD format ${reg(0)}. Expected RGB565.`),{code:"NDLESS_LCD_UNSUPPORTED"});ret(1);return true;}
       return false;
     }
 
@@ -457,7 +473,7 @@
         case 4: {const h=fileHandle(a2);if(!h){ret(0);return true;}let chars=[];while(chars.length<Math.max(0,(a1|0)-1)){const c=fgetc(a2);if(c<0)break;chars.push(c);if(c===10)break;}if(!chars.length){ret(0);return true;}const out=Uint8Array.from([...chars,0]);writeMem(e,a0,out);ret(a0);return true;}
         case 5: ret(allocRaw(a0)); return true;
         case 6: freeRaw(a0); ret(0); return true;
-        case 7: {writeMem(e,a0,new Uint8Array(a2).fill(a1&255));ret(a0);return true;}
+        case 7: {writeMem(e,a0,new Uint8Array(checkedSize(a2)).fill(a1&255));ret(a0);return true;}
         case 8: {writeMem(e,a0,readMem(e,a1,a2));ret(a0);return true;}
         case 9: {const x=readMem(e,a0,a2),y=readMem(e,a1,a2);let d=0;for(let i=0;i<a2;i++){if(x[i]!==y[i]){d=x[i]-y[i];break;}}ret(d);return true;}
         case 10: {appendLog(formatC(a0,1));ret(0);return true;}
@@ -465,19 +481,20 @@
         case 12: {const s=formatC(a1,2),bytes=encodeText(s),hp=a0;if(hp===VAR_STDOUT||hp===VAR_STDERR)appendLog(s);else{const tmp=allocRaw(bytes.length,false);writeMem(e,tmp,bytes);fwrite(tmp,1,bytes.length,hp);}ret(s.length);return true;}
         case 13: ret(ascii2utf16(a0,a1,a2)); return true;
         case 14: ret(0); return true;
-        case 15: case 16: case 17: ret(0); return true;
+        case 15: case 16: case 17: return false;
         case 18: ret(statFile(a0,a1)); return true;
         case 19: {mountedFiles.delete(normalizePath(readCString(e,a0)));ret(0);return true;}
         case 20: {const old=normalizePath(readCString(e,a0)),neo=normalizePath(readCString(e,a1)),file=mountedFiles.get(old);if(!file){ret(-1);return true;}mountedFiles.delete(old);file.path=neo;mountedFiles.set(neo,file);ret(0);return true;}
-        case 21: ret(0); return true;
+        case 21: return false;
         case 22: {appendLog(readCString(e,a0));ret(0);return true;}
-        case 23: case 24: ret(-1); return true; case 25: ret(0); return true;
+        case 23: case 24: case 25: return false;
         case 26: {const x=readCString(e,a0),y=readCString(e,a1);ret(x<y?-1:x>y?1:0);return true;}
         case 27: {const s=readCString(e,a1);writeCString(e,a0,s);ret(a0);return true;}
         case 28: {let x=readCString(e,a0),y=readCString(e,a1);writeCString(e,a0,x+y.slice(0,a2));ret(a0);return true;}
         case 29: ret(encodeText(readCString(e,a0)).length); return true;
-        case 30: appendLog(`[dialog] ${readCString(e,a1)} ${readCString(e,a2)}`);ret(0);return true;
+        case 30: return false;
         case 31: {const s=readCString(e,a0),ch=String.fromCharCode(a1&255),i=s.lastIndexOf(ch);ret(i<0?0:(a0+i));return true;}
+        case 32: {const s=formatC(a1,0,a2);writeCString(e,a0,s);ret(s.length);return true;}
         case 33: ret(fseek(a0,a1,a2)); return true;
         case 34: {writeCString(e,a1,"A:\\documents");ret(1);return true;}
         case 35: ret(readMemU32(e,a0)); return true;
@@ -493,11 +510,12 @@
         case 45: ret(/[0-9A-Fa-f]/.test(String.fromCharCode(a0&255))?1:0);return true;
         case 46: {const c=String.fromCharCode(a0&255);ret(c.toLowerCase().charCodeAt(0));return true;}
         case 47: ret(parseInt(readCString(e,a0),10)||0);return true;
+        case 48: retDouble(parseFloat(readCString(e,a0))||0);return true;
         case 49: {const total=(a0>>>0)*(a1>>>0);ret(total>0xffffffff?0:allocRaw(total));return true;}
         case 50: ret(reallocRaw(a0,a1));return true;
         case 51: {const s=readCString(e,a0),set=readCString(e,a1);let i=-1;for(let j=0;j<s.length;j++)if(set.includes(s[j])){i=j;break;}ret(i<0?0:a0+i);return true;}
         case 52: ret(fgetc(a0));return true;
-        case 53: ret(1);return true;
+        case 53: return false;
         case 54: {const b=Uint8Array.of(a0&255),tmp=allocRaw(1,false);writeMem(e,tmp,b);fwrite(tmp,1,1,a1);ret(a0&255);return true;}
         case 55: {const b=readMem(e,a1,a2);writeMem(e,a0,b);ret(a0);return true;}
         case 56: {const b=readMem(e,a0,a1);b.reverse();writeMem(e,a0,b);ret(a0);return true;}
@@ -505,26 +523,27 @@
         case 58: {const x=readCString(e,a0).slice(0,a2),y=readCString(e,a1).slice(0,a2);ret(x<y?-1:x>y?1:0);return true;}
         case 60: ret(openFile(readCString(e,a0),readCString(e,a1)));return true;
         case 62: {const c=String.fromCharCode(a0&255);ret(c.toUpperCase().charCodeAt(0));return true;}
-        case 63: {const s=readCString(e,a0),m=s.match(/^[\s]*[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/),val=m?Number(m[0]):0;if(a1)writeMemU32(e,a1,(a0+(m?m[0].length:0))>>>0);session.floatReturn=val;ret(Math.trunc(val));return true;}
+        case 63: {const s=readCString(e,a0),m=s.match(/^[\s]*[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?/),val=m?Number(m[0]):0;if(a1)writeMemU32(e,a1,(a0+(m?m[0].length:0))>>>0);retDouble(val);return true;}
         case 64: {const s=readCString(e,a0),base=a2||10,m=s.match(/^[\s]*[+-]?[0-9A-Za-z]+/),v=m?parseInt(m[0],base):0;if(a1)writeMemU32(e,a1,(a0+(m?m[0].length:0))>>>0);ret(Number.isFinite(v)?v:0);return true;}
-        case 65: {const h=fileHandle(a0);if(h&&h.pos>0){h.pos--;h.eof=false;updateHandleFlags(h);ret(0);}else ret(-1);return true;}
+        case 65: {const h=fileHandle(a1);if(h&&a0!==0xffffffff){h.ungot=a0&255;h.eof=false;updateHandleFlags(h);ret(a0&255);}else ret(-1);return true;}
         case 66: {const p=mallocCString(`errno ${a0|0}`);ret(p);return true;}
         case 67: {const s=readCString(e,a0)+readCString(e,a1);writeCString(e,a0,s);ret(a0);return true;}
         case 68: {const s=readCString(e,a0),needle=readCString(e,a1),i=s.indexOf(needle);ret(i<0?0:a0+i);return true;}
         case 69: ret(0);return true;
         case 70: {mountedFiles.delete(normalizePath(readCString(e,a0)));ret(0);return true;}
         case 74: {const h=fileHandle(a0);ret(h?.error?1:0);return true;}
-        case 75: case 76: ret(0);return true;
-        case 77: case 78: case 79: ret(0);return true;
-        case 88: ret(0);return true;
+        case 75: case 76: case 77: case 78: case 79: case 88: return false;
         case 89: {const h=fileHandle(a0);ret(h?h.pos:-1);return true;}
-        case 93: case 94: ret(0);return true;
-        case 95: case 96: ret(0);return true; case 97: ret(0);return true;
+        case 93: case 94: case 95: case 96: case 97: return false;
         default:return false;
       }
     }
 
     function handleInterrupt(handle,intno) {
+      session.pendingInterrupt = intno;
+      e.emu_stop();
+    }
+    function dispatchInterrupt(intno) {
       const nr=decodeSwi(intno)>>>0; session.lastSyscall=nr; session.syscallCount++;
       const isVar=!!(nr&SYSCALL_ISVAR),isExt=!!(nr&SYSCALL_ISEXT),baseNr=nr&~SYSCALL_FLAG_MASK;
       let ok=false;
@@ -552,7 +571,7 @@
       return {argc:ptrs.length,argv:array,args:list};
     }
 
-    return { allocRaw,freeRaw,reallocRaw,mallocCString,readCString:(p,m)=>readCString(e,p,m),writeCString:(p,s,c)=>writeCString(e,p,s,c),logs,fileHandles,setupArgv,get heapNext(){return heapNext;} };
+    return { dispatchInterrupt,allocRaw,freeRaw,reallocRaw,mallocCString,readCString:(p,m)=>readCString(e,p,m),writeCString:(p,s,c)=>writeCString(e,p,s,c),logs,fileHandles,setupArgv,get heapNext(){return heapNext;} };
   }
 
   function currentFramebuffer(session) {
@@ -560,9 +579,29 @@
     for(const ptr of candidates){if(!ptr)continue;try{const bytes=readMem(session.e,ptr,FB_BYTES);if(bytes.length===FB_BYTES)return{ptr:ptr>>>0,bytes};}catch(_){}}
     return null;
   }
+  function setKey(session, code, pressed) {
+    const map=KEYMAP[code];if(map)setKeyMatrix(session,map[0],map[1],pressed);
+  }
+  // Stop at each SWI and service it outside uc_emu_start. Host memory writes must
+  // not re-enter the CPU translator while it is running a guest block.
+  function step(session, {milliseconds=12, instructions=20000}={}) {
+    const deadline=performance.now()+Math.min(40,Math.max(1,milliseconds));
+    updateHardware(session);
+    let calls=0;
+    do {
+      const pc=session.e.reg_read_i32(session.uc.ARM_REG_PC)>>>0;
+      if(pc===EXIT_ADDR){session.exitCode=session.e.reg_read_i32(session.uc.ARM_REG_R0)|0;return{...stateSnapshot(session),exited:true,exitCode:session.exitCode};}
+      session.pendingError=null;
+      session.e.emu_start(pc,EXIT_ADDR,0,instructions);
+      session.instructions+=instructions;
+      if(session.pendingInterrupt!=null){const intr=session.pendingInterrupt;session.pendingInterrupt=null;session.kernel.dispatchInterrupt(intr);}
+      if(session.pendingError)throw session.pendingError;
+    } while(++calls<2000 && performance.now()<deadline);
+    return stateSnapshot(session);
+  }
   function renderSession(session) {
     const canvas=session.canvas;if(!canvas?.isConnected)return false;const frame=currentFramebuffer(session);if(!frame)return false;
-    const ctx=canvas.getContext("2d");canvas.width=FB_WIDTH;canvas.height=FB_HEIGHT;ctx.imageSmoothingEnabled=false;
+    const ctx=canvas.getContext("2d");if(canvas.width!==FB_WIDTH)canvas.width=FB_WIDTH;if(canvas.height!==FB_HEIGHT)canvas.height=FB_HEIGHT;ctx.imageSmoothingEnabled=false;
     if(root.NdlessFramebufferPreview?.draw)root.NdlessFramebufferPreview.draw(ctx,{bytes:frame.bytes});else{
       const image=ctx.createImageData(FB_WIDTH,FB_HEIGHT);for(let i=0;i<FB_WIDTH*FB_HEIGHT;i++){const p=i*2,w=frame.bytes[p]|(frame.bytes[p+1]<<8),q=i*4;image.data[q]=Math.round(((w>>>11)&31)*255/31);image.data[q+1]=Math.round(((w>>>5)&63)*255/63);image.data[q+2]=Math.round((w&31)*255/31);image.data[q+3]=255;}ctx.putImageData(image,0,0);
     }
@@ -570,7 +609,7 @@
   }
 
   async function createMachine(bytesInput,options={}) {
-    const uc=await engine(),prepared=await prepareZehn(bytesInput,options.base||APP_BASE),e=new uc.Unicorn(uc.ARCH_ARM,uc.MODE_ARM);
+    const uc=await engine(),prepared=await prepareZehn(bytesInput,options.base||APP_BASE),e=new uc.Unicorn(uc.ARCH_ARM,uc.MODE_ARM|uc.MODE_ARM926);
     try{
       mapPage(e,uc,prepared.base,align(prepared.image.length));writeMem(e,prepared.base,prepared.image);
       mapPage(e,uc,STACK_BASE,STACK_SIZE);mapPage(e,uc,HEAP_BASE,HEAP_SIZE);mapPage(e,uc,VAR_BASE,VAR_SIZE);mapPage(e,uc,EXIT_ADDR,PAGE);mapHardware(e,uc);
@@ -587,7 +626,7 @@
   function emit(session,message=""){const s={...stateSnapshot(session),message};try{session.onState?.(s);}catch(_){}return s;}
   function stop(session,reason="stopped"){if(!session||session.stopped)return;session.running=false;session.paused=false;session.stopped=true;if(session.raf)cancelAnimationFrame(session.raf);try{session.e.emu_stop?.();}catch(_){}try{session.inputCleanup?.();}catch(_){}emit(session,reason);try{session.e.close();}catch(_){}if(activeSession===session)activeSession=null;}
   function pause(session){if(!session||session.stopped)return;session.paused=true;session.running=false;if(session.raf)cancelAnimationFrame(session.raf);emit(session,"paused");}
-  function resume(session){if(!session||session.stopped)return;session.paused=false;session.running=true;emit(session,"running");const tick=()=>{if(!session.running||session.paused||session.stopped)return;updateHardware(session);let pc=session.e.reg_read_i32(session.uc.ARM_REG_PC)>>>0;if(pc===EXIT_ADDR){session.exitCode=session.e.reg_read_i32(session.uc.ARM_REG_R0)|0;renderSession(session);stop(session,`program exited (${session.exitCode})`);return;}try{session.pendingError=null;session.e.emu_start(pc,EXIT_ADDR,0,session.sliceInstructions);session.instructions+=session.sliceInstructions;if(session.pendingError)throw session.pendingError;renderSession(session);}catch(error){session.error=error instanceof Error?error:new Error(String(error));session.running=false;renderSession(session);emit(session,"execution error");return;}emit(session,"running");session.raf=requestAnimationFrame(tick);};session.raf=requestAnimationFrame(tick);}
+  function resume(session){if(!session||session.stopped)return;session.paused=false;session.running=true;emit(session,"running");const tick=()=>{if(!session.running||session.paused||session.stopped)return;updateHardware(session);let pc=session.e.reg_read_i32(session.uc.ARM_REG_PC)>>>0;if(pc===EXIT_ADDR){session.exitCode=session.e.reg_read_i32(session.uc.ARM_REG_R0)|0;renderSession(session);stop(session,`program exited (${session.exitCode})`);return;}try{step(session);renderSession(session);}catch(error){session.error=error instanceof Error?error:new Error(String(error));session.running=false;renderSession(session);emit(session,"execution error");return;}emit(session,"running");session.raf=requestAnimationFrame(tick);};session.raf=requestAnimationFrame(tick);}
   async function run(bytesInput,options={}){if(activeSession)stop(activeSession,"replaced");const session=await createMachine(bytesInput,options);activeSession=session;renderSession(session);resume(session);return session;}
 
   function sourceText(project){return Object.entries(project?.files||{}).filter(([name])=>/\.(?:c|cpp|cc|cxx|h|hpp)$/i.test(name)).map(([,v])=>String(v||"")).join("\n");}
@@ -603,8 +642,8 @@
   function uiStatus(box,text,good=false){const s=box?.querySelector?.("[data-arm-status]");if(s)s.innerHTML=good?`<strong>${String(text)}</strong>`:String(text);}
   async function startUiRuntime(box,artifact){const canvas=document.querySelector("[data-ndless-project-canvas]"),note=document.querySelector("[data-preview-note]");if(!canvas)throw new Error("Ndless preview canvas was not found.");uiStatus(box,"Cargando CPU ARM WebAssembly…");const smoke=await smokeTest();if(!smoke.ok)throw new Error(`ARM engine self-test failed (r0=${smoke.r0}, r2=${smoke.r2}).`);const args=runtimeArgs(artifact);uiStatus(box,`Motor ARM OK · argv=${args.map(x=>x.split('/').pop()).join(' + ')} · iniciando kernel Ndless…`,true);const session=await run(artifact.bytes,{canvas,note,args,onState:state=>{const btn=box.querySelector("[data-arm-live]");if(btn)btn.textContent=state.running?"Pausar ARM":state.paused?"Continuar ARM":"Live ARM";if(state.error){const swi=state.lastSyscall==null?"—":`0x${state.lastSyscall.toString(16).toUpperCase()}`;uiStatus(box,`ARM detenido · PC=${fmtHex(state.pc)} · SWI=${swi} · ${state.error}`);if(note)note.textContent=`Live ARM stopped at ${fmtHex(state.pc)}: ${state.error}`;}else if(state.running){uiStatus(box,`ARM ejecutando · PC=${fmtHex(state.pc)} · frames=${state.frames} · SWI=${state.syscallCount} · framebuffer=${fmtHex(state.framebufferAddress)}`,true);if(note)note.textContent=`Live ARM experimental · ${lastWad?`IWAD: ${lastWad.name} · `:""}teclado y framebuffer RGB565 activos.`;}else if(state.stopped)uiStatus(box,`ARM finalizado · PC=${fmtHex(state.pc)} · frames=${state.frames}`);}});return session;}
 
-  function mountUi(){if(typeof document==="undefined")return;ensureUiStyle();const project=root.NdlessProjectWorkspace?.getProject?.(),canvas=document.querySelector("[data-ndless-project-canvas]"),note=document.querySelector("[data-preview-note]");if(!project||!canvas||!note||!isNativeFramebufferProject(project))return;const parent=note.parentElement||canvas.parentElement;if(!parent||parent.querySelector(`[data-arm-ui="${UI_MARK}"]`))return;parent.querySelector('[data-arm-ui="__tnsNdlessArmUiV1"]')?.remove();const box=document.createElement("div");box.className="ndless-arm-live";box.dataset.armUi=UI_MARK;box.innerHTML=`<div class="ndless-arm-live-row"><button type="button" data-arm-live>Live ARM</button><button type="button" data-arm-load>Cargar TNS</button><button type="button" data-arm-wad>Cargar WAD</button><button type="button" data-arm-stop hidden>Detener</button><input type="file" accept=".tns,application/octet-stream" data-arm-file><input type="file" accept=".wad,.tns,application/octet-stream" data-arm-wad-file></div><div class="ndless-arm-live-status" data-arm-status>CPU ARM + kernel Ndless experimental. Para nDoom carga tu propio IWAD con <strong>Cargar WAD</strong> y luego pulsa <strong>Live ARM</strong>.</div>`;note.insertAdjacentElement("afterend",box);const live=box.querySelector("[data-arm-live]"),load=box.querySelector("[data-arm-load]"),wad=box.querySelector("[data-arm-wad]"),stopBtn=box.querySelector("[data-arm-stop]"),input=box.querySelector("[data-arm-file]"),wadInput=box.querySelector("[data-arm-wad-file]");
-    live.addEventListener("click",async()=>{try{if(activeSession?.running){pause(activeSession);stopBtn.hidden=false;return;}if(activeSession?.paused){resume(activeSession);stopBtn.hidden=false;return;}let artifact=lastArtifact;if(!artifact)artifact=await buildCurrentProject(text=>uiStatus(box,text));stopBtn.hidden=false;await startUiRuntime(box,artifact);}catch(error){uiStatus(box,`${error.message||error} Puedes usar “Cargar TNS” si este navegador no tiene acceso al compilador local.`);}});
+  function mountUi(){if(typeof document==="undefined"||root.TnsDesktop)return;ensureUiStyle();const project=root.NdlessProjectWorkspace?.getProject?.(),canvas=document.querySelector("[data-ndless-project-canvas]"),note=document.querySelector("[data-preview-note]");if(!project||!canvas||!note||!isNativeFramebufferProject(project))return;const parent=note.parentElement||canvas.parentElement;if(!parent||parent.querySelector(`[data-arm-ui="${UI_MARK}"]`))return;parent.querySelector('[data-arm-ui="__tnsNdlessArmUiV1"]')?.remove();const box=document.createElement("div");box.className="ndless-arm-live";box.dataset.armUi=UI_MARK;box.innerHTML=`<div class="ndless-arm-live-row"><button type="button" data-arm-live>Live ARM</button><button type="button" data-arm-load>Cargar TNS</button><button type="button" data-arm-wad>Cargar WAD</button><button type="button" data-arm-stop hidden>Detener</button><input type="file" accept=".tns,application/octet-stream" data-arm-file><input type="file" accept=".wad,.tns,application/octet-stream" data-arm-wad-file></div><div class="ndless-arm-live-status" data-arm-status>CPU ARM + kernel Ndless experimental. Para nDoom carga tu propio IWAD con <strong>Cargar WAD</strong> y luego pulsa <strong>Live ARM</strong>.</div>`;note.insertAdjacentElement("afterend",box);const live=box.querySelector("[data-arm-live]"),load=box.querySelector("[data-arm-load]"),wad=box.querySelector("[data-arm-wad]"),stopBtn=box.querySelector("[data-arm-stop]"),input=box.querySelector("[data-arm-file]"),wadInput=box.querySelector("[data-arm-wad-file]");
+    live.addEventListener("click",async()=>{try{if(activeSession?.running){pause(activeSession);stopBtn.hidden=false;return;}if(activeSession?.paused){resume(activeSession);stopBtn.hidden=false;return;}let artifact=await buildCurrentProject(text=>uiStatus(box,text));stopBtn.hidden=false;await startUiRuntime(box,artifact);}catch(error){uiStatus(box,`${error.message||error} Puedes usar “Cargar TNS” si este navegador no tiene acceso al compilador local.`);}});
     load.addEventListener("click",()=>input.click());input.addEventListener("change",async()=>{const file=input.files?.[0];if(!file)return;try{const artifact={bytes:new Uint8Array(await file.arrayBuffer()),filename:file.name,source:"upload"};await prepareZehn(artifact.bytes);lastArtifact=artifact;stopBtn.hidden=false;await startUiRuntime(box,artifact);}catch(error){uiStatus(box,`No se pudo iniciar ${file.name}: ${error.message||error}`);}finally{input.value="";}});
     wad.addEventListener("click",()=>wadInput.click());wadInput.addEventListener("change",async()=>{const file=wadInput.files?.[0];if(!file)return;try{const bytes=new Uint8Array(await file.arrayBuffer()),name=sanitizeName(file.name,"doom.wad"),path=`/documents/${name.replace(/\.tns$/i,"")}`;lastWad={name,path,bytes};mountVirtualFile(path,bytes,{writable:false});if(activeSession)stop(activeSession,"WAD changed");stopBtn.hidden=true;live.textContent="Live ARM";uiStatus(box,`IWAD cargado: <strong>${name}</strong> (${Math.max(1,Math.round(bytes.length/1024))} KB). Pulsa Live ARM para arrancar nDoom con ese archivo.`,true);}catch(error){uiStatus(box,`No se pudo cargar el WAD: ${error.message||error}`);}finally{wadInput.value="";}});
     stopBtn.addEventListener("click",()=>{if(activeSession)stop(activeSession,"user stop");stopBtn.hidden=true;live.textContent="Live ARM";uiStatus(box,"Live ARM detenido.");});
@@ -612,5 +651,5 @@
 
   if(typeof document!=="undefined"){let scheduled=false;const schedule=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;mountUi();});};new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true});document.addEventListener("click",event=>{if(event.target?.closest?.("[data-project-tab], [data-project-refresh]"))setTimeout(schedule,20);},true);schedule();}
 
-  root.NdlessArmRuntime=Object.freeze({version:2,ENGINE_JS,ENGINE_WASM,APP_BASE,STACK_BASE,STACK_SIZE,FB_BASE,FB_WIDTH,FB_HEIGHT,FB_BYTES,HEAP_BASE,HEAP_SIZE,VAR_BASE,EXIT_ADDR,SYSCALL_ISEXT,SYSCALL_ISEMU,SYSCALL_ISVAR,KEYMAP,align,u16,u32,w16,w32,relocateImage,prepareZehn,engine,smokeTest,createMachine,run,pause,resume,stop,mountVirtualFile,getVirtualFile,listVirtualFiles,normalizePath,get activeSession(){return activeSession;},get lastArtifact(){return lastArtifact;},get lastWad(){return lastWad;},mountUi});
+  root.NdlessArmRuntime=Object.freeze({version:2,ENGINE_JS,ENGINE_WASM,APP_BASE,STACK_BASE,STACK_SIZE,FB_BASE,FB_WIDTH,FB_HEIGHT,FB_BYTES,HEAP_BASE,HEAP_SIZE,VAR_BASE,EXIT_ADDR,SYSCALL_ISEXT,SYSCALL_ISEMU,SYSCALL_ISVAR,KEYMAP,align,u16,u32,w16,w32,relocateImage,prepareZehn,engine,smokeTest,createMachine,step,currentFramebuffer,setKey,run,pause,resume,stop,mountVirtualFile,getVirtualFile,listVirtualFiles,normalizePath,get activeSession(){return activeSession;},get lastArtifact(){return lastArtifact;},get lastWad(){return lastWad;},mountUi});
 })();

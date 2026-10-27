@@ -10,6 +10,7 @@ if (!$report.ok -or $report.version -ne $version -or @($report.cases | Where-Obj
 }
 if (!$report.prgmPreview.ok -or !$report.browserPrgmPreview.ok) { throw 'Prgm preview desktop/browser acceptance is required' }
 if (!$report.prgmPreview.stableHistory -or !$report.prgmPreview.expandedCanvas -or !$report.browserPrgmPreview.stableHistory -or !$report.browserPrgmPreview.expandedCanvas) { throw 'Prgm history and expanded canvas acceptance is required' }
+if (!$report.ndlessPreview.ok -or !$report.ndlessPreview.immediateInvalidation -or !$report.ndlessPreview.keyboard -or !$report.ndlessPreview.pause -or !$report.ndlessPreview.sourceError -or !$report.ndlessPreview.infiniteLoopStopped) { throw 'Compiled Ndless live preview acceptance is required' }
 $stage = Join-Path $env:RUNNER_TEMP 'portable-release-assets'
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 $asset = Join-Path $stage 'TNS-Tool-Portable-Windows-x64.zip'
@@ -28,6 +29,10 @@ El SDK Ndless está incluido. Se prepara una vez al usar el compilador; no requi
 Incluye Preview Prgm en Syntax Doctor: pantalla de 320×240, Request interactivo, vista ampliada, ejecución por pasos, variables y errores con línea. La ruta MRUA del ejemplo de física se verifica en escritorio y navegador. Es una simulación numérica parcial, sin CAS simbólico, unidades ni gráficos.
 
 El historial conserva los menús y respuestas anteriores, con márgenes estables y popup centrado. La vista ampliada ofrece hasta 800×600 sin escalar la letra ni el cuadro de entrada, como el preview Lua/LÖVE.
+
+El preview Ndless compila automáticamente la revisión actual de C/C++/ARM y ejecuta el programa en un Worker aislado. Muestra el framebuffer RGB565 real, animaciones, teclado y stdout separado. Al editar borra el resultado anterior, descarta compilados atrasados y permite pausar, reiniciar o detener. Las APIs de SO no soportadas muestran un error; no es un emulador completo de TI-Nspire.
+
+Se probaron gradientes y texto calculado, fractales con doble precisión, C++ con varios archivos y plantillas, animación, teclado, ensamblador ARM, miles de malloc/free, bucles y errores. La app extraída del ZIP también pasó edición real, invalidación inmediata, animación, pausa, recuperación y respuesta del editor durante un bucle infinito.
 
 Este ZIP se extrajo y probó antes de publicarlo: creación de proyectos C/C++ mediante el botón visible del menú, editor, compilación ARM por IPC y pruebas de capturas USB simuladas. La recuperación USB aún requiere validación física en cada equipo.
 

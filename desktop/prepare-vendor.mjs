@@ -3,6 +3,7 @@
 import {mkdir,readFile,writeFile,stat} from 'node:fs/promises';
 import {join,dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {createHash} from 'node:crypto';
 
 const HERE=dirname(fileURLToPath(import.meta.url));
 const out=join(HERE,'vendor');
@@ -30,3 +31,12 @@ for(const name of ['pycryptodome']){
 await download('https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js','jszip/jszip.min.js');
 await download('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js','pdfjs/pdf.min.js');
 await download('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js','pdfjs/pdf.worker.min.js');
+for(const [file,sha] of [
+  ['unicorn.js','3ca0ec4e7682c65ddb7e6df956fd2d8970b86a6c8df6a8d01068b0e9203a1d2a'],
+  ['unicorn.wasm','8e65bc98a70029315b588de7db7853fde4b2bce57f8aa73ba20a14a705381290'],
+  ['LICENSE','8177f97513213526df2cf6184d8ff986c675afb514d4e68a404010521b880643']
+]){
+  await download('https://cdn.jsdelivr.net/npm/@alexaltea/unicorn-js@1.0.3/'+(file==='LICENSE'?'':'dist/')+file,'unicorn/'+file);
+  const bytes=await readFile(join(out,'unicorn',file));
+  if(createHash('sha256').update(bytes).digest('hex')!==sha)throw new Error('Unicorn asset SHA256 mismatch: '+file);
+}

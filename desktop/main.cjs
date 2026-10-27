@@ -108,6 +108,7 @@ if(primaryInstance) app.whenReady().then(async()=>{
       })()`);
     }
     report.prgmPreview=await require('./smoke-prgm.cjs').checkPrgm(win,smokeReport);
+      if(process.env.TNS_DESKTOP_SMOKE_BUILD)report.ndlessPreview=await require('./smoke-ndless-preview.cjs').checkNdlessPreview(win,smokeReport);
     const browser=new BrowserWindow({width:1440,height:1000,show:false,
       webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,offscreen:true}});
     try{

@@ -15,6 +15,13 @@ on:
       - 'ndless-web-bridge.js'
       - 'ndless-project-workspace.js'
       - 'ndless-project-core.js'
+      - 'ndless-arm-runtime-v2.js'
+      - 'ndless-arm-preview-worker.js'
+      - 'ndless-live-*.js'
+      - 'tests/ndless-live-session.test.js'
+      - 'tests/ndless-preview-native.test.cjs'
+      - 'tests/fixtures/ndless-preview-projects.cjs'
+      - 'tests/helpers/ndless-preview-worker.cjs'
       - 'ndless-project-sdk-enhancements-v2.js'
       - 'multi-image-upload.js'
       - 'tests/desktop-portable.test.cjs'
@@ -50,6 +57,8 @@ jobs:
       - run: node tests/calculator-upload-destination.test.js
       - run: npm run test:calculator-session
       - run: node tests/ndless-project.test.js
+      - run: node --test tests/ndless-live-session.test.js
+      - run: node tests/ndless-arm-runtime.test.js
       - run: node --test tests/prgm-preview.test.js
       - run: node tests/ndless-desktop-required.test.js
       - run: node tests/normal-ndless-menu-exclusivity.test.js
@@ -138,6 +147,11 @@ jobs:
         run: |
           $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
           node --test tests/desktop-native-build.test.cjs
+      - name: Stress-test compiled Ndless preview with the isolated ARM worker
+        shell: pwsh
+        run: |
+          $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
+          node --test tests/ndless-preview-native.test.cjs
       - name: Pack Windows portable folder ZIP (extract once)
         run: npm run desktop:build:win
         env:
