@@ -90,6 +90,11 @@ jobs:
             throw "Invalid modern Zehn output"
           }
           Write-Host "Built real Ndless example: $($bytes.Length) bytes"
+      - name: Verify Node IPC compiler probe
+        shell: pwsh
+        run: |
+          $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
+          node -e "const c=require('./desktop/compiler.cjs'); c.status(process.env.TNS_DESKTOP_COMPILER).then(s=>{console.log(JSON.stringify(s)); if(!s.toolchainReady) process.exitCode=1})"
       - name: Pack Windows portable executable
         run: npm run desktop:build:win
         env:
