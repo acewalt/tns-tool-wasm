@@ -21,6 +21,7 @@ on:
       - 'ti-calculator-transfer.js'
       - 'ti-calculator-transfer.css'
       - 'ti-nspire-webusb.js'
+      - 'ti-nspire-nnse.js'
       - 'tests/calculator-session.test.js'
       - 'tests/nnse-transport.test.js'
       - 'tests/calculator-upload-destination.test.js'

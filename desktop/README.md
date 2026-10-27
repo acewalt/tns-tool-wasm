@@ -25,6 +25,16 @@ and read through the trusted native bridge. Changing the local server port or
 restarting the application preserves that anonymous ID; the backend deduplicates
 daily visits. Browser visitors retain the existing localStorage behavior.
 
+Repeated-capture protocol fix (0.1.7): NNSE acknowledgements now echo the
+received sequence without allocating a new outgoing sequence. The previous
+implementation allocated then overwrote it, leaving one gap per acknowledged
+fragment. Regression coverage includes 700 ACKs across sequence wraparound and
+a peer that accepts the first screenshot but rejects the next request if the
+host sequence has gaps. This follows the NNSEMessage/ACK handling described in
+[libnspire cx2.cpp](https://github.com/Vogtinator/libnspire/blob/master/src/cx2.cpp).
+The timeout message reports an interrupted USB session without diagnosing a
+native app. Real-hardware repeated capture still needs validation.
+
 ## Local development
 
 Requirements: Node.js 22+, Windows x64 for actual Ndless compilation.
