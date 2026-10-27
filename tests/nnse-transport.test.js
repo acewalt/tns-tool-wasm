@@ -12,6 +12,18 @@ vm.runInContext(load("../ti-nspire-nnse.js"),sandbox);
 vm.runInContext(load("../ti-nspire-webusb.js"),sandbox);
 const nnse=win.TnsNspireNNSE,proto=win.TnsNspireUSB;
 
+const acknowledgements=[];
+const sequenceCheck=new nnse.NNSETransport({readExact:async()=>{throw Error('Unexpected read');},
+  write:async bytes=>acknowledgements.push(nnse.parseFrame(bytes))});
+sequenceCheck.seq=65535;
+await sequenceCheck.send(8,Uint8Array.of(0x81,3));
+for(let i=0;i<700;i++)await sequenceCheck.handle({service:8,src:1,dest:0xfe,
+  reqAck:1,seq:i,payload:new Uint8Array(0)});
+await sequenceCheck.send(8,Uint8Array.of(0x81,3));
+assert.equal(acknowledgements[0].seq,65535);
+assert.equal(acknowledgements.at(-1).seq,0,'700 ACKs must not consume the wrapped host sequence');
+assert.ok(acknowledgements.slice(1,-1).every((ack,i)=>ack.service===0x88&&ack.seq===i));
+
 const concat=(...arrays)=>{
   const out=new Uint8Array(arrays.reduce((n,v)=>n+v.length,0));
   let pos=0;for(const v of arrays){out.set(v,pos);pos+=v.length;}return out;
@@ -69,6 +81,7 @@ class FakeNNSEUSB {
   renameData=null;
   splitScreenshot=false;suppressFinalAck=false;suppressDisconnectAck=false;
   stallScreen=false;stallClose=false;staleScreenBeforeFiles=false;closeCount=0;
+  strictScreenSequence=false;expectedHostSeq=null;rejectedSequences=[];
   async open(){this.opened=true;}
   async close(){this.closeCount++;this.opened=false;}
   async claimInterface(){}
@@ -101,6 +114,13 @@ class FakeNNSEUSB {
     if(!bytes.length)return {status:"ok"};
     const outer=nnse.parseFrame(bytes);
     this.seenFrames.push(outer.service);
+    if(this.strictScreenSequence && !(outer.service&0x80) && this.expectedHostSeq!==null){
+      if(outer.seq!==this.expectedHostSeq){
+        this.rejectedSequences.push([outer.seq,this.expectedHostSeq]);
+        return {status:'ok'}; // USB write succeeded; the protocol peer rejected it.
+      }
+      this.expectedHostSeq=(this.expectedHostSeq+1)&65535;
+    }
     if(outer.service===1) {
       this.prompts++;
       if(this.prompts===2){
@@ -145,6 +165,7 @@ class FakeNNSEUSB {
         this.respond(concat(Uint8Array.of(5),this.file.subarray(offset,offset+1200)),service,dest);
     }
     else if(d[0]===0&&service===0x4024){
+      if(this.strictScreenSequence&&this.expectedHostSeq===null)this.expectedHostSeq=(outer.seq+1)&65535;
       if(this.stallScreen)return {status:"ok"};
       if(this.colorScreenshot){
         this.respond(concat(Uint8Array.of(1),be32(5),Uint8Array.of(0,0,0,0,0,2,0,2)),service,dest);
@@ -164,7 +185,7 @@ class FakeNNSEUSB {
   }
   async transferIn(){
     let bytes=this.answers.shift();
-    if(!bytes && (this.suppressFinalAck||this.stallScreen))return new Promise(()=>{});
+    if(!bytes && (this.suppressFinalAck||this.stallScreen||this.rejectedSequences.length))return new Promise(()=>{});
     if(!bytes)throw Error("Unexpected USB read - test deadlock");
     if(this.splitBulkReads && bytes.length>40){
       this.answers.unshift(bytes.subarray(40));
@@ -248,6 +269,18 @@ repeatedUSB.suppressDisconnectAck=false;repeatedUSB.staleScreenBeforeFiles=true;
 assert.equal((await repeated.listDir('/'))[0].name,'Examples',
   'A late screen packet addressed to the current host SID must not become a file reply');
 await repeated.close();
+
+// NNSE sequence numbers advance for new outgoing messages, never for ACKs
+// echoing a received sequence (libnspire cx2.cpp NNSEMessage/handlePacket).
+// A real-sized screenshot produces hundreds of ACKs. A strict peer can accept
+// the first image, then ignore the close and second request if ACKs consumed
+// the host's outgoing sequence. USB transferOut still reports success.
+const strictUSB=new FakeNNSEUSB(),strict=new proto.NspireUSB(strictUSB);
+await strict.connect();strictUSB.strictScreenSequence=true;strict.screenshotTimeoutMs=40;
+for(let i=0;i<5;i++)assert.equal((await strict.screenshotRle()).width,2);
+assert.deepEqual(strictUSB.rejectedSequences,[],'Screenshot ACKs must not create outgoing sequence gaps');
+assert.equal((await strict.listDir('/'))[0].name,'Examples');
+await strict.close();
 
 const silentUSB=new FakeNNSEUSB(),silent=new proto.NspireUSB(silentUSB);
 await silent.connect();silent.screenshotTimeoutMs=20;silentUSB.stallScreen=true;

@@ -97,7 +97,12 @@
     }
     nextSeq(){const n=this.seq;this.seq=(this.seq+1)&65535;return n;}
     async send(service,payload=new Uint8Array(0),opts={}) {
-      await this.write(encodeFrame(service,payload,{seq:this.nextSeq(),...opts}));
+      // ACKs echo the received sequence and do not consume a new host ID.
+      // Allocating first and then overwriting opts.seq creates a gap for every
+      // screen fragment, so the next request can be ignored by the peer.
+      if((service&0x80)&&opts.seq==null)fail("ACK sin secuencia de origen.");
+      const seq=opts.seq??this.nextSeq();
+      await this.write(encodeFrame(service,payload,{...opts,seq}));
     }
     async promptAddress() {
       await this.send(ADDR,Uint8Array.of(0x80));
