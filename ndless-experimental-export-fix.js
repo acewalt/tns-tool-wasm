@@ -273,6 +273,7 @@
   }
 
   async function openProjectZipBinarySafe(file) {
+    if(window.TnsNdlessDesktopRequired?.open())return false;
     if (!file || typeof window.JSZip !== "function") return false;
     log(`Opening Ndless project ZIP with binary-safe importer: ${file.name || "project.zip"}`);
     const zip = await window.JSZip.loadAsync(file);

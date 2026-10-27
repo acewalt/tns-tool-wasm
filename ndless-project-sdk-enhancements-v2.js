@@ -256,6 +256,7 @@
   }
 
   function showProjectWizard() {
+    if(window.TnsNdlessDesktopRequired?.open())return;
     const existing = project();
     if (existing && !confirm("An Ndless project is already open. Replace the current session?")) return;
     const overlay = document.createElement("div");

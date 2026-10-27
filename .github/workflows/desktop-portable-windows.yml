@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - 'desktop/**'
+      - 'app.js'
+      - 'ndless-desktop-required.*'
       - 'electron-builder.json'
       - 'package.json'
       - 'ndless-web-bridge.js'
@@ -12,6 +14,8 @@ on:
       - 'ndless-project-sdk-enhancements-v2.js'
       - 'multi-image-upload.js'
       - 'tests/desktop-portable.test.cjs'
+      - 'tests/desktop-stats.test.cjs'
+      - 'tests/ndless-desktop-required.test.js'
       - 'tests/desktop-native-build.test.cjs'
       - 'ti-calculator-transfer.js'
       - 'ti-calculator-transfer.css'
@@ -33,10 +37,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/desktop-portable.test.cjs
+      - run: node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs
       - run: node tests/calculator-upload-destination.test.js
       - run: npm run test:calculator-session
       - run: node tests/ndless-project.test.js
+      - run: node tests/ndless-desktop-required.test.js
       - run: node --check desktop/main.cjs && node --check desktop/compiler.cjs && node --check ndless-web-bridge.js
 
   portable-windows:

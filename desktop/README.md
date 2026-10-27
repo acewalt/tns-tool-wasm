@@ -14,6 +14,16 @@ exits after writing the result. It also exercises destination folder creation
 and upload using a simulated calculator in the real dialog. This check does
 not perform a native build or a physical USB transfer.
 
+The acceptance check also opens a window without the native bridge and verifies
+that New/Open Ndless Project displays the desktop requirement dialog. It saves
+a screenshot beside the JSON report. Diagnostic runs never post visits or
+generated-document statistics to the production service.
+
+Desktop visitor identity is stored once in `userData/tns-tool/stats-identity.json`
+and read through the trusted native bridge. Changing the local server port or
+restarting the application preserves that anonymous ID; the backend deduplicates
+daily visits. Browser visitors retain the existing localStorage behavior.
+
 ## Local development
 
 Requirements: Node.js 22+, Windows x64 for actual Ndless compilation.

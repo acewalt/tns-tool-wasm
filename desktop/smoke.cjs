@@ -7,6 +7,8 @@ async function checkWorkspace(win,report,startup={}){
       await new Promise(resolve=>setTimeout(resolve,100));
     }
     const uiReadyMs=performance.now();
+    const statsIdentity=await window.TnsDesktop.statsIdentity();
+    if(statsIdentity.enabled)throw new Error('Smoke runs must not register real visitors');
     const workspace=window.NdlessProjectWorkspace;
     if(document.querySelector('#xml-doctor-panel').classList.contains('collapsed'))
       document.querySelector('#xml-toggle-btn').click();
@@ -94,10 +96,11 @@ async function checkWorkspace(win,report,startup={}){
       await waitFor(()=>!document.querySelector('[data-ti-connect]').hidden);
       window.TnsCalculatorTransfer.close();window.TnsNspireUSB=originalUSB;
     }
-    return {ok:true,uiReadyMs,cases,desktopBridge:!!window.TnsDesktop,
+    return {ok:true,uiReadyMs,cases,desktopBridge:!!window.TnsDesktop,statsIdentity,
       destination:{created,sent,simulatedUSB:true},screenshots:{captures,reopenKeptConnection:true,simulatedUSB:true}};
   })()`);
   if(!result.desktopBridge)throw new Error('Sandboxed desktop preload bridge is missing');
   await fs.writeFile(report,JSON.stringify({...result,startup},null,2));
+  return {...result,startup};
 }
 module.exports={checkWorkspace};

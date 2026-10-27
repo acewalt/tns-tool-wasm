@@ -44,12 +44,17 @@ function configureUSB(ses){
 }
 function registerNativeBridge(){
   const exe=compiler.compilerPath(process.resourcesPath,process.env.TNS_DESKTOP_COMPILER);
+  const visitorId=require('./stats-identity.cjs').persistentVisitorId(app.getPath('userData'));
   function onlyLocal(event){
     if(!win || event.sender!==win.webContents || !trusted(event.senderFrame?.url))
       throw new Error('Origen no autorizado.');
   }
   ipcMain.handle('tns:compiler-status',async event=>{
     onlyLocal(event);return compiler.status(exe);
+  });
+  ipcMain.handle('tns:stats-identity',async event=>{
+    onlyLocal(event);
+    return {visitorId:await visitorId(),enabled:!process.env.TNS_DESKTOP_SMOKE_REPORT};
   });
   ipcMain.handle('tns:ndless-build',async(event,payload)=>{
     onlyLocal(event);return compiler.build(exe,payload);
@@ -60,6 +65,10 @@ if(primaryInstance) app.whenReady().then(async()=>{
   const vendor=app.isPackaged?path.join(process.resourcesPath,'vendor'):path.join(root,'desktop','vendor');
   server=makeServer(root,vendor);
   origin=await listen(server);
+  if(process.env.TNS_DESKTOP_SMOKE_REPORT)session.defaultSession.webRequest.onBeforeRequest(
+    {urls:['https://tns-tool-stats.guard-mauricio-save.workers.dev/api/*']},
+    (details,callback)=>callback({cancel:details.method!=='GET'})
+  );
   configureUSB(session.defaultSession);
   registerNativeBridge();
   win=new BrowserWindow({width:1440,height:900,minWidth:900,minHeight:620,
@@ -76,7 +85,14 @@ if(primaryInstance) app.whenReady().then(async()=>{
   win.webContents.on('will-navigate',(event,url)=>{if(!trusted(url))event.preventDefault();});
   await loadLocalApp(win,origin);
   if(smokeReport){
-    await require('./smoke.cjs').checkWorkspace(win,smokeReport,{pageLoadedMs:performance.now()-bootStarted});
+    const report=await require('./smoke.cjs').checkWorkspace(win,smokeReport,{pageLoadedMs:performance.now()-bootStarted,origin});
+    const browser=new BrowserWindow({width:1440,height:1000,show:false,
+      webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false}});
+    try{
+      await loadLocalApp(browser,origin);
+      report.browserRequirement=await require('./smoke-web.cjs').checkBrowserRequirement(browser,smokeReport+'.web.png');
+      await require('node:fs/promises').writeFile(smokeReport,JSON.stringify(report,null,2));
+    }finally{browser.destroy();}
     app.quit();
   }
 }).catch(error=>{

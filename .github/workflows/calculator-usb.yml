@@ -7,6 +7,8 @@ on:
       - 'ti-calculator-*.js'
       - 'ti-calculator-transfer.css'
       - 'ndless-project-*.js'
+      - 'ndless-desktop-required.*'
+      - 'tests/ndless-desktop-required.test.js'
       - 'tests/calculator-*.test.js'
       - 'tests/nnse-transport.test.js'
       - 'tests/ndless-project.test.js'
@@ -15,6 +17,8 @@ on:
     paths:
       - 'ti-nspire-*.js'
       - 'ti-calculator-*.js'
+      - 'ndless-desktop-required.*'
+      - 'tests/ndless-desktop-required.test.js'
       - 'tests/calculator-*.test.js'
       - 'tests/nnse-transport.test.js'
       - '.github/workflows/calculator-usb.yml'
@@ -36,3 +40,4 @@ jobs:
       - run: node tests/calculator-session.test.js
       - run: node tests/nnse-transport.test.js
       - run: node tests/ndless-project.test.js
+      - run: node tests/ndless-desktop-required.test.js
