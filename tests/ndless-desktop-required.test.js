@@ -44,7 +44,7 @@ assert.equal(card.attributes.role,'dialog');
 assert.equal(card.attributes['aria-modal'],'true');
 assert.match(card.children[2].textContent,/requiere TNS Tool Portable/);
 assert.equal(card.children[3].children.length,3);
-assert.match(web.active.href,/github.com\/acewalt\/tns-tool-wasm\/actions\/workflows\/desktop-portable-windows.yml/);
+assert.equal(web.active.href,'https://github.com/acewalt/tns-tool-wasm/releases/latest/download/TNS-Tool-Portable-Windows-x64.zip');
 web.listeners.keydown({key:'Escape',preventDefault(){},stopImmediatePropagation(){}});
 assert.equal(web.nodes.size,0);
 assert.equal(web.active,web.previous);
