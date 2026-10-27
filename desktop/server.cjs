@@ -34,6 +34,7 @@ function resolveRequest(root, vendor, urlPath) {
   }
   return within(root, parts.slice(1).join('/') || 'index.html');
 }
+function originForRequest(req){return 'http://'+req.headers.host;}
 function makeServer(root, vendor) {
   const appRoot = path.resolve(root), vendorRoot = path.resolve(vendor);
   return http.createServer((req, res) => {
@@ -58,6 +59,20 @@ function makeServer(root, vendor) {
             .replace(WEB_JSZIP,'./__desktop/jszip/jszip.min.js');
           res.writeHead(200,headers);
           res.end(req.method === 'HEAD' ? undefined : localized);
+        });
+        return;
+      }
+      if (file.startsWith(appRoot + path.sep) &&
+          ['home-drop-import.js','media-import-controller.js'].includes(path.basename(file))) {
+        fs.readFile(file,'utf8',(readError,script)=>{
+          if(readError){res.writeHead(500);res.end();return;}
+          // Preserve PDF import without network access in the desktop package.
+          const updated=script.replaceAll(
+            'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/',
+            originForRequest(req)+'/__desktop/pdfjs/'
+          );
+          res.writeHead(200,headers);
+          res.end(req.method==='HEAD'?undefined:updated);
         });
         return;
       }
