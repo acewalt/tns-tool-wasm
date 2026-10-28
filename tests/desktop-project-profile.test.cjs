@@ -6,6 +6,9 @@ test('SDK project profile accepts explicit sources and rejects commands and esca
  assert.throws(()=>profile.validate({version:1,sources:['main.c'],defines:['VALUE=1 -include secret']}));
  assert.throws(()=>profile.validate({version:1,sources:['main.c'],optimization:'O2; calc'}));
  assert.throws(()=>profile.validate({version:1,sources:['run.exe']}));
+ assert.throws(()=>profile.validate({version:1,sources:['main.cpp'],cppStandard:'gnu++23 -include other.h'}));
+ assert.throws(()=>profile.validate({version:1,sources:['main.c'],wrapFree:'--shell'}));
+ const modern=profile.validate({version:1,sources:['main.cpp'],cppStandard:'gnu++23',wrapFree:true,unsignedChar:true});assert.equal(modern.cppStandard,'gnu++23');assert.equal(modern.wrapFree,true);assert.equal(modern.unsignedChar,true);
 });
 test('explicit source profile compiles only listed C files and honors includes, defines and common symbols',
  {skip:process.platform!=='win32'||!process.env.TNS_DESKTOP_COMPILER,timeout:30000},async()=>{

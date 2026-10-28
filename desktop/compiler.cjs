@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { spawn } = require('node:child_process');
 
-const MAX_ZIP = 32 * 1024 * 1024;
+const MAX_ZIP = 160 * 1024 * 1024;
 const MAX_RESULT = 64 * 1024 * 1024;
 const COMPILER_NAME = 'TNS-Tool-Compiler-Windows-x64.exe';
 const safeName = value => {
@@ -75,13 +75,14 @@ async function build(exe,payload) {
   const name=safeName(payload.name);
   const zip=Buffer.from(payload.zip || []);
   if(!zip.length || zip.length>MAX_ZIP || zip.subarray(0,2).toString()!=='PK')
-    throw new Error('ZIP del proyecto inválido o superior a 32 MiB.');
+    throw new Error('ZIP del proyecto inválido o superior a 160 MiB.');
   exe=await require('./sdk-runtime.cjs').ensureRuntime(exe);
   const temp=await fs.mkdtemp(path.join(os.tmpdir(),'tns-desktop-'));
   const input=path.join(temp,'project.zip'),output=path.join(temp,name+'.tns');
   try {
     await fs.writeFile(input,zip,{flag:'wx'});
     const profiles=require('./project-build.cjs'),profile=await profiles.profileFromArchive(zip,exe);
+    const resources=profile?await require('./project-resources.cjs').read(profile.archive,profile.manifest):[];
     const custom=profile?await profiles.buildProfile(profile,temp,name,run):null;
     const result=custom?{stderr:custom.logs.join('\n')}:await run(exe,['--build-zip',input,output,name],180000);
     const zehn=custom?custom.bytes:await fs.readFile(output);
@@ -90,7 +91,10 @@ async function build(exe,payload) {
     const loaderName=info.compressed?'zehn_loader_compressed.tns':'zehn_loader.tns';
     const loader=await fs.readFile(path.join(path.dirname(exe),'runtime','ndless','tools','zehn_loader',loaderName));
     const bytes=packagePrg(zehn,loader);
+    let download=null;
+    if(resources.length){const JSZip=await require('./rom-converter.cjs').zipLibrary(),bundle=new JSZip();bundle.file(name+'.tns',bytes);for(const file of resources)bundle.file(file.name,file.bytes);bundle.file('LEEME.txt','Copia el programa TNS y su cartucho .tns en la misma carpeta de la calculadora. Abre el programa, no el archivo de datos. Ndless debe estar instalado y activo.\n');download={filename:name+'-Calculator.zip',bytes:new Uint8Array(await bundle.generateAsync({type:'nodebuffer',compression:'DEFLATE'}))};}
     return {ok:true,filename:name+'.tns',bytes:new Uint8Array(bytes),
+      resources,download,
       logs:[...result.stderr.split(/\r?\n/).filter(Boolean),'Packaged using official '+loaderName],
       toolchain:'GNU ARM + official Ndless target libraries',format:'prg-zehn',engine:'desktop'};
   } finally { await fs.rm(temp,{recursive:true,force:true}); }

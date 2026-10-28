@@ -26,11 +26,14 @@ test('NES validation reports mapper support, malformed headers and unsupported s
  const modern=Buffer.from(rom);modern[7]=8;modern[15]=1;assert.equal(data.inspectNes(modern).normalizedForEmulator,true);const normalized=data.normalizeNes(modern);assert.equal(normalized[7]&12,0);assert.equal(normalized[15],0);assert.deepEqual(normalized.subarray(16),Buffer.from(rom).subarray(16));assert.equal(modern[7],8);
  assert.throws(()=>data.inspectNes(rom.subarray(0,100)),/truncado/);assert.throws(()=>data.inspectRom(Buffer.alloc(32768),'test.sfc'),/SNES/);
 });
-test('automatic header detection distinguishes GB/GBC despite filename and identifies pending systems',()=>{
+test('automatic header detection distinguishes GB/GBC and validates SNES, GBA and DS headers',()=>{
  const make=require('../desktop/rom-test-gb.cjs');for(const color of [false,true]){const bytes=make({color});assert.equal(data.detect(bytes.subarray(0,0x150),{name:'renamed.bin',size:bytes.length}).system,color?'GBC':'GB');assert.equal(data.inspectRom(bytes,'not-a-game.txt').id,'gb');}
  const broken=Buffer.from(make());broken[0x134]^=1;assert.equal(data.detect(broken,{name:'bad.gbc'}).convertible,false);
  const gba=Buffer.alloc(512);gba.set(Buffer.from('24ffae51','hex'),4);gba[0xb2]=0x96;assert.equal(data.detect(gba).system,'GBA');assert.equal(data.detect(gba).convertible,false);
- const snes=Buffer.alloc(65536);snes.writeUInt16LE(0xabcd,0x7fdc);snes.writeUInt16LE(0x5432,0x7fde);assert.equal(data.detect(snes).system,'SNES');assert.equal(data.detect(Buffer.from('unknown')).convertible,false);
+ for(const system of ['snes','gba','nds']){const bytes=require('../desktop/rom-test-'+system+'.cjs')(),info=data.detect(bytes,{name:'renamed.bin'});assert.equal(info.id,system);assert.equal(info.convertible,true);assert.equal(data.inspectRom(bytes,'renamed.bin').id,system);}
+ const legacySnes=require('../desktop/rom-test-snes.cjs')();legacySnes[0x7fd5]=0;assert.equal(data.detect(legacySnes).convertible,true);
+ legacySnes[0x7fd5]=83;assert.equal(data.detect(legacySnes).format,'LoROM');
+ assert.equal(data.detect(Buffer.from('unknown')).convertible,false);
 });
 test('ROM RAM storage is bounded, hash scoped and survives a new storage instance',async()=>{
  const os=require('node:os'),storage=require('../desktop/rom-saves.cjs'),root=await fs.mkdtemp(path.join(os.tmpdir(),'tns-rom-save-test-')),hash='a'.repeat(40);

@@ -121,7 +121,7 @@
   }
 
   function validate(bytes){const d=window.NdlessFormatDetector?.detect?.(bytes)||window.TnsUniversalDetector?.detect?.(bytes)||null; if(d&&d.valid===false)throw new Error(`El TNS generado no pasó la validación${d.reason?`: ${d.reason}`:"."}`); return d;}
-  function download(result){const bytes=result.bytes instanceof Uint8Array?result.bytes:new Uint8Array(result.bytes||[]); const blob=new Blob([bytes],{type:"application/octet-stream"}),url=URL.createObjectURL(blob),a=document.createElement("a"); a.href=url;a.download=result.filename||"program.tns";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2500);}
+  function download(result){const output=result.download||result;const bytes=output.bytes instanceof Uint8Array?output.bytes:new Uint8Array(output.bytes||[]); const blob=new Blob([bytes],{type:"application/octet-stream"}),url=URL.createObjectURL(blob),a=document.createElement("a"); a.href=url;a.download=output.filename||"program.tns";document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),2500);}
 
   async function compile(project,readyStatus,ui,signal){
     ui.setStep(2,"active",`Creando ${project.name||"project"}.zip en memoria…`);ui.summary("Preparando proyecto.","No se descarga el ZIP: se envía directamente al EXE local.");ui.meter(15);

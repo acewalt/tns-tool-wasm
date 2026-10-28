@@ -53,7 +53,7 @@
         const value=project.settings?.previewArguments||'',args=[];let match;
         const pattern=/"([^"\\]*(?:\\.[^"\\]*)*)"|'([^']*)'|([^\s"']+)/g;
         while((match=pattern.exec(value)))args.push(match[1]!=null?match[1].replace(/\\(["\\])/g,'$1'):match[2]??match[3]);
-        return createRunner(artifact,update,[...Object.entries(project.files||{}),...item.resources],['/documents/'+project.name+'.tns',...args]);
+        return createRunner(artifact,update,[...Object.entries(project.files||{}).filter(([n])=>!n.endsWith('.b64')),...(artifact.resources||[]).map(f=>[f.name,f.bytes]),...item.resources],['/documents/'+project.name+'.tns',...args]);
       },
       onUpdate(info){
         if(item.disposed||!canvas.isConnected)return;

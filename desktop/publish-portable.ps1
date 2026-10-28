@@ -16,6 +16,7 @@ if (!$report.ndlessPreview.nativeDialog -or !$report.ndlessPreview.spritesWithou
 if (!$report.ndlessPreview.binaryPreview -or !$report.ndlessPreview.binaryEdits -or !$report.ndlessPreview.binaryClose -or !$report.ndlessPreview.sourceProfile) { throw 'Edited TNS preview and explicit SDK source profile acceptance is required' }
 if (!$report.romConverter.ok -or !$report.romConverter.animated -or !$report.romConverter.projectExport -or !$report.romConverter.projectOpen -or !$report.romConverter.tnsExport -or !$report.browserRomConverter.desktopRequired) { throw 'ROM Converter desktop/browser acceptance is required' }
 if (!$report.gbPreview.ok -or !$report.gbPreview.controller -or !$report.gbPreview.pause -or !$report.gbPreview.persistedRam -or !$report.gbPreview.tnsExport) { throw 'Direct GB/GBC preview, controller, persistent RAM and native TNS acceptance is required' }
+if (!$report.romCores.ok -or @($report.romCores.cases).Count -ne 4 -or @($report.romCores.cases | Where-Object { !$_.detected -or !$_.pause -or !$_.restart -or !$_.closed }).Count) { throw 'All four new ROM cores must pass packaged UI acceptance' }
 $games = Get-Content (Join-Path $env:RUNNER_TEMP 'community-preview/report.json') -Raw | ConvertFrom-Json
 if (!$games.ok -or @($games.results).Count -ne 2 -or !($games.results | Where-Object { $_.game -eq 'nDoom' -and $_.cameraChange -gt .15 -and $_.ammoHudChange -gt .003 }) -or !($games.results | Where-Object { $_.game -eq 'NesNspire' -and $_.controller -and $_.cleanExit })) { throw 'Both real community games must pass before publication' }
 $stage = Join-Path $env:RUNNER_TEMP 'portable-release-assets'
@@ -30,35 +31,24 @@ $notes = Join-Path $stage 'notes.md'
 @"
 TNS Tool Portable **$version** para Windows x64.
 
-Descarga **TNS-Tool-Portable-Windows-x64.zip**, extrae todo el archivo en una carpeta y abre **TNS Tool Portable.exe**. La versión aparece en el título de la ventana.
+Descarga **TNS-Tool-Portable-Windows-x64.zip**, extrae todo y abre **TNS Tool Portable.exe**. El título muestra la versión. El SDK y los motores están incluidos y funcionan sin conexión.
 
-El SDK Ndless está incluido. Se prepara una vez al usar el compilador; no requiere descargar ni instalar herramientas adicionales.
+ROM Converter añade preview directo y proyectos C/C++ compilables para **SNES** (PocketSNES) y **GBA** (gpSP con BIOS abierta). También incorpora **N64** (Daedalus) y **DS** (NooDS) como experimentales, con compatibilidad y rendimiento limitados. No garantiza cualquier juego. DS se validó con diagnósticos originales; no con juegos comerciales.
 
-Incluye Preview Prgm en Syntax Doctor: pantalla de 320×240, Request interactivo, vista ampliada, ejecución por pasos, variables y errores con línea. La ruta MRUA del ejemplo de física se verifica en escritorio y navegador. Es una simulación numérica parcial, sin CAS simbólico, unidades ni gráficos.
+Detecta cabeceras automáticamente. Admite SNES hasta 8 MiB, GBA hasta 32 MiB, N64 hasta 64 MiB y DS hasta 128 MiB. Mantiene los perfiles anteriores de NES, GB/GBC y Super Mario 64 EU. No incluye cartuchos privados ni BIOS propietarias.
 
-El historial conserva los menús y respuestas anteriores, con márgenes estables y popup centrado. La vista ampliada ofrece hasta 800×600 sin escalar la letra ni el cuadro de entrada, como el preview Lua/LÖVE.
+Los cartuchos N64/DS grandes se leen desde un archivo compañero. En ese caso, Build TNS descarga un ZIP con programa y datos: coloca ambos .tns en la misma carpeta de la calculadora y abre el programa. El proyecto ZIP conserva los recursos y permite volver a compilar el paquete completo.
 
-El preview Ndless compila automáticamente la revisión actual de C/C++/ARM y ejecuta el programa en un Worker aislado. Muestra el framebuffer RGB565 real, animaciones, teclado y stdout separado. Al editar borra el resultado anterior, descarta compilados atrasados y permite pausar, reiniciar o detener. Las APIs de SO no soportadas muestran un error; no es un emulador completo de TI-Nspire.
+El preview directo tiene animación, controles, pausa, reinicio y guardado por cartucho. DS muestra ambas pantallas y permite tocar la inferior con el ratón. En la calculadora, Doc+flechas mueve el stylus y Doc+Ctrl toca; Esc guarda y sale. El preview de un proyecto fuente sigue ejecutando su C/C++ compilado, con su propio rendimiento.
 
-Desde la versión 0.1.12 se corrige la ABI de callbacks LCD, formatos RGB555/565, escala de grises y paletas, el registro LCD de CX, la tecla ON, llamadas ARM condicionales/Thumb y archivos relativos. Permite cargar WAD, cartuchos de prueba, BMP y otros recursos, junto con argumentos del programa, para la sesión de preview.
+Se comprobaron compilaciones ARM reales, mandos y guardados, lectura de cartucho externo, y la interfaz de los cuatro núcleos desde el ZIP extraído. También pasan las regresiones de Syntax Doctor/Prgm, Lua, proyectos Ndless, sprites, nDoom y NesNspire. USB requiere comprobación física.
 
-Se compilaron fuentes públicas fijadas de nDoom y NesNspire: Doom con Freedoom cargó un mapa 3D, giró y disparó; NesNspire abrió un cartucho original animado, respondió al mando y salió normalmente. No incluye juegos comerciales ni promete velocidad de hardware real. Mario 64 se compiló localmente con una ROM europea aportada por el usuario y llegó a dibujar menús 3D. La ejecución es lenta y no se certifica una partida completa. No se incluyen su ROM, recursos extraídos ni ejecutable.
-
-La versión 0.1.13 muestra los diálogos reales del programa Ndless y permite responder Abort / Continue cuando falta sprite.bmp. Se verifican recursos ausentes y dañados, retorno de tres botones, temporizadores SP804, esperas del SDK y despertar de idle al pulsar una tecla. La app extraída del ZIP prueba el caso de sprites sin BMP desde la interfaz.
-
-La versión 0.1.14 añade Previsualizar dentro de Edit Ndless. Ejecuta la copia de trabajo del TNS, aplica sus cambios al reiniciar y detiene el programa al salir de la vista. Admite Zehn y PRG que contienen Zehn. También permite importar proyectos fuente grandes con una lista declarativa de archivos, includes y defines en .tnsproject.json, sin ejecutar comandos del ZIP. Se verifica la compilación de varias fuentes y una edición binaria que cambia la imagen ejecutada desde la interfaz del ZIP publicado.
-
-La versión 0.1.15 añade Archivo > ROM Converter: detección por cabecera, selección local, preview, proyecto ZIP editable, apertura en el workspace y compilación/descarga de TNS. Admite Super Mario 64 europeo original de 8 MiB, NES con mapper disponible en NesNspire y GB/GBC con controladores estándar MBC1/2/3/5. Normaliza variantes básicas compatibles de NES 2.0 sin modificar el original. GB/GBC tiene preview directo binjgb WebAssembly con controles, pausa y RAM persistente; su proyecto y TNS se compilan a ARM por separado. El preview de proyectos sigue ejecutando el C compilado y puede ser lento. Detecta SNES/GBA/NDS y otros N64 y señala que faltan sus backends. Acepta ROM o ZIP individual, no colecciones completas. Las fuentes y motores están fijados y verificados por SHA256; no incluye ROMs privadas. El ZIP publicado prueba ambos formatos de proyecto, las descargas, el mando GB/GBC y la persistencia de RAM con cartuchos originales de prueba.
-
-Se verificaron seis juegos originales (plataformas, raycasting 3D, Pong, Snake, bloques y sprites BMP), además de gradientes y texto calculado, fractales con doble precisión, C++ con varios archivos y plantillas, animación, teclado, ensamblador ARM, miles de malloc/free, bucles y errores. La app extraída del ZIP también pasó edición real, invalidación inmediata, animación, pausa, recuperación y respuesta del editor durante un bucle infinito.
-
-Este ZIP se extrajo y probó antes de publicarlo: creación de proyectos C/C++ mediante el botón visible del menú, editor, compilación ARM por IPC y pruebas de capturas USB simuladas. La recuperación USB aún requiere validación física en cada equipo.
-
-También se adjunta TNS-Preview-Games.zip con seis proyectos de código fuente importables y un BMP original.
+Los motores se construyen desde fuentes públicas fijadas, con licencias y SHA256. Las ROM elegidas permanecen en el equipo. Se adjunta TNS-Preview-Games.zip con seis proyectos originales importables.
 
 Código fuente: $commit
 
 SHA256: $hash
+
 "@ | Set-Content -LiteralPath $notes -Encoding utf8
 $existing = gh release view $tag --repo $env:GITHUB_REPOSITORY --json targetCommitish 2>$null
 if ($LASTEXITCODE -eq 0) {

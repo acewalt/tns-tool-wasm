@@ -12,6 +12,10 @@ def check(filename):
         assert "resources/compiler/sdk.bin.gz" in names, "Compressed SDK missing"
         assert "resources/compiler/sdk.json" in names, "SDK manifest missing"
         assert not any(name.startswith("resources/compiler/runtime/") for name in names), "Deep SDK paths leaked into public ZIP"
+        assert not any("/rom/build-" in name for name in names), "Emulator build intermediates leaked into public ZIP"
+        for system in ("snes", "gba", "nds", "n64"):
+            for extension in ("js", "wasm"):
+                assert f"resources/vendor/rom/{system}-preview.{extension}" in names, "Preview core missing"
         for name in names:
             parts = PurePosixPath(name).parts
             assert not name.startswith("/") and ".." not in parts and "\\" not in name, "Unsafe ZIP entry"

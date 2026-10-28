@@ -1,0 +1,8 @@
+{
+ "id":"gba",
+ "source":{
+  "repository":"https://github.com/andymcca/lr-gpsp-nspire",
+  "commit":"2ddeb23b565cab84e20278bb73ed76f3d91b25f5",
+  "zipSha256":"8e62208b59f76e14b8b75c3f076098d03f9b669fa6bd8cb419049e4e57985bcb"
+ }
+}

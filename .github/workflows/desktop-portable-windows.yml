@@ -26,7 +26,8 @@ on:
       - 'ndless-project-folder-build.js'
       - 'tests/ndless-export-roundtrip.test.js'
       - 'tests/desktop-project-profile.test.cjs'
-      - 'rom-converter.js'
+      - 'rom-*.js'
+      - 'tests/rom-cores.test.cjs'
       - 'tests/rom-converter.test.cjs'
       - 'tests/ndless-live-session.test.js'
       - 'tests/ndless-preview-*.test.cjs'
@@ -168,7 +169,7 @@ jobs:
         shell: pwsh
         run: |
           $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
-          node --test tests/desktop-native-build.test.cjs tests/desktop-project-profile.test.cjs tests/rom-converter.test.cjs
+          node --test --test-concurrency=1 tests/desktop-native-build.test.cjs tests/desktop-project-profile.test.cjs tests/rom-converter.test.cjs tests/rom-cores.test.cjs
       - name: Stress-test compiled Ndless preview with the isolated ARM worker
         shell: pwsh
         run: |

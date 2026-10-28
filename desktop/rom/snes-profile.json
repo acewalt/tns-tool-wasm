@@ -1,0 +1,8 @@
+{
+  "id": "snes",
+  "source": {
+    "repository": "https://github.com/gameblabla/pocketsnes-nspire",
+    "commit": "609333391a662f42dd6e609cd05d47c0a7d55740",
+    "zipSha256": "b0c2007013cac41f01f1c6c0a33afc5277be166aa6b1457bd05b490f12e0a1d7"
+  }
+}

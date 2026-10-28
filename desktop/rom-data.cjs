@@ -56,9 +56,50 @@ function inspectRom(input,name='ROM'){
   const bytes=Buffer.from(input);
   if(bytes.subarray(0,4).equals(Buffer.from([78,69,83,26])))return inspectNes(bytes,name);
   if(bytes.length>=0x150&&(bytes.subarray(0x104,0x134).equals(GB_LOGO)||/\.(gb|gbc)$/i.test(name)))return inspectGb(bytes);
-  if(/\.(sfc|smc)$/i.test(name))throw Error('SNES aún no está admitido: requiere integrar y validar un emulador SNES para Ndless.');
+  if(bytes.length>=0xc0&&bytes[0xb2]===0x96&&bytes.subarray(4,8).equals(Buffer.from('24ffae51','hex')))return inspectGba(bytes);
+  if(bytes.length>=0x160&&bytes.readUInt16LE(0x15c)===0xcf56&&bytes.subarray(0xc0,0xc4).equals(Buffer.from('24ffae51','hex')))return inspectNds(bytes);
+  if(snesHeader(bytes)||/\.(sfc|smc)$/i.test(name))return inspectSnes(bytes);
+  if(bytes.length>=64&&[0x80371240,0x37804012,0x40123780].includes(bytes.readUInt32BE(0))){try{return inspect(bytes);}catch(_){return inspectN64(bytes);}}
   return inspect(bytes);
 }
+function inspectGba(input,totalSize=input.length){
+ const b=Buffer.from(input);if(b.length<0xc0||totalSize<0xc0||totalSize>32*1024*1024||b[0xb2]!==0x96||!b.subarray(4,8).equals(Buffer.from('24ffae51','hex')))throw Error('Cartucho GBA inválido o mayor de 32 MiB.');
+ let checksum=-0x19;for(let i=0xa0;i<=0xbc;i++)checksum-=b[i];if((checksum&255)!==b[0xbd])throw Error('La cabecera GBA tiene un checksum incorrecto.');
+ return{id:'gba',system:'GBA',title:b.subarray(0xa0,0xac).toString('ascii').replace(/\0.*$/,'').trim()||'Game Boy Advance',region:b[0xaf]===80?'Europa':b[0xaf]===74?'Japan':'International',format:'Game Boy Advance',bytes:totalSize,sha1:b.length===totalSize?crypto.createHash('sha1').update(b).digest('hex'):null};
+}
+function snesHeader(input){
+ const b=Buffer.from(input),candidates=[];
+ for(const headerBytes of [0,512])for(const base of [0x7fc0,0xffc0,0x40ffc0]){
+  const at=base+headerBytes;if(b.length<at+64)continue;
+  let mode=b[at+21];const checksum=b.readUInt16LE(at+30),inverse=b.readUInt16LE(at+28),reset=b.readUInt16LE(at+60),title=b.subarray(at,at+21);
+  // A few older cartridges let the title spill into the map byte. As in
+  // Snes9x, a valid checksum/vector/size can identify that header without
+  // rewriting the selected cartridge or relying on its filename.
+  if(![0,1,0x20,0x21,0x22,0x23,0x25,0x30,0x31,0x32,0x35].includes(mode)){
+   if(mode<32||mode>126||(checksum^inverse)!==65535||!checksum||b[at+23]<5||b[at+23]>13)continue;mode=base===0x7fc0?0x20:0x21;
+  }
+  if(reset<0x8000||!title.every(n=>n===0||(n>=32&&n<127)))continue;
+  if(mode<2&&(checksum^inverse)!==65535)continue;
+  const score=((checksum^inverse)===65535&&checksum?8:0)+(mode&1?base!==0x7fc0:base===0x7fc0?2:0)+title.filter(n=>n>32).length/32;
+  candidates.push({at,headerBytes,mode,score});
+ }
+ return candidates.sort((a,b)=>b.score-a.score)[0]||null;
+}
+function inspectSnes(input,totalSize=input.length){
+ const b=Buffer.from(input),h=snesHeader(b);if(!h||totalSize-h.headerBytes<32768||totalSize-h.headerBytes>8*1024*1024||(totalSize-h.headerBytes)%8192)throw Error('Imagen SNES inválida: se requiere un cartucho LoROM/HiROM de hasta 8 MiB.');
+ const chip=b[h.at+22];if([0xf5,0xf9].includes(chip))throw Error('El cartucho usa SPC7110, un chip que este núcleo SNES aún no implementa.');
+ return{id:'snes',system:'SNES',title:b.subarray(h.at,h.at+21).toString('ascii').replace(/\0.*$/,'').trim()||'Super Nintendo',region:b[h.at+25]>=2&&b[h.at+25]<=12?'PAL':'NTSC',format:(h.mode&1?'HiROM':'LoROM')+(h.headerBytes?' + copier header':''),chip,headerBytes:h.headerBytes,bytes:totalSize,sha1:b.length===totalSize?crypto.createHash('sha1').update(b).digest('hex'):null};
+}
+function normalizeSnes(input){const b=Buffer.from(input),info=inspectSnes(b);return b.subarray(info.headerBytes);}
+function inspectNds(input,totalSize=input.length){
+ const b=Buffer.from(input);if(b.length<0x160||b.readUInt16LE(0x15c)!==0xcf56||!b.subarray(0xc0,0xc4).equals(Buffer.from('24ffae51','hex')))throw Error('Cabecera DS inválida.');
+ if(totalSize<512||totalSize>128*1024*1024)throw Error('Este perfil DS admite cartuchos de hasta 128 MiB.');
+ if(b[0x12]===3)throw Error('Este perfil ejecuta Nintendo DS; no implementa DSi.');
+ for(const at of [0x20,0x30]){const offset=b.readUInt32LE(at),length=b.readUInt32LE(at+12);if(offset<0x160||!length||offset>totalSize||length>totalSize-offset)throw Error('Las secciones ARM del cartucho DS están truncadas.');}
+ return{id:'nds',system:'NDS',title:b.subarray(0,12).toString('ascii').replace(/\0.*$/,'').trim()||'Nintendo DS',region:'International',format:'Nintendo DS',experimental:true,bytes:totalSize,sha1:b.length===totalSize?crypto.createHash('sha1').update(b).digest('hex'):null};
+}
+function normalizeN64(input){const b=Buffer.from(input);if(b.length<4096||b.length>64*1024*1024||b.length%4)throw Error('Imagen N64 fuera del límite de 4 KiB a 64 MiB.');const magic=b.readUInt32BE(0);if(magic===0x37804012)b.swap16();else if(magic===0x40123780)b.swap32();else if(magic!==0x80371240)throw Error('Cabecera N64 inválida.');return b;}
+function inspectN64(input,totalSize=input.length){const b=Buffer.from(input),header=Buffer.from(b.subarray(0,b.length-b.length%4)),magic=header.readUInt32BE(0);if(magic===0x37804012)header.swap16();else if(magic===0x40123780)header.swap32();else if(magic!==0x80371240)throw Error('Cabecera N64 inválida.');if(totalSize<4096||totalSize>64*1024*1024||totalSize%4)throw Error('Este perfil N64 admite cartuchos de hasta 64 MiB.');return{id:'n64',system:'N64',title:header.subarray(32,52).toString('ascii').replace(/\0.*$/,'').trim()||'Nintendo 64',region:header[62]===80?'Europa':header[62]===74?'Japan':'International',format:'Nintendo 64',experimental:true,bytes:totalSize,sha1:b.length===totalSize?crypto.createHash('sha1').update(normalizeN64(b)).digest('hex'):null};}
 const GB_LOGO=Buffer.from('ceed6666cc0d000b03730083000c000d0008111f8889000edccc6ee6ddddd999bbbb67636e0eecccdddc999fbbb9333e','hex');
 function inspectGb(input,totalSize=input.length){
  const bytes=Buffer.from(input),profile=require('./rom/gb-profile.json');
@@ -74,16 +115,15 @@ function inspectGb(input,totalSize=input.length){
 function detect(input,{name='ROM',size=input.length}={}){
  const b=Buffer.from(input);let system='Unknown',title=name;
  try{
-  if(b.length>=4&&b.subarray(0,2).toString()==='PK')return{system:'ZIP',archive:true,convertible:size<=16*1024*1024,title:name,reason:'Selecciona una ROM o un ZIP individual, no un paquete completo.'};
+  if(b.length>=4&&b.subarray(0,2).toString()==='PK')return{system:'ZIP',archive:true,convertible:size<=144*1024*1024,title:name,reason:'Selecciona una ROM o un ZIP individual, no un paquete completo.'};
   if(b.subarray(0,4).equals(Buffer.from([78,69,83,26]))){system='NES';return{...inspectNes(b,name,size),convertible:true};}
   if(b.length>=0x150&&(b.subarray(0x104,0x134).equals(GB_LOGO)||/\.(gb|gbc)$/i.test(name))){system=b[0x143]&128?'GBC':'GB';return{...inspectGb(b,size),convertible:true};}
-  if(b.length>=64&&[0x80371240,0x37804012,0x40123780].includes(b.readUInt32BE(0))){system='N64';const header=Buffer.from(b.subarray(0,b.length-b.length%4)),magic=header.readUInt32BE(0);if(magic===0x37804012)header.swap16();else if(magic===0x40123780)header.swap32();title=header.subarray(32,52).toString('ascii').replace(/\0.*$/,'').trim();return{system,title,format:'Nintendo 64',convertible:size===8388608&&title==='SUPER MARIO 64'&&header[62]===80,reason:'Detectada Nintendo 64: el perfil disponible admite Super Mario 64 europeo original. Otros juegos requieren un backend N64.'};}
-  if(b.length>=0xc0&&b[0xb2]===0x96&&b.subarray(4,8).equals(Buffer.from('24ffae51','hex'))){system='GBA';title=b.subarray(0xa0,0xac).toString('ascii').replace(/\0.*$/,'').trim();}
-  else if(b.length>=0x160&&b.readUInt16LE(0x15c)===0xcf56&&b.subarray(0xc0,0xc4).equals(Buffer.from('24ffae51','hex'))){system='NDS';title=b.subarray(0,12).toString('ascii').replace(/\0.*$/,'').trim();}
+  if(b.length>=64&&[0x80371240,0x37804012,0x40123780].includes(b.readUInt32BE(0))){system='N64';return{...inspectN64(b,size),convertible:true};}
+  if(b.length>=0xc0&&b[0xb2]===0x96&&b.subarray(4,8).equals(Buffer.from('24ffae51','hex'))){system='GBA';return{...inspectGba(b,size),convertible:true};}
+  else if(b.length>=0x160&&b.readUInt16LE(0x15c)===0xcf56&&b.subarray(0xc0,0xc4).equals(Buffer.from('24ffae51','hex'))){system='NDS';return{...inspectNds(b,size),convertible:true};}
   else if(b.length>=0x110&&b.subarray(0x100,0x104).toString()==='SEGA'){system='Mega Drive / Genesis';}
-  else for(const offset of [0x7fc0,0xffc0,0x81c0,0x101c0])if(b.length>=offset+32&&(b.readUInt16LE(offset+28)^b.readUInt16LE(offset+30))===65535&&b.readUInt16LE(offset+30)!==0){system='SNES';title=b.subarray(offset,offset+21).toString('ascii').trim();break;}
-  if(system==='Unknown'&&/\.(sfc|smc)$/i.test(name))system='SNES';
+  else if(snesHeader(b)||/\.(sfc|smc)$/i.test(name)){system='SNES';return{...inspectSnes(b,size),convertible:true};}
   return{system,title,convertible:false,reason:system==='Unknown'?'No se reconoce una cabecera de ROM compatible.':system+' detectado: aún no hay un backend de conversión y preview integrado para este sistema.'};
  }catch(error){return{system,title,convertible:false,reason:error.message};}
 }
-module.exports = { normalize, inspect, inspectRom, inspectNes, normalizeNes, inspectGb, detect, GB_LOGO, mio0, SM64_EU_SHA1 };
+module.exports = { normalize, inspect, inspectRom, inspectNes, normalizeNes, inspectGb, inspectGba, inspectSnes, normalizeSnes, inspectNds, inspectN64, normalizeN64, detect, GB_LOGO, mio0, SM64_EU_SHA1 };

@@ -6,6 +6,7 @@
   "files": [
     "**/*",
     "!desktop/vendor/**",
+    "!desktop/rom/prebuilt/**",
     "!tools/**",
     "!tests/**",
     "!cloudflare/**",
@@ -16,7 +17,7 @@
     "!release/**"
   ],
   "extraResources": [
-    { "from": "desktop/vendor", "to": "vendor", "filter": ["**/*", "!compiler/**"] },
+    { "from": "desktop/vendor", "to": "vendor", "filter": ["**/*", "!compiler/**", "!rom/build-*/**"] },
     { "from": "desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe", "to": "compiler/TNS-Tool-Compiler-Windows-x64.exe" },
     { "from": "desktop/vendor/compiler/sdk.bin.gz", "to": "compiler/sdk.bin.gz" },
     { "from": "desktop/vendor/compiler/sdk.json", "to": "compiler/sdk.json" }

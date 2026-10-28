@@ -1,0 +1,47 @@
+{
+  "compiler": "Emscripten 3.1.74",
+  "build": "node desktop/build-rom-preview.cjs <system>",
+  "romsBundled": 0,
+  "files": [
+    {
+      "name": "snes-preview.js",
+      "bytes": 61608,
+      "sha256": "109db731105b39c56f33da3358569fb5afcdbcf8ca167581d4ef5b70c9e45ad9"
+    },
+    {
+      "name": "snes-preview.wasm",
+      "bytes": 575770,
+      "sha256": "846ba56d1272fb86b3f30288cb50b89519686c16fe9b441540665a3fb0062943"
+    },
+    {
+      "name": "gba-preview.js",
+      "bytes": 63849,
+      "sha256": "cfffce5738db0fd75f29525a9a4452ca74d5ddacf38583a5d17ca0a653a9ea4d"
+    },
+    {
+      "name": "gba-preview.wasm",
+      "bytes": 367394,
+      "sha256": "a0f1313471011e74876b64cd054c890f2024127daa37056026cd8000c0ce4961"
+    },
+    {
+      "name": "nds-preview.js",
+      "bytes": 70999,
+      "sha256": "cf034a12199655ab1b16f5a5fd015a9d8137fb0fc29f656a2c816ff233cbf12e"
+    },
+    {
+      "name": "nds-preview.wasm",
+      "bytes": 633269,
+      "sha256": "b07049833ef0a7dd02932c13bf560bed1cc927fe30d1fc5e08ebd46d12ff9e1f"
+    },
+    {
+      "name": "n64-preview.js",
+      "bytes": 74510,
+      "sha256": "6bc09cb8f8e36bf54ff809e0b9656fa41f887866f462c02375f70ac8337c29e3"
+    },
+    {
+      "name": "n64-preview.wasm",
+      "bytes": 630406,
+      "sha256": "5c5009c7893641e584710cfc80437e2c3c87e981a6fcf2f71763a8a60d96e28e"
+    }
+  ]
+}
