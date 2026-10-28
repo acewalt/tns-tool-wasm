@@ -25,9 +25,9 @@
     register("ndless-c",["Ndless C","C"]);register("ndless-cpp",["Ndless C++","C++"]);
   }
   function editorLanguage(name){if(/\.(cpp|cc|cxx|hpp|hh)$/i.test(name))return"ndless-cpp";if(/\.(c|h|S|s)$/i.test(name))return"ndless-c";return"plaintext";}
-  function isTextFile(name){return /^(?:Makefile|LICENSE(?:\.[a-z]+)?|.*\.(?:c|cpp|cc|cxx|h|hpp|hh|hxx|inc|S|s|txt|md|json|mk))$/i.test(name);}
+  function isTextFile(name){return /(?:^|\/)(?:Makefile|LICENSE(?:\.[a-z]+)?|COPYING(?:\.[a-z]+)?|copyright|README(?:\.[a-z]+)?)$/i.test(name)||/\.(?:c|cpp|cc|cxx|h|hpp|hh|hxx|inc|inl|tcc|def|b64|asm|S|s|txt|md|json|ini|cfg|mk)$/i.test(name);}
 
-  function saveCurrentFile(){if(!state.project||!state.editor)return;const name=state.project.activeFile;if(name&&isTextFile(name))state.project.files[name]=state.editor.getValue();saveAutosave();}
+  function saveCurrentFile(){if(!state.project||!state.editor)return;const name=state.project.activeFile;if(name&&isTextFile(name)&&!name.endsWith('.b64'))state.project.files[name]=state.editor.getValue();saveAutosave();}
   function saveAutosave(){if(!state.project)return;try{localStorage.setItem(AUTOSAVE_KEY,JSON.stringify(state.project));}catch(_){} }
   function disposeEditor(){try{state.editorInputDisposable?.dispose?.();}catch(_){}state.editorInputDisposable=null;try{state.editor?.dispose?.();}catch(_){}state.editor=null;}
 
@@ -50,7 +50,7 @@
   function mountEditor(){
     if(!state.workspace||!state.project)return;disposeEditor();const host=$("[data-ndless-project-editor]",state.workspace),name=state.project.activeFile;const value=state.project.files[name]??"";
     $("[data-active-file]",state.workspace).textContent=name||"—";$("[data-active-language]",state.workspace).textContent=editorLanguage(name).replace("ndless-","").toUpperCase();
-    if(!isTextFile(name)){host.innerHTML=`<div class="ndless-project-empty">${esc(tr("notText"))}</div>`;return;}
+    if(!isTextFile(name)||name.endsWith('.b64')){host.innerHTML=`<div class="ndless-project-empty">${esc(tr("notText"))}</div>`;return;}
     host.innerHTML="";
     const start=()=>{if(!window.TnsMonacoEditor||!host.isConnected)return;ensureCLanguage();state.editor=window.TnsMonacoEditor.createTextEditor(host,{value,language:editorLanguage(name),theme:document.documentElement.dataset.theme==="light"?"light":"dark",editorOptions:{fontSize:13,lineHeight:20,wordWrap:"off",minimap:{enabled:false},padding:{top:12,bottom:12}}});state.editorInputDisposable=state.editor.onInput(v=>{state.project.files[name]=v;saveAutosave();schedulePreview();});};
     if(window.TnsMonacoEditor)start();else window.addEventListener("tns-monaco-ready",start,{once:true});

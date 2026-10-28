@@ -210,6 +210,7 @@
       engine:"local",
       target:project.target,
       filename:built.filename,
+      resources:built.resources||[],download:built.download||null,
       bytes:built.bytes,
       elfBytes:built.elfBytes || new Uint8Array(0),
       format:detection.format || "ndless",
@@ -323,11 +324,11 @@
 
   function download(result = lastArtifact) {
     if (!result?.ok || !result.bytes) throw new Error("No successful TNS build is available.");
-    const blob = new Blob([result.bytes], { type:"application/octet-stream" });
+    const blob = new Blob([result.download?.bytes||result.bytes], { type:"application/octet-stream" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = result.filename || "program.tns";
+    a.download = result.download?.filename || result.filename || "program.tns";
     document.body.appendChild(a);
     a.click();
     a.remove();
