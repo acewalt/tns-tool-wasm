@@ -14,3 +14,5 @@
 .ndless-live-resources input{box-sizing:border-box;width:100%;min-width:0;margin-top:5px;font:inherit}
 .ndless-live-resources input[type="text"]{background:#0b1525;color:#dceaff;border:1px solid #365375;border-radius:5px;padding:6px}
 .ndless-live-resources button{margin-top:9px;padding:5px 8px;background:#203d5f;color:#dceaff;border:1px solid #365375;border-radius:6px;font:inherit;cursor:pointer}
+
+.ndless-live-dialog{padding:12px;border:1px solid #9eea27;border-radius:10px;background:#142238;color:#eef4ff}.ndless-live-dialog[hidden]{display:none}.ndless-live-dialog p{white-space:pre-wrap;overflow-wrap:anywhere}.ndless-live-dialog [data-dialog-buttons]{display:flex;gap:8px;flex-wrap:wrap}

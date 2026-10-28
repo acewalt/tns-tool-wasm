@@ -1,4 +1,4 @@
-# Pruebas de juegos del preview Ndless — 0.1.12
+# Pruebas de juegos del preview Ndless — 0.1.13
 
 Se compila código ARM real con el SDK incluido y se ejecuta el mismo Worker
 usado en Electron. Las comprobaciones inspeccionan los píxeles del framebuffer,
@@ -11,7 +11,7 @@ ni se interpreta el texto del programa para simular su resultado.
 | --- | --- | --- |
 | [nDoom](https://github.com/critor/ndoom/tree/deca0127ec83d1401d62cee380e5f35a93ad1863) | deca0127ec83d1401d62cee380e5f35a93ad1863 | Mapa 3D, paleta, giro y disparos. Munición 50 → 46 en la captura revisada. |
 | [NesNspire](https://github.com/mihkeymouse/NesNspire/tree/b7b6e48c6e5229eada88deccffebdb21518e4fbd) | b7b6e48c6e5229eada88deccffebdb21518e4fbd | Explorador, cartucho NROM original animado, respuesta al mando, salida normal y log de carga. |
-| [Mario 64 para Ndless](https://github.com/rayzerbrain/sm64-nsp/blob/860d324ad5155c1a9519fea84327adc56da1fd64/INSTALLING.md) | 860d324ad5155c1a9519fea84327adc56da1fd64 | Se revisó la construcción; no se ejecutó. Necesita una ROM original para extraer recursos. No se afirma compatibilidad. |
+| [Mario 64 para Ndless](https://github.com/rayzerbrain/sm64-nsp/blob/860d324ad5155c1a9519fea84327adc56da1fd64/INSTALLING.md) | 860d324ad5155c1a9519fea84327adc56da1fd64 | Compilación local con ROM europea aportada; menús 3D observados. Rendimiento lento y partida completa sin validar. ROM y binario permanecen privados. |
 
 nDoom usa [Freedoom 0.13.0](https://github.com/freedoom/freedoom/releases/tag/v0.13.0),
 sin descargar un WAD comercial. SHA256 del ZIP:
@@ -47,10 +47,9 @@ El ZIP resultante contiene seis proyectos importables, el BMP y las instruccione
 
 ## Regresiones cubiertas
 
-La suite nativa local pasa 29 escenarios: los seis juegos, siete formatos LCD,
+La suite nativa local pasa 35 escenarios: los seis juegos, siete formatos LCD,
 una paleta CX, archivos/directorios/guardados y catorce casos de C/C++/ARM,
-animación, memoria, errores, Thumb y bucle infinito. Node cuenta además tres
-grupos contenedores, por lo que muestra 32 pruebas aprobadas.
+animación, memoria, errores, Thumb y bucle infinito. Se añaden BMP ausente/dañado, Abort, diálogos de tres botones, temporizador y espera de tecla. Node cuenta además cuatro grupos contenedores, por lo que muestra 39 pruebas aprobadas.
 
 Los fallos encontrados incluyeron: ABI incorrecta de lcd_blit, registro LCD CX
 equivocado, ON permanentemente pulsado, errno sin puntero, revisión virtual
@@ -66,3 +65,30 @@ ambos juegos públicos y la app extraída del ZIP antes de publicar el portable.
 El entorno sigue siendo parcial: no emula el SO completo ni todos sus periféricos.
 Pasar estas pruebas no certifica cualquier juego ni sustituye probar el TNS en
 una calculadora física.
+
+## Incidente de sprites y prueba privada de Mario
+
+El video del usuario mostró SWI 0x5D. Se reprodujo sin sprite.bmp: nSDL abre
+un diálogo UTF-16 con el texto «Couldn't open sprite.bmp» y las opciones Abort
+y Continue. La 0.1.12 solo se había probado con el BMP presente. Ahora el Worker
+suspende la CPU hasta responder al diálogo; Continue permite el dibujo de
+respaldo del ejemplo y Abort conserva la salida real. También se prueba un BMP
+truncado. El mismo caso se verifica con la interfaz de Electron.
+
+Para Mario, se normalizó una copia de la ROM europea al formato z64 y se
+verificó su SHA1 contra el archivo del proyecto. La compilación usa el SDK ARM
+oficial con herramientas host portátiles. Se corrigió únicamente en la copia
+privada un puntero nio_console sin inicializar del port, además de ajustes de
+construcción para Windows. Se generó un TNS de aproximadamente 4 MB.
+
+El arranque detectó dos carencias del preview: los temporizadores SP804 y el
+WFI usado por idle(). Ahora se modelan contador, carga, habilitación, parada,
+prescaler, one-shot y estados de interrupción consultables. No se inyectan IRQ
+de CPU; al ejecutar WFI se conserva el bucle del SDK sin dejar Unicorn detenido.
+No se modifican bytes de código ni recursos coincidentes con esa instrucción.
+
+Una prueba local de tres minutos produjo 37 imágenes y mostró menús 3D, con
+colores y texto. El rendimiento es bajo y esa prueba no valida una partida
+completa, el control analógico ni exactitud de todas las texturas. La ROM, los
+recursos extraídos y el ejecutable no forman parte del repositorio ni del
+portable. Esta prueba no se ejecuta en el CI público.

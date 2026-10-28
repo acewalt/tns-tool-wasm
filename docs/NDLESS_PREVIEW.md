@@ -16,6 +16,16 @@ controls execution. Click the screen before using its keyboard, or use the
 on-screen controls. Typing in the source editor does not press calculator keys.
 Console stdout is shown separately; printf does not create an LCD console.
 
+Native SDK dialogs appear below the preview with their original title, message
+and button choices. ARM execution waits for a valid response without a watchdog
+timeout. Missing and malformed BMPs exercise both Continue and Abort. Loading
+resources while waiting restarts the current project with those files.
+
+The two CX SP804 timers model load, enable/stop, prescaler, width, periodic and
+one-shot counting plus readable raw/masked interrupt status. CPU IRQ injection
+is not implemented. Executed ARM926 WFI is skipped so SDK polling/idle loops
+can wake; elapsed delays and key checks remain in the guest program.
+
 The portable includes Unicorn.js 1.0.3 (GPL-2.0), with SHA256-verified JavaScript,
 WASM and license, and requires no CDN for this feature. Version 2.1.4 reproduced
 a WASM translator trap in the official SDK's SDL keyboard initialization, so it

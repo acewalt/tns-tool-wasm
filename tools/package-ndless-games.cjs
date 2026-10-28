@@ -14,7 +14,7 @@ for(const name of ['platformer','raycaster','pong','snake','blocks','sprites']){
  const zip=pack(files);fs.writeFileSync(path.join(out,name+'-project.zip'),zip);bundle[name+'-project.zip']=zip;
 }
 bundle['sprite.bmp']=require('../tests/fixtures/sprite-bmp.cjs')();
-bundle['LEEME.txt']='Abre cada ZIP con Archivo > Abrir proyecto Ndless en TNS Tool Portable 0.1.12 o posterior.\nEspera a la compilación automática, haz clic en la pantalla y usa las teclas. Esc sale.\nEn sprites, abre Archivos y argumentos del programa > Cargar recursos y selecciona sprite.bmp.\n';
+bundle['LEEME.txt']='Abre cada ZIP con Archivo > Abrir proyecto Ndless en TNS Tool Portable 0.1.13 o posterior.\nEspera a la compilación automática, haz clic en la pantalla y usa las teclas. Esc sale.\nEn sprites, abre Archivos y argumentos del programa > Cargar recursos y selecciona sprite.bmp.\n';
 bundle['README.md']=fs.readFileSync(path.join(folder,'README.md'),'utf8');
 bundle['LICENSE']=fs.readFileSync(path.join(folder,'LICENSE'),'utf8');
 const output=path.join(out,'TNS-Preview-Games.zip');fs.writeFileSync(output,pack(bundle));console.log(output);

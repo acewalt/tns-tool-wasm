@@ -15,12 +15,12 @@
     let timer=null,ended=false,paused=false;
     const armWatchdog=(ms=5000)=>{clearTimeout(timer);timer=setTimeout(()=>{if(ended||paused)return;end();onUpdate({stage:"error",error:tr("timeout"),code:"NDLESS_ARM_TIMEOUT"});},ms);};
     function end(){if(ended)return;ended=true;clearTimeout(timer);worker.terminate();}
-    worker.onmessage=({data})=>{if(ended||!data.stage)return;if(data.stage==="error"||data.stage==="exited")end();else if(!paused)armWatchdog();onUpdate(data);};
+    worker.onmessage=({data})=>{if(ended||!data.stage)return;if(data.stage==="error"||data.stage==="exited")end();else if(data.stage==="dialog")clearTimeout(timer);else if(!paused)armWatchdog();onUpdate(data);};
     worker.onerror=event=>{event.preventDefault();end();onUpdate({stage:"error",error:event.message||"Worker failed."});};
     armWatchdog(20000);
     const base=new URL('./__desktop/unicorn/',document.baseURI);
     worker.postMessage({type:"start",bytes:artifact.bytes,files,args,engine:new URL('unicorn.js',base).href,wasm:new URL('unicorn.wasm',base).href});
-    return{stop:end,pause(value){if(ended)return;paused=value;clearTimeout(timer);worker.postMessage({type:"pause",value});if(!value)armWatchdog();},key(code,down){if(!ended)worker.postMessage({type:"key",code,down});}};
+    return{stop:end,pause(value){if(ended)return;paused=value;clearTimeout(timer);worker.postMessage({type:"pause",value});if(!value)armWatchdog();},key(code,down){if(!ended)worker.postMessage({type:"key",code,down});},respondDialog(id,value){if(ended)return;worker.postMessage({type:"dialog",id,value});armWatchdog();}};
   }
   function mount(workspace,canvas,note){
     stop();
@@ -33,6 +33,7 @@
     const language=(document.querySelector('#language-buttons [data-lang].active')?.dataset.lang||document.documentElement.lang).slice(0,2),resourceText=language==='en'?['Program files and arguments','Load resources','Arguments','Resources are loaded for this preview session. The first selected file is passed as an argument.']:language==='fr'?['Fichiers et arguments','Charger les ressources','Arguments','Ressources chargées pour cet aperçu. Le premier fichier est passé en argument.']:['Archivos y argumentos del programa','Cargar recursos','Argumentos','Los recursos se cargan para esta sesión del preview. El primer archivo se pasa como argumento.'];
     resources.querySelector('summary').textContent=resourceText[0];resources.querySelector('[data-resources-label]').textContent=resourceText[1];resources.querySelector('[data-args-label]').textContent=resourceText[2];resources.querySelector('[data-resource-help]').textContent=resourceText[3];box.append(resources);
     resources.querySelector('[data-live-clear-resources]').textContent=language==='en'?'Clear resources':language==='fr'?'Vider les ressources':'Vaciar recursos';
+    const dialog=document.createElement('div');dialog.className='ndless-live-dialog';dialog.hidden=true;dialog.setAttribute('role','dialog');dialog.setAttribute('aria-label','Ndless');dialog.innerHTML='<strong data-dialog-title></strong><p data-dialog-message></p><div data-dialog-buttons></div>';box.prepend(dialog);
     for(const key of ['pause','stop','restart'])box.querySelector('[data-live-'+key+']').textContent=tr(key);
     const label=workspace.querySelector('[data-project-pane="preview"] h3');if(label)label.textContent=tr('title');
     note.after(box);canvas.tabIndex=0;canvas.setAttribute('aria-label',tr('title'));
@@ -54,11 +55,18 @@
       onUpdate(info){
         if(current!==item||!canvas.isConnected)return;
         item.stage=info.stage;item.revision=info.revision;
-        if(info.clear){clear(canvas);log.hidden=true;log.textContent='';}
+        if(info.clear){clear(canvas);log.hidden=true;log.textContent='';dialog.hidden=true;}
+        if(info.dialog){
+          if(/couldn.t open|not found/i.test(info.dialog.message))resources.open=true;
+          dialog.hidden=false;dialog.querySelector('[data-dialog-title]').textContent=info.dialog.title;dialog.querySelector('[data-dialog-message]').textContent=info.dialog.message;
+          const buttons=dialog.querySelector('[data-dialog-buttons]');buttons.replaceChildren();
+          for(const choice of info.dialog.buttons){const button=document.createElement('button');button.type='button';button.textContent=choice.label||'OK';button.onclick=()=>{dialog.hidden=true;item.session.respondDialog(info.dialog.id,choice.value);};buttons.append(button);}
+          for(const code of item.held){item.session.key(code,false);}item.held.clear();buttons.firstElementChild?.focus();
+        }
         if(info.frame)paint(canvas,info.frame);
         if(info.logs?.length){log.hidden=false;log.textContent=info.logs.join('\n');}
         const detail=info.error?': '+info.error:info.frames?' · '+info.frames+' frames':'';
-        note.textContent=tr(info.stage)+detail;note.dataset.previewStage=info.stage;
+        note.textContent=(info.stage==='dialog'?(language==='en'?'Waiting for a program dialog':language==='fr'?'En attente du dialogue':'Esperando respuesta al diálogo del programa'):tr(info.stage))+detail;note.dataset.previewStage=info.stage;
         note.title=tr('help');
         box.querySelector('[data-live-pause]').disabled=!['running','paused'].includes(info.stage);
       }

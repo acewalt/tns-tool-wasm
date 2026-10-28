@@ -4,6 +4,13 @@ await import('../ndless-arm-runtime-v2.js');
 const runtime = globalThis.NdlessArmRuntime;
 assert.ok(runtime, 'NdlessArmRuntime should be exposed globally');
 assert.equal(runtime.version, 2);
+const counter=runtime.timers.create(0x900c0000,1000000,0);
+runtime.timers.write(counter,0,1000,0);runtime.timers.write(counter,8,0xa3,0);
+runtime.timers.advance(counter,2);assert.equal(counter.value,0);assert.equal(counter.irq,1);assert.equal(counter.control&128,0);
+runtime.timers.write(counter,12,1,2);assert.equal(counter.irq,0);
+runtime.timers.write(counter,0,99,2);runtime.timers.write(counter,8,0xc2,2);
+runtime.timers.advance(counter,2.25);assert.equal(counter.value,49);assert.equal(counter.irq,1);
+runtime.timers.write(counter,8,2,2.25);runtime.timers.advance(counter,50);assert.equal(counter.value,49);
 assert.match(runtime.ENGINE_JS, /@alexaltea\/unicorn-js@1\.0\.3\/dist\/unicorn\.js$/);
 assert.match(runtime.ENGINE_WASM, /@alexaltea\/unicorn-js@1\.0\.3\/dist\/unicorn\.wasm$/);
 

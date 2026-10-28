@@ -33,3 +33,26 @@ test('sequential playable-game previews: platform, 3D ray casting, paddle, snake
   t.diagnostic(JSON.stringify({game:name,frames:result.frames,distinct:result.hashes.size,ms:result.elapsedMs,initial,last}));
  });
 });
+
+test('sprites missing and malformed BMP show the real nSDL dialog and continue with fallback pixels',
+ {skip:process.platform!=='win32'||!process.env.TNS_DESKTOP_COMPILER,timeout:70000},async t=>{
+ const dir=path.join(root,'examples/ndless-games'),artifact=await build('sprites-resource-errors',{'main.c':fs.readFileSync(path.join(dir,'sprites/main.c'),'utf8'),'lab.h':fs.readFileSync(path.join(dir,'lab.h'),'utf8')});
+ for(const mode of ['missing','malformed','abort'])await t.test(mode+' BMP',async()=>{
+  let dialogs=0;
+  await preview({bytes:artifact.bytes,files:mode==='malformed'?[['sprite.bmp',new Uint8Array([66,77,1,2,3])]]:[],observe(m,{stats,respondDialog}){
+   if(m.dialog){dialogs++;assert.match(m.dialog.title,/nSDL/);assert.ok(m.dialog.message.length>5);const choice=m.dialog.buttons.find(b=>b.label===(mode==='abort'?'Abort':'Continue'));assert.ok(choice);respondDialog(m.dialog.id,choice.value);}
+   if(m.stage==='exited'){assert.equal(mode,'abort');assert.equal(m.exitCode,1);return true;}
+   if(dialogs&&stats.hashes.size>=3&&stats.logs.join('').includes('asset=0'))return true;return false;
+  }});assert.equal(dialogs,1);
+ });
+});
+
+test('three-button SDK dialog suspends ARM until a valid response and returns the selected value',
+ {skip:process.platform!=='win32'||!process.env.TNS_DESKTOP_COMPILER,timeout:30000},async()=>{
+ const artifact=await build('dialog-three',{'main.c':'#include <os.h>\n#include <stdio.h>\nint main(){unsigned v=show_msgbox_3b("Preview","Choose the third","One","Two","Three");printf("CHOICE=%u\\n",v);fflush(stdout);return v==3?0:2;}'});
+ let seen=false;
+ await preview({bytes:artifact.bytes,observe(m,{stats,respondDialog}){
+  if(m.dialog){assert.equal(seen,false);seen=true;assert.equal(m.dialog.title,'Preview');assert.deepEqual(m.dialog.buttons.map(b=>b.label),['One','Two','Three']);respondDialog(m.dialog.id+1,3);respondDialog(m.dialog.id,99);setTimeout(()=>respondDialog(m.dialog.id,3),180);}
+  if(m.stage==='exited'){assert.ok(seen);assert.equal(m.exitCode,0);assert.match(stats.logs.join(''),/CHOICE=3/);return true;}return false;
+ }});
+});
