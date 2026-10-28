@@ -1,0 +1,53 @@
+(() => {
+  'use strict';
+  let active=null;
+  const downloadUrl='https://github.com/acewalt/tns-tool-wasm/releases/latest/download/TNS-Tool-Portable-Windows-x64.zip';
+  function words(){const lang=(document.querySelector('#language-buttons [data-lang].active')?.dataset.lang||document.documentElement.lang||'es').slice(0,2);return lang==='en'?{
+    title:'ROM Converter',intro:'Select a supported ROM to preview its native port, export an editable Ndless project, or compile a TNS.',supported:'Supported: original European Super Mario 64 (8 MiB) and compatible NES, GB and GBC cartridges. Auto-detected from headers. SNES/GBA and other N64 games need another backend.',select:'Select ROM',preview:'Preview',project:'Download project ZIP',open:'Open project',build:'Compile and download TNS',close:'Close',working:'Reading and converting ROM locally…',ready:'Project ready. Native TNS compilation can take time.',direct:'GB/GBC · Direct ROM preview',loading:'Loading local ROM…',directHelp:'This preview runs the ROM with binjgb WebAssembly. The editable project and TNS use the native ARM build; verify them separately.',compiling:'Compiling the project with the bundled SDK…',desktop:'This function requires TNS Tool Portable and its native SDK. Your ROM stays on your computer.',download:'Download for Windows',limit:'Preview performance is limited. A successful build does not certify full gameplay or calculator compatibility.'
+  }:lang==='fr'?{title:'ROM Converter',intro:'Sélectionnez une ROM prise en charge pour prévisualiser son port natif, exporter un projet Ndless ou compiler un TNS.',supported:'Pris en charge : Super Mario 64 européen original (8 Mio) et cartouches NES, GB/GBC compatibles. Détection automatique par en-tête. SNES/GBA nécessitent un autre moteur.',select:'Choisir une ROM',preview:'Aperçu',project:'Télécharger le projet ZIP',open:'Ouvrir le projet',build:'Compiler et télécharger le TNS',close:'Fermer',working:'Lecture et conversion locale…',ready:'Projet prêt. La compilation native peut prendre du temps.',direct:'GB/GBC · Aperçu direct de la ROM',loading:'Chargement local…',directHelp:'Aperçu binjgb WebAssembly. Le projet et le TNS utilisent la compilation ARM native, à vérifier séparément.',compiling:'Compilation avec le SDK intégré…',desktop:'Cette fonction nécessite TNS Tool Portable. Votre ROM reste sur cet ordinateur.',download:'Télécharger pour Windows',limit:'Les performances sont limitées. La compilation ne garantit pas une partie complète ni la compatibilité matérielle.'}:{
+    title:'ROM Converter',intro:'Selecciona una ROM compatible para previsualizar su port nativo, exportar un proyecto Ndless editable o compilar un TNS.',supported:'Compatible: Super Mario 64 europeo original (8 MiB) y cartuchos NES, GB/GBC compatibles. Detección automática por cabecera. SNES/GBA y otros N64 requieren otro backend.',select:'Seleccionar ROM',preview:'Previsualizar',project:'Descargar proyecto ZIP',open:'Abrir proyecto',build:'Compilar y descargar TNS',close:'Cerrar',working:'Leyendo y convirtiendo la ROM localmente…',ready:'Proyecto preparado. La compilación nativa del TNS puede tardar.',direct:'GB/GBC · Preview directo de la ROM',loading:'Cargando ROM local…',directHelp:'Este preview ejecuta la ROM con binjgb WebAssembly. El proyecto editable y el TNS usan la compilación ARM nativa; se verifican por separado.',compiling:'Compilando el proyecto con el SDK incluido…',desktop:'Esta función requiere TNS Tool Portable y su SDK nativo. Tu ROM permanece en tu equipo.',download:'Descargar para Windows',limit:'El preview tiene rendimiento limitado. Compilar no certifica una partida completa ni compatibilidad física con la calculadora.'
+  };}
+  function save(bytes,name,type){const url=URL.createObjectURL(new Blob([bytes],{type})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);}
+  function close(){if(!active)return;active.controller?.stop();active.overlay.remove();active=null;}
+  function open(){
+    close();window.NdlessExecutablePreview?.stop();window.NdlessLivePreview?.stop();
+    const t=words(),o=document.createElement('div');o.className='rom-converter-overlay';o.innerHTML='<section class="rom-converter" role="dialog" aria-modal="true" aria-labelledby="rom-converter-title"><header><h2 id="rom-converter-title"></h2><button type="button" data-rom-close></button></header><p data-rom-intro></p><p class="rom-supported" data-rom-supported></p><div class="rom-converter-actions"><label class="rom-select"><span data-rom-select-label></span><input type="file" data-rom-file></label><button type="button" data-rom-preview disabled></button><button type="button" data-rom-project disabled></button><button type="button" data-rom-open disabled></button><button type="button" data-rom-build disabled></button></div><p data-rom-status role="status"></p><div data-rom-screen hidden><canvas width="320" height="240"></canvas><p data-preview-note></p></div><p class="rom-limit" data-rom-limit></p></section>';
+    const q=s=>o.querySelector(s);q('h2').textContent=t.title;q('[data-rom-intro]').textContent=t.intro;q('[data-rom-supported]').textContent=t.supported;q('[data-rom-select-label]').textContent=t.select;q('[data-rom-limit]').textContent=t.limit;
+    for(const name of ['preview','project','open','build','close'])q('[data-rom-'+name+']').textContent=t[name];
+    document.body.append(o);const ctx={overlay:o,controller:null,zip:null,artifact:null,buildPromise:null,info:null,revision:0};active=ctx;
+    q('[data-rom-close]').onclick=close;o.onclick=e=>{if(e.target===o)close();};o.onkeydown=e=>{if(e.key==='Escape'&&e.target===q('[data-rom-close]'))close();};
+    const status=value=>{if(active===ctx)q('[data-rom-status]').textContent=value;};
+    if(!window.TnsDesktop?.convertRom){q('[data-rom-file]').disabled=true;status(t.desktop);const a=document.createElement('a');a.href=downloadUrl;a.textContent=t.download;a.className='rom-download';q('.rom-converter-actions').append(a);q('[data-rom-close]').focus();return;}
+    async function artifact(){if(ctx.artifact)return ctx.artifact;if(ctx.buildPromise)return ctx.buildPromise;status(t.compiling);const revision=ctx.revision;ctx.buildPromise=window.TnsDesktop.buildNdless({name:ctx.project.name,zip:ctx.zip}).then(result=>{const artifact={...result,bytes:new Uint8Array(result.bytes)};if(ctx.revision===revision){ctx.artifact=artifact;status(t.ready);}return artifact;}).finally(()=>{if(ctx.revision===revision)ctx.buildPromise=null;});return ctx.buildPromise;}
+    async function preview(){
+      if(!ctx.zip)return;ctx.controller?.stop();const host=q('[data-rom-screen]');host.hidden=false;
+      const gb=ctx.info.id==='gb',controls=gb?[['ControlLeft','A'],['ShiftLeft','B'],['Tab','Select']]:ctx.info.id==='nes'?[['ControlLeft','A'],['ShiftLeft','B'],['Escape','Select'],['Home','Home']]:[['F1','A'],['Delete','B'],['Home','Z'],['Digit8','C↑'],['Digit6','C→'],['Digit2','C↓'],['Digit4','C←'],['Escape','Esc']];
+      ctx.controller=window.NdlessLivePreview.createPanel({
+        workspace:host,canvas:host.querySelector('canvas'),note:host.querySelector('[data-preview-note]'),binary:true,
+        keys:[['ArrowLeft','←'],['ArrowUp','↑'],['ArrowDown','↓'],['ArrowRight','→'],['Enter','Start'],...controls],getProject:()=>ctx.project,
+        build:gb?async()=>({bytes:ctx.previewRom}):artifact,
+        ...(gb?{resources:false,title:'GB/GBC · ROM preview',help:t.directHelp,stageText:{compiling:t.loading,starting:t.loading,running:t.direct},run:(result,update)=>window.TnsGbPreview.start(result.bytes,update,ctx.info.sha1)}:{})
+      });ctx.controller.update(ctx.project,{force:true});
+    }
+    q('[data-rom-file]').onchange=async e=>{
+      const file=e.target.files?.[0];if(!file)return;ctx.controller?.stop();ctx.controller=null;q('[data-rom-screen]').hidden=true;ctx.revision++;ctx.zip=null;ctx.artifact=null;ctx.buildPromise=null;
+      for(const b of o.querySelectorAll('[data-rom-preview],[data-rom-project],[data-rom-open],[data-rom-build]'))b.disabled=true;
+      e.target.disabled=true;status(t.working);
+      try{
+        const detected=await window.TnsDesktop.inspectRom({name:file.name,size:file.size,bytes:new Uint8Array(await file.slice(0,66048).arrayBuffer())});if(active!==ctx)return;ctx.info=detected;status(detected.system+' · '+detected.title);
+        if(!detected.convertible)throw Error(detected.reason);
+        const result=await window.TnsDesktop.convertRom({name:file.name,bytes:new Uint8Array(await file.arrayBuffer())});if(active!==ctx)return;
+        ctx.zip=new Uint8Array(result.zip);ctx.previewRom=result.previewRom?new Uint8Array(result.previewRom):null;ctx.filename=result.filename;ctx.info=result.info;ctx.project={name:result.name,target:'zehn-modern',language:'c',files:{},settings:{}};
+        for(const b of o.querySelectorAll('[data-rom-preview],[data-rom-project],[data-rom-open],[data-rom-build]'))b.disabled=false;
+        status(result.info.title+' · '+result.info.region+(result.info.mapper!=null?' · Mapper '+result.info.mapper:'')+' · '+result.sources+' sources · '+t.ready);await preview();
+      }catch(error){status(error.message);}finally{if(active===ctx)e.target.disabled=false;}
+    };
+    q('[data-rom-preview]').onclick=()=>preview().catch(e=>status(e.message));
+    q('[data-rom-project]').onclick=()=>{if(ctx.zip)save(ctx.zip,ctx.filename,'application/zip');};
+    q('[data-rom-open]').onclick=async()=>{if(!ctx.zip)return;const file=new File([ctx.zip],ctx.filename,{type:'application/zip'});close();await window.NdlessProjectWorkspace.openProjectZip(file);};
+    q('[data-rom-build]').onclick=async()=>{try{const revision=ctx.revision,result=await artifact();if(active===ctx&&ctx.revision===revision)save(result.bytes,result.filename,'application/octet-stream');}catch(e){status(e.message);}};
+    q('[data-rom-file]').focus();
+  }
+  function inject(){const button=document.getElementById('xml-new-ndless-project');if(!button)return setTimeout(inject,100);if(document.getElementById('xml-rom-converter'))return;const b=document.createElement('button');b.id='xml-rom-converter';b.type='button';b.className='menu-action ndless-project-menu-action';b.dataset.ndlessProjectAction='1';b.dataset.ndlessProjectAlways='1';b.textContent='ROM Converter';b.onclick=open;const label=button.nextElementSibling;button.parentNode.insertBefore(b,label?.nextSibling||button.nextSibling);}
+  window.TnsRomConverter=Object.freeze({open,close,get state(){return active?{ready:!!active.zip,info:active.info,preview:active.controller?.state?.stage,compiled:!!active.artifact}:null;}});inject();
+})();

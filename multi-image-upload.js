@@ -103,7 +103,9 @@
     .then(() => loadScript('script[data-ndless-build-auto-install="true"]', `./ndless-build-auto-install.js?v=${V}`, "ndlessBuildAutoInstall"))
     .then(() => loadScript('script[data-ndless-build-ui="true"]', `./ndless-build-ui.js?v=${V}`, "ndlessBuildUi"))
     .then(() => loadScript('script[data-ndless-live-preview="true"]', `./ndless-live-preview.js?v=${V}`, "ndlessLivePreview"))
-    .then(() => loadScript('script[data-ndless-executable-preview="true"]', `./ndless-executable-preview.js?v=${V}`, "ndlessExecutablePreview"));
+    .then(() => loadScript('script[data-ndless-executable-preview="true"]', `./ndless-executable-preview.js?v=${V}`, "ndlessExecutablePreview"))
+    .then(() => loadScript('script[data-rom-gb-preview="true"]', `./rom-gb-preview.js?v=${V}`, "romGbPreview"))
+    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=${V}`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));

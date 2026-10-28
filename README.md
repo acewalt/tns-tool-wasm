@@ -25,6 +25,14 @@ the current edited working copy. To edit C/C++ sources, import a source project
 ZIP with **Open Ndless Project**. [Executable preview and explicit SDK source
 profiles](desktop/README.md#preview-an-existing-ndless-tns).
 
+**File → ROM Converter** selects a local supported ROM, previews it, exports an
+editable Ndless project ZIP, or compiles a TNS. It detects the system from headers
+and supports the original European Super Mario 64 and compatible NES/GB/GBC
+cartridges. GB/GBC offers direct preview and persistent cartridge RAM. The desktop
+version includes pinned source templates, with ROM data generated locally from
+your selected file. Other detected systems need their own backends.
+[Supported formats and limits](desktop/README.md#rom-converter).
+
 ## TI-BASIC Prgm preview
 
 Open a normal TNS in Syntax Doctor, select a `Prgm` block, and click **Prgm Preview** beside Run syntax. The interactive 320×240 view includes Request input, step/run/stop controls, variables, zoom and source-line errors. It simulates numerical TI-BASIC text programs; symbolic CAS, units, graphics and external functions are not emulated. [Coverage and CLI/API usage](docs/prgm-preview.md).
