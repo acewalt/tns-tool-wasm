@@ -135,6 +135,47 @@ removed at preparation time (about 758 MiB). The packager also excludes the
 documentation assets (about 238 MB), which are not application runtime assets.
 The desktop project form defaults to the supported `zehn-modern` target.
 
+## Preview an existing Ndless TNS
+
+Open the file with **Open TNS**, then choose **Preview** in **Edit Ndless**.
+This runs the current working copy, including binary edits; **Restart** rebuilds
+that copy. Leaving the panel or closing the editor stops the worker. Resources,
+arguments, keyboard, pause and native dialogs use the same controls as project
+preview. Supported containers are Zehn and PRG with embedded Zehn. Other native
+formats display an explicit unsupported-format message. The browser directs
+users to the desktop version for this ARM runtime.
+
+## Import a source project with an explicit SDK build
+
+Large source projects can put `settings.build` in the root `.tnsproject.json`:
+
+```json
+{
+  "settings": {
+    "build": {
+      "version": 1,
+      "sources": ["src/main.c", "src/display.c"],
+      "includeDirectories": ["include", "."],
+      "defines": ["TARGET_NSP", "VALUE=2"],
+      "optimization": "O2",
+      "fastMath": false,
+      "common": false,
+      "gnuInline": false
+    }
+  }
+}
+```
+
+Use **Open Ndless Project** to import the ZIP. Only listed translation units
+are compiled; headers and generated assets remain ordinary project files. Edits
+trigger the same live compile/preview path. The profile accepts relative paths
+and bounded settings, never shell commands. The bundled SDK links the result
+and packages it with the official PRG loader. Projects without this field retain
+the existing compiler path. No ROM-to-source conversion or Nintendo 64 emulation
+is performed by this feature. Private tests of the native SM64 port use C sources
+and resources extracted locally from the user's ROM; those resources and that
+executable are excluded from releases.
+
 ## USB
 
 The application uses the repository's native WebUSB implementation. Only

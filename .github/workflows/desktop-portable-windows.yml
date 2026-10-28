@@ -18,6 +18,14 @@ on:
       - 'ndless-arm-runtime-v2.js'
       - 'ndless-arm-preview-worker.js'
       - 'ndless-live-*.js'
+      - 'ndless-executable-preview.js'
+      - 'ndless-editor.js'
+      - 'ndless-friendly-editor.js'
+      - 'ndless-rebuilder.js'
+      - 'ndless-project-core-enhancements.js'
+      - 'ndless-project-folder-build.js'
+      - 'tests/ndless-export-roundtrip.test.js'
+      - 'tests/desktop-project-profile.test.cjs'
       - 'tests/ndless-live-session.test.js'
       - 'tests/ndless-preview-*.test.cjs'
       - 'tests/helpers/ndless-native.cjs'
@@ -65,6 +73,8 @@ jobs:
       - run: npm run test:calculator-session
       - run: node tests/ndless-project.test.js
       - run: node --test tests/ndless-live-session.test.js
+      - run: node --test tests/desktop-project-profile.test.cjs
+      - run: node tests/ndless-export-roundtrip.test.js
       - run: node tests/ndless-arm-runtime.test.js
       - run: node --test tests/prgm-preview.test.js
       - run: node tests/ndless-desktop-required.test.js
@@ -153,7 +163,7 @@ jobs:
         shell: pwsh
         run: |
           $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
-          node --test tests/desktop-native-build.test.cjs
+          node --test tests/desktop-native-build.test.cjs tests/desktop-project-profile.test.cjs
       - name: Stress-test compiled Ndless preview with the isolated ARM worker
         shell: pwsh
         run: |

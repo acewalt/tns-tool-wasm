@@ -21,6 +21,7 @@
   }
 
   function refreshGeneratedFiles(project) {
+    if(project.settings?.build)return project;
     project.files.Makefile = recursiveMakefileFor(project);
     project.files["README_BUILD.md"] = base.buildReadme(project);
     return project;

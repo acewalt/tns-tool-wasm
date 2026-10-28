@@ -59,7 +59,7 @@
     };
   }
 
-  async function createAdapter(result){if(!result?.valid||result.family!=="ndless")throw new Error("A valid Ndless result is required.");if(result.format==="zehn")return createZehn(result);if(result.format==="bflt")return createBflt(result);if(result.format==="prg")return createPrg(result);throw new Error(`Unsupported Ndless format: ${result.format}`);}
+  async function createAdapter(result){if(!result?.valid||result.family!=="ndless")throw new Error("A valid Ndless result is required.");if(result.format==="zehn")return createZehn(result);if(result.format==="bflt")return createBflt(result);if(result.format==="prg"){const embedded=window.NdlessZehn?.findZehn(result.bytes);if(embedded?.valid)return createZehn({...embedded,bytes:result.bytes,file:result.file,formatLabel:"PRG / Zehn"});return createPrg(result);}throw new Error(`Unsupported Ndless format: ${result.format}`);}
 
   window.NdlessRebuilder=Object.freeze({createAdapter,patchRange,patchCString,equalBytes});
 })();

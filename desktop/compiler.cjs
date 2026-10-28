@@ -15,9 +15,9 @@ const safeName = value => {
 function compilerPath(resourcesPath, override) {
   return override || path.join(resourcesPath,'compiler',COMPILER_NAME);
 }
-function run(exe,args,timeoutMs=180000) {
+function run(exe,args,timeoutMs=180000,options={}) {
   return new Promise((resolve,reject)=>{
-    const child=spawn(exe,args,{windowsHide:true,stdio:['ignore','pipe','pipe'],shell:false});
+    const child=spawn(exe,args,{windowsHide:true,stdio:['ignore','pipe','pipe'],shell:false,...options});
     let out='',err='',ended=false;
     const timer=setTimeout(()=>{ child.kill(); finish(new Error('Tiempo límite del compilador agotado.')); },timeoutMs);
     function finish(error,value) {
@@ -81,10 +81,12 @@ async function build(exe,payload) {
   const input=path.join(temp,'project.zip'),output=path.join(temp,name+'.tns');
   try {
     await fs.writeFile(input,zip,{flag:'wx'});
-    const result=await run(exe,['--build-zip',input,output,name],180000);
-    const stat=await fs.stat(output);
-    if(!stat.size || stat.size>MAX_RESULT) throw new Error('El compilador devolvió un archivo vacío o demasiado grande.');
-    const zehn=await fs.readFile(output),info=zehnInfo(zehn);
+    const profiles=require('./project-build.cjs'),profile=await profiles.profileFromArchive(zip,exe);
+    const custom=profile?await profiles.buildProfile(profile,temp,name,run):null;
+    const result=custom?{stderr:custom.logs.join('\n')}:await run(exe,['--build-zip',input,output,name],180000);
+    const zehn=custom?custom.bytes:await fs.readFile(output);
+    if(!zehn.length || zehn.length>MAX_RESULT) throw new Error('El compilador devolvió un archivo vacío o demasiado grande.');
+    const info=zehnInfo(zehn);
     const loaderName=info.compressed?'zehn_loader_compressed.tns':'zehn_loader.tns';
     const loader=await fs.readFile(path.join(path.dirname(exe),'runtime','ndless','tools','zehn_loader',loaderName));
     const bytes=packagePrg(zehn,loader);

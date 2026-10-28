@@ -85,6 +85,7 @@ ${graphics ? '    nSDL_DrawString(screen, font, 20, 48, "Edit me in Monaco");\n'
   }
 
   function refreshGeneratedFiles(project) {
+    if(project.settings?.build)return project;
     project.files.Makefile = makefileFor(project);
     project.files["README_BUILD.md"] = buildReadme(project);
     return project;

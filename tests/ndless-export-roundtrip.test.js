@@ -36,6 +36,14 @@ const parsed = window.NdlessZehn.findZehn(original);
 assert.equal(parsed?.valid, true);
 assert.equal(parsed.compressed, true);
 
+// A PRG loader must not hide its nested Zehn executable from the editor.
+const prefixed=new Uint8Array(original.length+8);prefixed.set([80,82,71,0,0,0,0,0]);prefixed.set(original,8);
+const nested=await window.NdlessRebuilder.createAdapter({valid:true,family:'ndless',format:'prg',bytes:prefixed,file:{name:'nested.tns'}});
+assert.equal(nested.format,'zehn');assert.deepEqual((await nested.build()).bytes,prefixed);
+const originalByte=nested.workingBytes[9];nested.patchWorking(9,new Uint8Array([originalByte^64]));const changed=await nested.build();
+assert.deepEqual([...changed.bytes.slice(0,8)],[80,82,71,0,0,0,0,0]);
+assert.equal((await window.NdlessZehn.inflateExecutable(changed.bytes))[9],originalByte^64);
+
 const adapter = await window.NdlessRebuilder.createAdapter({
   ...parsed,
   bytes: original,

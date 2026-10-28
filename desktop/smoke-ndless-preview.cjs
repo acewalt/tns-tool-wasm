@@ -60,10 +60,48 @@ async function run(win,report,animation){
   const choice=[...dialog.querySelectorAll('button')].find(b=>b.textContent==='Continue');if(!choice)throw Error('Native Continue choice missing');choice.click();
   await wait(()=>window.NdlessLivePreview.state.stage==='running'&&document.querySelector('[data-live-log]').textContent.includes('asset=0'));
   if(!dialog.hidden)throw Error('Answered dialog remained visible');
-  const out={ok:true,initial,edited,animationColors:colors.size,keyboard:true,pause:true,sourceError:true,immediateInvalidation:true,infiniteLoopStopped:true,uiResponseMs,resources:true,quotedArguments:true,clearResources:true,nativeDialog:true,spritesWithoutBmp:true};
+  workspace.closeProject();
+  const binaryProject=api.createProject({name:'binary-preview-test',language:'c',target:'zehn-modern'});
+  binaryProject.files['main.c']='#include <os.h>\\nvolatile char marker[]="BINARY_RED";static unsigned short p[76800];int main(){for(int i=0;i<76800;i++)p[i]=marker[7]==82?0xf800:0x001f;lcd_init(0);lcd_blit(p,0);while(!isKeyPressed(KEY_NSPIRE_ESC)){}return 0;}';
+  binaryProject.settings.build={version:1,sources:['main.c']};
+  const artifact=await window.NdlessLocalBridge.build(binaryProject);
+  if(!artifact.logs?.some(line=>line.includes('1 translation units')))throw Error('Explicit SDK profile did not run');
+  await window.TnsNdlessEditor.open(new File([artifact.bytes],'binary-preview-test.tns'));
+  document.querySelector('[data-nav="preview"]').click();
+  const binaryPixel=()=>Array.from(document.querySelector('[data-binary-canvas]').getContext('2d').getImageData(160,160,1,1).data).slice(0,3);
+  await wait(()=>window.NdlessExecutablePreview.state?.stage==='running'&&binaryPixel()[0]===255);
+  const binaryEdited=window.TnsNdlessEditor.getCurrent(),image=binaryEdited.adapter.workingBytes,marker=new TextEncoder().encode('BINARY_RED');let at=-1;
+  outer:for(let i=0;i<image.length-marker.length;i++){for(let j=0;j<marker.length;j++)if(image[i+j]!==marker[j])continue outer;at=i;break;}
+  if(at<0)throw Error('Nested Zehn working image unavailable');binaryEdited.adapter.patchWorking(at+7,new Uint8Array([66]));
+  document.querySelector('.ndless-executable-preview [data-live-restart]').click();
+  await wait(()=>window.NdlessExecutablePreview.state.stage==='running'&&binaryPixel()[2]===255&&binaryPixel()[0]===0);
+  document.querySelector('[data-friendly="home"]').click();await wait(()=>window.NdlessExecutablePreview.state===null);
+  document.querySelector('[data-nav="preview"]').click();await wait(()=>window.NdlessExecutablePreview.state?.stage==='running'&&binaryPixel()[2]===255);
+  document.querySelector('.ndless-editor-close').click();await wait(()=>window.NdlessExecutablePreview.state===null);
+  const out={ok:true,initial,edited,animationColors:colors.size,keyboard:true,pause:true,sourceError:true,immediateInvalidation:true,infiniteLoopStopped:true,uiResponseMs,resources:true,quotedArguments:true,clearResources:true,nativeDialog:true,spritesWithoutBmp:true,binaryPreview:true,binaryEdits:true,binaryClose:true,sourceProfile:true};
   workspace.closeProject();if(window.NdlessLivePreview.state!==null)throw Error('Closing workspace retained ARM execution');
   return out;
  })()`);
+ if(process.env.TNS_DESKTOP_SMOKE_PROJECT){
+  const bytes=await fs.readFile(process.env.TNS_DESKTOP_SMOKE_PROJECT),base64=bytes.toString('base64');
+  let probing=false;const progress=setInterval(async()=>{if(probing)return;probing=true;try{const state=await win.webContents.executeJavaScript('({state:window.NdlessLivePreview?{stage:window.NdlessLivePreview.state?.stage}:null,note:document.querySelector("[data-preview-note]")?.textContent,active:window.NdlessProjectWorkspace?.getProject?.()?.activeFile,log:document.querySelector("[data-live-log]")?.textContent?.slice(-800)})');await fs.writeFile(report+'.project-progress.json',JSON.stringify(state,null,2));}catch(_){}finally{probing=false;}},5000);
+  try{
+  result.importedProject=await win.webContents.executeJavaScript(`(async()=>{
+   const zip=Uint8Array.from(atob(${JSON.stringify(base64)}),c=>c.charCodeAt(0));
+   const start=performance.now(),ws=window.NdlessProjectWorkspace;
+   await ws.openProjectZip(new File([zip],'imported-source-project.zip'));
+   const wait=async(fn)=>{const end=Date.now()+180000;while(!fn()){if(Date.now()>end)throw Error('Imported project preview timed out: '+document.querySelector('[data-preview-note]')?.textContent);await new Promise(r=>setTimeout(r,50));}};
+   await wait(()=>window.NdlessLivePreview.state?.stage==='running');
+   const p=ws.getProject();if(!p.settings?.build?.sources?.length)throw Error('Explicit build source list lost during ZIP import');
+   const sources=p.settings.build.sources.length,source=p.files[p.activeFile];
+   const model=window.TnsMonacoEditor.monaco.editor.getModels().find(m=>m.getValue()===source);if(!model)throw Error('Imported source editor not found');
+   if(!source.includes('lcd_init(SCR_320x240_565);'))throw Error('Expected editable display initializer');
+   model.setValue('#include <stdio.h>\\n'+source.replace('lcd_init(SCR_320x240_565);','puts("SOURCE_EDIT_OK");fflush(stdout);lcd_init(SCR_320x240_565);'));
+   await wait(()=>document.querySelector('[data-live-log]')?.textContent.includes('SOURCE_EDIT_OK'));
+   ws.closeProject();return{sources,edited:true,recompiled:true,ms:performance.now()-start};
+  })()`);
+  }finally{clearInterval(progress);}
+ }
  await fs.writeFile(report+'.ndless-preview.json',JSON.stringify(result,null,2));return result;
 }
 module.exports={checkNdlessPreview,run};
