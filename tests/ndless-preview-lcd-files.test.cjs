@@ -60,12 +60,13 @@ int main(int argc,char**argv){
  if(mkdir("save",0700)||chdir("save"))return 8;f=fopen("state.bin","wb");if(!f)return 9;fputc(65,f);fclose(f);
  f=fopen("state.bin","rb");if(!f||fgetc(f)!=65||ungetc(66,f)!=66||fgetc(f)!=66)return 10;fclose(f);
  if(fopen("missing.bin","rb")||errno!=2)return 11;
- for(int i=0;i<76800;i++)p[i]=0x07e0;lcd_init(SCR_320x240_565);lcd_blit(p,SCR_320x240_565);printf("files PASS argc=%d\\n",argc);fflush(stdout);
+ for(int i=0;i<76800;i++)p[i]=0x07e0;lcd_init(SCR_320x240_565);lcd_blit(p,SCR_320x240_565);msleep(100);printf("files PASS argc=%d\\n",argc);fflush(stdout);
  while(!isKeyPressed(KEY_NSPIRE_ESC)){}return 0;}`;
  const artifact=await build('virtual-files',{'main.c':source});let requested=false;
  await preview({bytes:artifact.bytes,files:[['levels/stage.txt','LEVEL_OK\n']],observe(m,{requestFiles,stats}){
   if(m.stage==='exited')throw Error('Filesystem program exited before success: '+m.exitCode);
-  if(!requested&&m.frame&&pixel(m.frame,20,20)===0x07e0&&stats.logs.join('').includes('files PASS')){requested=true;requestFiles();}
+  // Identical frames are coalesced; stdout can arrive on a later heartbeat.
+  if(!requested&&stats.lastFrame&&pixel(stats.lastFrame,20,20)===0x07e0&&stats.logs.join('').includes('files PASS')){requested=true;requestFiles();}
   if(m.type==='files'){const save=m.files.find(f=>f.path==='/documents/levels/save/state.bin');assert.ok(save);assert.deepEqual([...save.bytes],[65]);return true;}return false;
  }});
 });
