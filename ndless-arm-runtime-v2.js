@@ -215,6 +215,9 @@
     for (const c of chunks) { joined.set(c,o); o += c.length; }
     return decodeText(joined);
   }
+  function readUtf16String(e,address,max=8192) {
+    const chars=[];for(let i=0;address&&i<max;i++){const c=readMemU16(e,(address+i*2)>>>0);if(!c)break;chars.push(c);}return String.fromCharCode(...chars);
+  }
   function writeCString(e, address, value, capacity = Infinity) {
     const bytes = encodeText(String(value));
     const count = Math.max(0, Math.min(bytes.length, Number.isFinite(capacity) ? Math.max(0,capacity-1) : bytes.length));
@@ -301,19 +304,34 @@
     for(let type=0;type<7;type++){const code=new Uint8Array(8);w32(code,0,0xef400100+type);w32(code,4,0xe12fff1e);writeMem(e,LCD_THUNKS+type*8,code);}
     writeMemU32(e,CONTRAST,0x80); writeMemU32(e,TIMER2_TOP,0xffffffff); writeMemU32(e,TIMER2_VALUE_CX,0xffffffff);
     writeMemU32(e,TIMER2_VALUE_CLASSIC,0); writeMemU32(e,RTC_VALUE,Math.floor(Date.now()/1000)>>>0);
-    writeMemU32(e,TIMER2_TOP+0x10,1);
+    writeMemU32(e,TIMER2_TOP+0x10,0);
+    writeMemU32(e,0x900C0000,0xffffffff);writeMemU32(e,0x900C0004,0xffffffff);
     // ON is active-low; a zero-initialized peripheral means "pressed" and
     // immediately quits games which poll on_key_pressed().
     writeMemU32(e,0x900B0028,16);
   }
+  function createTimer(base,frequency,now,control=0){return{base,frequency,last:now,load:0xffffffff,value:0xffffffff,control,irq:0,fraction:0};}
+  function advanceTimer(timer,now){
+    const dt=Math.max(0,now-timer.last);timer.last=now;
+    if(!(timer.control&128))return;
+    const prescale=(timer.control>>>2)&3,divisor=prescale===1?16:prescale===2?256:1,ticks=dt*timer.frequency/1000/divisor+timer.fraction,whole=Math.floor(ticks);timer.fraction=ticks-whole;
+    if(whole>timer.value){timer.irq=1;if(timer.control&1){timer.value=0;timer.control&=~128;return;}}
+    const period=(timer.control&64)?timer.load+1:(timer.control&2)?0x100000000:0x10000;
+    timer.value=((timer.value-whole)%period+period)%period;
+  }
+  function writeTimer(timer,offset,value,now){
+    advanceTimer(timer,now);value>>>=0;
+    if(offset===0){timer.load=value;timer.value=value;timer.fraction=0;}
+    else if(offset===8)timer.control=value&255;
+    else if(offset===12&&value&1)timer.irq=0;
+    else if(offset===24)timer.load=value;
+  }
+  function syncTimer(session,timer){
+    const e=session.e,b=timer.base;writeMemU32(e,b,timer.load);writeMemU32(e,b+4,timer.value);writeMemU32(e,b+8,timer.control);writeMemU32(e,b+12,0);writeMemU32(e,b+16,timer.irq);writeMemU32(e,b+20,(timer.control&32)?timer.irq:0);
+  }
   function updateHardware(session) {
-    const elapsedMs = performance.now() - session.startedAt;
-    const t100 = Math.floor(elapsedMs / 10) >>> 0;
-    try {
-      writeMemU32(session.e,RTC_VALUE,Math.floor(Date.now()/1000)>>>0);
-      writeMemU32(session.e,TIMER2_VALUE_CX,(0xffffffff - t100*64)>>>0);
-      writeMemU32(session.e,TIMER2_VALUE_CLASSIC,t100);
-    } catch (_) {}
+    const now=performance.now();writeMemU32(session.e,RTC_VALUE,Math.floor(Date.now()/1000)>>>0);
+    for(const timer of session.timers||[]){advanceTimer(timer,now);syncTimer(session,timer);}
   }
 
   function createKernel(session) {
@@ -470,7 +488,7 @@
       if(baseNr===8){ret(1);return true;}
       if(baseNr===9){ret(0);return true;}
       if(baseNr===10||baseNr===11)return false;
-      if(baseNr===12){const nr=reg(0),id=nr&~SYSCALL_FLAG_MASK;const supported=(nr&SYSCALL_ISEMU)?false:(nr&SYSCALL_ISVAR)?[59,61,71,72,73].includes(id):(nr&SYSCALL_ISEXT)?[2,3,5,6,7,8,9,12,13,14,15].includes(id):(id<=20||id>=22&&id<=29||id>=31&&id<=58||id>=60&&id<=70||[74,89,95,96,97].includes(id));ret(supported?1:0);return true;}
+      if(baseNr===12){const nr=reg(0),id=nr&~SYSCALL_FLAG_MASK;const supported=(nr&SYSCALL_ISEMU)?false:(nr&SYSCALL_ISVAR)?[59,61,71,72,73].includes(id):(nr&SYSCALL_ISEXT)?[2,3,5,6,7,8,9,12,13,14,15].includes(id):(id<=20||id>=22&&id<=29||id>=31&&id<=58||id>=60&&id<=70||[30,74,89,93,94,95,96,97].includes(id));ret(supported?1:0);return true;}
       // This syscall returns a function pointer cached and called by libndls.
       // It does not take the pixel buffer itself.
       if(baseNr===13){const type=reg(0);ret(type<7?LCD_THUNKS+type*8:0);return true;}
@@ -512,7 +530,7 @@
         case 27: {const s=readCString(e,a1);writeCString(e,a0,s);ret(a0);return true;}
         case 28: {let x=readCString(e,a0),y=readCString(e,a1);writeCString(e,a0,x+y.slice(0,a2));ret(a0);return true;}
         case 29: ret(encodeText(readCString(e,a0)).length); return true;
-        case 30: throw Object.assign(new Error(`TI-Nspire dialog: ${readCString(e,a1)} — ${readCString(e,a2)}`),{code:"NDLESS_OS_DIALOG"});
+        case 30: session.pendingDialog={id:++session.dialogSequence,title:readUtf16String(e,a1),message:readUtf16String(e,a2),buttons:[{label:"OK",value:1}]};return true;
         case 31: {const s=readCString(e,a0),ch=String.fromCharCode(a1&255),i=s.lastIndexOf(ch);ret(i<0?0:(a0+i));return true;}
         case 32: {const s=formatC(a1,0,a2);writeCString(e,a0,s);ret(s.length);return true;}
         case 33: ret(fseek(a0,a1,a2)); return true;
@@ -555,7 +573,12 @@
         case 74: {const h=fileHandle(a0);ret(h?.error?1:0);return true;}
         case 75: case 76: case 77: case 78: case 79: case 88: return false;
         case 89: {const h=fileHandle(a0);ret(h?h.pos:-1);return true;}
-        case 93: case 94: return false;
+        case 93: case 94: {
+          const sp=e.reg_read_i32(uc.ARM_REG_SP)>>>0;
+          const buttons=[{label:readUtf16String(e,a3),value:readMemU32(e,sp)},{label:readUtf16String(e,readMemU32(e,sp+4)),value:readMemU32(e,sp+8)}];
+          if(nr===94)buttons.push({label:readUtf16String(e,readMemU32(e,sp+12)),value:readMemU32(e,sp+16)});
+          session.pendingDialog={id:++session.dialogSequence,title:readUtf16String(e,a1),message:readUtf16String(e,a2),buttons};return true;
+        }
         case 95: {const path=resolvePath(readCString(e,a0));syncDirectories();if(!directories.has(path)){setErrno(2);ret(0);return true;}const ptr=allocRaw(8);directoryHandles.set(ptr,{names:children(path),index:0,entry:allocRaw(512)});ret(ptr);return true;}
         case 96: {const dir=directoryHandles.get(a0);if(!dir){setErrno(9);ret(0);return true;}const name=dir.names[dir.index++];if(name==null){ret(0);return true;}writeCString(e,dir.entry,name,512);ret(dir.entry);return true;}
         case 97: {const dir=directoryHandles.get(a0);if(!dir){ret(-1);return true;}freeRaw(dir.entry);freeRaw(a0);directoryHandles.delete(a0);ret(0);return true;}
@@ -630,6 +653,7 @@
   // Stop at each SWI and service it outside uc_emu_start. Host memory writes must
   // not re-enter the CPU translator while it is running a guest block.
   function step(session, {milliseconds=12, instructions=20000}={}) {
+    if(session.pendingDialog)return stateSnapshot(session);
     const deadline=performance.now()+Math.min(40,Math.max(1,milliseconds));
     updateHardware(session);
     let calls=0;
@@ -642,6 +666,7 @@
       session.instructions+=instructions;
       if(session.pendingInterrupt!=null){const intr=session.pendingInterrupt;session.pendingInterrupt=null;session.kernel.dispatchInterrupt(intr);}
       if(session.pendingError)throw session.pendingError;
+      if(session.pendingDialog)break;
     } while(++calls<2000 && performance.now()<deadline);
     return stateSnapshot(session);
   }
@@ -659,7 +684,19 @@
     try{
       mapPage(e,uc,prepared.base,align(prepared.image.length));writeMem(e,prepared.base,prepared.image);
       mapPage(e,uc,STACK_BASE,STACK_SIZE);mapPage(e,uc,HEAP_BASE,HEAP_SIZE);mapPage(e,uc,VAR_BASE,VAR_SIZE);mapPage(e,uc,EXIT_ADDR,PAGE);mapHardware(e,uc);
-      const session={uc,e,prepared,canvas:options.canvas||null,note:options.note||null,running:false,paused:false,stopped:false,error:null,pendingError:null,exitCode:null,startedAt:performance.now(),frames:0,instructions:0,syscallCount:0,lastSyscall:null,lastLog:"",framebufferAddress:FB_BASE,sliceInstructions:Math.max(1000,Number(options.sliceInstructions)||180000),onState:typeof options.onState==="function"?options.onState:null,inputCleanup:null,kernel:null,argvInfo:null};
+      const session={uc,e,prepared,canvas:options.canvas||null,note:options.note||null,running:false,paused:false,stopped:false,error:null,pendingError:null,pendingDialog:null,dialogSequence:0,exitCode:null,startedAt:performance.now(),frames:0,instructions:0,syscallCount:0,lastSyscall:null,lastLog:"",framebufferAddress:FB_BASE,sliceInstructions:Math.max(1000,Number(options.sliceInstructions)||180000),onState:typeof options.onState==="function"?options.onState:null,inputCleanup:null,kernel:null,argvInfo:null};
+      session.timers=[createTimer(0x900C0000,1000000,performance.now()),createTimer(0x900D0000,32000,performance.now(),0x82)];
+      // MMIO data hooks never change executable memory. Reads refresh counters
+      // before the guest loads them; writes apply even within one ARM block.
+      for(const timer of session.timers){
+        syncTimer(session,timer);
+        e.hook_add(uc.HOOK_MEM_WRITE,(_handle,_type,address,size,value)=>{const offset=Number(address)-timer.base;if(size===4&&[0,8,12,24].includes(offset)){writeTimer(timer,offset,Number(value),performance.now());syncTimer(session,timer);}},{},timer.base,timer.base+27);
+        e.hook_add(uc.HOOK_MEM_READ,()=>{advanceTimer(timer,performance.now());syncTimer(session,timer);},{},timer.base,timer.base+27);
+      }
+      // ARM926 WFI halts Unicorn until an external IRQ, which this partial OS
+      // does not inject. Skip only an executed WFI, keeping the SDK's polling
+      // loop and real elapsed wait intact. Never patch matching asset bytes.
+      for(let at=0;at+4<=prepared.image.length;at+=4){const instruction=u32(prepared.image,at);if((instruction&0x0fff0fff)===0x0e070f90&&(instruction>>>28)!==15){const address=prepared.base+at;e.hook_add(uc.HOOK_CODE,()=>{e.reg_write_i32(uc.ARM_REG_PC,(address+4)|0);},{},address,address);}}
       session.kernel=createKernel(session);
       const args=Array.isArray(options.args)&&options.args.length?options.args:["/documents/program.tns"];
       session.argvInfo=session.kernel.setupArgv(args);
@@ -668,7 +705,8 @@
     }catch(error){try{e.close();}catch(_){}throw error;}
   }
 
-  function stateSnapshot(session){let pc=0;try{pc=session.e.reg_read_i32(session.uc.ARM_REG_PC)>>>0;}catch(_){}return{running:session.running,paused:session.paused,stopped:session.stopped,pc,frames:session.frames,instructions:session.instructions,syscallCount:session.syscallCount,lastSyscall:session.lastSyscall,lastLog:session.lastLog,framebufferAddress:session.framebufferAddress>>>0,error:session.error?String(session.error.message||session.error):""};}
+  function respondDialog(session,id,value){const dialog=session.pendingDialog;if(!dialog||dialog.id!==id||!dialog.buttons.some(b=>b.value===value))return false;session.e.reg_write_i32(session.uc.ARM_REG_R0,value|0);session.pendingDialog=null;return true;}
+  function stateSnapshot(session){let pc=0;try{pc=session.e.reg_read_i32(session.uc.ARM_REG_PC)>>>0;}catch(_){}return{running:session.running,paused:session.paused,stopped:session.stopped,pc,frames:session.frames,instructions:session.instructions,syscallCount:session.syscallCount,lastSyscall:session.lastSyscall,lastLog:session.lastLog,dialog:session.pendingDialog,framebufferAddress:session.framebufferAddress>>>0,error:session.error?String(session.error.message||session.error):""};}
   function emit(session,message=""){const s={...stateSnapshot(session),message};try{session.onState?.(s);}catch(_){}return s;}
   function stop(session,reason="stopped"){if(!session||session.stopped)return;session.running=false;session.paused=false;session.stopped=true;if(session.raf)cancelAnimationFrame(session.raf);try{session.e.emu_stop?.();}catch(_){}try{session.inputCleanup?.();}catch(_){}emit(session,reason);try{session.e.close();}catch(_){}if(activeSession===session)activeSession=null;}
   function pause(session){if(!session||session.stopped)return;session.paused=true;session.running=false;if(session.raf)cancelAnimationFrame(session.raf);emit(session,"paused");}
@@ -697,5 +735,5 @@
 
   if(typeof document!=="undefined"){let scheduled=false;const schedule=()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;mountUi();});};new MutationObserver(schedule).observe(document.documentElement,{childList:true,subtree:true});document.addEventListener("click",event=>{if(event.target?.closest?.("[data-project-tab], [data-project-refresh]"))setTimeout(schedule,20);},true);schedule();}
 
-  root.NdlessArmRuntime=Object.freeze({version:2,ENGINE_JS,ENGINE_WASM,APP_BASE,STACK_BASE,STACK_SIZE,FB_BASE,FB_WIDTH,FB_HEIGHT,FB_BYTES,HEAP_BASE,HEAP_SIZE,VAR_BASE,EXIT_ADDR,SYSCALL_ISEXT,SYSCALL_ISEMU,SYSCALL_ISVAR,KEYMAP,align,u16,u32,w16,w32,relocateImage,prepareZehn,engine,smokeTest,createMachine,step,currentFramebuffer,setKey,run,pause,resume,stop,mountVirtualFile,getVirtualFile,listVirtualFiles,normalizePath,get activeSession(){return activeSession;},get lastArtifact(){return lastArtifact;},get lastWad(){return lastWad;},mountUi});
+  root.NdlessArmRuntime=Object.freeze({version:2,timers:Object.freeze({create:createTimer,advance:advanceTimer,write:writeTimer}),ENGINE_JS,ENGINE_WASM,APP_BASE,STACK_BASE,STACK_SIZE,FB_BASE,FB_WIDTH,FB_HEIGHT,FB_BYTES,HEAP_BASE,HEAP_SIZE,VAR_BASE,EXIT_ADDR,SYSCALL_ISEXT,SYSCALL_ISEMU,SYSCALL_ISVAR,KEYMAP,align,u16,u32,w16,w32,relocateImage,prepareZehn,engine,smokeTest,createMachine,step,currentFramebuffer,setKey,respondDialog,run,pause,resume,stop,mountVirtualFile,getVirtualFile,listVirtualFiles,normalizePath,get activeSession(){return activeSession;},get lastArtifact(){return lastArtifact;},get lastWad(){return lastWad;},mountUi});
 })();

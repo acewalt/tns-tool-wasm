@@ -14,7 +14,7 @@ async function preview({bytes,files=[],args,timeoutMs=25000,observe}){
     stats.messages++;stats.elapsedMs=Math.round(performance.now()-started);if(message.logs?.length)stats.logs=message.logs;
     if(message.frame){stats.frames++;stats.lastFrame=message.frame;stats.hashes.add(crypto.createHash('sha256').update(message.frame).digest('hex'));}
     if(message.stage==='error')throw Error(message.code+': '+message.error);
-    if(observe(message,{key:(code,down)=>worker.postMessage({type:'key',code,down}),requestFiles:()=>worker.postMessage({type:'files'}),stats}))resolve(stats);
+    if(observe(message,{key:(code,down)=>worker.postMessage({type:'key',code,down}),respondDialog:(id,value)=>worker.postMessage({type:'dialog',id,value}),requestFiles:()=>worker.postMessage({type:'files'}),stats}))resolve(stats);
    }catch(error){reject(error);}
   });
  });}finally{clearTimeout(timer);await worker.terminate();}

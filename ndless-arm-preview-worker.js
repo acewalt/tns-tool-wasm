@@ -15,6 +15,7 @@ function tick(){
   try{
     const state=NdlessArmRuntime.step(machine,{milliseconds:12,instructions:100000});
     steps++;
+    if(state.dialog){send({stage:"dialog",dialog:state.dialog,logs:machine.kernel.logs.slice(-25)});return;}
     const now=performance.now();
     if(now-lastFrame>=40||state.exited){
       lastFrame=now;
@@ -48,6 +49,7 @@ onmessage=async({data})=>{
     }else if(data.type==="pause"){
       const was=paused;paused=!!data.value;if(paused){clearTimeout(tickTimer);tickTimer=null;}else if(was)tick();
     }else if(data.type==="key"&&machine)NdlessArmRuntime.setKey(machine,data.code,!!data.down);
+    else if(data.type==="dialog"&&machine){if(NdlessArmRuntime.respondDialog(machine,data.id,data.value)&&!paused)tick();}
     else if(data.type==="files"&&machine){const files=NdlessArmRuntime.listVirtualFiles().filter(f=>f.writable).map(f=>({path:f.path,bytes:NdlessArmRuntime.getVirtualFile(f.path).bytes}));send({type:"files",files});}
   }catch(error){failure(error);}
 };

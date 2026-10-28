@@ -37,7 +37,7 @@
       return revision;
     }
     function stop(){revision++;wanted=null;ready=false;clearTimer(timer);discardRunner();emit("stopped",{clear:true});}
-    return Object.freeze({update,stop,pause(){if(!runner)return;paused=!paused;runner.pause(paused);emit(paused?"paused":"running");},key(code,down){runner?.key(code,down);},get state(){return{revision,building,paused,key:wanted?.key||null};}});
+    return Object.freeze({update,stop,pause(){if(!runner)return;paused=!paused;runner.pause(paused);emit(paused?"paused":"running");},key(code,down){runner?.key(code,down);},respondDialog(id,value){runner?.respondDialog?.(id,value);},get state(){return{revision,building,paused,key:wanted?.key||null};}});
   }
   root.NdlessLiveSession=Object.freeze({create,snapshot});
 })();

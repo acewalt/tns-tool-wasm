@@ -53,7 +53,14 @@ async function run(win,report,animation){
   await wait(()=>pixel()[1]===255&&pixel()[0]===0);
   if(!document.querySelector('[data-live-args]').value.includes('stage with space.txt'))throw Error('Resource path argument is missing');
   document.querySelector('[data-live-clear-resources]').click();await wait(()=>pixel()[0]===255&&pixel()[1]===0);
-  const out={ok:true,initial,edited,animationColors:colors.size,keyboard:true,pause:true,sourceError:true,immediateInvalidation:true,infiniteLoopStopped:true,uiResponseMs,resources:true,quotedArguments:true,clearResources:true};
+  const sprites=api.createProject({name:'sprites-dialog-acceptance',language:'c',target:'zehn-modern'});
+  sprites.files['main.c']=await(await fetch('./examples/ndless-games/sprites/main.c')).text();sprites.files['lab.h']=await(await fetch('./examples/ndless-games/lab.h')).text();workspace.activateProject(sprites);
+  await wait(()=>window.NdlessLivePreview.state?.stage==='dialog');
+  const dialog=document.querySelector('.ndless-live-dialog');if(dialog.hidden||!dialog.textContent.includes("Couldn't open sprite.bmp"))throw Error('Missing resource dialog was not shown');
+  const choice=[...dialog.querySelectorAll('button')].find(b=>b.textContent==='Continue');if(!choice)throw Error('Native Continue choice missing');choice.click();
+  await wait(()=>window.NdlessLivePreview.state.stage==='running'&&document.querySelector('[data-live-log]').textContent.includes('asset=0'));
+  if(!dialog.hidden)throw Error('Answered dialog remained visible');
+  const out={ok:true,initial,edited,animationColors:colors.size,keyboard:true,pause:true,sourceError:true,immediateInvalidation:true,infiniteLoopStopped:true,uiResponseMs,resources:true,quotedArguments:true,clearResources:true,nativeDialog:true,spritesWithoutBmp:true};
   workspace.closeProject();if(window.NdlessLivePreview.state!==null)throw Error('Closing workspace retained ARM execution');
   return out;
  })()`);

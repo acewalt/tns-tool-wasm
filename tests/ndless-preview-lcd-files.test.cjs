@@ -26,6 +26,23 @@ static unsigned char p[76800];int main(){memset(p,1,sizeof(p));((volatile unsign
   const artifact=await build('cx-indexed',{'main.c':source});await preview({bytes:artifact.bytes,observe:m=>m.frame&&pixel(m.frame,100,100)===0xf800});
  });
 });
+
+test('timer 1 polls a down-counter, stops, applies prescaler and completes one-shot mode',
+ {skip,timeout:25000},async()=>{
+ const source=`#include <os.h>
+#include <stdio.h>
+static unsigned short pixels[76800];
+int main(){volatile unsigned*t=(volatile unsigned*)0x900c0000;
+t[0]=0xffffffff;t[2]=0x82;unsigned before=t[1];msleep(120);unsigned fast=before-t[1];
+t[2]=2;unsigned frozen=t[1];msleep(80);if(t[1]!=frozen)return 1;
+t[2]=0x86;before=t[1];msleep(120);unsigned slow=before-t[1];t[2]=2;
+if(!fast||!slow||slow>=fast/3)return 2;
+t[0]=255;t[2]=0x83;msleep(60);if(t[1]||t[2]&128)return 3;
+printf("TIMER_OK fast=%u slow=%u\\n",fast,slow);fflush(stdout);
+for(int i=0;i<76800;i++)pixels[i]=0x07e0;lcd_init(0);lcd_blit(pixels,0);while(!isKeyPressed(KEY_NSPIRE_ESC)){}return 0;}`;
+ const artifact=await build('timer-1',{'main.c':source});
+ await preview({bytes:artifact.bytes,observe(m,{stats}){if(m.stage==='exited')throw Error('Timer test failed: '+m.exitCode);return m.frame&&pixel(m.frame,20,20)===0x07e0&&stats.logs.join('').includes('TIMER_OK');}});
+});
 test('game resources, relative directories, stat, legacy search, saves and ungetc',{skip,timeout:30000},async()=>{
  const source=`#include <os.h>
 #include <stdio.h>
@@ -50,5 +67,14 @@ int main(int argc,char**argv){
   if(m.stage==='exited')throw Error('Filesystem program exited before success: '+m.exitCode);
   if(!requested&&m.frame&&pixel(m.frame,20,20)===0x07e0&&stats.logs.join('').includes('files PASS')){requested=true;requestFiles();}
   if(m.type==='files'){const save=m.files.find(f=>f.path==='/documents/levels/save/state.bin');assert.ok(save);assert.deepEqual([...save.bytes],[65]);return true;}return false;
+ }});
+});
+
+test('SDK wait_key_pressed wakes after idle WFI when Enter is pressed', {skip,timeout:25000},async()=>{
+ const artifact=await build('idle-key',{'main.c':'#include <os.h>\n#include <stdio.h>\nint main(){puts("WAIT_READY");fflush(stdout);wait_key_pressed();puts("KEY_OK");fflush(stdout);return 0;}'});
+ let sent=false;
+ await preview({bytes:artifact.bytes,observe(m,{stats,key}){
+  if(!sent&&stats.logs.join('').includes('WAIT_READY')){sent=true;setTimeout(()=>key('Enter',true),200);}
+  if(m.stage==='exited'){assert.ok(sent);assert.equal(m.exitCode,0);assert.match(stats.logs.join(''),/KEY_OK/);return true;}return false;
  }});
 });

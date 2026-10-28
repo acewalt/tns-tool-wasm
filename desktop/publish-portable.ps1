@@ -12,6 +12,7 @@ if (!$report.prgmPreview.ok -or !$report.browserPrgmPreview.ok) { throw 'Prgm pr
 if (!$report.prgmPreview.stableHistory -or !$report.prgmPreview.expandedCanvas -or !$report.browserPrgmPreview.stableHistory -or !$report.browserPrgmPreview.expandedCanvas) { throw 'Prgm history and expanded canvas acceptance is required' }
 if (!$report.ndlessPreview.ok -or !$report.ndlessPreview.immediateInvalidation -or !$report.ndlessPreview.keyboard -or !$report.ndlessPreview.pause -or !$report.ndlessPreview.sourceError -or !$report.ndlessPreview.infiniteLoopStopped) { throw 'Compiled Ndless live preview acceptance is required' }
 if (!$report.ndlessPreview.resources -or !$report.ndlessPreview.quotedArguments -or !$report.ndlessPreview.clearResources) { throw 'Preview program resources and arguments acceptance is required' }
+if (!$report.ndlessPreview.nativeDialog -or !$report.ndlessPreview.spritesWithoutBmp) { throw 'Native missing-resource dialog acceptance is required' }
 $games = Get-Content (Join-Path $env:RUNNER_TEMP 'community-preview/report.json') -Raw | ConvertFrom-Json
 if (!$games.ok -or @($games.results).Count -ne 2 -or !($games.results | Where-Object { $_.game -eq 'nDoom' -and $_.cameraChange -gt .15 -and $_.ammoHudChange -gt .003 }) -or !($games.results | Where-Object { $_.game -eq 'NesNspire' -and $_.controller -and $_.cleanExit })) { throw 'Both real community games must pass before publication' }
 $stage = Join-Path $env:RUNNER_TEMP 'portable-release-assets'
@@ -36,9 +37,11 @@ El historial conserva los menús y respuestas anteriores, con márgenes estables
 
 El preview Ndless compila automáticamente la revisión actual de C/C++/ARM y ejecuta el programa en un Worker aislado. Muestra el framebuffer RGB565 real, animaciones, teclado y stdout separado. Al editar borra el resultado anterior, descarta compilados atrasados y permite pausar, reiniciar o detener. Las APIs de SO no soportadas muestran un error; no es un emulador completo de TI-Nspire.
 
-La versión 0.1.12 corrige la ABI de callbacks LCD, formatos RGB555/565, escala de grises y paletas, el registro LCD de CX, la tecla ON, llamadas ARM condicionales/Thumb y archivos relativos. Permite cargar WAD, cartuchos de prueba, BMP y otros recursos, junto con argumentos del programa, para la sesión de preview.
+Desde la versión 0.1.12 se corrige la ABI de callbacks LCD, formatos RGB555/565, escala de grises y paletas, el registro LCD de CX, la tecla ON, llamadas ARM condicionales/Thumb y archivos relativos. Permite cargar WAD, cartuchos de prueba, BMP y otros recursos, junto con argumentos del programa, para la sesión de preview.
 
-Se compilaron fuentes públicas fijadas de nDoom y NesNspire: Doom con Freedoom cargó un mapa 3D, giró y disparó; NesNspire abrió un cartucho original animado, respondió al mando y salió normalmente. No incluye juegos comerciales ni promete velocidad de hardware real. Mario 64 no se ejecutó: necesita una ROM aportada por el usuario y puede requerir más servicios.
+Se compilaron fuentes públicas fijadas de nDoom y NesNspire: Doom con Freedoom cargó un mapa 3D, giró y disparó; NesNspire abrió un cartucho original animado, respondió al mando y salió normalmente. No incluye juegos comerciales ni promete velocidad de hardware real. Mario 64 se compiló localmente con una ROM europea aportada por el usuario y llegó a dibujar menús 3D. La ejecución es lenta y no se certifica una partida completa. No se incluyen su ROM, recursos extraídos ni ejecutable.
+
+La versión 0.1.13 muestra los diálogos reales del programa Ndless y permite responder Abort / Continue cuando falta sprite.bmp. Se verifican recursos ausentes y dañados, retorno de tres botones, temporizadores SP804, esperas del SDK y despertar de idle al pulsar una tecla. La app extraída del ZIP prueba el caso de sprites sin BMP desde la interfaz.
 
 Se verificaron seis juegos originales (plataformas, raycasting 3D, Pong, Snake, bloques y sprites BMP), además de gradientes y texto calculado, fractales con doble precisión, C++ con varios archivos y plantillas, animación, teclado, ensamblador ARM, miles de malloc/free, bucles y errores. La app extraída del ZIP también pasó edición real, invalidación inmediata, animación, pausa, recuperación y respuesta del editor durante un bucle infinito.
 
