@@ -22,8 +22,9 @@
     worker.postMessage({type:"start",bytes:artifact.bytes,files,args,engine:new URL('unicorn.js',base).href,wasm:new URL('unicorn.wasm',base).href});
     return{stop:end,pause(value){if(ended)return;paused=value;clearTimeout(timer);worker.postMessage({type:"pause",value});if(!value)armWatchdog();},key(code,down){if(!ended)worker.postMessage({type:"key",code,down});},respondDialog(id,value){if(ended)return;worker.postMessage({type:"dialog",id,value});armWatchdog();}};
   }
-  function mount(workspace,canvas,note){
-    stop();
+  function mount(workspace,canvas,note,options={}){
+    if(!options.independent)stop();
+    const getProject=options.getProject||(()=>root.NdlessProjectWorkspace.getProject());
     workspace.querySelector('[data-arm-ui]')?.remove();
     const box=document.createElement('div');box.className='ndless-live-preview-controls';
     box.innerHTML='<div class="ndless-live-buttons"><label><input type="checkbox" data-live-auto checked> <span></span></label><button type="button" data-live-pause></button><button type="button" data-live-stop></button><button type="button" data-live-restart></button></div><div class="ndless-live-keys"></div><pre data-live-log hidden></pre>';
@@ -38,10 +39,11 @@
     const label=workspace.querySelector('[data-project-pane="preview"] h3');if(label)label.textContent=tr('title');
     note.after(box);canvas.tabIndex=0;canvas.setAttribute('aria-label',tr('title'));
     const auto=box.querySelector('[data-live-auto]'),log=box.querySelector('[data-live-log]');
-    const item={workspace,canvas,note,box,session:null,auto,logs:[],stage:'scheduled',held:new Set(),resources:new Map()};current=item;
-    const argsInput=resources.querySelector('[data-live-args]');argsInput.value=root.NdlessProjectWorkspace?.getProject?.()?.settings?.previewArguments||'';
+    const item={workspace,canvas,note,box,session:null,auto,logs:[],stage:'scheduled',held:new Set(),resources:new Map(),disposed:false};if(!options.independent)current=item;
+    const argsInput=resources.querySelector('[data-live-args]');argsInput.value=getProject()?.settings?.previewArguments||'';
     item.session=root.NdlessLiveSession.create({
       async build(project){
+        if(options.build)return options.build(project);
         if(!root.TnsDesktop?.buildNdless)throw new Error(tr('desktop'));
         const bridge=root.NdlessLocalBridge;if(!bridge?.build)throw new Error('Ndless compiler is not ready.');
         return bridge.build({...project,target:'zehn-modern',files:{...project.files}});
@@ -53,7 +55,7 @@
         return createRunner(artifact,update,[...Object.entries(project.files||{}),...item.resources],['/documents/'+project.name+'.tns',...args]);
       },
       onUpdate(info){
-        if(current!==item||!canvas.isConnected)return;
+        if(item.disposed||!canvas.isConnected)return;
         item.stage=info.stage;item.revision=info.revision;
         if(info.clear){clear(canvas);log.hidden=true;log.textContent='';dialog.hidden=true;}
         if(info.dialog){
@@ -66,21 +68,21 @@
         if(info.frame)paint(canvas,info.frame);
         if(info.logs?.length){log.hidden=false;log.textContent=info.logs.join('\n');}
         const detail=info.error?': '+info.error:info.frames?' · '+info.frames+' frames':'';
-        note.textContent=(info.stage==='dialog'?(language==='en'?'Waiting for a program dialog':language==='fr'?'En attente du dialogue':'Esperando respuesta al diálogo del programa'):tr(info.stage))+detail;note.dataset.previewStage=info.stage;
+        note.textContent=(options.binary&&info.stage==='compiling'?(language==='en'?'Preparing current TNS…':language==='fr'?'Préparation du TNS…':'Preparando el TNS actual…'):info.stage==='dialog'?(language==='en'?'Waiting for a program dialog':language==='fr'?'En attente du dialogue':'Esperando respuesta al diálogo del programa'):tr(info.stage))+detail;note.dataset.previewStage=info.stage;
         note.title=tr('help');
         box.querySelector('[data-live-pause]').disabled=!['running','paused'].includes(info.stage);
       }
     });
     box.querySelector('[data-live-pause]').onclick=()=>item.session.pause();
     box.querySelector('[data-live-stop]').onclick=()=>{auto.checked=false;item.session.stop();};
-    box.querySelector('[data-live-restart]').onclick=()=>render(root.NdlessProjectWorkspace.getProject(),{workspace,canvas,note,force:true});
-    auto.onchange=()=>auto.checked?render(root.NdlessProjectWorkspace.getProject(),{workspace,canvas,note,force:true}):item.session.stop();
-    const restartResources=()=>{const project=root.NdlessProjectWorkspace.getProject();project.settings||={};project.settings.previewArguments=argsInput.value;render(project,{workspace,canvas,note,force:true});};
+    box.querySelector('[data-live-restart]').onclick=()=>item.session.update(getProject(),{force:true});
+    auto.onchange=()=>auto.checked?item.session.update(getProject(),{force:true}):item.session.stop();
+    const restartResources=()=>{const project=getProject();project.settings||={};project.settings.previewArguments=argsInput.value;item.session.update(project,{force:true});};
     argsInput.onchange=restartResources;
     resources.querySelector('[data-live-clear-resources]').onclick=()=>{item.resources.clear();argsInput.value='';resources.querySelector('[data-resource-list]').textContent='';restartResources();};
     resources.querySelector('[data-live-resources]').onchange=async event=>{
       const selected=Array.from(event.target.files||[]);let total=[...item.resources.values()].reduce((sum,b)=>sum+b.length,0);
-      for(const file of selected){const name=file.name.replace(/[\\/]/g,'_'),oldSize=item.resources.get(name)?.length||0;if(total-oldSize+file.size>64*1024*1024){note.textContent='Resource limit: 64 MiB';return;}const bytes=new Uint8Array(await file.arrayBuffer());if(current!==item)return;total=total-oldSize+bytes.length;item.resources.set(name,bytes);}
+      for(const file of selected){const name=file.name.replace(/[\\/]/g,'_'),oldSize=item.resources.get(name)?.length||0;if(total-oldSize+file.size>64*1024*1024){note.textContent='Resource limit: 64 MiB';return;}const bytes=new Uint8Array(await file.arrayBuffer());if(item.disposed)return;total=total-oldSize+bytes.length;item.resources.set(name,bytes);}
       resources.querySelector('[data-resource-list]').textContent=[...item.resources].map(([name,bytes])=>name+' ('+Math.round(bytes.length/1024)+' KiB)').join(', ');
       if(!argsInput.value&&selected[0])argsInput.value='"/documents/'+selected[0].name.replace(/[\\/]/g,'_')+'"';
       event.target.value='';restartResources();
@@ -95,6 +97,8 @@
       b.onpointerup=b.onpointercancel=()=>sendKey(code,false);box.querySelector('.ndless-live-keys').append(b);
     }
     const help=document.createElement('p');help.textContent=tr('help');help.className='ndless-live-help';box.append(help);
+    item.dispose=()=>{if(item.disposed)return;item.disposed=true;item.session.stop();item.box.remove();};
+    if(options.binary){box.querySelector('label').hidden=true;}
     return item;
   }
   function render(project,{workspace,canvas,note,force=false}){
@@ -102,7 +106,7 @@
     const item=current?.workspace===workspace?current:mount(workspace,canvas,note);
     if(item.auto.checked||force)item.session.update(project,{force});
   }
-  function stop(){if(current){current.session?.stop();current.box.remove();current=null;}}
-  root.NdlessLivePreview=Object.freeze({render,stop,get state(){return current?{...current.session.state,stage:current.stage}:null;}});
+  function stop(){if(current){current.dispose();current=null;}}
+  root.NdlessLivePreview=Object.freeze({render,stop,createPanel({workspace,canvas,note,getProject,build,binary=false}){const item=mount(workspace,canvas,note,{independent:true,getProject,build,binary});return{update:(project,options)=>item.session.update(project,options),stop:()=>item.dispose(),get state(){return{...item.session.state,stage:item.stage};}};},get state(){return current?{...current.session.state,stage:current.stage}:null;}});
   const ws=document.querySelector('.ndless-project-workspace');if(ws){const p=root.NdlessProjectWorkspace?.getProject?.();render(p,{workspace:ws,canvas:ws.querySelector('[data-ndless-project-canvas]'),note:ws.querySelector('[data-preview-note]')});}
 })();

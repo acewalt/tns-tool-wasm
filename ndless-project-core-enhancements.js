@@ -61,6 +61,7 @@
   }
 
   function refreshGeneratedFiles(project) {
+    if(project.settings?.build)return project;
     project.files.Makefile = base.makefileFor(project);
     project.files["README_BUILD.md"] = enhancedReadme(project);
     return project;
