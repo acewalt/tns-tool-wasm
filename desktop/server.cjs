@@ -29,7 +29,7 @@ function resolveRequest(root, vendor, urlPath) {
   if (parts.some(p => p === '..' || p.startsWith('.'))) return null;
   if (parts[1] === '__desktop') {
     const sub = parts.slice(2);
-    if (!['pyodide','jszip','pdfjs','unicorn'].includes(sub[0])) return null;
+    if (!['pyodide','jszip','pdfjs','unicorn','rom'].includes(sub[0])) return null;
     return within(vendor, sub.join('/'));
   }
   return within(root, parts.slice(1).join('/') || 'index.html');

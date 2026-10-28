@@ -176,6 +176,54 @@ is performed by this feature. Private tests of the native SM64 port use C source
 and resources extracted locally from the user's ROM; those resources and that
 executable are excluded from releases.
 
+## ROM Converter
+
+**File → ROM Converter** appears next to New/Open Ndless Project. Select a ROM
+or an individual ZIP containing exactly one ROM. Preview compiles the generated
+project and runs it through the same ARM worker. **Download project ZIP** exports
+the full editable source project, **Open project** opens it directly in the
+workspace, and **Compile and download TNS** exports the executable. Conversion
+and compilation happen locally; no ROM is uploaded or downloaded by the app.
+
+Supported profiles:
+
+- Original European Super Mario 64, 8 MiB, normalized SHA1
+  `4ac5721683d0e0b6bbb561b58a71740845dceea9`. `.z64`, `.v64` and `.n64` byte
+  orders are detected from the header. This is a native port: ROM resources are
+  extracted into generated C arrays and all 283 translation units are compiled.
+- NES iNES cartridges up to 4 MiB with a mapper available in the pinned
+  NesNspire port. Basic NES 2.0 headers are normalized in the generated copy;
+  extended mapper numbers, nonzero submappers, extended ROM sizes and more than
+  8 KiB of additional PRG/CHR RAM are rejected. The cartridge is embedded in a C
+  header and read in memory, so the exported TNS needs no separate ROM file.
+
+- GB/GBC cartridges from 32 KiB to 8 MiB with standard ROM/MBC1/MBC2/MBC3/MBC5
+  controllers. Mode, size and controller are detected from the header, including
+  incorrectly named `.gbc` files. The generated ARM project uses binjgb and embeds
+  the cartridge. The direct ROM preview uses pinned binjgb WebAssembly for smooth
+  animation, controls, pause and cartridge RAM saved per ROM in the desktop user
+  profile. Native project preview still executes the actual compiled C and can
+  be slow. The two previews are clearly labeled and validated separately.
+
+Input archives are limited to 16 MiB and must contain one cartridge. Extract a
+single game's file from larger collections first. Header-only detection reads at
+most 66,048 bytes, including for large files. SNES/GBA/NDS and other N64 games
+have no integrated backend and are explicitly rejected. Mapper availability is a structural check, not a
+guarantee that every game works. SM64 preview is slow; neither a successful build
+nor the preview certifies complete gameplay or physical calculator compatibility.
+
+`node desktop/prepare-rom.cjs` creates the source-only templates from pinned,
+SHA256-verified public archives. It takes no ROM input. Public SM64 extraction
+recipes contain locations and transformations, with all ROM-derived byte arrays
+generated only after a local file is selected. A first-party animated NES test
+cartridge verifies selection, rejection, animation, both download buttons and
+reopening the project from the actual packaged application. Private compatibility
+tests can use user-supplied files without adding them to Git or releases. GB/GBC
+does not provide audio, console linking or special accessories. Its clock follows
+emulated time. Cartridge RAM is preserved, but full emulator/RTC snapshots are
+not promised. Native calculator output writes a per-game `.sav.tns`; progress
+is not automatically transferred between desktop preview and the calculator.
+
 ## USB
 
 The application uses the repository's native WebUSB implementation. Only

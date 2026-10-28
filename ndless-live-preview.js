@@ -49,6 +49,7 @@
         return bridge.build({...project,target:'zehn-modern',files:{...project.files}});
       },
       run(artifact,update,project){
+        if(options.run)return options.run(artifact,update,project);
         const value=project.settings?.previewArguments||'',args=[];let match;
         const pattern=/"([^"\\]*(?:\\.[^"\\]*)*)"|'([^']*)'|([^\s"']+)/g;
         while((match=pattern.exec(value)))args.push(match[1]!=null?match[1].replace(/\\(["\\])/g,'$1'):match[2]??match[3]);
@@ -68,7 +69,7 @@
         if(info.frame)paint(canvas,info.frame);
         if(info.logs?.length){log.hidden=false;log.textContent=info.logs.join('\n');}
         const detail=info.error?': '+info.error:info.frames?' · '+info.frames+' frames':'';
-        note.textContent=(options.binary&&info.stage==='compiling'?(language==='en'?'Preparing current TNS…':language==='fr'?'Préparation du TNS…':'Preparando el TNS actual…'):info.stage==='dialog'?(language==='en'?'Waiting for a program dialog':language==='fr'?'En attente du dialogue':'Esperando respuesta al diálogo del programa'):tr(info.stage))+detail;note.dataset.previewStage=info.stage;
+        note.textContent=(options.stageText?.[info.stage]||(options.binary&&info.stage==='compiling'?(language==='en'?'Preparing current TNS…':language==='fr'?'Préparation du TNS…':'Preparando el TNS actual…'):info.stage==='dialog'?(language==='en'?'Waiting for a program dialog':language==='fr'?'En attente du dialogue':'Esperando respuesta al diálogo del programa'):tr(info.stage)))+detail;note.dataset.previewStage=info.stage;
         note.title=tr('help');
         box.querySelector('[data-live-pause]').disabled=!['running','paused'].includes(info.stage);
       }
@@ -91,7 +92,7 @@
     canvas.addEventListener('keydown',e=>{if(root.NdlessArmRuntime.KEYMAP[e.code]){e.preventDefault();e.stopPropagation();sendKey(e.code,true);}});
     canvas.addEventListener('keyup',e=>{if(root.NdlessArmRuntime.KEYMAP[e.code]){e.preventDefault();e.stopPropagation();sendKey(e.code,false);}});
     canvas.addEventListener('blur',()=>{for(const code of item.held)sendKey(code,false);});
-    for(const [code,label] of [['ArrowLeft','←'],['ArrowUp','↑'],['ArrowDown','↓'],['ArrowRight','→'],['Enter','Enter'],['Space','Space'],['Escape','Esc']]){
+    for(const [code,label] of (options.keys||[['ArrowLeft','←'],['ArrowUp','↑'],['ArrowDown','↓'],['ArrowRight','→'],['Enter','Enter'],['Space','Space'],['Escape','Esc']])){
       const b=document.createElement('button');b.type='button';b.textContent=label;b.dataset.previewKey=code;
       b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);sendKey(code,true);};
       b.onpointerup=b.onpointercancel=()=>sendKey(code,false);box.querySelector('.ndless-live-keys').append(b);
@@ -99,6 +100,8 @@
     const help=document.createElement('p');help.textContent=tr('help');help.className='ndless-live-help';box.append(help);
     item.dispose=()=>{if(item.disposed)return;item.disposed=true;item.session.stop();item.box.remove();};
     if(options.binary){box.querySelector('label').hidden=true;}
+    if(options.resources===false)resources.hidden=true;
+    if(options.title)canvas.setAttribute('aria-label',options.title);
     return item;
   }
   function render(project,{workspace,canvas,note,force=false}){
@@ -107,6 +110,7 @@
     if(item.auto.checked||force)item.session.update(project,{force});
   }
   function stop(){if(current){current.dispose();current=null;}}
-  root.NdlessLivePreview=Object.freeze({render,stop,createPanel({workspace,canvas,note,getProject,build,binary=false}){const item=mount(workspace,canvas,note,{independent:true,getProject,build,binary});return{update:(project,options)=>item.session.update(project,options),stop:()=>item.dispose(),get state(){return{...item.session.state,stage:item.stage};}};},get state(){return current?{...current.session.state,stage:current.stage}:null;}});
+  function createPanel(options){const {workspace,canvas,note}=options,item=mount(workspace,canvas,note,{...options,independent:true});return{update:(project,value)=>item.session.update(project,value),stop:()=>item.dispose(),get state(){return{...item.session.state,stage:item.stage};}};}
+  root.NdlessLivePreview=Object.freeze({render,stop,createPanel,get state(){return current?{...current.session.state,stage:current.stage}:null;}});
   const ws=document.querySelector('.ndless-project-workspace');if(ws){const p=root.NdlessProjectWorkspace?.getProject?.();render(p,{workspace:ws,canvas:ws.querySelector('[data-ndless-project-canvas]'),note:ws.querySelector('[data-preview-note]')});}
 })();

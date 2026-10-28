@@ -26,6 +26,8 @@ on:
       - 'ndless-project-folder-build.js'
       - 'tests/ndless-export-roundtrip.test.js'
       - 'tests/desktop-project-profile.test.cjs'
+      - 'rom-converter.js'
+      - 'tests/rom-converter.test.cjs'
       - 'tests/ndless-live-session.test.js'
       - 'tests/ndless-preview-*.test.cjs'
       - 'tests/helpers/ndless-native.cjs'
@@ -74,6 +76,7 @@ jobs:
       - run: node tests/ndless-project.test.js
       - run: node --test tests/ndless-live-session.test.js
       - run: node --test tests/desktop-project-profile.test.cjs
+      - run: node --test tests/rom-converter.test.cjs
       - run: node tests/ndless-export-roundtrip.test.js
       - run: node tests/ndless-arm-runtime.test.js
       - run: node --test tests/prgm-preview.test.js
@@ -118,6 +121,8 @@ jobs:
           if ($LASTEXITCODE -ne 0) { Write-Warning 'Compiler status probe failed. Smoke build will determine compatibility.' }
       - name: Prepare official Ndless target headers, libraries and PRG loaders
         run: python desktop/prepare-compiler.py
+      - name: Prepare pinned ROM conversion source templates without ROMs
+        run: node desktop/prepare-rom.cjs
       - name: Compile a real Ndless C example using bundled ARM SDK
         shell: pwsh
         run: |
@@ -163,7 +168,7 @@ jobs:
         shell: pwsh
         run: |
           $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
-          node --test tests/desktop-native-build.test.cjs tests/desktop-project-profile.test.cjs
+          node --test tests/desktop-native-build.test.cjs tests/desktop-project-profile.test.cjs tests/rom-converter.test.cjs
       - name: Stress-test compiled Ndless preview with the isolated ARM worker
         shell: pwsh
         run: |
@@ -209,7 +214,7 @@ jobs:
           $exe = Join-Path $extracted 'TNS Tool Portable.exe'
           $profile = Join-Path $env:RUNNER_TEMP 'portable-acceptance-profile'
           $proc = Start-Process -FilePath $exe -ArgumentList "--user-data-dir=`"$profile`"" -WindowStyle Hidden -PassThru
-          if (!$proc.WaitForExit(90000)) { $proc.Kill(); throw 'Packaged app smoke test timed out' }
+          if (!$proc.WaitForExit(120000)) { $proc.Kill(); throw 'Packaged app smoke test timed out' }
           if (!(Test-Path $env:TNS_DESKTOP_SMOKE_REPORT)) { throw 'Packaged app did not report startup' }
           $report = Get-Content $env:TNS_DESKTOP_SMOKE_REPORT -Raw | ConvertFrom-Json
           $report | ConvertTo-Json -Depth 10 | Write-Host

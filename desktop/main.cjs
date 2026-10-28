@@ -59,6 +59,22 @@ function registerNativeBridge(){
   ipcMain.handle('tns:ndless-build',async(event,payload)=>{
     onlyLocal(event);return compiler.build(exe,payload);
   });
+  let convertingRom=false;
+  const romSaves=require('./rom-saves.cjs').create(app.getPath('userData'));
+  ipcMain.handle('tns:rom-save-load',async(event,hash)=>{onlyLocal(event);return romSaves.load(hash);});
+  ipcMain.handle('tns:rom-save-store',async(event,payload)=>{onlyLocal(event);return romSaves.save(payload);});
+  ipcMain.handle('tns:rom-inspect',async(event,payload)=>{
+    onlyLocal(event);if(!(payload?.bytes instanceof Uint8Array)||payload.bytes.length>128*1024||!Number.isSafeInteger(payload.size)||payload.size<1)throw new Error('Cabecera de ROM inválida.');
+    return require('./rom-data.cjs').detect(payload.bytes,{name:String(payload.name||'ROM').slice(0,180),size:payload.size});
+  });
+  ipcMain.handle('tns:rom-convert',async(event,payload)=>{
+    onlyLocal(event);
+    if(convertingRom)throw new Error('Ya hay una conversión de ROM en curso.');
+    if(!(payload?.bytes instanceof Uint8Array)||!payload.bytes.length||payload.bytes.length>16*1024*1024)throw new Error('Selecciona una ROM o ZIP individual de hasta 16 MiB.');
+    convertingRom=true;
+    try{return await require('./rom-converter.cjs').convert(payload.bytes,{name:String(payload.name||'ROM').slice(0,180)});}
+    finally{convertingRom=false;}
+  });
 }
 if(primaryInstance) app.whenReady().then(async()=>{
   const root=app.getAppPath();
@@ -109,12 +125,15 @@ if(primaryInstance) app.whenReady().then(async()=>{
     }
     report.prgmPreview=await require('./smoke-prgm.cjs').checkPrgm(win,smokeReport);
       if(process.env.TNS_DESKTOP_SMOKE_BUILD)report.ndlessPreview=await require('./smoke-ndless-preview.cjs').checkNdlessPreview(win,smokeReport);
+      if(process.env.TNS_DESKTOP_SMOKE_BUILD)report.romConverter=await require('./smoke-rom.cjs').checkRom(win,smokeReport);
+      if(process.env.TNS_DESKTOP_SMOKE_BUILD)report.gbPreview=await require('./smoke-rom.cjs').checkGb(win,smokeReport);
     const browser=new BrowserWindow({width:1440,height:1000,show:false,
       webPreferences:{nodeIntegration:false,contextIsolation:true,sandbox:true,backgroundThrottling:false,offscreen:true}});
     try{
       await loadLocalApp(browser,origin);
       report.browserRequirement=await require('./smoke-web.cjs').checkBrowserRequirement(browser,smokeReport+'.web.png');
       await browser.webContents.executeJavaScript('window.TnsNdlessDesktopRequired.close()');
+      report.browserRomConverter=await require('./smoke-rom.cjs').checkBrowser(browser);
       browser.setContentSize(430,860);
       report.browserPrgmPreview=await require('./smoke-prgm.cjs').checkPrgm(browser,smokeReport+'.mobile');
       await require('node:fs/promises').writeFile(smokeReport,JSON.stringify(report,null,2));
