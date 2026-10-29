@@ -6,19 +6,20 @@ const COPY={
   fr:{title:'Aperçu Prgm',note:'Simulation numérique TI-BASIC · saisie, menus et sortie texte.',run:'Exécuter',pause:'Pause',step:'Pas',stop:'Arrêter',restart:'Recommencer / actualiser',expand:'Vue agrandie',normal:'Taille calculatrice',close:'Fermer',variables:'Variables',empty:'Aucune valeur.',copy:'Copier la sortie',copied:'Sortie copiée.',ok:'OK',cancel:'Annuler',done:'Terminé',line:'Ligne',ready:'Prêt',waiting:'Saisie attendue',paused:'En pause',running:'En cours',stopped:'Arrêté',error:'Erreur',support:'Fonctions simulées',help:'Prgm sans paramètres ; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, affectations, listes et calcul numérique. ClrIO est ignoré pour conserver l’historique TI-Nspire. Le CAS symbolique, les unités, les graphiques et les fonctions externes ne sont pas simulés ; les instructions non prises en charge indiquent leur ligne.',keys:'Entrée : valider · Échap : annuler · ↑/↓ : défiler',angle:'Angles (redémarre)',request:'Saisie du programme',viewLine:'Voir la ligne dans l’éditeur'}
 };
 let active=null;
+const HISTORY_COPY={es:'Limpiar historial',en:'Clear history',fr:'Effacer l’historique'};
 function open(initial,options={}) {
   active?.close();
-  const t=COPY[document.documentElement.lang?.slice(0,2)]||COPY.es;
+  const language=document.documentElement.lang?.slice(0,2),t=COPY[language]||COPY.es;
   const previous=document.activeElement;
   const overlay=document.createElement('div');overlay.className='prgm-preview-overlay';
   // Only constant markup is parsed as HTML; source, prompts and output use textContent.
   overlay.innerHTML=`<section class="prgm-preview-modal" role="dialog" aria-modal="true" aria-labelledby="prgm-preview-title" tabindex="-1">
     <header class="prgm-preview-heading"><div><span class="prgm-preview-eyebrow">TI-NSPIRE · TI-BASIC</span><h2 id="prgm-preview-title"></h2><p data-note></p></div><div class="prgm-preview-top"><button data-expand class="green-tool-button" aria-pressed="false"></button><button data-close></button></div></header>
     <div class="prgm-preview-workspace">
-      <aside class="prgm-preview-controls"><button data-run class="green-tool-button"></button><button data-step></button><button data-stop></button><button data-restart></button><div class="prgm-preview-pad"><button data-scroll="-1" aria-label="Scroll up">↑</button><button data-scroll="1" aria-label="Scroll down">↓</button><button data-enter>Enter</button><button data-escape>Esc</button></div><label class="prgm-preview-angle"><span data-angle-label></span><select data-angle><option>RAD</option><option>DEG</option></select></label><small data-keys></small></aside>
+      <aside class="prgm-preview-controls"><button data-run class="green-tool-button"></button><button data-step></button><button data-stop></button><button data-restart></button><button data-clear-history disabled></button><div class="prgm-preview-pad"><button data-scroll="-1" aria-label="Scroll up">↑</button><button data-scroll="1" aria-label="Scroll down">↓</button><button data-enter>Enter</button><button data-escape>Esc</button></div><label class="prgm-preview-angle"><span data-angle-label></span><select data-angle><option>RAD</option><option>DEG</option></select></label><small data-keys></small></aside>
       <main class="prgm-preview-center"><div class="prgm-preview-size-label">320 × 240</div><div class="prgm-preview-screen-shell"><div class="prgm-preview-screen">
         <div class="prgm-preview-chrome"><span class="prgm-preview-tabs"><span>1.1</span><b>1.2</b></span><span data-document></span><span data-mode>RAD</span><span class="prgm-preview-battery" aria-hidden="true">▰</span><span aria-hidden="true">×</span></div>
-        <div class="prgm-preview-history" tabindex="0" aria-label="Calculator output"><div class="prgm-preview-call" data-call></div><div data-output></div><div class="prgm-preview-finish" data-finish hidden></div></div>
+        <div class="prgm-preview-history" tabindex="0" aria-label="Calculator output"><div data-previous-runs></div><div class="prgm-preview-entry" data-current-entry><div class="prgm-preview-call" data-call></div><div data-output></div><div class="prgm-preview-finish" data-finish hidden></div></div></div>
         <form class="prgm-preview-request" role="group" data-request hidden><div class="prgm-preview-request-row"><label for="prgm-preview-input" data-prompt></label><input id="prgm-preview-input" data-input autocomplete="off" spellcheck="false" maxlength="2048"></div><div class="prgm-preview-request-buttons"><button type="submit" data-ok></button><button type="button" data-cancel></button></div></form>
       </div></div><div class="prgm-preview-status" role="status" data-status></div><div class="prgm-preview-error" role="alert" data-error hidden></div></main>
       <aside class="prgm-preview-inspector"><button data-copy></button><button data-line></button><h3 data-variables-title></h3><div class="prgm-preview-vars" data-variables></div></aside>
@@ -26,10 +27,22 @@ function open(initial,options={}) {
   </section>`;
   const $=selector=>overlay.querySelector(selector), modal=$('.prgm-preview-modal');
   for(const [selector,value] of Object.entries({'#prgm-preview-title':t.title,'[data-note]':t.note,'[data-expand]':t.expand,'[data-close]':t.close,'[data-run]':t.run,'[data-step]':t.step,'[data-stop]':t.stop,'[data-restart]':t.restart,'[data-angle-label]':t.angle,'[data-keys]':t.keys,'[data-copy]':t.copy,'[data-line]':t.viewLine,'[data-variables-title]':t.variables,'[data-ok]':t.ok,'[data-cancel]':t.cancel,'[data-support]':t.support,'[data-help]':t.help}))$(selector).textContent=value;
+  $('[data-clear-history]').textContent=HISTORY_COPY[language]||HISTORY_COPY.es;
   $('[data-request]').setAttribute('aria-label',t.request);
   document.body.append(overlay);const oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
   let runtime=null, snapshot=null, timer=null, automatic=false, expanded=false, closed=false, requestToken='', renderedText='', inputResolved=false, data=initial;
-  const history=$('.prgm-preview-history'), output=$('[data-output]'), shell=$('.prgm-preview-screen-shell');
+  const history=$('.prgm-preview-history'), output=$('[data-output]'), shell=$('.prgm-preview-screen-shell'), previousRuns=$('[data-previous-runs]');
+  function archiveRun(){
+    if(!snapshot?.executed)return;
+    const entry=document.createElement('div');entry.className='prgm-preview-entry prgm-preview-previous-entry';
+    const call=document.createElement('div');call.className='prgm-preview-call';call.textContent=snapshot.name+'()';entry.append(call);
+    for(const row of snapshot.output){const line=document.createElement('div');line.className='prgm-preview-output-row '+row.kind;line.textContent=row.text||'\u00a0';entry.append(line);}
+    const finish=document.createElement('div');finish.className='prgm-preview-finish';finish.textContent=snapshot.error?.message||(snapshot.status==='done'?t.done:t.stopped);entry.append(finish);
+    previousRuns.append(entry);
+    let rows=[...previousRuns.children].reduce((sum,run)=>sum+run.childElementCount,0);
+    while(previousRuns.children.length>20||rows>1000){const first=previousRuns.firstElementChild;rows-=first.childElementCount;first.remove();}
+    $('[data-clear-history]').disabled=!previousRuns.childElementCount;
+  }
   function layoutOutput(){
     // The calculator stages the first pending Request's output at the dialog's
     // left edge. Once that input is resolved, the transcript uses its usual
@@ -58,9 +71,9 @@ function open(initial,options={}) {
   function followOutput(){
     // Follow the latest result only when it is outside the viewport. Keeping
     // existing row nodes also preserves selection and avoids scroll anchoring jumps.
-    const target=$('[data-finish]').hidden?output.lastElementChild:$('[data-finish]');
+    const target=$('[data-finish]').hidden?(output.lastElementChild||$('[data-call]')):$('[data-finish]');
     if(!target)return;
-    const edge=target.getBoundingClientRect().bottom-history.getBoundingClientRect().top+history.scrollTop;
+    const edge=target.getBoundingClientRect().bottom-history.getBoundingClientRect().top+history.scrollTop+parseFloat(getComputedStyle(history).paddingBottom);
     if(edge>history.scrollTop+history.clientHeight)history.scrollTop=edge-history.clientHeight;
   }
   function render(state,inputError=null){
@@ -101,7 +114,7 @@ function open(initial,options={}) {
   }
   function tick(){if(closed||!automatic)return;const state=runtime.run(250);if(state.status!=='paused')automatic=false;render(state);if(automatic)timer=setTimeout(tick,0);}
   function run(){clearTimeout(timer);automatic=true;tick();}
-  function restart(){clearTimeout(timer);automatic=false;data=options.readSource?.()||initial;renderedText='\0';requestToken='';inputResolved=false;runtime=createPrgmPreview(data.source,{name:data.name,angleMode:$('[data-angle]').value});render(runtime.snapshot());run();}
+  function restart(){clearTimeout(timer);automatic=false;archiveRun();data=options.readSource?.()||initial;renderedText='\0';requestToken='';inputResolved=false;runtime=createPrgmPreview(data.source,{name:data.name,angleMode:$('[data-angle]').value});render(runtime.snapshot());run();}
   function answer(cancel=false){if(!runtime?.pending)return;const state=runtime.answer($('[data-input]').value,{cancel});if(state.inputError){render(state,state.inputError);$('[data-input]').focus({preventScroll:true});return;}inputResolved=true;run();}
   function scroll(direction){$('.prgm-preview-history').scrollBy({top:direction*48,behavior:'smooth'});}
   function keys(event){
@@ -116,6 +129,7 @@ function open(initial,options={}) {
   $('[data-step]').onclick=()=>{automatic=false;clearTimeout(timer);render(runtime.step());};
   $('[data-stop]').onclick=()=>{automatic=false;clearTimeout(timer);render(runtime.stop());};
   $('[data-restart]').onclick=restart;$('[data-angle]').onchange=restart;
+  $('[data-clear-history]').onclick=()=>{previousRuns.replaceChildren();$('[data-clear-history]').disabled=true;history.scrollTop=0;};
   $('[data-request]').onsubmit=e=>{e.preventDefault();e.stopPropagation();answer();};$('[data-cancel]').onclick=()=>answer(true);
   $('[data-enter]').onclick=()=>answer();$('[data-escape]').onclick=()=>answer(true);
   overlay.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>scroll(Number(b.dataset.scroll)));
