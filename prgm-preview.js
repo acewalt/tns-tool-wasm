@@ -28,8 +28,21 @@ function open(initial,options={}) {
   for(const [selector,value] of Object.entries({'#prgm-preview-title':t.title,'[data-note]':t.note,'[data-expand]':t.expand,'[data-close]':t.close,'[data-run]':t.run,'[data-step]':t.step,'[data-stop]':t.stop,'[data-restart]':t.restart,'[data-angle-label]':t.angle,'[data-keys]':t.keys,'[data-copy]':t.copy,'[data-line]':t.viewLine,'[data-variables-title]':t.variables,'[data-ok]':t.ok,'[data-cancel]':t.cancel,'[data-support]':t.support,'[data-help]':t.help}))$(selector).textContent=value;
   $('[data-request]').setAttribute('aria-label',t.request);
   document.body.append(overlay);const oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
-  let runtime=null, snapshot=null, timer=null, automatic=false, expanded=false, closed=false, requestToken='', renderedText='', data=initial;
+  let runtime=null, snapshot=null, timer=null, automatic=false, expanded=false, closed=false, requestToken='', renderedText='', inputResolved=false, data=initial;
   const history=$('.prgm-preview-history'), output=$('[data-output]'), shell=$('.prgm-preview-screen-shell');
+  function layoutOutput(){
+    // The calculator stages the first pending Request's output at the dialog's
+    // left edge. Once that input is resolved, the transcript uses its usual
+    // document margin, including at later Requests. Keep the same row nodes.
+    const initialInput=Boolean(snapshot?.pending&&!inputResolved);
+    const changed=history.classList.contains('prgm-preview-first-input')!==initialInput;
+    history.classList.toggle('prgm-preview-first-input',initialInput);
+    if(initialInput){
+      const left=$('[data-request]').getBoundingClientRect().left-output.getBoundingClientRect().left;
+      history.style.setProperty('--prgm-initial-output-left',Math.max(8,left)+'px');
+    }else history.style.removeProperty('--prgm-initial-output-left');
+    return changed;
+  }
   function layout(){
     const available=$('.prgm-preview-center').clientWidth;
     const width=Math.max(1,Math.min(expanded?800:320,available));
@@ -37,6 +50,7 @@ function open(initial,options={}) {
     const bottom=history.scrollHeight-history.clientHeight-history.scrollTop<2;
     shell.style.width=width+'px';shell.style.height=height+'px';
     $('.prgm-preview-size-label').textContent=Math.round(width)+' × '+Math.round(height);
+    layoutOutput();
     if(bottom)history.scrollTop=history.scrollHeight;
   }
   const resize=new ResizeObserver(layout);resize.observe($('.prgm-preview-center'));window.addEventListener('resize',layout);
@@ -66,11 +80,12 @@ function open(initial,options={}) {
       renderedText=state.text;
     }
     $('[data-finish]').hidden=!['done','stopped','error'].includes(state.status);$('[data-finish]').textContent=state.error?state.error.message:state.status==='done'?t.done:t.stopped;
-    if(changed)followOutput();
     const error=inputError||state.error;$('[data-error]').hidden=!error;$('[data-error]').textContent=error?`${t.line} ${error.line||state.line} · ${error.message}`:'';
     $('[data-request]').hidden=!request;
     if(request){$('[data-prompt]').textContent=request.prompt;const token=state.executed+':'+request.line;if(requestToken!==token){requestToken=token;$('[data-input]').value='';$('[data-input]').focus({preventScroll:true});}}
     else requestToken='';
+    const layoutChanged=layoutOutput();
+    if(changed||layoutChanged)followOutput();
     const status=automatic&&state.status==='paused'?'running':state.status;
     $('[data-status]').textContent=`${t[status]||status} · ${t.line} ${state.line||1}`;
     $('[data-run]').textContent=automatic?t.pause:t.run;$('[data-run]').disabled=['waiting','done','error','stopped'].includes(state.status);
@@ -86,8 +101,8 @@ function open(initial,options={}) {
   }
   function tick(){if(closed||!automatic)return;const state=runtime.run(250);if(state.status!=='paused')automatic=false;render(state);if(automatic)timer=setTimeout(tick,0);}
   function run(){clearTimeout(timer);automatic=true;tick();}
-  function restart(){clearTimeout(timer);automatic=false;data=options.readSource?.()||initial;renderedText='\0';requestToken='';runtime=createPrgmPreview(data.source,{name:data.name,angleMode:$('[data-angle]').value});render(runtime.snapshot());run();}
-  function answer(cancel=false){if(!runtime?.pending)return;const state=runtime.answer($('[data-input]').value,{cancel});if(state.inputError){render(state,state.inputError);$('[data-input]').focus({preventScroll:true});return;}run();}
+  function restart(){clearTimeout(timer);automatic=false;data=options.readSource?.()||initial;renderedText='\0';requestToken='';inputResolved=false;runtime=createPrgmPreview(data.source,{name:data.name,angleMode:$('[data-angle]').value});render(runtime.snapshot());run();}
+  function answer(cancel=false){if(!runtime?.pending)return;const state=runtime.answer($('[data-input]').value,{cancel});if(state.inputError){render(state,state.inputError);$('[data-input]').focus({preventScroll:true});return;}inputResolved=true;run();}
   function scroll(direction){$('.prgm-preview-history').scrollBy({top:direction*48,behavior:'smooth'});}
   function keys(event){
     if(event.key==='Tab'){const controls=[...modal.querySelectorAll('button:not(:disabled),input:not([hidden]),select,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}return;}

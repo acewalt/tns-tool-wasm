@@ -32,9 +32,14 @@ las variables de la ejecución anterior.
 
 `ClrIO` no es una instrucción del catálogo TI-Nspire consultado. El preview lo
 avisa y lo omite para conservar el historial, como en las capturas de referencia:
-los menús y las respuestas anteriores siguen disponibles al desplazarse. La
-salida mantiene su margen y el espacio de la barra de desplazamiento desde el
-inicio. La presentación de resultados usa seis
+los menús y las respuestas anteriores siguen disponibles al desplazarse. Ante
+el primer `Request`, el bloque de salida comienza en la columna izquierda del
+popup, como en las capturas de la calculadora. Tras aceptar o cancelar esa
+primera entrada, el historial pasa al margen izquierdo del documento y lo
+conserva en las entradas siguientes. Una entrada inválida mantiene la posición
+inicial; reiniciar restablece ese primer estado. La vista ampliada recalcula la
+posición sin escalar la letra ni el popup. Se conserva el espacio de la barra
+de desplazamiento y los mismos nodos del historial. La presentación de resultados usa seis
 cifras significativas; los cálculos internos usan números JavaScript de doble
 precisión.
 
