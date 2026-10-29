@@ -1,3 +1,4 @@
 desktop/rom/prebuilt/*.js -text
 desktop/rom/prebuilt/*.wasm -text -diff
 desktop/rom/n64-roms.ini -text
+assets/rom/** -text

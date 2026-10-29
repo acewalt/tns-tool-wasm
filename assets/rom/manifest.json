@@ -1,0 +1,97 @@
+{
+  "version": 1,
+  "files": {
+    "nes-project.zip": {
+      "bytes": 193139,
+      "sha256": "c738f87629299291d5fbe65b3643301e252c2ab8a9b5ae2eb28c6c795f11e3b9"
+    },
+    "nes-player.tns": {
+      "bytes": 151557,
+      "sha256": "56c05c01fbb6f7afd48e9e3864361951e001b487f669ab2a1c1cb787119d263e"
+    },
+    "gb-project.zip": {
+      "bytes": 54388,
+      "sha256": "08b4b8e2982397d813b145d89bac772094ca58e7c93598651553d5da4f8e6fb7"
+    },
+    "gb-player.tns": {
+      "bytes": 77126,
+      "sha256": "ee669bd4184c0fe3572afea9df8dc71851ab4515ed0d9e73ef192146cf1b7f72"
+    },
+    "snes-project.zip": {
+      "bytes": 385763,
+      "sha256": "1609e143939b2f014ab82252bfdbd8dae8b426bab56bbabd55fe344d1c17fd0e"
+    },
+    "snes-player.tns": {
+      "bytes": 256250,
+      "sha256": "7eea3d1b35c39192b04b3c3141247ccc636dc13668a77dc5e186ef8a335b5feb"
+    },
+    "gba-project.zip": {
+      "bytes": 455359,
+      "sha256": "6effa8aa6efa46fed156564fdd7c8be9dc0cdaafb970befb86af4d0aebf8e878"
+    },
+    "gba-player.tns": {
+      "bytes": 239330,
+      "sha256": "8118ce01bd252c87bb46cdd79146366e6960bff6de1da055b22f6af07b3adc30"
+    },
+    "nds-project.zip": {
+      "bytes": 213406,
+      "sha256": "8a621c21124b35141bfe6c09e16203b66f36a92c5fda5dc687ea22b9f7c79a3d"
+    },
+    "nds-player.tns": {
+      "bytes": 304116,
+      "sha256": "d2869b748c0cc314332f1a5ce465e44f5a99fcf4c85ea88c870bec0c7ce69768"
+    },
+    "n64-project.zip": {
+      "bytes": 1559576,
+      "sha256": "bd9b208a138af1c8df33f122cdb6c03686298a8156de2dec6b6b515e55829d75"
+    },
+    "n64-player.tns": {
+      "bytes": 936441,
+      "sha256": "7af6908384be3be2c0cd44967c23239d9dedc8937c6b9c50a6e9ae47201d5b5f"
+    },
+    "binjgb.js": {
+      "bytes": 13640,
+      "sha256": "a68e5854b5d68339a34c0aa0b6dbeacd615ed316657ee17b63dafa5e00561b09"
+    },
+    "binjgb.wasm": {
+      "bytes": 88269,
+      "sha256": "52c165069441a09180b4bd63464318aa7b861b1d36e0d05e8047b48619fd2f0b"
+    },
+    "snes-preview.js": {
+      "bytes": 61608,
+      "sha256": "109db731105b39c56f33da3358569fb5afcdbcf8ca167581d4ef5b70c9e45ad9"
+    },
+    "snes-preview.wasm": {
+      "bytes": 575770,
+      "sha256": "846ba56d1272fb86b3f30288cb50b89519686c16fe9b441540665a3fb0062943"
+    },
+    "gba-preview.js": {
+      "bytes": 63849,
+      "sha256": "cfffce5738db0fd75f29525a9a4452ca74d5ddacf38583a5d17ca0a653a9ea4d"
+    },
+    "gba-preview.wasm": {
+      "bytes": 367394,
+      "sha256": "a0f1313471011e74876b64cd054c890f2024127daa37056026cd8000c0ce4961"
+    },
+    "nds-preview.js": {
+      "bytes": 70999,
+      "sha256": "cf034a12199655ab1b16f5a5fd015a9d8137fb0fc29f656a2c816ff233cbf12e"
+    },
+    "nds-preview.wasm": {
+      "bytes": 633269,
+      "sha256": "b07049833ef0a7dd02932c13bf560bed1cc927fe30d1fc5e08ebd46d12ff9e1f"
+    },
+    "n64-preview.js": {
+      "bytes": 74510,
+      "sha256": "6bc09cb8f8e36bf54ff809e0b9656fa41f887866f462c02375f70ac8337c29e3"
+    },
+    "n64-preview.wasm": {
+      "bytes": 630406,
+      "sha256": "5c5009c7893641e584710cfc80437e2c3c87e981a6fcf2f71763a8a60d96e28e"
+    },
+    "jszip.min.js": {
+      "bytes": 97630,
+      "sha256": "acc7e41455a80765b5fd9c7ee1b8078a6d160bbbca455aeae854de65c947d59e"
+    }
+  }
+}

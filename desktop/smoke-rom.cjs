@@ -24,7 +24,7 @@ async function checkRom(win,report){
  })()`);
  await fs.writeFile(report+'.rom.json',JSON.stringify(result,null,2));return result;
 }
-async function checkBrowser(win){return win.webContents.executeJavaScript(`(()=>{const b=document.querySelector('#xml-rom-converter');if(!b)throw Error('Browser ROM menu missing');b.click();const input=document.querySelector('[data-rom-file]'),link=document.querySelector('.rom-download');if(!input.disabled||!link?.href.includes('/releases/latest/download/'))throw Error('Browser ROM desktop guidance missing');window.TnsRomConverter.close();return{ok:true,desktopRequired:true};})()`);}
+async function checkBrowser(win){return win.webContents.executeJavaScript(`(()=>{const b=document.querySelector('#xml-rom-converter');if(!b)throw Error('Browser ROM menu missing');b.click();const input=document.querySelector('[data-rom-file]');if(input.disabled||!window.TnsRomWeb)throw Error('Browser ROM converter disabled');window.TnsRomConverter.close();return{ok:true,desktopRequired:false};})()`);}
 async function checkGb(win,report){
  const fixture=Buffer.from(require('./rom-test-gb.cjs')({battery:true})).toString('base64');
  const result=await win.webContents.executeJavaScript(`(async()=>{

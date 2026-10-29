@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20261027-ndless-live-compiled-preview";
+  const V="20261028-rom-web-converter-v1";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
@@ -105,6 +105,7 @@
     .then(() => loadScript('script[data-ndless-live-preview="true"]', `./ndless-live-preview.js?v=${V}`, "ndlessLivePreview"))
     .then(() => loadScript('script[data-ndless-executable-preview="true"]', `./ndless-executable-preview.js?v=${V}`, "ndlessExecutablePreview"))
     .then(() => loadScript('script[data-rom-gb-preview="true"]', `./rom-gb-preview.js?v=${V}`, "romGbPreview"))
+    .then(() => loadScript('script[data-rom-web-converter="true"]', `./rom-web-converter.js?v=${V}`, "romWebConverter"))
     .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=${V}`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;

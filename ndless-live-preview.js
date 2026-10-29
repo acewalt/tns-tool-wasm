@@ -18,7 +18,7 @@
     worker.onmessage=({data})=>{if(ended||!data.stage)return;if(data.stage==="error"||data.stage==="exited")end();else if(data.stage==="dialog")clearTimeout(timer);else if(!paused)armWatchdog();onUpdate(data);};
     worker.onerror=event=>{event.preventDefault();end();onUpdate({stage:"error",error:event.message||"Worker failed."});};
     armWatchdog(20000);
-    const base=new URL('./__desktop/unicorn/',document.baseURI);
+    const base=new URL(window.TnsDesktop?'./__desktop/unicorn/':'https://cdn.jsdelivr.net/npm/@alexaltea/unicorn-js@1.0.3/dist/',document.baseURI);
     worker.postMessage({type:"start",bytes:artifact.bytes,files,args,engine:new URL('unicorn.js',base).href,wasm:new URL('unicorn.wasm',base).href});
     return{stop:end,pause(value){if(ended)return;paused=value;clearTimeout(timer);worker.postMessage({type:"pause",value});if(!value)armWatchdog();},key(code,down){if(!ended)worker.postMessage({type:"key",code,down});},respondDialog(id,value){if(ended)return;worker.postMessage({type:"dialog",id,value});armWatchdog();}};
   }
