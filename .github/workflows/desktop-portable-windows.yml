@@ -27,6 +27,9 @@ on:
       - 'tests/ndless-export-roundtrip.test.js'
       - 'tests/desktop-project-profile.test.cjs'
       - 'rom-*.js'
+      - 'rom-converter.css'
+      - 'assets/rom-console-icons/**'
+      - 'tests/rom-converter-design.test.cjs'
       - 'tests/rom-cores.test.cjs'
       - 'tests/rom-converter.test.cjs'
       - 'tests/ndless-live-session.test.js'
@@ -78,6 +81,7 @@ jobs:
       - run: node --test tests/ndless-live-session.test.js
       - run: node --test tests/desktop-project-profile.test.cjs
       - run: node --test tests/rom-converter.test.cjs
+      - run: node --test tests/rom-converter-design.test.cjs
       - run: node tests/ndless-export-roundtrip.test.js
       - run: node tests/ndless-arm-runtime.test.js
       - run: node --test tests/prgm-preview.test.js
@@ -193,6 +197,16 @@ jobs:
           if-no-files-found: ignore
       - name: Export original playable source projects
         run: node tools/package-ndless-games.cjs
+      - name: Verify ROM interface, console icons, controls and mobile layout
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = (Resolve-Path 'node_modules/electron/dist/electron.exe').Path
+          $proc = Start-Process -FilePath $exe -ArgumentList 'desktop/smoke-rom-design.cjs' -WindowStyle Hidden -PassThru -RedirectStandardOutput 'release/rom-design-ci.log' -RedirectStandardError 'release/rom-design-ci.err'
+          if (!$proc.WaitForExit(120000)) { $proc.Kill(); throw 'ROM interface acceptance timed out' }
+          if ($proc.ExitCode -ne 0) { Get-Content 'release/rom-design-report.json'; throw 'ROM interface acceptance failed' }
+          $report = Get-Content 'release/rom-design-report.json' -Raw | ConvertFrom-Json
+          if (!$report.ok) { throw 'ROM interface did not pass' }
       - name: Pack Windows portable folder ZIP (extract once)
         run: npm run desktop:build:win
         env:
@@ -232,7 +246,11 @@ jobs:
         if: always()
         with:
           name: Portable-acceptance-report
-          path: ${{ runner.temp }}/portable-smoke.json*
+          path: |
+            ${{ runner.temp }}/portable-smoke.json*
+            release/rom-design-*.png
+            release/rom-design-report.json
+            release/rom-design-ci.*
           if-no-files-found: ignore
       - uses: actions/upload-artifact@v4
         with:

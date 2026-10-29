@@ -20,6 +20,8 @@ if (!$report.romCores.ok -or @($report.romCores.cases).Count -ne 4 -or @($report
 $games = Get-Content (Join-Path $env:RUNNER_TEMP 'community-preview/report.json') -Raw | ConvertFrom-Json
 if (!$games.ok -or @($games.results).Count -ne 2 -or !($games.results | Where-Object { $_.game -eq 'nDoom' -and $_.cameraChange -gt .15 -and $_.ammoHudChange -gt .003 }) -or !($games.results | Where-Object { $_.game -eq 'NesNspire' -and $_.controller -and $_.cleanExit })) { throw 'Both real community games must pass before publication' }
 $stage = Join-Path $env:RUNNER_TEMP 'portable-release-assets'
+$romDesign = Get-Content 'release/rom-design-report.json' -Raw | ConvertFrom-Json
+if (!$romDesign.ok -or !$romDesign.controls.headerIcon -or !$romDesign.controls.expanded -or !$romDesign.controls.pauseResume -or !$romDesign.reset.monoHeaderIcon) { throw 'ROM Converter design acceptance is required' }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 $asset = Join-Path $stage 'TNS-Tool-Portable-Windows-x64.zip'
 Copy-Item -LiteralPath $zip -Destination $asset
@@ -30,6 +32,8 @@ $gamePack = (Resolve-Path 'release/preview-games/TNS-Preview-Games.zip').Path
 $notes = Join-Path $stage 'notes.md'
 @"
 TNS Tool Portable **$version** para Windows x64.
+
+ROM Converter estrena panel de tres columnas, iconos por consola detectada, selección al arrastrar una ROM, cruceta y botones de juego, controles de ejecución, vista ampliada e información del cartucho. Se verificaron los controles y el diseño móvil. El mismo panel está disponible en la web.
 
 Descarga **TNS-Tool-Portable-Windows-x64.zip**, extrae todo y abre **TNS Tool Portable.exe**. El título muestra la versión. El SDK y los motores están incluidos y funcionan sin conexión.
 
