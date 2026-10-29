@@ -17,6 +17,7 @@ async function checkPrgm(win,report){
     const history=$('.prgm-preview-history'), originalRows=[...$('[data-output]').children];
     const initialWidth=history.clientWidth, initialLeft=originalRows[0].getBoundingClientRect().left;
     const font=getComputedStyle(history).fontSize, popup=$('[data-request]').getBoundingClientRect();
+    if(Math.abs(initialLeft-popup.left)>1)throw Error('First pending Request output is not aligned with the calculator dialog');
     const inputFont=getComputedStyle($('[data-input]')).fontSize, executed=state().executed;
     $('[data-input]').value='1+0';$('[data-expand]').click();
     await new Promise(r=>setTimeout(r,80));
@@ -28,12 +29,17 @@ async function checkPrgm(win,report){
     $('[data-expand]').click();await new Promise(r=>setTimeout(r,80));
     $('[data-input]').value='1';$('[data-request]').requestSubmit();
     if(state().pending?.variable!=='seleccion'||!state().text.includes('MENU PRINCIPAL')||!state().text.includes('op: 1'))throw Error('First answer discarded calculator history');
-    if(originalRows.some((row,i)=>$('[data-output]').children[i]!==row)||history.clientWidth!==initialWidth||Math.abs(originalRows[0].getBoundingClientRect().left-initialLeft)>1)
-      throw Error('Answer rebuilt or horizontally shifted the existing output');
+    const transcriptLeft=originalRows[0].getBoundingClientRect().left;
+    if(originalRows.some((row,i)=>$('[data-output]').children[i]!==row)||history.clientWidth!==initialWidth)
+      throw Error('Answer rebuilt the existing output or changed the scrollbar gutter');
     const screenBounds=$('.prgm-preview-screen').getBoundingClientRect(), promptBounds=$('[data-request]').getBoundingClientRect();
+    if(Math.abs(transcriptLeft-screenBounds.left-15)>1||initialLeft-transcriptLeft<30)
+      throw Error('First answer did not move the calculator transcript to the document margin');
     if(Math.abs(promptBounds.y+promptBounds.height/2-screenBounds.y-screenBounds.height/2)>1)throw Error('Request dialog is not centered like the calculator');
     for(const value of [2,6,2,56,5,41]){
       $('[data-input]').value=String(value);$('[data-request]').requestSubmit();
+      if(Math.abs(originalRows[0].getBoundingClientRect().left-transcriptLeft)>1)
+        throw Error('A later Request recentered the existing transcript');
     }
     if(state().status!=='done'||!state().text.includes('(t)=0.70966 s'))throw Error('Physics screenshot route failed');
     const screen=$('.prgm-preview-screen');
@@ -46,11 +52,13 @@ async function checkPrgm(win,report){
     if(state().pending?.variable!=='opcion'||state().variables.opcion!==undefined)throw Error('Restart leaked old variables');
     const invalid='1/0';$('[data-input]').value=invalid;$('[data-request]').requestSubmit();
     if($('[data-error]').hidden||state().status!=='waiting')throw Error('Invalid input did not remain recoverable');
+    if(Math.abs($('[data-output]').firstElementChild.getBoundingClientRect().left-$('[data-request]').getBoundingClientRect().left)>1)
+      throw Error('Invalid first input moved the pending output to the document margin');
     $('[data-input]').value='1';$('[data-request]').requestSubmit();
     if(!$('[data-error]').hidden||state().pending.variable!=='seleccion')throw Error('Corrected input failed');
     $('[data-restart]').click();
     await new Promise(r=>setTimeout(r,100));
-    return {ok:true,toolbar:true,viewport:{width:320,height:240},expanded:true,expandedCanvas:true,stableHistory:true,fixedPopup:true,physicsResult:0.70966,requests:7,restart:true,inputRecovery:true};
+    return {ok:true,toolbar:true,viewport:{width:320,height:240},expanded:true,expandedCanvas:true,stableHistory:true,firstInputLayout:true,initialOutputLeft:initialLeft-screenBounds.left,transcriptLeft:transcriptLeft-screenBounds.left,fixedPopup:true,physicsResult:0.70966,requests:7,restart:true,inputRecovery:true};
   })()`);
   await fs.writeFile(report+'.prgm.png',(await win.webContents.capturePage()).toPNG());
   await win.webContents.executeJavaScript(`(()=>{
@@ -68,6 +76,9 @@ async function checkPrgm(win,report){
     document.querySelector('#xml-code').value='Prgm\nDisp "UNSAVED EDIT"\nEndPrgm';
     document.querySelector('.prgm-preview-overlay [data-restart]').click();
     if(window.TnsPrgmPreview.getSnapshot().text!=='UNSAVED EDIT')throw Error('Refresh ignored unsaved source');
+    const output=document.querySelector('.prgm-preview-overlay [data-output]').firstElementChild;
+    const screen=document.querySelector('.prgm-preview-overlay .prgm-preview-screen');
+    if(Math.abs(output.getBoundingClientRect().left-screen.getBoundingClientRect().left-15)>1)throw Error('Program without Request inherited the initial input inset');
     document.querySelector('.prgm-preview-overlay [data-close]').click();
     if(document.querySelector('.prgm-preview-overlay'))throw Error('Prgm close failed');
     document.querySelector('#xml-code').value='Func\nReturn 1\nEndFunc';
