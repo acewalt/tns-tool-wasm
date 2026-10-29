@@ -1,6 +1,6 @@
 # TNS Tool WASM
 
-**TNS Tool WASM permite crear, editar y previsualizar contenido de TI-Nspire desde el navegador. Ahora incluye ROM Converter y transferencia USB directa a la calculadora desde la web. La creación, edición y compilación de proyectos Ndless C/C++ ya funciona en TNS Tool Portable para Windows, con el SDK incluido. La versión de escritorio para Linux está prevista próximamente. Algunas funciones de preview y la compatibilidad de los juegos siguen siendo experimentales.**
+**TNS Tool WASM lets you create, edit and preview TI-Nspire content in your browser. It now includes ROM Converter and direct USB file transfers to the calculator from the website. You can create, edit and compile Ndless C/C++ projects in TNS Tool Portable for Windows, with the SDK included. A Linux desktop version is coming soon. Some preview features and game compatibility remain experimental.**
 
 TNS Tool WASM is an experimental browser-based toolkit for TI-Nspire workflows.
 
