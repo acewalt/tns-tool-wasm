@@ -18,6 +18,11 @@ async function checkPrgm(win,report){
     const initialWidth=history.clientWidth, initialLeft=originalRows[0].getBoundingClientRect().left;
     const font=getComputedStyle(history).fontSize, popup=$('[data-request]').getBoundingClientRect();
     if(Math.abs(initialLeft-popup.left)>1)throw Error('First pending Request output is not aligned with the calculator dialog');
+    const firstScreen=$('.prgm-preview-screen').getBoundingClientRect();
+    const firstCallTop=$('[data-call]').getBoundingClientRect().top-firstScreen.top;
+    const firstOption=originalRows[1].getBoundingClientRect();
+    if($('[data-previous-runs]').childElementCount||firstCallTop<70||firstOption.top<popup.bottom-1)
+      throw Error('First execution still hides the menu behind Request on an empty calculator page');
     const inputFont=getComputedStyle($('[data-input]')).fontSize, executed=state().executed;
     $('[data-input]').value='1+0';$('[data-expand]').click();
     await new Promise(r=>setTimeout(r,80));
@@ -27,6 +32,8 @@ async function checkPrgm(win,report){
     if(getComputedStyle($('.prgm-preview-screen')).transform!=='none'||getComputedStyle($('.prgm-preview-chrome')).display!=='none')throw Error('Expanded view did not use the Lua-style canvas layout');
     if($('[data-input]').value!=='1+0'||state().executed!==executed)throw Error('Expanded view discarded input or advanced the program');
     $('[data-expand]').click();await new Promise(r=>setTimeout(r,80));
+    if(Math.abs($('[data-call]').getBoundingClientRect().top-firstScreen.top-firstCallTop)>1)
+      throw Error('Returning from expanded view lost first-run vertical placement');
     $('[data-input]').value='1';$('[data-request]').requestSubmit();
     if(state().pending?.variable!=='seleccion'||!state().text.includes('MENU PRINCIPAL')||!state().text.includes('op: 1'))throw Error('First answer discarded calculator history');
     const transcriptLeft=originalRows[0].getBoundingClientRect().left;
@@ -58,6 +65,8 @@ async function checkPrgm(win,report){
     const historyExecuted=state().executed;$('[data-input]').value='1+0';$('[data-clear-history]').click();
     if($('[data-previous-runs]').childElementCount||state().executed!==historyExecuted||$('[data-input]').value!=='1+0'||!$('[data-clear-history]').disabled)
       throw Error('Clearing earlier runs changed the pending program or input');
+    if(Math.abs($('[data-call]').getBoundingClientRect().top-screenBounds.top-firstCallTop)>1)
+      throw Error('Clearing history lost first-run placement on the empty page');
     const screen=$('.prgm-preview-screen');
     if(screen.offsetWidth!==320||screen.offsetHeight!==240)throw Error('Wrong calculator viewport');
     const normal=$('.prgm-preview-screen-shell').getBoundingClientRect().width;
@@ -74,7 +83,7 @@ async function checkPrgm(win,report){
     if(!$('[data-error]').hidden||state().pending.variable!=='seleccion')throw Error('Corrected input failed');
     $('[data-restart]').click();
     await new Promise(r=>setTimeout(r,100));
-    return {ok:true,toolbar:true,viewport:{width:320,height:240},expanded:true,expandedCanvas:true,stableHistory:true,firstInputLayout:true,historyAcrossRuns:true,previousResult:9800,repeatedCallTop:callTop,initialOutputLeft:initialLeft-screenBounds.left,transcriptLeft:transcriptLeft-screenBounds.left,fixedPopup:true,physicsResult:0.70966,requests:12,restart:true,inputRecovery:true};
+    return {ok:true,toolbar:true,viewport:{width:320,height:240},expanded:true,expandedCanvas:true,stableHistory:true,firstInputLayout:true,firstRunPlacement:true,firstCallTop,historyAcrossRuns:true,previousResult:9800,repeatedCallTop:callTop,initialOutputLeft:initialLeft-screenBounds.left,transcriptLeft:transcriptLeft-screenBounds.left,fixedPopup:true,physicsResult:0.70966,requests:12,restart:true,inputRecovery:true};
   })()`);
   await fs.writeFile(report+'.prgm.png',(await win.webContents.capturePage()).toPNG());
   await win.webContents.executeJavaScript(`(()=>{

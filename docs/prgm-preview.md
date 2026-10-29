@@ -41,7 +41,10 @@ sesión de historial; no se guardan sus resultados fuera del panel.
 avisa y lo omite para conservar el historial, como en las capturas de referencia:
 los menús y las respuestas anteriores siguen disponibles al desplazarse. Ante
 el primer `Request`, el bloque de salida comienza en la columna izquierda del
-popup, como en las capturas de la calculadora. Tras aceptar o cancelar esa
+popup, como en las capturas de la calculadora. En tamaño calculadora, una primera
+ejecución corta se coloca al pie del área de salida, de modo que las opciones
+del menú aparezcan debajo del popup incluso si el historial está vacío. No se
+insertan resultados de ejecuciones inexistentes. Tras aceptar o cancelar esa
 primera entrada, el historial pasa al margen izquierdo del documento y lo
 conserva en las entradas siguientes. Una entrada inválida mantiene la posición
 inicial; reiniciar restablece ese primer estado. La vista ampliada recalcula la

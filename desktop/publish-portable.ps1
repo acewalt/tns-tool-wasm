@@ -12,6 +12,7 @@ if (!$report.prgmPreview.ok -or !$report.browserPrgmPreview.ok) { throw 'Prgm pr
 if (!$report.prgmPreview.stableHistory -or !$report.prgmPreview.expandedCanvas -or !$report.browserPrgmPreview.stableHistory -or !$report.browserPrgmPreview.expandedCanvas) { throw 'Prgm history and expanded canvas acceptance is required' }
 if (!$report.prgmPreview.firstInputLayout -or !$report.browserPrgmPreview.firstInputLayout) { throw 'Prgm first Request and subsequent transcript layout acceptance is required' }
 if (!$report.prgmPreview.historyAcrossRuns -or !$report.browserPrgmPreview.historyAcrossRuns) { throw 'Prgm previous-run history and vertical placement acceptance is required' }
+if (!$report.prgmPreview.firstRunPlacement -or !$report.browserPrgmPreview.firstRunPlacement) { throw 'Prgm first execution placement on an empty calculator page is required' }
 if (!$report.ndlessPreview.ok -or !$report.ndlessPreview.immediateInvalidation -or !$report.ndlessPreview.keyboard -or !$report.ndlessPreview.pause -or !$report.ndlessPreview.sourceError -or !$report.ndlessPreview.infiniteLoopStopped) { throw 'Compiled Ndless live preview acceptance is required' }
 if (!$report.ndlessPreview.resources -or !$report.ndlessPreview.quotedArguments -or !$report.ndlessPreview.clearResources) { throw 'Preview program resources and arguments acceptance is required' }
 if (!$report.ndlessPreview.nativeDialog -or !$report.ndlessPreview.spritesWithoutBmp) { throw 'Native missing-resource dialog acceptance is required' }
@@ -35,7 +36,9 @@ $notes = Join-Path $stage 'notes.md'
 @"
 TNS Tool Portable **$version** para Windows x64.
 
-Prgm Preview conserva las ejecuciones anteriores al reiniciar: su último resultado y el separador Hecho quedan sobre la nueva llamada, reproduciendo la colocación vertical de las capturas de la calculadora. Limpiar historial quita esas ejecuciones sin alterar la entrada activa. Antes de responder al primer Request, el bloque de salida parte de la columna del popup; después pasa al margen izquierdo. Se ajustó el ancho del popup y el desplazamiento de salida. Se comprobó con el programa real de física de 602 líneas, el resultado previo Ep=9800 J, teclado, vista ampliada y pantalla estrecha. El mismo cambio está disponible en la web.
+Prgm Preview corrige la colocación vertical de la primera ejecución con el historial vacío: la llamada y la salida corta bajan al pie de la pantalla para que las opciones del menú queden debajo del primer Request. Después de responder, la salida vuelve al margen normal. No requiere ejecutar antes el programa ni inventa resultados anteriores. Se conserva al volver de la vista ampliada, corregir una entrada inválida o limpiar el historial. Se comprobó con el programa real de física de 602 líneas, teclado, pantalla estrecha y el historial de ejecuciones. El mismo cambio está disponible en la web.
+
+Se conserva el historial de ejecuciones de la versión anterior; Limpiar historial quita esas ejecuciones sin alterar la entrada activa. La vista ampliada mantiene el tamaño de letra y del popup, con más espacio para el contenido.
 
 ROM Converter conserva su panel de tres columnas, iconos por consola detectada, selección al arrastrar una ROM, cruceta y botones de juego, controles de ejecución, vista ampliada e información del cartucho.
 
