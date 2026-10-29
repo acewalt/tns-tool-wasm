@@ -31,7 +31,7 @@ function open(initial,options={}) {
   $('[data-request]').setAttribute('aria-label',t.request);
   document.body.append(overlay);const oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
   let runtime=null, snapshot=null, timer=null, automatic=false, expanded=false, closed=false, requestToken='', renderedText='', inputResolved=false, data=initial;
-  const history=$('.prgm-preview-history'), output=$('[data-output]'), shell=$('.prgm-preview-screen-shell'), previousRuns=$('[data-previous-runs]');
+  const history=$('.prgm-preview-history'), output=$('[data-output]'), shell=$('.prgm-preview-screen-shell'), previousRuns=$('[data-previous-runs]'), currentEntry=$('[data-current-entry]');
   function archiveRun(){
     if(!snapshot?.executed)return;
     const entry=document.createElement('div');entry.className='prgm-preview-entry prgm-preview-previous-entry';
@@ -54,6 +54,15 @@ function open(initial,options={}) {
       const left=$('[data-request]').getBoundingClientRect().left-output.getBoundingClientRect().left;
       history.style.setProperty('--prgm-initial-output-left',Math.max(8,left)+'px');
     }else history.style.removeProperty('--prgm-initial-output-left');
+    // Stage a short first-run entry at the bottom of the calculator viewport
+    // even on an empty page. Prior output is optional, never a prerequisite
+    // for placing the menu below Request. Expanded view keeps normal flow.
+    currentEntry.style.paddingTop='0px';
+    if(initialInput&&!expanded&&output.childElementCount){
+      const style=getComputedStyle(history);
+      const available=history.clientHeight-parseFloat(style.paddingTop)-parseFloat(style.paddingBottom);
+      currentEntry.style.paddingTop=Math.max(0,available-previousRuns.offsetHeight-currentEntry.offsetHeight)+'px';
+    }
     return changed;
   }
   function layout(){
@@ -129,7 +138,7 @@ function open(initial,options={}) {
   $('[data-step]').onclick=()=>{automatic=false;clearTimeout(timer);render(runtime.step());};
   $('[data-stop]').onclick=()=>{automatic=false;clearTimeout(timer);render(runtime.stop());};
   $('[data-restart]').onclick=restart;$('[data-angle]').onchange=restart;
-  $('[data-clear-history]').onclick=()=>{previousRuns.replaceChildren();$('[data-clear-history]').disabled=true;history.scrollTop=0;};
+  $('[data-clear-history]').onclick=()=>{previousRuns.replaceChildren();$('[data-clear-history]').disabled=true;history.scrollTop=0;layoutOutput();followOutput();};
   $('[data-request]').onsubmit=e=>{e.preventDefault();e.stopPropagation();answer();};$('[data-cancel]').onclick=()=>answer(true);
   $('[data-enter]').onclick=()=>answer();$('[data-escape]').onclick=()=>answer(true);
   overlay.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>scroll(Number(b.dataset.scroll)));

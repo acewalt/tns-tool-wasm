@@ -98,6 +98,8 @@ For the web version, use desktop **Chrome, Edge or Brave**, the HTTPS website, a
 
 Open a normal TNS in Syntax Doctor, select a `Prgm` block, and click **Prgm Preview** beside Run syntax. The preview reads the current editor code, including unsaved changes. Its calculator-style 320×240 screen includes text history and interactive `Request` / `RequestStr` dialogs, with Enter to accept input and Esc to cancel.
 
+In calculator-size view, the first pending input places a short output block near the bottom of the screen so the menu options appear below the dialog, including on a fresh preview with no previous runs. After the first answer, output returns to the normal document margin.
+
 Run/pause, step, stop and restart controls let you inspect variables and follow the current source line or an error. The expanded view gives the output more room and reflows text without restarting the program or discarding an active input. It simulates numerical TI-BASIC text programs; symbolic CAS, units, graphics and external functions are not emulated. Available in both the web and Windows versions. [Coverage and CLI/API usage](docs/prgm-preview.md).
 
 ## Feedback
