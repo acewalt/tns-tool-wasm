@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20261028-rom-console-interface-v2";
+  const V="20261029-syntax-doctor-general-v1";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";

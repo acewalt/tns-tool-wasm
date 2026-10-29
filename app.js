@@ -35,12 +35,12 @@ const I18N = {
     homeSubtitle: "Selecciona una herramienta del panel izquierdo o arrastra un archivo para comenzar.",
     homeDropTitle: "Arrastra y suelta archivos aqui",
     homeDropFormats: "Formatos soportados: .tns, .xml, .py",
-    homeShortcutXml: "Syntax Doctor XML",
+    homeShortcutXml: "Syntax Doctor",
     homeShortcutNormal: "TNS Normal",
     homeShortcutPython: "Python Program",
-    xmlDoctorDesc: "Editor visual para revisar, corregir e incrustar codigo dentro de XML.",
-    openXmlDoctor: "Abrir Syntax Doctor XML",
-    hideXmlDoctor: "Ocultar Syntax Doctor XML",
+    xmlDoctorDesc: "Editor visual para revisar y corregir código.",
+    openXmlDoctor: "Abrir Syntax Doctor",
+    hideXmlDoctor: "Ocultar Syntax Doctor",
     openTns: "Abrir TNS",
     openXml: "Abrir XML",
     openXmlFolder: "Abrir carpeta XML",
@@ -308,12 +308,12 @@ const I18N = {
     homeSubtitle: "Select a tool from the left panel or drag a file to begin.",
     homeDropTitle: "Drag and drop files here",
     homeDropFormats: "Supported formats: .tns, .xml, .py",
-    homeShortcutXml: "Syntax Doctor XML",
+    homeShortcutXml: "Syntax Doctor",
     homeShortcutNormal: "TNS Normal",
     homeShortcutPython: "Python Program",
-    xmlDoctorDesc: "Visual editor to inspect, fix, and embed code inside XML.",
-    openXmlDoctor: "Open Syntax Doctor XML",
-    hideXmlDoctor: "Hide Syntax Doctor XML",
+    xmlDoctorDesc: "Visual editor to inspect and fix code.",
+    openXmlDoctor: "Open Syntax Doctor",
+    hideXmlDoctor: "Hide Syntax Doctor",
     openTns: "Open TNS",
     openXml: "Open XML",
     openXmlFolder: "Open XML folder",
@@ -581,12 +581,12 @@ const I18N = {
     homeSubtitle: "Selectionnez un outil dans le panneau de gauche ou glissez un fichier pour commencer.",
     homeDropTitle: "Glissez-deposez les fichiers ici",
     homeDropFormats: "Formats pris en charge : .tns, .xml, .py",
-    homeShortcutXml: "Syntax Doctor XML",
+    homeShortcutXml: "Syntax Doctor",
     homeShortcutNormal: "TNS normal",
     homeShortcutPython: "Python Program",
-    xmlDoctorDesc: "Editeur visuel pour inspecter, corriger et incruster du code dans le XML.",
-    openXmlDoctor: "Ouvrir Syntax Doctor XML",
-    hideXmlDoctor: "Masquer Syntax Doctor XML",
+    xmlDoctorDesc: "Éditeur visuel pour examiner et corriger le code.",
+    openXmlDoctor: "Ouvrir Syntax Doctor",
+    hideXmlDoctor: "Masquer Syntax Doctor",
     openTns: "Ouvrir TNS",
     openXml: "Ouvrir XML",
     openXmlFolder: "Ouvrir dossier XML",
@@ -9105,7 +9105,7 @@ json.dumps({
   xmlDoctor.stagePrepared = true;
   const result = JSON.parse(payload);
 
-  // ProgramEditor is directly editable by Syntax Doctor XML.
+  // ProgramEditor is directly editable by Syntax Doctor.
   await scanXmlPrograms();
   const created = xmlDoctor.candidates.find((item) => item.program_name === result.program_name);
   if (created) selectXmlProgram(created.index);
@@ -18058,7 +18058,7 @@ function aboutContent() {
     "devIntro": "Desarrollado e implementado por Andres Mauricio Chaparro Pena. Contribuciones clave en este port:",
     "devItems": [
       "Diseno y desarrollo completo de la interfaz grafica de usuario (UI/UX), transformando un entorno ortodoxo de comandos (CMD) en una suite visual accesible.",
-      "Creacion de los modulos Syntax Doctor XML y Syntax Doctor PY: editores visuales dedicados a la inspeccion de errores de sintaxis y funciones de Auto Fix.",
+      "Creacion de los modulos Syntax Doctor y Syntax Doctor PY: editores visuales dedicados a la inspeccion de errores de sintaxis y funciones de Auto Fix.",
       "Inmersion visual para el usuario mediante la replicacion exacta del esquema de colores de la pantalla de la calculadora TI-Nspire.",
       "Desarrollo del sistema de conversion bidireccional .tns a .py y de .py a .tns para la logica de Python Program.",
       "Implementacion del idioma frances para dar soporte y accesibilidad al gran sector de la comunidad oficial de TI que habla este idioma."
@@ -18085,7 +18085,7 @@ function aboutContent() {
     "devIntro": "Developed and implemented by Andres Mauricio Chaparro Pena. Key contributions in this port:",
     "devItems": [
       "Complete UI/UX design and development, transforming an orthodox command-line environment (CMD) into an accessible visual suite.",
-      "Creation of Syntax Doctor XML and Syntax Doctor PY: visual editors dedicated to syntax-error inspection and Auto Fix features.",
+      "Creation of Syntax Doctor and Syntax Doctor PY: visual editors dedicated to syntax-error inspection and Auto Fix features.",
       "Visual immersion for users by closely reproducing the TI-Nspire calculator screen color scheme.",
       "Development of the bidirectional .tns to .py and .py to .tns conversion system for Python Program logic.",
       "Implementation of French language support to improve accessibility for the large French-speaking sector of the official TI community."
@@ -18112,7 +18112,7 @@ function aboutContent() {
     "devIntro": "Developpe et implemente par Andres Mauricio Chaparro Pena. Contributions cles dans ce port :",
     "devItems": [
       "Conception et developpement complets de l'interface graphique (UI/UX), transformant un environnement orthodoxe en ligne de commande (CMD) en une suite visuelle accessible.",
-      "Creation des modules Syntax Doctor XML et Syntax Doctor PY : editeurs visuels dedies a l'inspection des erreurs de syntaxe et aux fonctions Auto Fix.",
+      "Creation des modules Syntax Doctor et Syntax Doctor PY : editeurs visuels dedies a l'inspection des erreurs de syntaxe et aux fonctions Auto Fix.",
       "Immersion visuelle pour l'utilisateur grace a la reproduction fidele du schema de couleurs de l'ecran de la calculatrice TI-Nspire.",
       "Developpement du systeme de conversion bidirectionnelle .tns vers .py et .py vers .tns pour la logique Python Program.",
       "Implementation de la langue francaise afin de soutenir et d'ameliorer l'accessibilite pour le grand secteur francophone de la communaute officielle TI."

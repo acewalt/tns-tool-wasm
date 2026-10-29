@@ -13,15 +13,15 @@
     <script defer src="./stats-config.js?v=20261021-theme-reveal-v4"></script>
     <link rel="stylesheet" href="./ndless-desktop-required.css?v=20261027-desktop-required-v1" />
     <script defer src="./ndless-desktop-required.js?v=20261027-public-portable-download-v2"></script>
-    <script defer src="./app.js?v=20261027-prgm-preview-v1"></script>
-    <link rel="stylesheet" href="./prgm-preview.css?v=20261029-prgm-first-input-v3" />
-    <script type="module" src="./prgm-preview.js?v=20261029-prgm-first-input-v3"></script>
+    <script defer src="./app.js?v=20261029-syntax-doctor-general-v1"></script>
+    <link rel="stylesheet" href="./prgm-preview.css?v=20261029-prgm-history-v4" />
+    <script type="module" src="./prgm-preview.js?v=20261029-prgm-history-v4"></script>
     <script defer src="./theme-transition-toggle.js?v=20261021-theme-reveal-v4"></script>
     <script defer src="./love-project-compat.js?v=20260826-project-compat-v1"></script>
     <script defer src="./xml-program-editor-fix.js?v=20260826-program-editor-sync-v1"></script>
     <script defer src="./monaco-search-tools.js?v=20260827-editor-ui-polish-v2"></script>
     <script defer src="./monaco-search-adapter-fix.js?v=20260826-monaco-search-adapter-v1"></script>
-    <script defer src="./multi-image-upload.js?v=20261028-rom-console-interface-v2"></script>
+    <script defer src="./multi-image-upload.js?v=20261029-syntax-doctor-general-v1"></script>
     <script defer src="./ti-nspire-nnse.js?v=20261027-ack-sequence-v5"></script>
     <script defer src="./ti-nspire-webusb.js?v=20261027-ack-sequence-v7"></script>
     <script defer src="./ti-calculator-zip.js?v=20261022-item-actions-v5"></script>
@@ -84,11 +84,11 @@
           <div class="launcher-content">
             <img class="launcher-icon" src="./icon/Syntax_doctor_XML.png" alt="" />
             <div>
-              <h2>Syntax Doctor XML</h2>
-              <p data-i18n="xmlDoctorDesc">Editor visual para revisar, corregir e incrustar codigo dentro de XML.</p>
+              <h2>Syntax Doctor</h2>
+              <p data-i18n="xmlDoctorDesc">Editor visual para revisar y corregir código.</p>
             </div>
           </div>
-          <button id="xml-toggle-btn" data-i18n="openXmlDoctor">Abrir Syntax Doctor XML</button>
+          <button id="xml-toggle-btn" data-i18n="openXmlDoctor">Abrir Syntax Doctor</button>
         </section>
 
         <section class="panel module-launcher normal-launcher" data-open-target="normal">
@@ -124,7 +124,7 @@
             <span data-i18n="homeDropFormats">Formatos soportados: .tns, .xml, .py, .lua, .pdf, .bmp, .png, .jpg, .jpeg</span>
           </div>
           <div class="home-shortcuts">
-            <button type="button" id="home-open-xml" data-i18n="homeShortcutXml">Syntax Doctor XML</button>
+            <button type="button" id="home-open-xml" data-i18n="homeShortcutXml">Syntax Doctor</button>
             <button type="button" id="home-open-normal" data-i18n="homeShortcutNormal">TNS Normal</button>
             <button type="button" id="home-open-python" data-i18n="homeShortcutPython">Python Program</button>
           </div>
@@ -133,7 +133,7 @@
 
       <section id="xml-doctor-panel" class="panel doctor-panel collapsed">
         <div class="doctor-toolbar">
-          <h2>Syntax Doctor XML</h2>
+          <h2>Syntax Doctor</h2>
           <div class="xml-output-file-name" hidden>
             <button type="button" id="xml-output-filename-display" data-i18n-title="tnsOutputFileName" title="Nombre del archivo TNS" disabled>documento.tns</button>
             <input id="xml-output-filename" type="text" value="documento.tns" maxlength="180" autocomplete="off" spellcheck="false" data-i18n-title="tnsOutputFileName" aria-label="Nombre del archivo TNS" hidden disabled />

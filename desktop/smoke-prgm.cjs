@@ -42,6 +42,22 @@ async function checkPrgm(win,report){
         throw Error('A later Request recentered the existing transcript');
     }
     if(state().status!=='done'||!state().text.includes('(t)=0.70966 s'))throw Error('Physics screenshot route failed');
+    $('[data-restart]').click();
+    if(!$('[data-previous-runs]').textContent.includes('(t)=0.70966 s'))throw Error('Restart discarded the completed calculator entry');
+    const archivedLeft=$('[data-previous-runs] .prgm-preview-output-row').getBoundingClientRect().left;
+    if(Math.abs(archivedLeft-screenBounds.left-15)>1)throw Error('First Request shifted an earlier execution');
+    // Reproduce the supplied calculator screenshot with a real previous result.
+    for(const value of [3,2,2,100,10]){$('[data-input]').value=String(value);$('[data-request]').requestSubmit();}
+    if(state().status!=='done'||state().variables.energiapotencial!==9800)throw Error('Previous potential-energy calculation failed');
+    $('[data-restart]').click();
+    const previous=$('[data-previous-runs]').lastElementChild;
+    if(!previous.textContent.includes('Ep=9800 J')||!previous.querySelector('.prgm-preview-finish'))throw Error('Previous result and completion separator are missing');
+    const callTop=$('[data-call]').getBoundingClientRect().top-screenBounds.top;
+    const lastTop=$('[data-output]').lastElementChild.getBoundingClientRect().top-screenBounds.top;
+    if(callTop<70||lastTop<190||lastTop>220)throw Error('Previous history did not position the new menu below the first Request');
+    const historyExecuted=state().executed;$('[data-input]').value='1+0';$('[data-clear-history]').click();
+    if($('[data-previous-runs]').childElementCount||state().executed!==historyExecuted||$('[data-input]').value!=='1+0'||!$('[data-clear-history]').disabled)
+      throw Error('Clearing earlier runs changed the pending program or input');
     const screen=$('.prgm-preview-screen');
     if(screen.offsetWidth!==320||screen.offsetHeight!==240)throw Error('Wrong calculator viewport');
     const normal=$('.prgm-preview-screen-shell').getBoundingClientRect().width;
@@ -58,7 +74,7 @@ async function checkPrgm(win,report){
     if(!$('[data-error]').hidden||state().pending.variable!=='seleccion')throw Error('Corrected input failed');
     $('[data-restart]').click();
     await new Promise(r=>setTimeout(r,100));
-    return {ok:true,toolbar:true,viewport:{width:320,height:240},expanded:true,expandedCanvas:true,stableHistory:true,firstInputLayout:true,initialOutputLeft:initialLeft-screenBounds.left,transcriptLeft:transcriptLeft-screenBounds.left,fixedPopup:true,physicsResult:0.70966,requests:7,restart:true,inputRecovery:true};
+    return {ok:true,toolbar:true,viewport:{width:320,height:240},expanded:true,expandedCanvas:true,stableHistory:true,firstInputLayout:true,historyAcrossRuns:true,previousResult:9800,repeatedCallTop:callTop,initialOutputLeft:initialLeft-screenBounds.left,transcriptLeft:transcriptLeft-screenBounds.left,fixedPopup:true,physicsResult:0.70966,requests:12,restart:true,inputRecovery:true};
   })()`);
   await fs.writeFile(report+'.prgm.png',(await win.webContents.capturePage()).toPNG());
   await win.webContents.executeJavaScript(`(()=>{

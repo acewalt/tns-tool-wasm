@@ -15,7 +15,14 @@ la variable, si existe, y permite continuar como indica el manual de TI.
 Controles: ejecutar/pausar, paso, detener, reiniciar/actualizar, desplazar salida,
 copiar salida, ver variables y saltar a la línea actual o del error en el editor.
 Cambiar RAD/DEG reinicia el programa. Reiniciar vuelve a leer el editor y descarta
-las variables de la ejecución anterior.
+las variables de la ejecución anterior. La salida anterior y su separador
+«Hecho» se conservan en el historial de la sesión, como una nueva llamada en
+la página Calculadora. Si ya hay una ejecución previa, el seguimiento de salida
+deja visible su último resultado sobre la nueva llamada y coloca los menús
+debajo del popup; después de responder se desplaza para mostrar la nueva salida.
+**Limpiar historial** elimina esas ejecuciones anteriores sin cambiar el
+programa activo ni lo escrito en un `Request`. Cerrar el preview termina esta
+sesión de historial; no se guardan sus resultados fuera del panel.
 
 ## Cobertura inicial
 

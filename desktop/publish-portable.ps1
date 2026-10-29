@@ -11,6 +11,7 @@ if (!$report.ok -or $report.version -ne $version -or @($report.cases | Where-Obj
 if (!$report.prgmPreview.ok -or !$report.browserPrgmPreview.ok) { throw 'Prgm preview desktop/browser acceptance is required' }
 if (!$report.prgmPreview.stableHistory -or !$report.prgmPreview.expandedCanvas -or !$report.browserPrgmPreview.stableHistory -or !$report.browserPrgmPreview.expandedCanvas) { throw 'Prgm history and expanded canvas acceptance is required' }
 if (!$report.prgmPreview.firstInputLayout -or !$report.browserPrgmPreview.firstInputLayout) { throw 'Prgm first Request and subsequent transcript layout acceptance is required' }
+if (!$report.prgmPreview.historyAcrossRuns -or !$report.browserPrgmPreview.historyAcrossRuns) { throw 'Prgm previous-run history and vertical placement acceptance is required' }
 if (!$report.ndlessPreview.ok -or !$report.ndlessPreview.immediateInvalidation -or !$report.ndlessPreview.keyboard -or !$report.ndlessPreview.pause -or !$report.ndlessPreview.sourceError -or !$report.ndlessPreview.infiniteLoopStopped) { throw 'Compiled Ndless live preview acceptance is required' }
 if (!$report.ndlessPreview.resources -or !$report.ndlessPreview.quotedArguments -or !$report.ndlessPreview.clearResources) { throw 'Preview program resources and arguments acceptance is required' }
 if (!$report.ndlessPreview.nativeDialog -or !$report.ndlessPreview.spritesWithoutBmp) { throw 'Native missing-resource dialog acceptance is required' }
@@ -34,9 +35,11 @@ $notes = Join-Path $stage 'notes.md'
 @"
 TNS Tool Portable **$version** para Windows x64.
 
-Prgm Preview ajusta la posición del texto a las capturas de la calculadora: antes de responder al primer Request, el bloque de salida parte de la columna del popup; después de aceptar o cancelar, pasa al margen izquierdo y se mantiene ahí en las entradas siguientes. Una entrada inválida conserva el primer estado y Reiniciar lo restablece. La vista ampliada conserva la letra y el tamaño del popup. Se comprobó con el programa de física de 602 líneas, teclado y pantalla estrecha. El mismo cambio está disponible en la web.
+Prgm Preview conserva las ejecuciones anteriores al reiniciar: su último resultado y el separador Hecho quedan sobre la nueva llamada, reproduciendo la colocación vertical de las capturas de la calculadora. Limpiar historial quita esas ejecuciones sin alterar la entrada activa. Antes de responder al primer Request, el bloque de salida parte de la columna del popup; después pasa al margen izquierdo. Se ajustó el ancho del popup y el desplazamiento de salida. Se comprobó con el programa real de física de 602 líneas, el resultado previo Ep=9800 J, teclado, vista ampliada y pantalla estrecha. El mismo cambio está disponible en la web.
 
 ROM Converter conserva su panel de tres columnas, iconos por consola detectada, selección al arrastrar una ROM, cruceta y botones de juego, controles de ejecución, vista ampliada e información del cartucho.
+
+El módulo principal pasa a llamarse Syntax Doctor. Su descripción general para revisar y corregir código se actualizó en español, inglés y francés, junto con los accesos y el título restaurado al cerrar un proyecto Ndless.
 
 Descarga **TNS-Tool-Portable-Windows-x64.zip**, extrae todo y abre **TNS Tool Portable.exe**. El título muestra la versión. El SDK y los motores están incluidos y funcionan sin conexión.
 

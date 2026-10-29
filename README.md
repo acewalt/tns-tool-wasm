@@ -139,9 +139,9 @@ https://paypal.me/waltDx
   
  ![New](docs/images/new.gif)
 
-## Syntax Doctor XML
+## Syntax Doctor
 
-Syntax Doctor XML is a visual editor for TI-Nspire XML program blocks.
+Syntax Doctor is the general workspace for inspecting, editing and checking TI-Nspire code. Its tools include editable TNS/XML program blocks, Lua ScriptApps, numerical TI-BASIC Prgm previews and, in the Windows app, Ndless source projects.
 
 It includes:
 
