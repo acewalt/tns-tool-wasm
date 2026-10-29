@@ -1,6 +1,6 @@
 # TNS Tool WASM
 
-**TNS Tool WASM es una herramienta web experimental para trabajar con contenido de TI-Nspire/Lua. Algunas funciones, como Ndless, están en desarrollo experimental. TNS Tool Portable para Windows incluye el entorno nativo de compilación Ndless.**
+**TNS Tool WASM permite crear, editar y previsualizar contenido de TI-Nspire desde el navegador. Ahora incluye ROM Converter y transferencia USB directa a la calculadora desde la web. La creación, edición y compilación de proyectos Ndless C/C++ ya funciona en TNS Tool Portable para Windows, con el SDK incluido. La versión de escritorio para Linux está prevista próximamente. Algunas funciones de preview y la compatibilidad de los juegos siguen siendo experimentales.**
 
 TNS Tool WASM is an experimental browser-based toolkit for TI-Nspire workflows.
 
@@ -18,24 +18,87 @@ https://acewalt.github.io/tns-tool-wasm/
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
-Cierra la versión anterior, extrae todo el ZIP en una carpeta nueva y abre **TNS Tool Portable.exe**. La versión aparece en el título. El SDK de Ndless viene incluido.
+Cierra la versión anterior, extrae todo el ZIP en una carpeta nueva y abre **TNS Tool Portable.exe**. La versión aparece en el título. El SDK de Ndless viene incluido. **Los proyectos Ndless C/C++ se compilan actualmente solo en Windows; la versión para Linux llegará próximamente y todavía no tiene una descarga publicada.**
 
-To run an existing native TNS, choose **Preview** in **Edit Ndless**. Restart runs
-the current edited working copy. To edit C/C++ sources, import a source project
-ZIP with **Open Ndless Project**. [Executable preview and explicit SDK source
-profiles](desktop/README.md#preview-an-existing-ndless-tns).
+## What's new
 
-**File → ROM Converter** selects a local supported ROM, previews it, exports an
-editable Ndless project ZIP, or compiles a TNS. It detects the system from headers
-and supports the original European Super Mario 64 and compatible NES/GB/GBC
-cartridges. GB/GBC offers direct preview and persistent cartridge RAM. The desktop
-version includes pinned source templates, with ROM data generated locally from
-your selected file. Other detected systems need their own backends.
-[Supported formats and limits](desktop/README.md#rom-converter).
+- **ROM Converter:** select a local cartridge, detect its console, preview it with interactive controls, and download an editable project or calculator package. Available in the web and Windows versions.
+- **Working Ndless Projects on Windows:** create, open, edit, preview and compile supported C/C++ projects using the bundled ARM SDK. Linux desktop support is planned next.
+- **Direct calculator transfers from the website:** send and receive TNS files over USB, browse folders, create a destination folder, and capture the calculator screen.
+- **Interactive TI-BASIC Prgm preview:** test text programs, answer `Request` prompts, inspect variables, step through code and switch to an expanded view.
+- **Updated ROM Converter interface:** console-specific icons, a central game display, keyboard and on-screen controls, pause/restart, frame and FPS information, and an expanded preview.
+
+### Web and desktop availability
+
+| Feature | Web version | Windows portable |
+| --- | --- | --- |
+| XML/TNS editing, Lua/LÖVE and numerical Prgm previews | Available | Available |
+| ROM detection, supported cartridge previews and project ZIP export | Available | Available |
+| Prepare a ROM calculator package | Uses a precompiled ARM emulator and companion cartridge | Compiles the generated native project |
+| Create/open/edit and compile general Ndless C/C++ source projects | Requires the desktop version | Available; Ndless SDK included |
+| USB calculator manager | Available in a compatible WebUSB browser | Available through the desktop USB integration |
+
+**Linux desktop: coming soon.** The website can already be used from a compatible Linux browser; a Linux desktop package with the integrated Ndless compiler has not been released yet.
+
+## ROM Converter
+
+Open **File → ROM Converter** (Archivo → ROM Converter). Choose a ROM or a ZIP containing a single game, or drag it into the module. Detection reads the cartridge header rather than relying only on its filename. The interface shows the detected console with its icon, the selected file and its size.
+
+![ROM Converter: console detection, interactive preview and project/package downloads](docs/images/Converter_ROM.gif)
+
+Supported cartridge families:
+
+| Console | File formats | Status |
+| --- | --- | --- |
+| NES | `.nes` | Supported cartridges and mappers |
+| Game Boy / Game Boy Color | `.gb`, `.gbc` | Supported cartridge controllers; header-based GB/GBC detection |
+| Super Nintendo | `.sfc`, `.smc` | Supported LoROM/HiROM cartridges |
+| Game Boy Advance | `.gba` | Emulator integration available |
+| Nintendo 64 | `.z64`, `.v64`, `.n64` | Experimental; game compatibility and performance vary |
+| Nintendo DS | `.nds` | Experimental; game compatibility and performance vary |
+
+Use **Preview** to run the cartridge with the local emulator. The preview includes console-specific buttons, keyboard input, pause/resume, stop, restart and an expanded view. GB/GBC cartridge RAM is saved per game in the browser or desktop profile; preview saves are separate from calculator saves.
+
+- **Download project ZIP** exports the editable emulator sources and the selected cartridge resources. Open it with **Open Ndless Project** in TNS Tool Portable to edit and compile its C/C++ code.
+- **Web version:** **Download program + cartridge ZIP** prepares the calculator files locally using a precompiled ARM emulator. It does not require the Windows app or a compilation server. Keep the program and its companion cartridge `.tns` in the same calculator folder, then open the program.
+- **Windows version:** **Compile and download TNS** builds the generated source project with the included SDK. **Open project** opens those sources directly in the workspace. Some profiles produce a standalone TNS; packages that include a companion cartridge require both files in the same folder.
+
+ROM processing happens locally; the app does not upload your cartridge. No commercial games or ROMs are included. The Windows version also has a dedicated native-port path for the supported original European Super Mario 64 ROM; the web version uses the experimental N64 emulator.
+
+A successful preview or package build does not guarantee complete gameplay or compatibility with every calculator. Native output requires active Ndless and suitable hardware. See [supported profiles, size limits and controls](desktop/README.md#rom-converter) and [browser emulator sources and licenses](assets/rom/README.md).
+
+## Ndless Projects — Windows
+
+**Ndless Projects is functional in TNS Tool Portable for Windows.** The app includes the native ARM compiler, official Ndless SDK libraries and TNS packaging tools; no separate toolchain installation is required.
+
+1. Choose **File → New Ndless Project** to create a C or C++ project, or **Open Ndless Project** to import a source project ZIP.
+2. Edit the source files and use the project preview and controls to test the supported screen, drawing and input behavior.
+3. Choose **Build TNS** to compile the project and download its calculator executable. Projects with cartridge resources can produce a ZIP containing the program and its companion files.
+4. Transfer the output to a compatible calculator with Ndless installed and active.
+
+To preview an existing native TNS, choose **Preview** in **Edit Ndless**. Restart uses the current edited working copy. A compiled `.tns` is an executable; editing its original C/C++ sources requires the source project ZIP.
+
+**General C/C++ project compilation is currently Windows-only.** New/Open Ndless Project in the web version displays the desktop download dialog. ROM Converter can still prepare its precompiled-emulator packages in the browser. **Linux desktop support is coming soon; no release date is set.**
+
+The preview is not a full TI-Nspire OS emulator. Unsupported native APIs, hardware-specific behavior and custom build steps may require additional project support. See [native previews and supported SDK build profiles](desktop/README.md#preview-an-existing-ndless-tns).
+
+## Transfer files to the calculator — web and Windows
+
+**You can transfer TNS files directly from the website over USB.** Open **Transfer to calculator / Transferir a calculadora** from the File/Save tools and connect your TI-Nspire in the integrated calculator manager.
+
+- Send one or more `.tns` files, or send the current generated document directly.
+- Browse calculator folders, choose the destination and create a new folder from the destination picker.
+- Receive selected files from the calculator and download them to your computer.
+- Capture the calculator screen and save it as PNG.
+- Reopen the manager while preserving the current connection, folder and last valid screenshot. An interrupted session can be reconnected from the panel.
+
+For the web version, use desktop **Chrome, Edge or Brave**, the HTTPS website, a USB data cable and a compatible USB driver. Allow access when the browser asks you to choose the calculator. Close other applications that are using the same USB connection. Browser, operating-system and calculator support can vary; see the [USB requirements, screenshot behavior and troubleshooting guide](docs/calculator-transfer.md).
 
 ## TI-BASIC Prgm preview
 
-Open a normal TNS in Syntax Doctor, select a `Prgm` block, and click **Prgm Preview** beside Run syntax. The interactive 320×240 view includes Request input, step/run/stop controls, variables, zoom and source-line errors. It simulates numerical TI-BASIC text programs; symbolic CAS, units, graphics and external functions are not emulated. [Coverage and CLI/API usage](docs/prgm-preview.md).
+Open a normal TNS in Syntax Doctor, select a `Prgm` block, and click **Prgm Preview** beside Run syntax. The preview reads the current editor code, including unsaved changes. Its calculator-style 320×240 screen includes text history and interactive `Request` / `RequestStr` dialogs, with Enter to accept input and Esc to cancel.
+
+Run/pause, step, stop and restart controls let you inspect variables and follow the current source line or an error. The expanded view gives the output more room and reflows text without restarting the program or discarding an active input. It simulates numerical TI-BASIC text programs; symbolic CAS, units, graphics and external functions are not emulated. Available in both the web and Windows versions. [Coverage and CLI/API usage](docs/prgm-preview.md).
 
 ## Feedback
 
@@ -64,6 +127,10 @@ https://paypal.me/waltDx
 - Extract `q.py` from Python Program `.tns` files.
 - Add and edit Lua ScriptApp pages inside TI-Nspire XML.
 - Preview Lua ScriptApps in the browser with a TI-Nspire-like canvas.
+- Preview numerical TI-BASIC `Prgm` blocks with interactive input, stepping, variables and an expanded view.
+- Detect and preview supported game cartridges with ROM Converter; export editable projects and calculator packages locally.
+- Create, edit, preview and compile supported Ndless C/C++ projects in TNS Tool Portable for Windows; Linux desktop support is planned.
+- Transfer TNS files directly between the website and a TI-Nspire over USB, manage folders and save screen captures.
 - Insert visual Lua templates such as forms, menus, advanced menus, and popups.
 - Edit generated Lua pages visually after inserting templates.
 - Convert common TI-Basic/PRG menu-and-request programs into visual Lua pages.
@@ -504,11 +571,9 @@ f3
 
 Graph parsing and expression compatibility are still experimental and will continue to expand.
 
-### Ndless project support
+### Ndless projects and ROM packages
 
-Native Ndless projects are created, edited and compiled in **TNS Tool Portable for Windows** using its bundled ARM SDK. The web version displays a desktop requirement dialog for New/Open Ndless Project and links to the public Windows ZIP above.
-
-The portable build is extracted and tested before publication: the visible File menu must open the project wizard, C/C++ editors must mount, and both starters must compile through the shipped native compiler. Browser previews remain partial simulations; execution on a calculator requires active Ndless and compatible hardware.
+See [Ndless Projects — Windows](#ndless-projects--windows) for the working C/C++ source workflow, [ROM Converter](#rom-converter) for browser and desktop cartridge packages, and [calculator transfers](#transfer-files-to-the-calculator--web-and-windows) for direct USB delivery. Linux desktop support is planned next.
 
 ## Current limitations and planned work
 
@@ -523,6 +588,8 @@ Recent image and PDF workflow additions are now implemented:
 
 Remaining planned or incomplete areas include:
 
+- a Linux desktop package with the integrated Ndless compilation environment (coming soon)
+- browser-based compilation of general Ndless C/C++ source projects
 - broader XLSX compatibility
 - more TI-Nspire page/widget types
 - more complete Graphs support
