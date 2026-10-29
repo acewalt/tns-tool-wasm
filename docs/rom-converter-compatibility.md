@@ -2,6 +2,8 @@
 
 ## Conversor web
 
+El panel compartido por web y escritorio utiliza iconos de NES, GB, GBC, SNES, GBA, N64 y DS según la cabecera detectada. La selección admite arrastrar una ROM; el preview ofrece cruceta, botones de cada consola, pausa, continuación, reinicio y vista ampliada. Las opciones de inicio automático y visualización de píxeles actúan sobre el preview. Fotogramas y FPS se obtienen de la ejecución real; no se simula una línea de tiempo ni búsqueda por fotogramas.
+
 En Archivo → ROM Converter también se puede seleccionar una ROM o un ZIP individual desde la web. La detección, normalización, preview y preparación del paquete se ejecutan en el equipo del usuario, sin subir el cartucho. Se admiten NES, GB/GBC, SNES, GBA y los perfiles experimentales DS/N64; no todos los juegos son compatibles.
 
 La web prepara un ZIP para la calculadora con un reproductor ARM precompilado y un cartucho de datos `.rom.tns`. Hay que copiar ambos archivos a la misma carpeta y abrir el programa. No se convierte el juego en código C equivalente. En la web, Mario 64 usa el emulador N64 genérico; el port específico europeo sigue siendo una opción del conversor de escritorio.

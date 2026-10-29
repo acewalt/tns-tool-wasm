@@ -70,8 +70,9 @@
         if(info.logs?.length){log.hidden=false;log.textContent=info.logs.join('\n');}
         const detail=info.error?': '+info.error:info.frames?' · '+info.frames+' frames':'';
         note.textContent=(options.stageText?.[info.stage]||(options.binary&&info.stage==='compiling'?(language==='en'?'Preparing current TNS…':language==='fr'?'Préparation du TNS…':'Preparando el TNS actual…'):info.stage==='dialog'?(language==='en'?'Waiting for a program dialog':language==='fr'?'En attente du dialogue':'Esperando respuesta al diálogo del programa'):tr(info.stage)))+detail;note.dataset.previewStage=info.stage;
-        note.title=tr('help');
+        note.title=options.help||tr('help');
         box.querySelector('[data-live-pause]').disabled=!['running','paused'].includes(info.stage);
+        options.onUpdate?.(info);
       }
     });
     box.querySelector('[data-live-pause]').onclick=()=>item.session.pause();
@@ -88,7 +89,7 @@
       if(!argsInput.value&&selected[0])argsInput.value='"/documents/'+selected[0].name.replace(/[\\/]/g,'_')+'"';
       event.target.value='';restartResources();
     };
-    const sendKey=(code,down)=>{if(down)item.held.add(code);else item.held.delete(code);item.session.key(code,down);};
+    const sendKey=(code,down)=>{if(down)item.held.add(code);else item.held.delete(code);for(const button of box.querySelectorAll('[data-preview-key]'))if(button.dataset.previewKey===code)button.classList.toggle('is-pressed',down);item.session.key(code,down);};
     canvas.addEventListener('keydown',e=>{if(root.NdlessArmRuntime.KEYMAP[e.code]){e.preventDefault();e.stopPropagation();sendKey(e.code,true);}});
     canvas.addEventListener('keyup',e=>{if(root.NdlessArmRuntime.KEYMAP[e.code]){e.preventDefault();e.stopPropagation();sendKey(e.code,false);}});
     canvas.addEventListener('blur',()=>{for(const code of item.held)sendKey(code,false);});
@@ -97,7 +98,7 @@
       b.onpointerdown=e=>{e.preventDefault();b.setPointerCapture(e.pointerId);sendKey(code,true);};
       b.onpointerup=b.onpointercancel=()=>sendKey(code,false);box.querySelector('.ndless-live-keys').append(b);
     }
-    const help=document.createElement('p');help.textContent=tr('help');help.className='ndless-live-help';box.append(help);
+    const help=document.createElement('p');help.textContent=options.help||tr('help');help.className='ndless-live-help';box.append(help);
     item.dispose=()=>{if(item.disposed)return;item.disposed=true;item.session.stop();item.box.remove();};
     if(options.binary){box.querySelector('label').hidden=true;}
     if(options.resources===false)resources.hidden=true;
@@ -110,7 +111,7 @@
     if(item.auto.checked||force)item.session.update(project,{force});
   }
   function stop(){if(current){current.dispose();current=null;}}
-  function createPanel(options){const {workspace,canvas,note}=options,item=mount(workspace,canvas,note,{...options,independent:true});return{update:(project,value)=>item.session.update(project,value),stop:()=>item.dispose(),get state(){return{...item.session.state,stage:item.stage};}};}
+  function createPanel(options){const {workspace,canvas,note}=options,item=mount(workspace,canvas,note,{...options,independent:true});return{update:(project,value)=>item.session.update(project,value),pause:()=>item.session.pause(),stop:()=>item.dispose(),get state(){return{...item.session.state,stage:item.stage};}};}
   root.NdlessLivePreview=Object.freeze({render,stop,createPanel,get state(){return current?{...current.session.state,stage:current.stage}:null;}});
   const ws=document.querySelector('.ndless-project-workspace');if(ws){const p=root.NdlessProjectWorkspace?.getProject?.();render(p,{workspace:ws,canvas:ws.querySelector('[data-ndless-project-canvas]'),note:ws.querySelector('[data-preview-note]')});}
 })();

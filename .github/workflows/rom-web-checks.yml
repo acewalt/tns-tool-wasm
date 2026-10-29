@@ -2,9 +2,9 @@ name: Browser ROM Converter
 on:
   push:
     branches: [main]
-    paths: ['rom-*.js', 'assets/rom/**', 'tests/rom-web.test.cjs', 'tests/fixtures/rom-web/**', '.github/workflows/rom-web-checks.yml']
+    paths: ['rom-*.js', 'rom-converter.css', 'assets/rom/**', 'assets/rom-console-icons/**', 'tests/rom-web.test.cjs', 'tests/rom-converter-design.test.cjs', 'tests/fixtures/rom-web/**', '.github/workflows/rom-web-checks.yml']
   pull_request:
-    paths: ['rom-*.js', 'assets/rom/**', 'tests/rom-web.test.cjs', 'tests/fixtures/rom-web/**', '.github/workflows/rom-web-checks.yml']
+    paths: ['rom-*.js', 'rom-converter.css', 'assets/rom/**', 'assets/rom-console-icons/**', 'tests/rom-web.test.cjs', 'tests/rom-converter-design.test.cjs', 'tests/fixtures/rom-web/**', '.github/workflows/rom-web-checks.yml']
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -13,4 +13,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: node --test tests/rom-web.test.cjs
+      - run: node --test tests/rom-web.test.cjs tests/rom-converter-design.test.cjs

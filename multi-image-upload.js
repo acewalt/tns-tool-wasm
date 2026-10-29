@@ -30,7 +30,7 @@
     });
   }
 
-  const V="20261028-rom-web-converter-v1";
+  const V="20261028-rom-console-interface-v2";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
@@ -46,6 +46,7 @@
   ensureStyle('link[data-ndless-friendly-editor-style="true"]', `./ndless-friendly-editor.css?v=${V}`, "ndlessFriendlyEditorStyle");
   ensureStyle('link[data-ndless-friendly-layout-fix-style="true"]', `./ndless-friendly-layout-fix.css?v=${V}`, "ndlessFriendlyLayoutFixStyle");
   ensureStyle('link[data-ndless-project-workspace-style="true"]', `./ndless-project-workspace.css?v=${V}`, "ndlessProjectWorkspaceStyle");
+  ensureStyle('link[data-rom-converter-style="true"]', `./rom-converter.css?v=${V}`, "romConverterStyle");
   ensureStyle('link[data-ndless-project-layout-fix-style="true"]', `./ndless-project-layout-fix.css?v=${V}`, "ndlessProjectLayoutFixStyle");
   ensureStyle('link[data-ndless-project-sdk-enhancements-style="true"]', `./ndless-project-sdk-enhancements.css?v=${V}`, "ndlessProjectSdkEnhancementsStyle");
   ensureStyle('link[data-ndless-project-performance-fix-style="true"]', `./ndless-project-performance-fix.css?v=${V}`, "ndlessProjectPerformanceFixStyle");
@@ -106,6 +107,7 @@
     .then(() => loadScript('script[data-ndless-executable-preview="true"]', `./ndless-executable-preview.js?v=${V}`, "ndlessExecutablePreview"))
     .then(() => loadScript('script[data-rom-gb-preview="true"]', `./rom-gb-preview.js?v=${V}`, "romGbPreview"))
     .then(() => loadScript('script[data-rom-web-converter="true"]', `./rom-web-converter.js?v=${V}`, "romWebConverter"))
+    .then(() => loadScript('script[data-rom-converter-view="true"]', `./rom-converter-view.js?v=${V}`, "romConverterView"))
     .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=${V}`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;

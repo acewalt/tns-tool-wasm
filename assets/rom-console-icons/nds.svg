@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+<defs>
+ <filter id="ds" x="-35%" y="-35%" width="170%" height="190%"><feGaussianBlur stdDeviation="7"/></filter>
+ <filter id="sm" x="-20%" y="-20%" width="140%" height="150%"><feGaussianBlur stdDeviation="2"/></filter>
+ <linearGradient id="shell" x1="0" y1="0" x2="0.8" y2="1"><stop stop-color="#fafcff"/><stop offset="0.53" stop-color="#c5d4e4"/><stop offset="1" stop-color="#a8b7cf"/></linearGradient>
+ <linearGradient id="creamy" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffffff"/><stop offset="0.65" stop-color="#e3e9f0"/><stop offset="1" stop-color="#bbc8d9"/></linearGradient>
+ <linearGradient id="purple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b7a8ff"/><stop offset="0.5" stop-color="#8068e8"/><stop offset="1" stop-color="#4c46a3"/></linearGradient>
+ <linearGradient id="indigo" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#7893ed"/><stop offset="0.5" stop-color="#4a65c2"/><stop offset="1" stop-color="#293c76"/></linearGradient>
+ <linearGradient id="carbon" x1="0" y1="0" x2="0.7" y2="1"><stop stop-color="#606b83"/><stop offset="0.55" stop-color="#333d54"/><stop offset="1" stop-color="#202838"/></linearGradient>
+ <linearGradient id="black" x1="0" y1="0" x2="0.9" y2="1"><stop stop-color="#303849"/><stop offset="1" stop-color="#101725"/></linearGradient>
+ <linearGradient id="lcd" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#e6fff9"/><stop offset="0.52" stop-color="#9ee4de"/><stop offset="1" stop-color="#6eb9c3"/></linearGradient>
+ <linearGradient id="lcdclassic" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#dce6bd"/><stop offset="1" stop-color="#9ab48d"/></linearGradient>
+ <linearGradient id="blueScreen" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#b7efff"/><stop offset="0.58" stop-color="#6bb4ed"/><stop offset="1" stop-color="#5377ba"/></linearGradient>
+ <linearGradient id="red" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffb2c3"/><stop offset="1" stop-color="#e34775"/></linearGradient>
+</defs>
+<ellipse cx="128" cy="226" rx="86" ry="12" fill="#071427" opacity=".28" filter="url(#ds)"/>
+<rect x="48" y="18" width="160" height="112" rx="16" fill="url(#carbon)" stroke="#273149" stroke-width="4"/>
+<rect x="58" y="28" width="140" height="92" rx="9" fill="#141e31"/>
+<rect x="71" y="36" width="114" height="75" rx="4" fill="url(#blueScreen)" stroke="#7080a3" stroke-width="1.5"/>
+<path d="M76 41L180 41L76 106Z" fill="#fff" opacity=".24"/>
+<rect x="41" y="121" width="174" height="108" rx="17" fill="url(#shell)" stroke="#6f829e" stroke-width="4"/>
+<rect x="52" y="130" width="153" height="88" rx="10" fill="#dfe7f2" opacity=".65"/>
+<rect x="83" y="135" width="91" height="74" rx="7" fill="#29334a" stroke="#667892" stroke-width="2"/>
+<rect x="91" y="142" width="75" height="59" rx="2" fill="url(#lcd)"/>
+<path d="M95 146L161 146L95 194Z" fill="#fff" opacity=".21"/>
+<path d="M45 123H210" stroke="#576983" stroke-width="5"/>
+<g transform="translate(65 173) scale(.35)"><path d="M-10 -27H10V-10H27V10H10V27H-10V10H-27V-10H-10Z" fill="#2a3b57"/><circle r="5" fill="#151d2d"/></g>
+<circle cx="190" cy="161" r="5.5" fill="#182138" opacity=".58"/><circle cx="190" cy="159" r="5.5" fill="#687ee6" stroke="#3e416a" stroke-width="1.5"/><ellipse cx="188" cy="157.16666666666666" rx="2.75" ry="1.76" fill="#fff" opacity=".32"/><circle cx="199" cy="172" r="5.5" fill="#182138" opacity=".58"/><circle cx="199" cy="170" r="5.5" fill="#eb7b95" stroke="#3e416a" stroke-width="1.5"/><ellipse cx="197" cy="168.16666666666666" rx="2.75" ry="1.76" fill="#fff" opacity=".32"/><circle cx="183" cy="174" r="5.5" fill="#182138" opacity=".58"/><circle cx="183" cy="172" r="5.5" fill="#6caeb6" stroke="#3e416a" stroke-width="1.5"/><ellipse cx="181" cy="170.16666666666666" rx="2.75" ry="1.76" fill="#fff" opacity=".32"/><circle cx="190" cy="185" r="5.5" fill="#182138" opacity=".58"/><circle cx="190" cy="183" r="5.5" fill="#a087d7" stroke="#3e416a" stroke-width="1.5"/><ellipse cx="188" cy="181.16666666666666" rx="2.75" ry="1.76" fill="#fff" opacity=".32"/>
+<rect x="60" y="200" width="12" height="3" rx="1.5" fill="#8793a5"/>
+<rect x="177" y="200" width="12" height="3" rx="1.5" fill="#8793a5"/>
+</svg>
