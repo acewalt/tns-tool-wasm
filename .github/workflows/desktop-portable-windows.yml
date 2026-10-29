@@ -1,6 +1,8 @@
 name: Desktop Portable Windows (experimental)
 on:
   workflow_dispatch:
+  push:
+    branches: ['feature/desktop-portable-ndless']
   pull_request:
     paths:
       - 'desktop/**'
@@ -63,6 +65,10 @@ on:
 
 permissions:
   contents: read
+
+concurrency:
+  group: portable-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -237,7 +243,7 @@ jobs:
           if ($report.version -ne $version) { throw 'Downloaded portable has the wrong version' }
           if (@($report.cases | Where-Object { $_.entry -ne 'visible-menu-click' }).Count) { throw 'Project test bypassed the visible menu' }
       - name: Publish the verified Windows download
-        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository || (github.event_name == 'push' && github.ref == 'refs/heads/feature/desktop-portable-ndless')
         shell: pwsh
         run: ./desktop/publish-portable.ps1
         env:
@@ -258,3 +264,4 @@ jobs:
           path: release/portable/*.zip
           if-no-files-found: error
           retention-days: 30
+
