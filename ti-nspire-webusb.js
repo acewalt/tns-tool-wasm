@@ -455,16 +455,28 @@
       newPath = pathName(newPath);
       ensure(oldPath !== "/" && newPath !== "/", "No se puede renombrar la raíz.");
       ensure(oldPath !== newPath, "El nombre nuevo debe ser diferente.");
-      ensure(newPath.split("/").slice(0,-1).join("/") ===
-        oldPath.split("/").slice(0,-1).join("/"),
-        "Solo se permite renombrar dentro de la misma carpeta.");
+      ensure(!newPath.startsWith(oldPath+"/"), "Una carpeta no puede moverse dentro de sí misma.");
       return this.usingService(SERVICE_FILES, async () => {
         await this.sendData(concat(Uint8Array.of(0x21, 0x01),
-          pathField(oldPath), pathField(newPath)));
+          pathField(oldPath), pathField(newPath), Uint8Array.of(0)));
         const reply = await this.recvData();
         ensure(reply.length >= 2 && reply[0] === 0xff && reply[1] === 0,
           "La calculadora rechazó el cambio de nombre.");
       });
+    }
+    async storageInfo() {
+      // Device-information service, command 01: four network-order uint64s.
+      // Layout documented by libnspire src/services/devinfo.{c,h}.
+      return this.usingService(0x4020, async () => {
+        await this.sendData(Uint8Array.of(1));
+        const reply=await this.recvData();
+        ensure(reply.length>=33 && reply[0]===1, "Información de almacenamiento no disponible.");
+        const view=new DataView(reply.buffer,reply.byteOffset,reply.byteLength);
+        const number=offset=>{const n=view.getUint32(offset)*4294967296+view.getUint32(offset+4);ensure(Number.isSafeInteger(n),'Capacidad fuera de límites.');return n;};
+        const free=number(1),total=number(9);
+        ensure(total>0 && free<=total, "Capacidad de almacenamiento inválida.");
+        return {free,total,used:total-free};
+      },{timeoutMs:5000});
     }
     async getFile(path, onProgress = () => {}, onBytesComplete = () => {}) {
       return this.usingService(SERVICE_FILES, async () => {

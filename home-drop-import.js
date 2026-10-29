@@ -479,7 +479,7 @@
     }, true);
 
     window.addEventListener("drop", (event) => {
-      if (event.target?.closest?.('.rom-converter-overlay')) return;
+      if (event.target?.closest?.('.rom-converter-overlay,.ti-manager-overlay')) return;
       if (!isFileDrag(event)) return;
       const files = Array.from(event.dataTransfer?.files || []);
       if (!files.length) return;

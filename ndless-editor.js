@@ -12,7 +12,7 @@
 
   function rememberFile(file){if(file&&/\.tns$/i.test(file.name||""))lastTnsFile=file;}
   window.addEventListener("change",e=>{const i=e.target;if(i instanceof HTMLInputElement)rememberFile(i.files?.[0]);},true);
-  window.addEventListener("drop",e=>rememberFile(Array.from(e.dataTransfer?.files||[]).find(f=>/\.tns$/i.test(f.name||""))),true);
+  window.addEventListener("drop",e=>{if(e.target?.closest?.('.ti-manager-overlay,.rom-converter-overlay'))return;rememberFile(Array.from(e.dataTransfer?.files||[]).find(f=>/\.tns$/i.test(f.name||"")));},true);
   const candidateFile=()=>lastTnsFile||$("#xml-tns-file")?.files?.[0]||$("#decode-file")?.files?.[0]||null;
 
   function parseBytes(text,exact=null){const parts=String(text||"").trim().split(/[\s,]+/).filter(Boolean);if(exact!=null&&parts.length!==exact)throw new Error(`Exactly ${exact} bytes are required.`);if(!parts.length)throw new Error("Enter hexadecimal bytes.");return new Uint8Array(parts.map(p=>{if(!/^[0-9a-fA-F]{2}$/.test(p))throw new Error(`Invalid byte: ${p}`);return parseInt(p,16);}));}

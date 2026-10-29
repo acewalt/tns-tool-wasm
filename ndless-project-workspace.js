@@ -91,6 +91,7 @@
     // when an actual Ndless workspace is active.
     const hidden=!state.project&&hasNormalProject();
     $$('[data-ndless-project-always]',panel).forEach(el=>{
+      if(el.id==='xml-rom-converter'){el.hidden=false;el.style.display='';return;}
       el.hidden=hidden;
       el.style.display=hidden?"none":"";
     });
@@ -142,13 +143,16 @@
     const desktop=Boolean(window.TnsDesktop);
     const btn=document.createElement("button");btn.type="button";btn.id="xml-new-ndless-project";btn.className="menu-action ndless-project-menu-action";btn.dataset.ndlessProjectAction="1";btn.dataset.ndlessProjectAlways="1";btn.innerHTML=`<span>${esc(tr("newProject"))}</span>`+(desktop?"":'<span class="ndless-project-off-badge" aria-label="Off">OFF</span>');btn.disabled=!desktop;btn.title=desktop?"":"En mantenimiento / Under maintenance";
     btn.addEventListener("click",wizard);
-    const open=document.createElement("label");open.className="menu-action file-menu-action ndless-project-menu-action";open.dataset.ndlessProjectAction="1";open.dataset.ndlessProjectAlways="1";open.innerHTML=`<span>${esc(tr("openProject"))}</span><input type="file" accept=".zip" hidden>`;$("input",open).addEventListener("change",e=>{openProjectZip(e.target.files?.[0]);e.target.value="";});
+    const open=document.createElement("label");open.className="menu-action file-menu-action ndless-project-menu-action";open.dataset.ndlessProjectAction="1";open.dataset.ndlessProjectAlways="1";
+    open.innerHTML=`<span>${esc(tr("openProject"))}</span>`+(desktop?'':'<span class="ndless-project-off-badge" aria-label="PC">PC</span>')+'<input type="file" accept=".zip" hidden>';
+    $("input",open).addEventListener("change",e=>{openProjectZip(e.target.files?.[0]);e.target.value="";});
     const exp=document.createElement("button");exp.type="button";exp.className="menu-action";exp.dataset.ndlessProjectAction="1";exp.dataset.ndlessProjectOnly="1";exp.hidden=true;exp.textContent=tr("exportProject");exp.addEventListener("click",downloadProject);
     const close=document.createElement("button");close.type="button";close.className="menu-action";close.dataset.ndlessProjectAction="1";close.dataset.ndlessProjectOnly="1";close.hidden=true;close.textContent=tr("closeProject");close.addEventListener("click",()=>closeProject());
     const openTns=$("input#xml-tns-file",panel)?.closest("label");
-    const anchor=openTns?.nextSibling||$("#xml-new-btn",panel)?.nextSibling||panel.firstElementChild;
+    const xmlActions=$('[data-i18n="xmlActionsMenu"]',panel)?.closest('.tool-menu');
+    const anchor=xmlActions?.nextSibling||openTns?.nextSibling||$("#xml-new-btn",panel)?.nextSibling||panel.firstElementChild;
     const sectionEnd=document.createElement("div");sectionEnd.className="ti-file-action-separator";sectionEnd.setAttribute("role","separator");sectionEnd.setAttribute("aria-hidden","true");
-    panel.insertBefore(sep,anchor);panel.insertBefore(btn,anchor);panel.insertBefore(open,anchor);panel.insertBefore(exp,anchor);panel.insertBefore(close,anchor);panel.insertBefore(sectionEnd,anchor);
+    panel.insertBefore(sep,anchor);panel.insertBefore(btn,anchor);panel.insertBefore(open,anchor);panel.insertBefore(exp,anchor);panel.insertBefore(close,anchor);if(!xmlActions)panel.insertBefore(sectionEnd,anchor);
     syncNormalProjectMenu();
   }
   function init(){if(!core())return setTimeout(init,100);if(!$("#xml-doctor-panel"))return setTimeout(init,100);injectMenu();

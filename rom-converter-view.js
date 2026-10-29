@@ -48,16 +48,42 @@
       if(info.clear)q('[data-rom-empty]').hidden=false;
       const start=q('[data-rom-start]');if(start){start.disabled=!['paused','stopped','exited','error','compile-error'].includes(stage);start.querySelector('span').textContent=stage==='paused'?ui.start:ui.startFresh;}
     }
-    function decorate(controller,project){
+    function decorate(controller,project,system){
       q('[data-rom-idle-controls]').hidden=true;
       const box=q('.ndless-live-preview-controls'),buttons=box.querySelector('.ndless-live-buttons'),start=document.createElement('button');start.type='button';start.dataset.romStart='';start.disabled=true;start.innerHTML=icon('play')+'<span>'+ui.startFresh+'</span>';start.onclick=()=>controller.state.paused?controller.pause():controller.update(project,{force:true});buttons.prepend(start);
       for(const [key,symbol,label]of [['pause','pause',ui.pause],['stop','stop',ui.stop],['restart','restart',ui.restart]]){const button=box.querySelector('[data-live-'+key+']');button.innerHTML=icon(symbol)+'<span>'+label+'</span>';button.title=label;}
       const keys=box.querySelector('.ndless-live-keys'),pad=document.createElement('div'),face=document.createElement('div'),extra=document.createElement('div');pad.className='rom-dpad';face.className='rom-face-buttons';extra.className='rom-extra-keys';
       for(const button of [...keys.children]){const code=button.dataset.previewKey;button.title=button.textContent+' · '+code;if(code.startsWith('Arrow'))pad.append(button);else if(['ControlLeft','ShiftLeft','F1','Delete'].includes(code)&&['A','B'].includes(button.textContent))face.append(button);else extra.append(button);}
       keys.replaceChildren(pad,face,extra);box.querySelector('.ndless-live-help').hidden=true;const log=box.querySelector('[data-live-log]'),details=document.createElement('details'),summary=document.createElement('summary');summary.textContent=ui.logs;details.className='rom-preview-log';log.before(details);details.append(summary,log);
+      if(system==='n64')n64Controller(keys,controller);
     }
     step(1);detection(null);
     return{overlay,q,ui,step,detection,selection,operation,preview,decorate,icon};
+  }
+  function n64Controller(keys,controller){
+    const en=language()==='en',fr=language()==='fr',t=en?['Movement','Analog stick','Start','C buttons · camera','Action buttons','Controller settings','Stick dead zone','Arrows: stick · I/J/K/L: D-pad · Ctrl: A · Shift: B · Enter: Start · Tab: Z · X/R: L/R · 8/4/2/6: camera']:fr?['Direction','Stick analogique','Start','Boutons C · caméra','Actions','Réglages du contrôleur','Zone morte du stick','Flèches : stick · I/J/K/L : direction · Ctrl : A · Maj : B · Entrée : Start · Tab : Z · X/R : L/R · 8/4/2/6 : caméra']:['Dirección','Stick analógico','Start','Botones C · cámara','Acciones','Ajustes del control','Zona muerta del stick','Flechas: stick · I/J/K/L: cruceta · Ctrl: A · Shift: B · Enter: Start · Tab: Z · X/R: L/R · 8/4/2/6: cámara'];
+    const deck=document.createElement('section');deck.className='rom-n64-controller';
+    const title=document.createElement('header');title.innerHTML='<strong>🎮 Nintendo 64</strong>';
+    const settings=document.createElement('details');settings.className='rom-controller-settings';const summary=document.createElement('summary');summary.textContent=t[5];settings.append(summary);
+    const help=document.createElement('p');help.textContent=t[7];const label=document.createElement('label');label.textContent=t[6]+' ';const deadzone=document.createElement('input');deadzone.type='range';deadzone.min='10';deadzone.max='50';deadzone.value='25';deadzone.setAttribute('aria-label',t[6]);label.append(deadzone);settings.append(help,label);title.append(settings);deck.append(title);
+    const panels=document.createElement('div');panels.className='rom-n64-panels';deck.append(panels);
+    const makePanel=(name,css)=>{const panel=document.createElement('section');panel.className='rom-n64-part '+css;const heading=document.createElement('h4');heading.textContent=name;panel.append(heading);panels.append(panel);return panel;};
+    const original=new Map([...keys.querySelectorAll('[data-preview-key]')].map(b=>[b.dataset.previewKey,b]));
+    const button=(code,text)=>{
+      const b=original.get(code)||document.createElement('button');if(!original.has(code)){b.type='button';b.textContent=text;b.dataset.previewKey=code;b.onpointerdown=event=>{event.preventDefault();if(event.isTrusted)b.setPointerCapture(event.pointerId);controller.key(code,true);};b.onpointerup=b.onpointercancel=()=>controller.key(code,false);}
+      b.title=text+' · '+code;b.setAttribute('aria-label',b.title);return b;
+    };
+    const movement=makePanel(t[0],'rom-n64-movement'),pad=document.createElement('div');pad.className='rom-dpad';for(const [code,text]of [['KeyI','↑'],['KeyK','↓'],['KeyJ','←'],['KeyL','→']]){const b=button(code,text);b.dataset.direction={KeyI:'up',KeyK:'down',KeyJ:'left',KeyL:'right'}[code];pad.append(b);}movement.append(pad);
+    const analog=makePanel(t[1],'rom-n64-analog'),stick=document.createElement('div'),knob=document.createElement('span');stick.className='rom-n64-stick';stick.tabIndex=0;stick.setAttribute('role','group');stick.setAttribute('aria-label',t[1]+' · '+t[7].split(' · ')[0]);knob.className='rom-n64-knob';stick.append(knob);analog.append(stick);
+    const held=new Set();
+    const setStick=(x,y)=>{const next=new Set(),zone=Number(deadzone.value)/100;if(x>zone)next.add('ArrowRight');if(x< -zone)next.add('ArrowLeft');if(y>zone)next.add('ArrowDown');if(y< -zone)next.add('ArrowUp');for(const code of held)if(!next.has(code))controller.key(code,false);for(const code of next)if(!held.has(code))controller.key(code,true);held.clear();for(const code of next)held.add(code);knob.style.transform='translate('+Math.round(x*16)+'px,'+Math.round(y*16)+'px)';};
+    const position=event=>{const r=stick.getBoundingClientRect();let x=(event.clientX-r.left-r.width/2)/(r.width/2),y=(event.clientY-r.top-r.height/2)/(r.height/2),length=Math.hypot(x,y);if(length>1){x/=length;y/=length;}setStick(x,y);};
+    stick.onpointerdown=event=>{event.preventDefault();if(event.isTrusted)stick.setPointerCapture(event.pointerId);position(event);};stick.onpointermove=event=>{if(stick.hasPointerCapture(event.pointerId))position(event);};stick.onpointerup=stick.onpointercancel=()=>setStick(0,0);stick.onlostpointercapture=()=>setStick(0,0);stick.onblur=()=>setStick(0,0);
+    stick.onkeydown=event=>{if(event.code.startsWith('Arrow')){event.preventDefault();controller.key(event.code,true);held.add(event.code);}};stick.onkeyup=event=>{if(held.has(event.code)){event.preventDefault();controller.key(event.code,false);held.delete(event.code);}};
+    makePanel(t[2],'rom-n64-start').append(button('Enter','Start'));
+    const camera=makePanel(t[3],'rom-n64-camera'),c=document.createElement('div');c.className='rom-n64-cpad';for(const [code,text]of [['Digit8','C↑'],['Digit6','C→'],['Digit2','C↓'],['Digit4','C←']])c.append(button(code,text));camera.append(c);
+    const face=makePanel(t[4],'rom-n64-face');face.append(button('ShiftLeft','B'),button('ControlLeft','A'));
+    const triggers=document.createElement('div');triggers.className='rom-n64-triggers';for(const [code,text]of [['KeyX','L'],['Tab','Z'],['KeyR','R']])triggers.append(button(code,text));deck.append(triggers);keys.replaceChildren(deck);
   }
   window.TnsRomConverterView=Object.freeze({create,consoleId});
 })();

@@ -75,6 +75,22 @@
 
 .ti-manager-table .ti-tree-row button:disabled{opacity:.75;cursor:progress}
 .ti-manager-table .ti-tree-row input:disabled{cursor:progress}
+.ti-manager-side{overflow-y:auto!important;overscroll-behavior:contain}
+.ti-manager-side>.ti-manager-image{flex-shrink:0;max-height:none;min-height:0}
+.ti-manager-side .ti-storage{display:flex;flex-direction:column;gap:7px;padding:10px;border:1px solid var(--line);border-radius:8px}
+.ti-storage>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ti-storage button{background:transparent;color:var(--text);border:1px solid var(--line);border-radius:5px;cursor:pointer}
+.ti-storage output{font-size:11px;color:var(--muted);line-height:1.5}
+.ti-storage meter{width:100%;height:12px;accent-color:var(--accent)}
+.ti-record-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.ti-record-controls button{padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--button-bg);color:var(--text);cursor:pointer}
+.ti-record-controls [data-ti-record-stop]{border-color:#e35e72;color:#ff9cab}
+.ti-record-controls output{width:100%;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.ti-record-controls output:empty{display:none}
+.ti-record-controls a{color:var(--accent)}
+.ti-manager-dialog .ti-drop-hint{font-size:11px;color:var(--muted);margin:0;line-height:1.45;flex-shrink:0}
+.ti-manager-dialog .is-drop-target{outline:2px solid #edc35d;outline-offset:-2px;background:color-mix(in srgb,#edc35d 14%,var(--panel))!important}
+.ti-manager-dialog .is-drag-source{opacity:.55}
 
 /* Keep the modal within the viewport and put vertical scrolling on the file
    explorer rather than letting the page behind the overlay consume wheel input. */
@@ -104,6 +120,11 @@
 .ti-manager-table::-webkit-scrollbar-thumb{border-radius:8px;background:var(--muted)}
 .ti-manager-table::-webkit-scrollbar-track{background:transparent}
 .ti-manager-table .ti-tree-row button:disabled{opacity:.75;color:var(--text)}
+.ti-manager-dialog .ti-manager-filename:disabled,.ti-manager-dialog .ti-grid-open:disabled{background:transparent!important;color:var(--text)!important;opacity:1!important;box-shadow:none;filter:none;cursor:progress}
+.ti-manager-table .ti-tree-icon.is-folder{color:#edc35d}
+.ti-manager-dialog[aria-busy="true"] [data-ti-status]::before{content:"";display:inline-block;width:11px;height:11px;margin-right:8px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;vertical-align:-2px;animation:ti-usb-spin .8s linear infinite}
+@keyframes ti-usb-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.ti-manager-dialog[aria-busy="true"] [data-ti-status]::before{animation:none}}
 @media(max-width:760px){
   .ti-manager-overlay{overflow:auto}
   .ti-manager-dialog{max-height:98dvh}
@@ -560,3 +581,5 @@
   .ti-destination-dialog{padding:12px;max-height:95%;gap:9px}
 }
 .ti-manager-overlay[hidden]{display:none}
+
+.ti-manager-dialog .ti-destination-folder-icon{color:#edc35d}

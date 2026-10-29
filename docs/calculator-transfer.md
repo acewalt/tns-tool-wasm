@@ -264,3 +264,13 @@ El usuario confirmó que el nuevo ejemplo SDL permanece abierto en su CX II CAS
 con SO 6.2.0.333 y Ndless activo. La recuperación y las capturas consecutivas de
 esta revisión aún requieren comprobación física; las pruebas automatizadas no
 equivalen a esa comprobación.
+
+## Arrastre, capacidad y grabación (0.1.21)
+
+- Arrastra archivos locales .tns sobre una carpeta del árbol o de la vista de iconos para enviarlos allí. La barra de ruta y el fondo de la lista apuntan a la carpeta actual. Los reemplazos al enviar siguen pidiendo confirmación.
+- Arrastra un archivo o carpeta de la calculadora sobre otra carpeta para moverlo. Se utiliza el comando nativo 0x2101; no se descarga ni se copia y borra. Un conflicto de nombres o mover una carpeta dentro de sí misma se rechaza antes del comando. El directorio origen se conserva hasta recibir la confirmación del dispositivo.
+- Almacenamiento muestra capacidad, espacio libre y usado desde el servicio de información 0x4020. Si la calculadora no entrega esos valores, se indica que no están disponibles. Su botón de actualización vuelve a consultarlos.
+- Grabar pantalla solicita capturas RLE sucesivas, de una en una, con un intervalo mínimo de un segundo entre solicitudes. Detener grabación finaliza un vídeo WebM sin audio para descargar. El límite es dos minutos o aproximadamente 32 MiB; la frecuencia efectiva depende de la respuesta USB. No es una grabación de 60 FPS. Durante la grabación, las demás operaciones USB permanecen bloqueadas; al terminar vuelven a habilitarse.
+- El estado de carga conserva los nombres legibles y muestra actividad en el mensaje de estado, sin rectángulos grises sobre los archivos.
+
+La disposición del servicio de información y el comando de movimiento se contrastaron con [libnspire](https://github.com/Vogtinator/libnspire/tree/master/src/services). La prueba de aceptación usa la interfaz y el codificador WebM reales con un interlocutor USB simulado; también decodifica el vídeo generado a 320×240.

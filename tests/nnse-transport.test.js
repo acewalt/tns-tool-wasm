@@ -146,6 +146,11 @@ class FakeNNSEUSB {
       this.renameData=d.slice();
       this.respond(Uint8Array.of(255,0),service,dest);
     }
+    else if(service===0x4020 && d[0]===1){
+      const info=new Uint8Array(33),view=new DataView(info.buffer);info[0]=1;
+      view.setBigUint64(1,64n*1024n*1024n);view.setBigUint64(9,128n*1024n*1024n);
+      this.respond(info,service,dest);
+    }
     else if(d[0]===13){
       this.rootIndex=0;
       if(this.staleScreenBeforeFiles)this.respond(Uint8Array.of(2,255,0x12,0x34),0x4024,dest);
@@ -225,7 +230,12 @@ assert.match(renameText,/old\.tns/);
 assert.match(renameText,/new\.tns/);
 await controller.renameEntry("/Examples/OldFolder","/Examples/NewFolder");
 await assert.rejects(controller.renameEntry("/","/renamed"),/raíz/);
-await assert.rejects(controller.renameEntry("/Examples/a","/Other/a"),/misma carpeta/);
+await controller.renameEntry("/Examples/a","/Other/a");
+assert.match(new TextDecoder().decode(fake.renameData),/Other\/a/);
+assert.equal(fake.renameData.at(-1),0,'Move command requires its trailing terminator');
+await assert.rejects(controller.renameEntry('/Examples','/Examples/Child'),/sí misma/);
+const capacity=await controller.storageInfo();
+assert.deepEqual({...capacity},{free:67108864,total:134217728,used:67108864});
 await controller.putFile("/Examples/new.tns",Uint8Array.of(7,8,9));
 assert.deepEqual(fake.uploaded,[7,8,9]);
 assert.deepEqual(Array.from(await controller.getFile("/Examples/current.tns")),[1,2,3,4]);

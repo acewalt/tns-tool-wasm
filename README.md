@@ -24,7 +24,7 @@ Cierra la versión anterior, extrae todo el ZIP en una carpeta nueva y abre **TN
 
 - **ROM Converter:** select a local cartridge, detect its console, preview it with interactive controls, and download an editable project or calculator package. Available in the web and Windows versions.
 - **Working Ndless Projects on Windows:** create, open, edit, preview and compile supported C/C++ projects using the bundled ARM SDK. Linux desktop support is planned next.
-- **Direct calculator transfers from the website:** send and receive TNS files over USB, browse folders, create a destination folder, and capture the calculator screen.
+- **Direct calculator transfers from the website:** send and receive TNS files over USB, browse folders, create a destination folder, read available storage, drag files between folders, and capture or record the calculator screen.
 - **Interactive TI-BASIC Prgm preview:** test text programs, answer `Request` prompts, inspect variables, step through code and switch to an expanded view.
 - **Updated ROM Converter interface:** console-specific icons, a central game display, keyboard and on-screen controls, pause/restart, frame and FPS information, and an expanded preview.
 
@@ -42,7 +42,7 @@ Cierra la versión anterior, extrae todo el ZIP en una carpeta nueva y abre **TN
 
 ## ROM Converter
 
-Open **File → ROM Converter** (Archivo → ROM Converter). Choose a ROM or a ZIP containing a single game, or drag it into the module. Detection reads the cartridge header rather than relying only on its filename. The interface shows the detected console with its icon, the selected file and its size.
+Open **File → ROM Converter** (Archivo → ROM Converter). Choose a ROM or a ZIP containing a single game, or drag it into the module. Detection reads the cartridge header rather than relying only on its filename. The interface shows the detected console with its icon, the selected file and its size. ROM Converter remains available while editing normal documents.
 
 ![ROM Converter: console detection, interactive preview and project/package downloads](docs/images/Converter_ROM.gif)
 
@@ -64,6 +64,8 @@ Use **Preview** to run the cartridge with the local emulator. The preview includ
 - **Windows version:** **Compile and download TNS** builds the generated source project with the included SDK. **Open project** opens those sources directly in the workspace. Some profiles produce a standalone TNS; packages that include a companion cartridge require both files in the same folder.
 
 ROM processing happens locally; the app does not upload your cartridge. No commercial games or ROMs are included. The Windows version also has a dedicated native-port path for the supported original European Super Mario 64 ROM; the web version uses the experimental N64 emulator.
+
+NES cartridge preview now runs the pinned NesNspire core directly in WebAssembly, avoiding ARM-inside-NES double emulation. N64 has separate on-screen D-pad and eight-direction stick controls, camera buttons and triggers. Its FPS counts completed display frames rather than CPU slices.
 
 A successful preview or package build does not guarantee complete gameplay or compatibility with every calculator. Native output requires active Ndless and suitable hardware. See [supported profiles, size limits and controls](desktop/README.md#rom-converter) and [browser emulator sources and licenses](assets/rom/README.md).
 
@@ -92,7 +94,9 @@ The preview is not a full TI-Nspire OS emulator. Unsupported native APIs, hardwa
 - Capture the calculator screen and save it as PNG.
 - Reopen the manager while preserving the current connection, folder and last valid screenshot. An interrupted session can be reconnected from the panel.
 
-For the web version, use desktop **Chrome, Edge or Brave**, the HTTPS website, a USB data cable and a compatible USB driver. Allow access when the browser asks you to choose the calculator. Close other applications that are using the same USB connection. Browser, operating-system and calculator support can vary; see the [USB requirements, screenshot behavior and troubleshooting guide](docs/calculator-transfer.md).
+For the web version, use desktop **Chrome, Edge or Brave**, the HTTPS website, a USB data cable and a compatible USB driver. Allow access when the browser asks you to choose the calculator. Close other applications that are using the same USB connection. Drop local TNS files onto a calculator folder to upload them, or drag an existing calculator item to another folder to move it. Moves use the native USB command and reject name collisions. The storage meter reads the device-reported capacity. **Record screen** makes a silent WebM from successive USB screenshots (up to two minutes); its capture rate depends on the handheld.
+
+Browser, operating-system and calculator support can vary; see the [USB requirements, screenshot behavior and troubleshooting guide](docs/calculator-transfer.md).
 
 ## TI-BASIC Prgm preview
 
