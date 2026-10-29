@@ -2,7 +2,7 @@
 const fs=require('node:fs/promises'),path=require('node:path'),cp=require('node:child_process'),{promisify}=require('node:util');
 const run=promisify(cp.execFile);
 async function build(options={}){
- const system=options.system||'snes';if(!['snes','gba','nds','n64'].includes(system))throw Error('Unknown preview build');
+ const system=options.system||'snes';if(!['nes','snes','gba','nds','n64'].includes(system))throw Error('Unknown preview build');
  const sdk=path.resolve(options.sdk||process.env.TNS_EMSDK||''),python=options.python||process.env.PYTHON||'python';
  if(!options.sdk&&!process.env.TNS_EMSDK)throw Error('TNS_EMSDK must name the Emscripten 3.1.74 directory');
  const work=path.resolve(options.work||path.join(__dirname,'vendor/rom/build-'+system));await fs.mkdir(work,{recursive:true});
@@ -13,6 +13,7 @@ async function build(options={}){
  await fs.writeFile(path.join(work,'os.h'),'#include "preview-os.h"\n');
  await fs.writeFile(path.join(work,'embedded_rom.h'),'extern unsigned TNS_ROM_SIZE;\nextern const unsigned char *tns_rom_data;\n#define TNS_SAVE_FILENAME "save.sav"\n#define TNS_ROM_FILENAME "embedded.z64"\n');
  if(system==='n64')await require('./build-rom-preview-n64.cjs').adapt(work,profile);
+ if(system==='nes')await require('./build-rom-preview-nes.cjs').adapt(work,profile);
  const flags=['-O3','-fno-strict-aliasing','-fwrapv','-Wno-register','-DTNS_ROM_PREVIEW',...(['nds','n64'].includes(system)?['-fexceptions']:[]),...(profile.unsignedChar?['-funsigned-char']:[]),...profile.defines.filter(d=>d!=='ARM_ARCH').map(d=>'-D'+d),...profile.includeDirectories.flatMap(p=>['-I',p]),'-sUSE_ZLIB=1'];
  const env={...process.env,EM_CONFIG:path.join(sdk,'.emscripten'),EMSDK_PYTHON:python},outputs=[];
  // Compile separately so C keeps its language, linkage and implicit conversions.

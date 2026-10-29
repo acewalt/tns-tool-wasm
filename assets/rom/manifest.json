@@ -57,6 +57,14 @@
       "bytes": 88269,
       "sha256": "52c165069441a09180b4bd63464318aa7b861b1d36e0d05e8047b48619fd2f0b"
     },
+    "nes-preview.js": {
+      "bytes": 54230,
+      "sha256": "b6c53ed4bb5239233d6c11d53554ead51baa7b0cb5efe751737330ccd766de4e"
+    },
+    "nes-preview.wasm": {
+      "bytes": 175721,
+      "sha256": "f2031090455c4754b002b3238c77b28288d2bc63f443a3780821852e3bdf03cb"
+    },
     "snes-preview.js": {
       "bytes": 61608,
       "sha256": "109db731105b39c56f33da3358569fb5afcdbcf8ca167581d4ef5b70c9e45ad9"
@@ -86,8 +94,8 @@
       "sha256": "6bc09cb8f8e36bf54ff809e0b9656fa41f887866f462c02375f70ac8337c29e3"
     },
     "n64-preview.wasm": {
-      "bytes": 630406,
-      "sha256": "5c5009c7893641e584710cfc80437e2c3c87e981a6fcf2f71763a8a60d96e28e"
+      "bytes": 630561,
+      "sha256": "5e90159f1a9da4011990f2e4245c864c82f1e4e83bc6ba8475ef85a5f80fc18c"
     },
     "jszip.min.js": {
       "bytes": 97630,

@@ -124,6 +124,7 @@ if(primaryInstance) app.whenReady().then(async()=>{
       })()`);
     }
     report.prgmPreview=await require('./smoke-prgm.cjs').checkPrgm(win,smokeReport);
+    report.calculatorManager=await require('./smoke-calculator.cjs').checkCalculator(win);
       if(process.env.TNS_DESKTOP_SMOKE_BUILD)report.ndlessPreview=await require('./smoke-ndless-preview.cjs').checkNdlessPreview(win,smokeReport);
       if(process.env.TNS_DESKTOP_SMOKE_BUILD)report.romConverter=await require('./smoke-rom.cjs').checkRom(win,smokeReport);
       if(process.env.TNS_DESKTOP_SMOKE_BUILD)report.gbPreview=await require('./smoke-rom.cjs').checkGb(win,smokeReport);
@@ -136,6 +137,7 @@ if(primaryInstance) app.whenReady().then(async()=>{
       await browser.webContents.executeJavaScript('window.TnsNdlessDesktopRequired.close()');
       report.browserRomConverter=await require('./smoke-rom.cjs').checkBrowser(browser);
       browser.setContentSize(430,860);
+      report.browserCalculatorManager=await require('./smoke-calculator.cjs').checkCalculator(browser);
       report.browserPrgmPreview=await require('./smoke-prgm.cjs').checkPrgm(browser,smokeReport+'.mobile');
       await require('node:fs/promises').writeFile(smokeReport,JSON.stringify(report,null,2));
     }finally{browser.destroy();}

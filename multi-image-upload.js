@@ -42,11 +42,11 @@
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${TNS_PROGRESS_V}`, "tnsTypeProgressStyle");
   ensureStyle('link[data-ndless-tns-inspector-style="true"]', `./ndless-tns-inspector.css?v=${V}`, "ndlessTnsInspectorStyle");
-  ensureStyle('link[data-ndless-editor-style="true"]', `./ndless-editor.css?v=${V}`, "ndlessEditorStyle");
+  ensureStyle('link[data-ndless-editor-style="true"]', `./ndless-editor.css?v=20261029-usb-rom-v21`, "ndlessEditorStyle");
   ensureStyle('link[data-ndless-friendly-editor-style="true"]', `./ndless-friendly-editor.css?v=${V}`, "ndlessFriendlyEditorStyle");
   ensureStyle('link[data-ndless-friendly-layout-fix-style="true"]', `./ndless-friendly-layout-fix.css?v=${V}`, "ndlessFriendlyLayoutFixStyle");
-  ensureStyle('link[data-ndless-project-workspace-style="true"]', `./ndless-project-workspace.css?v=${V}`, "ndlessProjectWorkspaceStyle");
-  ensureStyle('link[data-rom-converter-style="true"]', `./rom-converter.css?v=${V}`, "romConverterStyle");
+  ensureStyle('link[data-ndless-project-workspace-style="true"]', `./ndless-project-workspace.css?v=20261029-usb-rom-v21`, "ndlessProjectWorkspaceStyle");
+  ensureStyle('link[data-rom-converter-style="true"]', `./rom-converter.css?v=20261029-usb-rom-v21`, "romConverterStyle");
   ensureStyle('link[data-ndless-project-layout-fix-style="true"]', `./ndless-project-layout-fix.css?v=${V}`, "ndlessProjectLayoutFixStyle");
   ensureStyle('link[data-ndless-project-sdk-enhancements-style="true"]', `./ndless-project-sdk-enhancements.css?v=${V}`, "ndlessProjectSdkEnhancementsStyle");
   ensureStyle('link[data-ndless-project-performance-fix-style="true"]', `./ndless-project-performance-fix.css?v=${V}`, "ndlessProjectPerformanceFixStyle");
@@ -84,7 +84,7 @@
     .then(() => loadScript('script[data-ndless-analysis="true"]', `./ndless-analysis.js?v=${V}`, "ndlessAnalysis"))
     .then(() => loadScript('script[data-ndless-friendly-core="true"]', `./ndless-friendly-core.js?v=${V}`, "ndlessFriendlyCore"))
     .then(() => loadScript('script[data-ndless-rebuilder="true"]', `./ndless-rebuilder.js?v=${V}`, "ndlessRebuilder"))
-    .then(() => loadScript('script[data-ndless-editor="true"]', `./ndless-editor.js?v=${V}`, "ndlessEditor"))
+    .then(() => loadScript('script[data-ndless-editor="true"]', `./ndless-editor.js?v=20261029-usb-rom-v21`, "ndlessEditor"))
     .then(() => loadScript('script[data-ndless-friendly-editor="true"]', `./ndless-friendly-editor.js?v=${V}`, "ndlessFriendlyEditor"))
     .then(() => loadScript('script[data-ndless-inspector-editor-link="true"]', `./ndless-inspector-editor-link.js?v=${V}`, "ndlessInspectorEditorLink"))
     .then(() => loadScript('script[data-ndless-project-core="true"]', `./ndless-project-core.js?v=${V}`, "ndlessProjectCore"))
@@ -92,7 +92,7 @@
     .then(() => loadScript('script[data-ndless-framebuffer-preview="true"]', `./ndless-framebuffer-preview.js?v=${V}`, "ndlessFramebufferPreview"))
     .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
     .then(() => loadScript('script[data-ndless-live-session="true"]', `./ndless-live-session.js?v=${V}`, "ndlessLiveSession"))
-    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=${V}`, "ndlessProjectWorkspace"))
+    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=20261029-usb-rom-v21`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-arm-runtime-v2="true"]', `./ndless-arm-runtime-v2.js?v=${V}`, "ndlessArmRuntimeV2"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
     .then(() => loadScript('script[data-ndless-project-file-tree="true"]', `./ndless-project-file-tree.js?v=${V}`, "ndlessProjectFileTree"))
@@ -103,20 +103,20 @@
     .then(() => loadScript('script[data-ndless-browser-live-preview="true"]', `./ndless-browser-live-preview.js?v=${V}`, "ndlessBrowserLivePreview"))
     .then(() => loadScript('script[data-ndless-build-auto-install="true"]', `./ndless-build-auto-install.js?v=${V}`, "ndlessBuildAutoInstall"))
     .then(() => loadScript('script[data-ndless-build-ui="true"]', `./ndless-build-ui.js?v=${V}`, "ndlessBuildUi"))
-    .then(() => loadScript('script[data-ndless-live-preview="true"]', `./ndless-live-preview.js?v=${V}`, "ndlessLivePreview"))
+    .then(() => loadScript('script[data-ndless-live-preview="true"]', `./ndless-live-preview.js?v=20261029-usb-rom-v21`, "ndlessLivePreview"))
     .then(() => loadScript('script[data-ndless-executable-preview="true"]', `./ndless-executable-preview.js?v=${V}`, "ndlessExecutablePreview"))
-    .then(() => loadScript('script[data-rom-gb-preview="true"]', `./rom-gb-preview.js?v=${V}`, "romGbPreview"))
+    .then(() => loadScript('script[data-rom-gb-preview="true"]', `./rom-gb-preview.js?v=20261029-usb-rom-v21`, "romGbPreview"))
     .then(() => loadScript('script[data-rom-web-converter="true"]', `./rom-web-converter.js?v=${V}`, "romWebConverter"))
-    .then(() => loadScript('script[data-rom-converter-view="true"]', `./rom-converter-view.js?v=${V}`, "romConverterView"))
-    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=${V}`, "romConverter"));
+    .then(() => loadScript('script[data-rom-converter-view="true"]', `./rom-converter-view.js?v=20261029-usb-rom-v21`, "romConverterView"))
+    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=20261029-usb-rom-v21`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
 
   const independent = [
     ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20261015-import-dialog-lifecycle-v4", "mediaImportController"],
-    ['script[data-drag-drop-ui="true"]', "./drag-drop-ui.js?v=20261015-drag-overlay-no-blur-v2", "dragDropUi"],
-    ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20261021-output-filename-v1", "homeDropImport"],
+    ['script[data-drag-drop-ui="true"]', "./drag-drop-ui.js?v=20261029-usb-rom-v21", "dragDropUi"],
+    ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20261029-usb-rom-v21", "homeDropImport"],
     ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20261015-import-dialog-lifecycle-v4", "luaDropProgress"],
     ['script[data-import-progress-i18n="true"]', "./import-progress-i18n.js?v=20260827-import-i18n-v1", "importProgressI18n"],
     ['script[data-sidebar-title-i18n="true"]', "./sidebar-title-i18n.js?v=20260827-sidebar-title-i18n-v1", "sidebarTitleI18n"],

@@ -53,7 +53,7 @@ async function convertNes(bytes,info,JSZip,options){
  zip.file('.tnsproject.json',JSON.stringify(metadata,null,2));
  zip.file('embedded_rom.h','// Generated locally from the selected cartridge; compatible NES 2.0 headers are normalized to iNES.\n#define TNS_ROM_FILENAME "rom-'+info.sha1.slice(0,12)+'.nes.tns"\nstatic const unsigned char tns_rom_data[]={'+format(require('./rom-data.cjs').normalizeNes(bytes))+'};\n');
  const output=await zip.generateAsync({type:'nodebuffer',compression:'DEFLATE',compressionOptions:{level:6}});
- return{ok:true,info,name:metadata.name,filename:metadata.name+'-Project.zip',zip:new Uint8Array(output),sources:metadata.settings.build.sources.length,chunks:1};
+ return{ok:true,info,name:metadata.name,filename:metadata.name+'-Project.zip',zip:new Uint8Array(output),previewRom:new Uint8Array(require('./rom-data.cjs').normalizeNes(bytes)),sources:metadata.settings.build.sources.length,chunks:1};
 }
 async function convertGb(bytes,info,JSZip,options){
  const template=options.gbTemplate||path.join(process.resourcesPath||__dirname,'vendor/rom/gb-template.zip');

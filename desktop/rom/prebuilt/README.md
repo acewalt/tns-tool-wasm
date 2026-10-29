@@ -10,6 +10,7 @@ node desktop/prepare-rom-n64.cjs
 node desktop/prepare-rom-nds.cjs
 # TNS_EMSDK points to Emscripten 3.1.74; PYTHON points to Python 3.
 node desktop/build-rom-preview.cjs snes
+node desktop/build-rom-preview.cjs nes
 node desktop/build-rom-preview.cjs gba
 node desktop/build-rom-preview.cjs n64
 node desktop/build-rom-preview.cjs nds
@@ -24,6 +25,11 @@ PocketSNES includes the historical Snes9x license and individual component
 notices. gpSP and Daedalus use GPL v2 or later; NooDS uses GPL v3 or later.
 Their original notices remain in the source templates. GBA uses the included
 open replacement BIOS. DS boots directly through the core's HLE implementation.
+
+NES uses the pinned NesNspire/InfoNES sources and mapper set from `nes-profile.json`.
+The platform facade yields on complete frames and maps host joypad and battery RAM;
+it does not run an ARM interpreter around the NES CPU. N64 display FPS counts LCD
+updates; bounded interpreter slices are not reported as rendered frames.
 
 `node desktop/prepare-rom-prebuilt.cjs` checks every artifact before copying it
 to the portable runtime. Updating an artifact requires regenerating its manifest.

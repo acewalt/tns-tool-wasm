@@ -2,6 +2,15 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const enabled=!!process.env.TNS_DESKTOP_COMPILER,hash=b=>crypto.createHash('sha256').update(b).digest('hex');
 async function game(system,rom){const c=await require('./helpers/rom-direct.cjs').load(system,{print:()=>{},printErr:()=>{}}),p=c._malloc(rom.length);c.HEAPU8.set(rom,p);assert.equal(c._tns_load(p,rom.length),0);return c;}
 const frame=c=>c.HEAPU8.slice(c._tns_pixels(),c._tns_pixels()+153600);
+test('NES direct core renders 600 real frames, responds to joypad and persists battery RAM',async()=>{
+ const rom=require('./fixtures/nes-homebrew.cjs')();rom[6]|=2;
+ const idle=await game('nes',rom),pressed=await game('nes',rom),seen=new Set(),start=performance.now();
+ for(let i=0;i<600;i++){idle._tns_step(0);pressed._tns_step(1<<4);if(i%37===0)seen.add(hash(frame(idle)));}
+ assert.ok(seen.size>4,'Real PPU output must animate');assert.notEqual(hash(frame(idle)),hash(frame(pressed)),'A must affect the actual NES program');
+ assert.ok(performance.now()-start<10000,'A direct NES core must sustain at least 60 fps on this runner');
+ assert.equal(idle._tns_save_size(),8192);idle.HEAPU8[idle._tns_save()+777]=83;
+ const fresh=await game('nes',rom);fresh.HEAPU8.set(idle.HEAPU8.slice(idle._tns_save(),idle._tns_save()+8192),fresh._tns_save());assert.equal(fresh.HEAPU8[fresh._tns_save()+777],83);
+});
 for(const system of ['snes','gba','nds'])test(system+' core executes an original animated cartridge and battery RAM roundtrips',{skip:!enabled,timeout:15000},async()=>{
  const rom=require('../desktop/rom-test-'+system+'.cjs')(),c=await game(system,rom),seen=new Set();for(let i=0;i<90;i++){c._tns_step(0);if(i%7===0)seen.add(hash(frame(c)));}assert.ok(seen.size>3);
  if(system==='snes'){assert.equal(c.HEAPU8[c._tns_save()+1]&128,0);for(let i=0;i<3;i++)c._tns_step(16);assert.equal(c.HEAPU8[c._tns_save()+1]&128,128);}

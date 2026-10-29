@@ -1,9 +1,14 @@
 # TNS Tool Stats Worker
 
-This optional Cloudflare Worker stores two public counters in D1:
+This optional Cloudflare Worker supplies three public counters from D1:
 
 - `documents_generated`: increments after valid `.tns` bytes exist in browser memory, before `downloadBytes()`.
 - `daily_visitors`: stores one anonymous visitor ID per date with a unique `(visit_date, visitor_id)` key.
+- `totalVisitors`: counts distinct visitor IDs across all dates, so returning on another day does not increment the lifetime total.
+
+The browser keeps its anonymous ID in localStorage; Portable keeps a stable ID in its user profile, independent of the localhost port. This counts browser/profile identities, not identifiable people across devices or private sessions. Clearing browser data or using another profile creates a separate identity.
+
+For an explicitly requested reset, run [reset-stats.sql](reset-stats.sql) once in the authenticated D1 console. There is no public reset API. Visitor identities should remain intact. Every page load registers the same stable ID, with one request per renderer. D1 deduplicates it, so a returning browser is registered immediately after a reset without inflating totals. Tests exercise the real SQL with SQLite, including duplicates across dates and the reset.
 
 ## Deploy
 

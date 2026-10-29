@@ -139,15 +139,20 @@
     }
   };
   const q=(selector,root=document)=>root?.querySelector(selector);
+  const extraText={
+    es:{storage:'Almacenamiento',storageUnknown:'Capacidad no disponible',storageFree:'libres de',storageUsed:'usados',record:'Grabar pantalla',stopRecording:'Detener grabación',recordHint:'Capturas USB sucesivas · vídeo WebM sin audio · máximo 2 minutos. La frecuencia depende de la calculadora.',recordUnsupported:'Este navegador no admite grabación WebM del lienzo.',recording:'Grabando',recordStopped:'Grabación finalizada',downloadVideo:'Descargar vídeo WebM',dropHint:'Arrastra TNS a una carpeta para enviarlos; arrastra un archivo de la calculadora a otra carpeta para moverlo. La barra de ruta es el destino de la carpeta actual.',onlyTns:'Selecciona únicamente archivos .tns.',moving:'Moviendo',moveConflict:'El destino ya contiene ese nombre. No se movió el archivo.',invalidMove:'No se puede mover un elemento dentro de sí mismo.'},
+    en:{storage:'Storage',storageUnknown:'Capacity unavailable',storageFree:'free of',storageUsed:'used',record:'Record screen',stopRecording:'Stop recording',recordHint:'Successive USB screenshots · silent WebM video · up to 2 minutes. Capture rate depends on the calculator.',recordUnsupported:'This browser does not support WebM canvas recording.',recording:'Recording',recordStopped:'Recording finished',downloadVideo:'Download WebM video',dropHint:'Drop TNS files onto a folder to upload; drag a calculator file to another folder to move it. The path bar targets the current folder.',onlyTns:'Select only .tns files.',moving:'Moving',moveConflict:'The destination already contains this name. Nothing was moved.',invalidMove:'An item cannot be moved inside itself.'},
+    fr:{storage:'Stockage',storageUnknown:'Capacité indisponible',storageFree:'libres sur',storageUsed:'utilisés',record:'Enregistrer l’écran',stopRecording:'Arrêter l’enregistrement',recordHint:'Captures USB successives · vidéo WebM sans son · 2 minutes maximum. La fréquence dépend de la calculatrice.',recordUnsupported:'Ce navigateur ne permet pas l’enregistrement WebM du canevas.',recording:'Enregistrement',recordStopped:'Enregistrement terminé',downloadVideo:'Télécharger la vidéo WebM',dropHint:'Déposez des TNS sur un dossier pour les envoyer ; glissez un fichier de la calculatrice vers un autre dossier pour le déplacer. La barre du chemin cible le dossier actuel.',onlyTns:'Sélectionnez uniquement des fichiers .tns.',moving:'Déplacement',moveConflict:'Ce nom existe déjà dans la destination. Aucun déplacement.',invalidMove:'Un élément ne peut pas être déplacé dans lui-même.'}
+  };
   const state={
     root:null,link:null,path:"/",files:[],chosen:new Set(),busy:false,
     cache:new Map(),expanded:new Set(["/"]),transferStarted:0,view:"list",
     lastDownloadSaved:false,lastScreenshotReady:false,destinationPicker:null,
-    lastDevice:null,selecting:false
+    lastDevice:null,selecting:false,storage:null,storageDirty:false,recording:null,drag:null
   };
   function tr(k){
     const language=String(document.documentElement.lang||"es").slice(0,2);
-    return (text[language]||text.es)[k]||k;
+    return (extraText[language]||extraText.es)[k]||(text[language]||text.es)[k]||k;
   }
   function say(value,error=false){
     const label=q("[data-ti-status]",state.root);
@@ -188,7 +193,8 @@
   function controls(){
     if(!state.root)return;
     const online=Boolean(state.link?.connected);
-    const locked=state.busy||state.selecting||Boolean(state.destinationPicker);
+    const locked=state.busy||state.selecting||Boolean(state.destinationPicker)||Boolean(state.recording);
+    q('.ti-manager-dialog',state.root)?.setAttribute('aria-busy',String(state.busy||state.selecting));
     const disable=(s,val)=>{const e=q("[data-ti-"+s+"]",state.root);if(e)e.disabled=val;};
     disable("connect",locked||online);
     // Hide Connect once there is a confirmed connection; show it again on
@@ -206,6 +212,10 @@
       }
     }
     for(const action of ["refresh","mkdir","upload","current","capture"])disable(action,locked||!online);
+    disable('storage-refresh',locked||!online);
+    disable('record',locked||!online);
+    const stop=q('[data-ti-record-stop]',state.root);if(stop){stop.hidden=!state.recording;stop.disabled=!!state.recording?.stopping;}
+    const record=q('[data-ti-record]',state.root);if(record)record.hidden=!!state.recording;
     disable("up",locked||!online||state.path==="/");
     disable("receive",locked||!online||!selected().length||selected().some(f=>f.isDir));
     disable("delete",locked||!online||!selected().length);
@@ -234,7 +244,7 @@
       p.textContent=tr("unavailable");host.append(p);controls();return;
     }
     const icon=(folder,expanded)=>{
-      const el=document.createElement("span");el.className="ti-tree-icon";
+      const el=document.createElement("span");el.className="ti-tree-icon"+(folder?" is-folder":"");
       el.innerHTML=folder?
         (expanded?
           '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 10h20M3 7V5a2 2 0 0 1 2-2h5l2 3h7a2 2 0 0 1 2 2v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>':
@@ -305,6 +315,7 @@
           else{checkbox.checked=!checkbox.checked;checkbox.dispatchEvent(new Event("change"));}
         });
         tile.append(checkbox,openItem,makeFileActions(file));
+        bindDrag(tile,file);
         gallery.append(tile);
       }
       host.append(gallery);
@@ -354,7 +365,7 @@
         const size=document.createElement("span");size.textContent=file.isDir?"—":formatted(file.size);
         const folder=document.createElement("span");folder.textContent=path;
         nameCell.append(b,makeFileActions(file));
-        r.append(cb,nameCell,type,size,folder);li.append(r);
+        r.append(cb,nameCell,type,size,folder);bindDrag(r,file);li.append(r);
         if(file.isDir){
           const wrapper=document.createElement("div");
           wrapper.className="ti-tree-children-wrapper"+(expanded?" is-open":"");
@@ -401,7 +412,8 @@
     controls();say(message);
     const progress=q("[data-ti-bar]",state.root);
     if(progress){progress.hidden=true;progress.value=0;}
-    try{await operation();}
+    let completed=false;
+    try{await operation();completed=true;if(state.storageDirty)await readStorage();}
     catch(e){
       const broken=Boolean(state.link?.broken);
       if(broken){
@@ -409,6 +421,7 @@
         state.link=null;state.files=[];state.cache.clear();
         state.expanded=new Set(["/"]);state.chosen.clear();state.path="/";
         q("[data-ti-device]",state.root).textContent="—";
+        showStorage(null);state.storageDirty=false;
         // Finish releasing the old USB handle before enabling Connect. An
         // unawaited close can otherwise close a newly reopened device.
         state.lastDevice=oldLink.detached ? null : oldLink.device || state.lastDevice;
@@ -425,6 +438,7 @@
       }
     }
     finally{state.busy=false;controls();if(progress)progress.hidden=true;}
+    return completed;
   }
   async function connect(){
     if(state.busy||state.selecting||state.link?.connected)return;
@@ -449,6 +463,7 @@
         (device.cx2?"TI-Nspire CX II / CAS":"TI-Nspire / CX");
       say(tr("connected")+" · "+q("[data-ti-device]",state.root).textContent);
       log(tr("success"));rows();
+      await readStorage();
     },tr("connecting"));
   }
   async function disconnect(){
@@ -457,6 +472,7 @@
       state.link=null;state.path="/";state.files=[];
       state.cache.clear();state.expanded=new Set(["/"]);state.chosen.clear();
       q("[data-ti-device]",state.root).textContent="—";
+      showStorage(null);state.storageDirty=false;
       q("[data-ti-image]",state.root).replaceChildren();
       rows();say(tr("idle"));log("");
     });
@@ -668,6 +684,7 @@
     await state.link.putFile(dest,data,(n,total,phase)=>{
       updateTransfer(name,n,total,"upload",phase);
     });
+    state.storageDirty=true;
     knownNames.add(name.toLowerCase());
     return true;
   }
@@ -678,9 +695,10 @@
     state.chosen.clear();
     rows();
   }
-  async function upload(files){
+  async function upload(files,droppedDirectory){
     if(!files.length||state.busy||!state.link?.connected)return;
-    const directory=await chooseDestination(files.map(file=>file.name));
+    if(files.some(file=>!/^.+\.tns$/i.test(file.name))){say(tr('onlyTns'),true);return;}
+    const directory=droppedDirectory===undefined?await chooseDestination(files.map(file=>file.name)):droppedDirectory;
     if(directory===null){say(tr("cancelled"));return;}
     await working(async()=>{
       const currentEntries=await state.link.listDir(directory);
@@ -860,6 +878,7 @@
        (file.isDir?"\n"+tr("folderWarning"):"")))return;
     await working(async()=>{
       await state.link.deleteEntry(file.path,file.isDir);
+      state.storageDirty=true;
       state.chosen.delete(file.path);
       if(file.isDir)dropFolderCache(file.path);
       await refreshParent(parentPath(file.path));
@@ -871,6 +890,7 @@
     if(!name)return;
     await working(async()=>{
       await state.link.makeDir(window.TnsNspireUSB.childPath(state.path,name));
+      state.storageDirty=true;
       state.files=await state.link.listDir(state.path);
       state.cache.set(state.path,state.files);
       rows();say(tr("success"));
@@ -883,6 +903,7 @@
     await working(async()=>{
       for(const f of targets) {
         await state.link.deleteEntry(f.path,f.isDir);
+        state.storageDirty=true;
         state.chosen.delete(f.path);
         if(f.isDir)for(const key of [...state.cache.keys()])
           if(key===f.path||key.startsWith(f.path+"/"))state.cache.delete(key);
@@ -892,6 +913,98 @@
       state.chosen.clear();rows();say(tr("success"));
     });
   }
+  function showStorage(info){
+    state.storage=info;if(!state.root)return;
+    const output=q('[data-ti-storage]',state.root),meter=q('[data-ti-storage-meter]',state.root);
+    output.textContent=info?formatted(info.free)+' '+tr('storageFree')+' '+formatted(info.total)+' · '+formatted(info.used)+' '+tr('storageUsed'):tr('storageUnknown');
+    meter.hidden=!info;if(info){meter.max=info.total;meter.value=info.used;meter.title=output.textContent;}
+  }
+  async function readStorage(){
+    state.storageDirty=false;
+    if(!state.link?.connected||typeof state.link.storageInfo!=='function'){showStorage(null);return;}
+    try{showStorage(await state.link.storageInfo());}
+    catch(error){showStorage(null);if(state.link?.broken)throw error;}
+  }
+  function bindDrag(node,file){
+    node.dataset.calculatorPath=file.path;node.draggable=true;
+    node.addEventListener('dragstart',event=>{
+      if(state.busy||state.recording||state.destinationPicker){event.preventDefault();return;}
+      state.drag=file;event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('application/x-tns-calculator-entry',file.path);
+      node.classList.add('is-drag-source');event.stopPropagation();
+    });
+    node.addEventListener('dragend',()=>{state.drag=null;node.classList.remove('is-drag-source');for(const item of state.root.querySelectorAll('.is-drop-target'))item.classList.remove('is-drop-target');});
+    if(file.isDir)bindDropZone(node,()=>file.path);
+  }
+  function bindDropZone(node,directory){
+    const canDrop=event=>!state.busy&&!state.recording&&!state.destinationPicker&&state.link?.connected&&
+      (state.drag||Array.from(event.dataTransfer?.types||[]).includes('Files'));
+    node.addEventListener('dragover',event=>{
+      if(!canDrop(event))return;event.preventDefault();event.stopPropagation();node.classList.add('is-drop-target');event.dataTransfer.dropEffect=state.drag?'move':'copy';
+    });
+    node.addEventListener('dragleave',event=>{if(!node.contains(event.relatedTarget))node.classList.remove('is-drop-target');});
+    node.addEventListener('drop',event=>{
+      event.preventDefault();event.stopPropagation();node.classList.remove('is-drop-target');if(!canDrop(event))return;
+      const dest=directory(),source=state.drag;state.drag=null;
+      if(source)void moveEntry(source,dest);
+      else void upload(Array.from(event.dataTransfer.files||[]),dest);
+    });
+  }
+  async function moveEntry(file,directory){
+    if(state.busy||state.recording||!state.link?.connected)return;
+    const parent=parentPath(file.path);if(directory===parent)return;
+    if(directory===file.path||directory.startsWith(file.path+'/')){say(tr('invalidMove'),true);return;}
+    await working(async()=>{
+      const entries=await state.link.listDir(directory);state.cache.set(directory,entries);
+      if(entries.some(item=>item.name.toLowerCase()===file.name.toLowerCase()))throw Error(tr('moveConflict'));
+      const dest=window.TnsNspireUSB.childPath(directory,file.name);
+      await state.link.renameEntry(file.path,dest);
+      state.chosen.delete(file.path);if(file.isDir)dropFolderCache(file.path);
+      state.cache.set(parent,await state.link.listDir(parent));
+      state.cache.set(directory,await state.link.listDir(directory));
+      state.expanded.add(directory);setCurrentFolder(directory);rows();say(tr('success')+' · '+dest);
+    },tr('moving')+' '+file.name);
+  }
+  async function startRecording(){
+    if(state.busy||state.recording||!state.link?.connected)return;
+    const mime=['video/webm;codecs=vp9','video/webm;codecs=vp8','video/webm'].find(type=>typeof MediaRecorder!=='undefined'&&MediaRecorder.isTypeSupported(type));
+    const canvas=document.createElement('canvas');
+    if(!mime||typeof canvas.captureStream!=='function'){say(tr('recordUnsupported'),true);return;}
+    canvas.width=320;canvas.height=240;
+    const recording={stopping:false,frames:0,started:Date.now(),wake:null,done:null};state.recording=recording;controls();
+    recording.done=(async()=>{
+      let stream,recorder;const chunks=[];let size=0;
+      try{
+        if(!await screenshot())return;
+        const first=q('[data-ti-image] canvas',state.root);if(!first)return;
+        canvas.width=first.width;canvas.height=first.height;const ctx=canvas.getContext('2d');ctx.drawImage(first,0,0);
+        stream=canvas.captureStream(0);const track=stream.getVideoTracks()[0];
+        // requestFrame records each completed USB capture with its actual timestamp.
+        if(typeof track.requestFrame!=='function')throw Error(tr('recordUnsupported'));
+        recorder=new MediaRecorder(stream,{mimeType:mime,videoBitsPerSecond:1000000});
+        const finished=new Promise((resolve,reject)=>{recorder.onstop=resolve;recorder.onerror=event=>{recording.stopping=true;recording.wake?.();reject(event.error||Error('Video encoder error'));};});
+        // Install a handler immediately even if the encoder fails between captures.
+        finished.catch(()=>{});
+        recorder.ondataavailable=event=>{if(event.data.size){chunks.push(event.data);size+=event.data.size;if(size>32*1024*1024){recording.stopping=true;recording.wake?.();}}};
+        recorder.start(1000);track.requestFrame();recording.frames=1;
+        while(!recording.stopping&&state.link?.connected&&Date.now()-recording.started<120000){
+          q('[data-ti-record-status]',state.root).textContent=tr('recording')+' · '+recording.frames+' · '+Math.round((Date.now()-recording.started)/1000)+'s';
+          await new Promise(resolve=>{const timer=setTimeout(resolve,1000);recording.wake=()=>{clearTimeout(timer);resolve();};});recording.wake=null;
+          if(recording.stopping)break;
+          if(!await screenshot())break;
+          const current=q('[data-ti-image] canvas',state.root);ctx.drawImage(current,0,0,canvas.width,canvas.height);track.requestFrame();recording.frames++;
+        }
+        recording.stopping=true;controls();if(recorder.state!=='inactive')recorder.stop();
+        let timer;try{await Promise.race([finished,new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error('Video finalization timeout')),4000);})]);}finally{clearTimeout(timer);}
+        const video=new Blob(chunks,{type:recorder.mimeType||mime});if(!video.size)throw Error('Empty video');
+        if(state.videoURL)URL.revokeObjectURL(state.videoURL);state.videoURL=URL.createObjectURL(video);
+        const output=q('[data-ti-record-status]',state.root),download=document.createElement('a');download.href=state.videoURL;download.download='TI-Nspire-recording.webm';download.textContent=tr('downloadVideo');
+        output.replaceChildren(document.createTextNode(tr('recordStopped')+' · '+recording.frames+' · '),download);
+      }catch(error){say(error.message||String(error),true);}
+      finally{if(recorder&&recorder.state!=='inactive')recorder.stop();stream?.getTracks().forEach(track=>track.stop());state.recording=null;controls();}
+    })();
+    await recording.done;
+  }
+  async function stopRecording(){const recording=state.recording;if(!recording)return;recording.stopping=true;recording.wake?.();controls();await recording.done;}
   function renderScreenshot(snapshot){
     const {width,height,pixels}=snapshot;
     const canvas=document.createElement("canvas");
@@ -933,7 +1046,7 @@
     host.append(canvas,resolution,btn);
   }
   async function screenshot(){
-    await working(async()=>{
+    return working(async()=>{
       state.transferStarted=Date.now();
       let renderedEarly=false;
       const image=await state.link.screenshotRle((received,total,phase)=>{
@@ -953,7 +1066,8 @@
       say(tr("success"));
     },tr("capturePending"));
   }
-  function close(){
+  async function close(){
+    if(state.recording)await stopRecording();
     if(state.busy)return;
     if(state.destinationPicker)state.destinationPicker.cancel();
     // Hiding the manager must not tear down a healthy USB session. Retain the
@@ -971,8 +1085,10 @@
       '<button type="button" data-ti-disconnect disabled></button><span data-ti-status></span></div>',
       '<div class="ti-manager-grid"><aside class="ti-manager-side">',
       '<h3 data-ti-model-label></h3><div class="ti-manager-device" data-ti-device>—</div>',
+      '<section class="ti-storage"><div><h3 data-ti-storage-label></h3><button type="button" data-ti-storage-refresh aria-label="Refresh storage">↻</button></div><meter data-ti-storage-meter min="0" max="1" value="0" hidden></meter><output data-ti-storage></output></section>',
       '<h3 data-ti-capture-label></h3><p data-ti-capture-hint></p>',
-      '<button type="button" data-ti-capture disabled></button><div data-ti-image class="ti-manager-image"></div>',
+      '<div class="ti-record-controls"><button type="button" data-ti-capture disabled></button><button type="button" data-ti-record disabled></button><button type="button" data-ti-record-stop hidden></button><output data-ti-record-status aria-live="polite"></output></div>',
+      '<div data-ti-image class="ti-manager-image"></div><p data-ti-record-hint></p>',
       '<p data-ti-browser-hint></p></aside>',
       '<main class="ti-manager-files"><div class="ti-manager-files-head"><h3 data-ti-folder-title></h3>',
       '<div class="ti-manager-actions"><div class="ti-manager-view-switch" role="group" data-ti-view-group>',
@@ -987,6 +1103,7 @@
       '<div data-ti-rows></div></div>',
       '<div class="ti-manager-footer-actions"><label><span data-ti-upload-text></span><input type="file" data-ti-upload multiple accept=".tns" disabled hidden /></label>',
       '<button type="button" data-ti-current disabled></button></div>',
+      '<p class="ti-drop-hint" data-ti-drop-hint></p>',
       '<div class="ti-manager-log"><span data-ti-progress-label></span><progress data-ti-bar max="100" value="0" hidden></progress><output data-ti-log></output></div></main></div>',
       '<footer class="ti-manager-bottom"><span data-ti-caution></span>',
       '<a data-ti-help href="./docs/calculator-transfer.md" target="_blank" rel="noopener noreferrer"></a></footer></section>'
@@ -1010,6 +1127,7 @@
       "[data-ti-upload-text]":"send","[data-ti-current]":"sendCurrent",
       "[data-ti-progress-label]":"progress","[data-ti-caution]":"caution",
       "[data-ti-help]":"help"
+      ,"[data-ti-storage-label]":"storage","[data-ti-record]":"record","[data-ti-record-stop]":"stopRecording","[data-ti-record-hint]":"recordHint","[data-ti-drop-hint]":"dropHint"
     };
     for(const [sel,key]of Object.entries(labels))q(sel,root).textContent=tr(key);
     for(const [selector,emoji]of Object.entries({
@@ -1037,6 +1155,12 @@
     q("[data-ti-delete]",root).addEventListener("click",remove);
     q("[data-ti-current]",root).addEventListener("click",current);
     q("[data-ti-capture]",root).addEventListener("click",screenshot);
+    q('[data-ti-record]',root).addEventListener('click',()=>void startRecording());
+    q('[data-ti-record-stop]',root).addEventListener('click',()=>void stopRecording());
+    q('[data-ti-storage-refresh]',root).addEventListener('click',()=>working(readStorage));
+    showStorage(null);bindDropZone(q('[data-ti-path]',root),()=>state.path);bindDropZone(q('.ti-manager-table',root),()=>state.path);
+    root.addEventListener('dragover',event=>{event.preventDefault();event.stopPropagation();});
+    root.addEventListener('drop',event=>{event.preventDefault();event.stopPropagation();});
     q("[data-ti-up]",root).addEventListener("click",()=>{
       const parent=state.path.split("/").slice(0,-1).join("/")||"/";
       setCurrentFolder(parent);state.expanded.add(parent);
@@ -1070,6 +1194,7 @@
     if(!state.busy)void working(async()=>{
       await link.close();state.link=null;state.files=[];state.cache.clear();state.chosen.clear();
       q("[data-ti-device]",state.root).textContent="—";
+      showStorage(null);state.storageDirty=false;
       rows();say(tr("reconnect"),true);
     });
   });

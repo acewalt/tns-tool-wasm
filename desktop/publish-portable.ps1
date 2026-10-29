@@ -9,6 +9,9 @@ if (!$report.ok -or $report.version -ne $version -or @($report.cases | Where-Obj
     throw 'A matching successful test of the public ZIP is required before publishing'
 }
 if (!$report.prgmPreview.ok -or !$report.browserPrgmPreview.ok) { throw 'Prgm preview desktop/browser acceptance is required' }
+foreach ($manager in @($report.calculatorManager,$report.browserCalculatorManager)) {
+    if (!$manager.ok -or !$manager.busyLabels -or !$manager.deviceStorage -or !$manager.dropUpload -or !$manager.nativeMove -or !$manager.collisionSafe -or $manager.webmBytes -lt 100 -or $manager.serialRequests -ne 1) { throw 'Calculator manager desktop/browser recording, drag/drop and storage acceptance is required' }
+}
 if (!$report.prgmPreview.stableHistory -or !$report.prgmPreview.expandedCanvas -or !$report.browserPrgmPreview.stableHistory -or !$report.browserPrgmPreview.expandedCanvas) { throw 'Prgm history and expanded canvas acceptance is required' }
 if (!$report.prgmPreview.firstInputLayout -or !$report.browserPrgmPreview.firstInputLayout) { throw 'Prgm first Request and subsequent transcript layout acceptance is required' }
 if (!$report.prgmPreview.historyAcrossRuns -or !$report.browserPrgmPreview.historyAcrossRuns) { throw 'Prgm previous-run history and vertical placement acceptance is required' }
@@ -25,6 +28,8 @@ if (!$games.ok -or @($games.results).Count -ne 2 -or !($games.results | Where-Ob
 $stage = Join-Path $env:RUNNER_TEMP 'portable-release-assets'
 $romDesign = Get-Content 'release/rom-design-report.json' -Raw | ConvertFrom-Json
 if (!$romDesign.ok -or !$romDesign.controls.headerIcon -or !$romDesign.controls.expanded -or !$romDesign.controls.pauseResume -or !$romDesign.reset.monoHeaderIcon) { throw 'ROM Converter design acceptance is required' }
+if (!$romDesign.improvements.ok -or $romDesign.improvements.nesFps -lt 20 -or !$romDesign.improvements.modalContained -or !$romDesign.improvements.n64IndependentControls -or !$romDesign.improvements.normalDocumentMenu -or !$romDesign.improvements.pcBadge -or !$romDesign.improvements.xmlBeforeNdless) { throw 'NES performance, N64 controls and File menu acceptance is required' }
+if (!$romDesign.mobileImprovements.ok -or !$romDesign.mobileImprovements.modalContained -or !$romDesign.mobileImprovements.n64IndependentControls) { throw 'Mobile N64 controller and modal acceptance is required' }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 $asset = Join-Path $stage 'TNS-Tool-Portable-Windows-x64.zip'
 Copy-Item -LiteralPath $zip -Destination $asset
@@ -36,13 +41,11 @@ $notes = Join-Path $stage 'notes.md'
 @"
 TNS Tool Portable **$version** para Windows x64.
 
-Prgm Preview corrige la colocación vertical de la primera ejecución con el historial vacío: la llamada y la salida corta bajan al pie de la pantalla para que las opciones del menú queden debajo del primer Request. Después de responder, la salida vuelve al margen normal. No requiere ejecutar antes el programa ni inventa resultados anteriores. Se conserva al volver de la vista ampliada, corregir una entrada inválida o limpiar el historial. Se comprobó con el programa real de física de 602 líneas, teclado, pantalla estrecha y el historial de ejecuciones. El mismo cambio está disponible en la web.
+Administrador USB: estado de carga legible, carpetas doradas, capacidad de almacenamiento consultada a la calculadora, envío de TNS al arrastrarlos sobre una carpeta y movimiento nativo entre carpetas sin reemplazos silenciosos. Graba capturas USB sucesivas y descarga un vídeo WebM sin audio de hasta dos minutos; la fluidez depende del dispositivo.
 
-Se conserva el historial de ejecuciones de la versión anterior; Limpiar historial quita esas ejecuciones sin alterar la entrada activa. La vista ampliada mantiene el tamaño de letra y del popup, con más espacio para el contenido.
+ROM Converter sigue visible al editar documentos normales. El preview NES usa directamente el mismo núcleo NesNspire compilado a WebAssembly y evita la doble emulación ARM. El mando N64 incorpora cruceta independiente, stick de ocho direcciones con zona muerta ajustable, botones C y gatillos; los FPS representan imágenes completadas. Se corrigió el desplazamiento de la ventana del convertidor.
 
-ROM Converter conserva su panel de tres columnas, iconos por consola detectada, selección al arrastrar una ROM, cruceta y botones de juego, controles de ejecución, vista ampliada e información del cartucho.
-
-El módulo principal pasa a llamarse Syntax Doctor. Su descripción general para revisar y corregir código se actualizó en español, inglés y francés, junto con los accesos y el título restaurado al cerrar un proyecto Ndless.
+Incluye las correcciones anteriores de Prgm Preview y la compilación de proyectos Ndless para Windows con el SDK incluido. Las funciones USB se validan con un dispositivo simulado; la tasa y compatibilidad en hardware real pueden variar.
 
 Descarga **TNS-Tool-Portable-Windows-x64.zip**, extrae todo y abre **TNS Tool Portable.exe**. El título muestra la versión. El SDK y los motores están incluidos y funcionan sin conexión.
 

@@ -1006,7 +1006,7 @@ function severityLabel(severity) {
 const STATS_API_BASE_URL = String(window.TNS_TOOL_STATS_API_BASE_URL || "").replace(/\/+$/, "");
 const STATS_TIMEOUT_MS = 3500;
 const STATS_VISITOR_ID_STORAGE_KEY = "tns-tool-stats-visitor-id";
-const STATS_VISIT_DATE_STORAGE_KEY = "tns-tool-stats-visit-date";
+let statsVisitRequest = null;
 const statsState = {
   documentsGenerated: null,
   visitorsToday: null,
@@ -1115,30 +1115,25 @@ async function getStatsVisitorId() {
 
 async function recordTodayVisit() {
   if (!STATS_API_BASE_URL) return;
-  const today = new Date().toISOString().slice(0, 10);
-  const visitorId = await getStatsVisitorId();
-  if (!visitorId) return;
-  try {
-    if (localStorage.getItem(STATS_VISIT_DATE_STORAGE_KEY) === today) return;
-  } catch (_) {
-    // The D1 unique key remains the authoritative duplicate guard.
-  }
-  try {
-    const payload = await fetchStatsJson("/api/visit", {
-      method: "POST",
-      keepalive: true,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ visitorId }),
-    });
-    if (payload) {
-      updateStatsUi(normalizeStatsPayload(payload));
-      try {
-        localStorage.setItem(STATS_VISIT_DATE_STORAGE_KEY, today);
-      } catch (_) {}
+  if (statsVisitRequest) return statsVisitRequest;
+  // One request per page load, with the same persistent ID. D1's unique key
+  // handles duplicates and remains correct after an administrator resets D1.
+  statsVisitRequest = (async () => {
+    const visitorId = await getStatsVisitorId();
+    if (!visitorId) return;
+    try {
+      const payload = await fetchStatsJson("/api/visit", {
+        method: "POST", keepalive: true,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ visitorId }),
+      });
+      if (payload) updateStatsUi(normalizeStatsPayload(payload));
+    } catch (error) {
+      statsVisitRequest = null;
+      console.warn("Stats visit API unavailable:", error);
     }
-  } catch (error) {
-    console.warn("Stats visit API unavailable:", error);
-  }
+  })();
+  return statsVisitRequest;
 }
 
 async function recordSuccessfulTnsGeneration() {

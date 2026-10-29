@@ -31,7 +31,10 @@ app.whenReady().then(async()=>{
   await fs.writeFile(path.join(root,'release/rom-design-mobile.png'),(await win.webContents.capturePage()).toPNG());
   win.setContentSize(1440,1000);
   report.reset=await win.webContents.executeJavaScript(`(async()=>{const q=window.romDesignQ,wait=window.romDesignWait;q('[data-rom-remove]').click();if(window.TnsRomConverter.state.ready||!q('[data-rom-project]').disabled||!q('[data-rom-console-icon]').src.endsWith('/unknown.svg'))throw Error('Remove kept a stale cartridge');const dt=new DataTransfer();dt.items.add(new File([Uint8Array.from(atob(${JSON.stringify(mono)}),c=>c.charCodeAt(0))],'color-misleading.gbc'));const input=q('[data-rom-file]');input.files=dt.files;input.dispatchEvent(new Event('change'));await wait(()=>window.TnsRomConverter.state.ready);if(!q('[data-rom-console-icon]').src.endsWith('/gb.svg'))throw Error('GB icon relied on extension');window.TnsRomConverter.close();if(document.documentElement.classList.contains('rom-converter-lock'))throw Error('Modal scroll lock leaked');if(document.activeElement!==window.romDesignOpener)throw Error('Modal did not restore focus');return{removed:true,monoHeaderIcon:true,closed:true};})()`);
+  report.improvements=await require('./smoke-rom-improvements.cjs').check(win);
+  win.setContentSize(430,900);
+  report.mobileImprovements=await require('./smoke-rom-improvements.cjs').check(win);
   report.ok=true;
- }catch(e){report.error=e.stack;await fs.writeFile(path.join(root,'release/rom-design-error.png'),(await win.webContents.capturePage()).toPNG());}
+ }catch(e){report.error=e.stack||String(e);await fs.writeFile(path.join(root,'release/rom-design-error.png'),(await win.webContents.capturePage()).toPNG());}
  finally{await fs.writeFile(path.join(root,'release/rom-design-report.json'),JSON.stringify(report,null,2));win.destroy();server.close();app.exit(report.ok?0:1);}
 }).catch(e=>{console.error(e);app.exit(1);});

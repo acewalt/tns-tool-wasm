@@ -34,14 +34,24 @@
       "sha256": "b07049833ef0a7dd02932c13bf560bed1cc927fe30d1fc5e08ebd46d12ff9e1f"
     },
     {
+      "name": "nes-preview.js",
+      "bytes": 54230,
+      "sha256": "b6c53ed4bb5239233d6c11d53554ead51baa7b0cb5efe751737330ccd766de4e"
+    },
+    {
+      "name": "nes-preview.wasm",
+      "bytes": 175721,
+      "sha256": "f2031090455c4754b002b3238c77b28288d2bc63f443a3780821852e3bdf03cb"
+    },
+    {
       "name": "n64-preview.js",
       "bytes": 74510,
       "sha256": "6bc09cb8f8e36bf54ff809e0b9656fa41f887866f462c02375f70ac8337c29e3"
     },
     {
       "name": "n64-preview.wasm",
-      "bytes": 630406,
-      "sha256": "5c5009c7893641e584710cfc80437e2c3c87e981a6fcf2f71763a8a60d96e28e"
+      "bytes": 630561,
+      "sha256": "5e90159f1a9da4011990f2e4245c864c82f1e4e83bc6ba8475ef85a5f80fc18c"
     }
   ]
 }

@@ -66,7 +66,7 @@
   }
 
   function showGlobalDropOverlay(event) {
-    if (event.target?.closest?.('.rom-converter-overlay')) { hideGlobalDropOverlay(); return; }
+    if (event.target?.closest?.('.rom-converter-overlay,.ti-manager-overlay')) { hideGlobalDropOverlay(); return; }
     if (!isFileDrag(event) || !document.body) return;
     document.body.classList.add("drop-target-active");
   }

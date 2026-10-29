@@ -23,7 +23,7 @@ async function prepare({assetsOnly=false}={}){
  const out=path.resolve(__dirname,'../assets/rom');await fs.mkdir(out,{recursive:true});const manifest={version:1,files:{}};
  async function write(name,bytes){await fs.writeFile(path.join(out,name),bytes);manifest.files[name]={bytes:bytes.length,sha256:crypto.createHash('sha256').update(bytes).digest('hex')};}
  for(const system of systems){if(assetsOnly){for(const suffix of ['-project.zip','-player.tns'])await write(system+suffix,await fs.readFile(path.join(out,system+suffix)));continue;}const zip=await template(system);await write(system+'-project.zip',zip);const result=await require('./compiler.cjs').build(path.join(__dirname,'vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe'),{name:'player-'+system,zip});await write(system+'-player.tns',result.bytes);console.log(JSON.stringify({system,bytes:result.bytes.length}));}
- for(const name of ['binjgb.js','binjgb.wasm',...['snes','gba','nds','n64'].flatMap(s=>[s+'-preview.js',s+'-preview.wasm'])])await write(name,await fs.readFile(path.join(__dirname,'vendor/rom',name)));
+ for(const name of ['binjgb.js','binjgb.wasm',...['nes','snes','gba','nds','n64'].flatMap(s=>[s+'-preview.js',s+'-preview.wasm'])])await write(name,await fs.readFile(path.join(__dirname,'vendor/rom',name)));
  await write('jszip.min.js',await fs.readFile(path.join(__dirname,'vendor/jszip/jszip.min.js')));
  await fs.writeFile(path.join(out,'manifest.json'),JSON.stringify(manifest,null,2)+'\n');
 }

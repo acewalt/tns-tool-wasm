@@ -48,12 +48,13 @@ test('desktop identity survives independent processes and renderer origins',asyn
   assert.deepEqual([...visitors],[id],'All launches report one anonymous visitor');
 });
 
-test('web retains its existing localStorage daily duplicate guard',async()=>{
-  const storage=new Map();let posts=0;
-  const fetch=async()=>{posts++;return {ok:true,json:async()=>({visitorsToday:1})};};
+test('web revalidates each page load with the same identity, including after a D1 reset',async()=>{
+  const storage=new Map([['tns-tool-stats-visit-date',new Date().toISOString().slice(0,10)]]);let posts=0;const visitors=new Set();
+  const fetch=async(_url,options)=>{posts++;visitors.add(JSON.parse(options.body).visitorId);return {ok:true,json:async()=>({visitorsToday:visitors.size})};};
   const first=await renderer({storage,fetch});await vm.runInContext('recordTodayVisit()',first);
   const second=await renderer({storage,fetch});await vm.runInContext('recordTodayVisit()',second);
-  assert.equal(posts,1);
+  assert.equal(posts,2,'An old date stamp must not suppress registration after reset');
+  assert.equal(visitors.size,1,'Reloads retain the same anonymous ID');
 });
 
 test('smoke runs and failed desktop identity never send statistic mutations',async()=>{
