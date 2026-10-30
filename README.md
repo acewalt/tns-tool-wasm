@@ -86,7 +86,7 @@ The preview is not a full TI-Nspire OS emulator. Unsupported native APIs, hardwa
 
 ## Transfer files to the calculator — web and Windows
 
-**You can transfer TNS files directly from the website over USB.** Open **Transfer to calculator / Transferir a calculadora** from the File/Save tools and connect your TI-Nspire in the integrated calculator manager.
+**You can transfer TNS files directly from the website over USB.** Open **Transfer to calculator / Transferir a calculadora** from the left sidebar and connect your TI-Nspire in the integrated calculator manager. You do not need to create or open a document first.
 
 - Send one or more `.tns` files, or send the current generated document directly.
 - Browse calculator folders, choose the destination and create a new folder from the destination picker.

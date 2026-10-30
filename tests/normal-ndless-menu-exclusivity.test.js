@@ -73,7 +73,9 @@ assert.equal(window.TnsNormalProjectState.hasProject(),false);
 vm.runInContext(workspace,context);
 document.dispatchEvent({type:"DOMContentLoaded"});
 const choices=()=>filePanel.querySelectorAll("[data-ndless-project-always]");
-assert.equal(choices().length,3,"Ndless separator and both new/open entries exist on empty editor");
+assert.equal(choices().length,2,"Both new/open Ndless entries exist on empty editor");
+const sharedSeparator=filePanel.children.find(el=>el.className.includes('ndless-project-menu-separator'));
+assert.ok(sharedSeparator,"The shared divider exists above the Ndless/ROM group");
 assert.equal(choices().filter(x=>x.className.includes("ndless-project-menu-action")).length,2);
 assert.ok(choices().every(el=>!el.hidden&&el.style.display!=="none"),
   "Ndless choices should be visible in the empty editor");
@@ -83,7 +85,9 @@ assert.equal(newNormal.style.display,"","Normal actions stay visible");
 vm.runInContext("markNormalProjectActive()",context);
 assert.equal(window.TnsNormalProjectState.hasProject(),true);
 assert.ok(choices().every(el=>el.hidden&&el.style.display==="none"),
-  "Normal editor hides both Ndless entries and their separator");
+  "Normal editor hides both Ndless entries");
+assert.ok(!sharedSeparator.hidden&&sharedSeparator.style.display!=="none",
+  "The divider stays visible above ROM Converter when Ndless entries are hidden");
 assert.equal(newNormal.style.display,"","Normal File menu remains intact");
 assert.equal(window.NdlessProjectWorkspace.getProject(),null);
 window.NdlessProjectWorkspace.activateProject({name:"accidental-mix"});

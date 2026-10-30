@@ -87,7 +87,8 @@
     const panel=$("#xml-doctor-panel .doctor-toolbar > .tool-menu > .menu-panel");
     if(!panel)return;
     // While editing a normal TNS/XML document, neither Ndless project entry
-    // point nor its separators should be shown. Preserve Ndless-only actions
+    // point should be shown. The shared ROM Converter divider stays visible.
+    // Preserve Ndless-only actions
     // when an actual Ndless workspace is active.
     const hidden=!state.project&&hasNormalProject();
     $$('[data-ndless-project-always]',panel).forEach(el=>{
@@ -139,7 +140,7 @@
 
   function injectMenu(){
     const panel=$("#xml-doctor-panel .doctor-toolbar > .tool-menu > .menu-panel");if(!panel||$("#xml-new-ndless-project",panel))return;
-    const sep=document.createElement("div");sep.className="ndless-project-menu-separator";sep.dataset.ndlessProjectAction="1";sep.dataset.ndlessProjectAlways="1";
+    const sep=document.createElement("div");sep.className="ndless-project-menu-separator ti-file-action-separator";sep.dataset.ndlessProjectAction="1";sep.setAttribute("role","separator");sep.setAttribute("aria-hidden","true");
     const desktop=Boolean(window.TnsDesktop);
     const btn=document.createElement("button");btn.type="button";btn.id="xml-new-ndless-project";btn.className="menu-action ndless-project-menu-action";btn.dataset.ndlessProjectAction="1";btn.dataset.ndlessProjectAlways="1";btn.innerHTML=`<span>${esc(tr("newProject"))}</span>`+(desktop?"":'<span class="ndless-project-off-badge" aria-label="Off">OFF</span>');btn.disabled=!desktop;btn.title=desktop?"":"En mantenimiento / Under maintenance";
     btn.addEventListener("click",wizard);
