@@ -182,9 +182,17 @@ body.drop-target-active .click-burst-layer {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .click-burst-layer {
+  .click-burst-dot {
     display: none;
   }
+  .click-burst-ring {
+    animation: clickBurstRingReduced 200ms ease-out both;
+  }
+}
+
+@keyframes clickBurstRingReduced {
+  from { opacity: .65; transform: translate(-50%, -50%) scale(.6); }
+  to { opacity: 0; transform: translate(-50%, -50%) scale(1.8); }
 }
 
 .startup-loader {
