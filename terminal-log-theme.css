@@ -167,12 +167,24 @@
   tab-size: 2;
 }
 
+/* Keep the Main Log at a fixed height; new messages scroll inside the console. */
 .log-panel .terminal-log-window {
-  min-height: 230px;
+  height: 320px;
+  min-height: 320px;
+  max-height: 320px;
 }
 
 .log-panel .terminal-log-body {
-  min-height: 196px;
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.log-panel .terminal-log-window #log {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .doctor-side .terminal-log-window,
