@@ -1,17 +1,22 @@
 {
   "name": "tns-tool-wasm",
-  "version": "0.1.0",
+  "version": "0.1.24",
   "private": true,
   "type": "module",
   "scripts": {
     "build:monaco": "vite build --config vite.monaco.config.js && node scripts/trim-generated-trailing-whitespace.mjs dist/monaco-lua-editor.js",
-    "test": "node tests/theme-transition-toggle.test.js && node tests/calculator-transfer-ui.test.js && node tests/calculator-tree.test.js && node tests/calculator-grid-view.test.js && node tests/calculator-upload-destination.test.js && node tests/calculator-actions.test.js && node tests/calculator-session.test.js && node tests/nnse-transport.test.js && node tests/tns-output-filename.test.js && node tests/ti-cas-preview-bridge.test.js && node tests/ti-cas-hybrid-fallback.test.js && node tests/lua-guide-cas.test.js && node tests/custom-content-formats.test.js && node tests/ndless-formats.test.js && node tests/ndless-zehn-builder.test.js && node tests/tns-file-save-experimental.test.js && node tests/ndless-direct-save.test.js && node tests/ndless-desktop-required.test.js && node tests/normal-ndless-menu-exclusivity.test.js && node tests/ndless-reachable.test.js && node tests/ndless-friendly.test.js && node tests/ndless-export-roundtrip.test.js && node tests/ndless-sdk-fixtures.test.js && node tests/smoke.test.js && node tests/e2e.test.js && node --test tests/prgm-preview.test.js && node --test tests/ndless-live-session.test.js && node tests/ndless-arm-runtime.test.js",
+    "test": "node tests/theme-transition-toggle.test.js && node tests/calculator-transfer-ui.test.js && node tests/calculator-tree.test.js && node tests/calculator-grid-view.test.js && node tests/calculator-upload-destination.test.js && node tests/calculator-actions.test.js && node tests/calculator-delete.test.js && node --test tests/stats-worker.test.js && node tests/calculator-session.test.js && node tests/nnse-transport.test.js && node tests/tns-output-filename.test.js && node tests/ti-cas-preview-bridge.test.js && node tests/ti-cas-hybrid-fallback.test.js && node tests/lua-guide-cas.test.js && node tests/custom-content-formats.test.js && node tests/ndless-formats.test.js && node tests/ndless-zehn-builder.test.js && node tests/tns-file-save-experimental.test.js && node tests/ndless-direct-save.test.js && node tests/ndless-desktop-required.test.js && node tests/normal-ndless-menu-exclusivity.test.js && node tests/ndless-reachable.test.js && node tests/ndless-friendly.test.js && node tests/ndless-export-roundtrip.test.js && node tests/ndless-sdk-fixtures.test.js && node tests/smoke.test.js && node tests/e2e.test.js && node --test tests/prgm-preview.test.js && node --test tests/ndless-live-session.test.js && node tests/ndless-arm-runtime.test.js",
     "test:ndless-sdk": "node tests/ndless-sdk-fixtures.test.js",
     "tns-tool": "node cli/tns-tool.js",
     "lua-test": "node cli/lua-test.js",
     "lua-suite": "node cli/lua-suite.js",
     "lua-preview": "node cli/tns-tool.js lua preview",
     "tns": "node cli/tns-tool.js tns",
+    "desktop:dev": "electron .",
+    "desktop:vendor": "node desktop/prepare-vendor.mjs",
+    "desktop:build:win": "electron-builder --win zip --x64",
+    "desktop:build:single-exe": "electron-builder --win portable --x64",
+    "desktop:test": "node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs tests/desktop-sdk-runtime.test.cjs",
     "test:calculator-session": "node tests/calculator-session.test.js && node tests/nnse-transport.test.js",
     "test:prgm": "node --test tests/prgm-preview.test.js",
     "test:ndless-preview": "node --test tests/ndless-live-session.test.js && node tests/ndless-arm-runtime.test.js && node --test --test-concurrency=1 tests/ndless-preview-native.test.cjs tests/ndless-preview-lcd-files.test.cjs tests/ndless-preview-games.test.cjs",
@@ -23,6 +28,9 @@
   },
   "devDependencies": {
     "monaco-editor": "^0.56.0",
-    "vite": "^8.2.2"
-  }
+    "vite": "^8.2.2",
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "main": "desktop/main.cjs"
 }

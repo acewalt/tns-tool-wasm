@@ -1,0 +1,267 @@
+name: Desktop Portable Windows (experimental)
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feature/desktop-portable-ndless']
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'prgm-preview.*'
+      - 'src/prgm/**'
+      - 'tests/prgm-preview.test.js'
+      - 'examples/physics-prgm.tib'
+      - 'app.js'
+      - 'ndless-desktop-required.*'
+      - 'electron-builder.json'
+      - 'package.json'
+      - 'ndless-web-bridge.js'
+      - 'ndless-project-workspace.js'
+      - 'ndless-project-core.js'
+      - 'ndless-arm-runtime-v2.js'
+      - 'ndless-arm-preview-worker.js'
+      - 'ndless-live-*.js'
+      - 'ndless-executable-preview.js'
+      - 'ndless-editor.js'
+      - 'ndless-friendly-editor.js'
+      - 'ndless-rebuilder.js'
+      - 'ndless-project-core-enhancements.js'
+      - 'ndless-project-folder-build.js'
+      - 'tests/ndless-export-roundtrip.test.js'
+      - 'tests/desktop-project-profile.test.cjs'
+      - 'rom-*.js'
+      - 'rom-converter.css'
+      - 'assets/rom-console-icons/**'
+      - 'tests/rom-converter-design.test.cjs'
+      - 'tests/rom-cores.test.cjs'
+      - 'tests/rom-converter.test.cjs'
+      - 'tests/ndless-live-session.test.js'
+      - 'tests/ndless-preview-*.test.cjs'
+      - 'tests/helpers/ndless-native.cjs'
+      - 'tests/fixtures/nes-homebrew.cjs'
+      - 'tests/fixtures/sprite-bmp.cjs'
+      - 'examples/ndless-games/**'
+      - 'tools/ndless-community-preview.cjs'
+      - 'tools/package-ndless-games.cjs'
+      - 'ndless-project-workspace.css'
+      - 'tests/fixtures/ndless-preview-projects.cjs'
+      - 'tests/helpers/ndless-preview-worker.cjs'
+      - 'ndless-project-sdk-enhancements-v2.js'
+      - 'multi-image-upload.js'
+      - 'tests/desktop-portable.test.cjs'
+      - 'tests/desktop-stats.test.cjs'
+      - 'tests/desktop-sdk-runtime.test.cjs'
+      - 'tests/ndless-desktop-required.test.js'
+      - 'tests/normal-ndless-menu-exclusivity.test.js'
+      - 'tests/desktop-native-build.test.cjs'
+      - 'ti-calculator-transfer.js'
+      - 'ti-calculator-transfer.css'
+      - 'ti-nspire-webusb.js'
+      - 'ti-nspire-nnse.js'
+      - 'tests/calculator-session.test.js'
+      - 'tests/nnse-transport.test.js'
+      - 'tests/calculator-upload-destination.test.js'
+      - 'index.html'
+      - '.github/workflows/desktop-portable-windows.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: portable-${{ github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs tests/desktop-sdk-runtime.test.cjs
+      - run: node tests/calculator-upload-destination.test.js
+      - run: npm run test:calculator-session
+      - run: node tests/ndless-project.test.js
+      - run: node --test tests/ndless-live-session.test.js
+      - run: node --test tests/desktop-project-profile.test.cjs
+      - run: node --test tests/rom-converter.test.cjs
+      - run: node --test tests/rom-converter-design.test.cjs
+      - run: node tests/ndless-export-roundtrip.test.js
+      - run: node tests/ndless-arm-runtime.test.js
+      - run: node --test tests/prgm-preview.test.js
+      - run: node tests/ndless-desktop-required.test.js
+      - run: node tests/normal-ndless-menu-exclusivity.test.js
+      - run: node --check desktop/main.cjs && node --check desktop/compiler.cjs && node --check ndless-web-bridge.js
+
+  portable-windows:
+    needs: test
+    runs-on: windows-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install JS build dependencies
+        run: npm install --no-audit --no-fund
+      - name: Vendor runtime dependencies
+        run: npm run desktop:vendor
+      - name: Download pinned, bundled Ndless v4 compiler
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = 'desktop/vendor/compiler'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          $out = Join-Path $dir 'TNS-Tool-Compiler-Windows-x64.exe'
+          $url = 'https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-compiler-v4/TNS-Tool-Compiler-Windows-x64.exe'
+          Invoke-WebRequest -Uri $url -OutFile $out
+          $actual = (Get-FileHash -Algorithm SHA256 $out).Hash.ToLowerInvariant()
+          $expected = 'b7de803d2fbd9799689cf7cdf1f7c8575d712dd57f6755ba36b16c04c07fdb2f'
+          if ($actual -ne $expected) { throw "Compiler SHA256 mismatch: $actual" }
+          $env:LOCALAPPDATA = Join-Path $env:RUNNER_TEMP 'tns-compiler-localappdata'
+          New-Item -ItemType Directory -Force -Path $env:LOCALAPPDATA | Out-Null
+          $compilerPath = (Resolve-Path $out).Path
+          $statusOutput = & $compilerPath --status-json 2>&1
+          Write-Host "Status exit=$LASTEXITCODE output=$statusOutput"
+          if ($LASTEXITCODE -ne 0) { Write-Warning 'Compiler status probe failed. Smoke build will determine compatibility.' }
+      - name: Prepare official Ndless target headers, libraries and PRG loaders
+        run: python desktop/prepare-compiler.py
+      - name: Prepare pinned ROM conversion source templates without ROMs
+        run: node desktop/prepare-rom.cjs
+      - name: Compile a real Ndless C example using bundled ARM SDK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dir = Join-Path $env:RUNNER_TEMP 'ndless-portable-smoke'
+          New-Item -ItemType Directory -Force -Path $dir | Out-Null
+          @'
+          #define OLD_SCREEN_API
+          #include <stdio.h>
+          #include <libndls.h>
+          int main(void) {
+              assert_ndless_rev(801);
+              clrscr();
+              printf("Hello portable Ndless!\\n");
+              wait_key_pressed();
+              return 0;
+          }
+          '@ | Set-Content -Encoding ascii (Join-Path $dir 'main.c')
+          $zip = Join-Path $env:RUNNER_TEMP 'ndless-portable-smoke.zip'
+          Compress-Archive -Path (Join-Path $dir 'main.c') -DestinationPath $zip -Force
+          $exe = 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe'
+          $tns = Join-Path $env:RUNNER_TEMP 'smoke.tns'
+          $compilerPath = (Resolve-Path $exe).Path
+          $zipPath = (Resolve-Path $zip).Path
+          $stdout = Join-Path $env:RUNNER_TEMP 'ndless-stdout.txt'
+          $stderr = Join-Path $env:RUNNER_TEMP 'ndless-stderr.txt'
+          $proc = Start-Process -FilePath $compilerPath -ArgumentList '--build-zip',"`"$zipPath`"","`"$tns`"",'smoke' -Wait -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+          Write-Host "Native compiler exit=$($proc.ExitCode)"
+          if(Test-Path $stdout){Get-Content $stdout | Write-Host}
+          if(Test-Path $stderr){Get-Content $stderr | Write-Host}
+          if ($proc.ExitCode -ne 0) { throw "Native Ndless C build failed (exit $($proc.ExitCode))" }
+          $bytes = [IO.File]::ReadAllBytes($tns)
+          if ($bytes.Length -lt 40 -or [Text.Encoding]::ASCII.GetString($bytes,0,4) -ne 'Zehn') {
+            throw "Invalid modern Zehn output"
+          }
+          Write-Host "Built real Ndless example: $($bytes.Length) bytes"
+      - name: Verify Node IPC compiler probe
+        shell: pwsh
+        run: |
+          $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
+          node -e "const c=require('./desktop/compiler.cjs'); c.status(process.env.TNS_DESKTOP_COMPILER).then(s=>{console.log(JSON.stringify(s)); if(!s.toolchainReady) process.exitCode=1})"
+      - name: Compile C and C++ allocation through desktop adapter
+        shell: pwsh
+        run: |
+          $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
+          node --test --test-concurrency=1 tests/desktop-native-build.test.cjs tests/desktop-project-profile.test.cjs tests/rom-converter.test.cjs tests/rom-cores.test.cjs
+      - name: Stress-test compiled Ndless preview with the isolated ARM worker
+        shell: pwsh
+        run: |
+          $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
+          node --test --test-concurrency=1 tests/ndless-preview-native.test.cjs tests/ndless-preview-lcd-files.test.cjs tests/ndless-preview-games.test.cjs
+      - name: Play pinned nDoom and NesNspire builds through the ARM preview
+        shell: pwsh
+        run: |
+          $env:TNS_DESKTOP_COMPILER = (Resolve-Path 'desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe').Path
+          $env:TNS_COMMUNITY_CACHE = Join-Path $env:RUNNER_TEMP 'community-preview'
+          node tools/ndless-community-preview.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Ndless-community-game-evidence
+          path: |
+            ${{ runner.temp }}/community-preview/report.json
+            ${{ runner.temp }}/community-preview/*.png
+            ${{ runner.temp }}/community-preview/nes-log.txt
+            ${{ runner.temp }}/community-preview/failure.txt
+          if-no-files-found: ignore
+      - name: Export original playable source projects
+        run: node tools/package-ndless-games.cjs
+      - name: Verify ROM interface, console icons, controls and mobile layout
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = (Resolve-Path 'node_modules/electron/dist/electron.exe').Path
+          $proc = Start-Process -FilePath $exe -ArgumentList 'desktop/smoke-rom-design.cjs' -WindowStyle Hidden -PassThru -RedirectStandardOutput 'release/rom-design-ci.log' -RedirectStandardError 'release/rom-design-ci.err'
+          if (!$proc.WaitForExit(120000)) { $proc.Kill(); throw 'ROM interface acceptance timed out' }
+          if ($proc.ExitCode -ne 0) { Get-Content 'release/rom-design-report.json'; throw 'ROM interface acceptance failed' }
+          $report = Get-Content 'release/rom-design-report.json' -Raw | ConvertFrom-Json
+          if (!$report.ok) { throw 'ROM interface did not pass' }
+      - name: Pack Windows portable folder ZIP (extract once)
+        run: npm run desktop:build:win
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Validate ZIP integrity and extraction path budget
+        run: python desktop/check-portable.py
+      - name: Extract public ZIP and exercise the actual project menu
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $env:TNS_DESKTOP_SMOKE_REPORT = Join-Path $env:RUNNER_TEMP 'portable-smoke.json'
+          $env:TNS_DESKTOP_SMOKE_BUILD = '1'
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          $zip = (Resolve-Path "release/portable/TNS-Tool-Portable-$version-x64.zip").Path
+          $extracted = Join-Path $env:RUNNER_TEMP 'portable-from-public-zip'
+          Expand-Archive -LiteralPath $zip -DestinationPath $extracted
+          $expected = (Get-FileHash 'release/portable/win-unpacked/resources/app.asar').Hash
+          $actual = (Get-FileHash (Join-Path $extracted 'resources/app.asar')).Hash
+          if ($expected -ne $actual) { throw 'Public ZIP differs from packaged app' }
+          $exe = Join-Path $extracted 'TNS Tool Portable.exe'
+          $profile = Join-Path $env:RUNNER_TEMP 'portable-acceptance-profile'
+          $proc = Start-Process -FilePath $exe -ArgumentList "--user-data-dir=`"$profile`"" -WindowStyle Hidden -PassThru
+          if (!$proc.WaitForExit(120000)) { $proc.Kill(); throw 'Packaged app smoke test timed out' }
+          if (!(Test-Path $env:TNS_DESKTOP_SMOKE_REPORT)) { throw 'Packaged app did not report startup' }
+          $report = Get-Content $env:TNS_DESKTOP_SMOKE_REPORT -Raw | ConvertFrom-Json
+          $report | ConvertTo-Json -Depth 10 | Write-Host
+          if ($proc.ExitCode -ne 0 -or !$report.ok) { throw 'Packaged Ndless workspace failed' }
+          if ($report.version -ne $version) { throw 'Downloaded portable has the wrong version' }
+          if (@($report.cases | Where-Object { $_.entry -ne 'visible-menu-click' }).Count) { throw 'Project test bypassed the visible menu' }
+      - name: Publish the verified Windows download
+        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository || (github.event_name == 'push' && github.ref == 'refs/heads/feature/desktop-portable-ndless')
+        shell: pwsh
+        run: ./desktop/publish-portable.ps1
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Portable-acceptance-report
+          path: |
+            ${{ runner.temp }}/portable-smoke.json*
+            release/rom-design-*.png
+            release/rom-design-report.json
+            release/rom-design-ci.*
+          if-no-files-found: ignore
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TNS-Tool-Portable-Windows-x64
+          path: release/portable/*.zip
+          if-no-files-found: error
+          retention-days: 30
+

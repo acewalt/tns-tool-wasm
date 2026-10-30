@@ -1,0 +1,8 @@
+{
+ "id":"nds",
+ "source":{
+  "repository":"https://github.com/Hydr8gon/NooDS",
+  "commit":"4cb1439c330248b26cdf5f8dbcfa4e5ac53dcda0",
+  "zipSha256":"1f9e74724a7fefc862ab0e6e014fa62ad601acfd132c1a0f446d835e0216e15e"
+ }
+}

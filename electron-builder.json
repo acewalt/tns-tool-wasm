@@ -1,0 +1,33 @@
+{
+  "appId": "com.acewalt.tnstool.portable",
+  "productName": "TNS Tool Portable",
+  "asar": true,
+  "directories": { "output": "release/portable" },
+  "files": [
+    "**/*",
+    "!desktop/vendor/**",
+    "!desktop/rom/prebuilt/**",
+    "!assets/rom/**",
+    "!tools/**",
+    "!tests/**",
+    "!cloudflare/**",
+    "!docs/**",
+    "!.github/**",
+    "!node_modules/.cache/**",
+    "!*.zip",
+    "!release/**"
+  ],
+  "extraResources": [
+    { "from": "desktop/vendor", "to": "vendor", "filter": ["**/*", "!compiler/**", "!rom/build-*/**"] },
+    { "from": "desktop/vendor/compiler/TNS-Tool-Compiler-Windows-x64.exe", "to": "compiler/TNS-Tool-Compiler-Windows-x64.exe" },
+    { "from": "desktop/vendor/compiler/sdk.bin.gz", "to": "compiler/sdk.bin.gz" },
+    { "from": "desktop/vendor/compiler/sdk.json", "to": "compiler/sdk.json" }
+  ],
+  "extraFiles": [{ "from": "desktop/PORTABLE-LEEME.txt", "to": "LEEME.txt" }],
+  "win": {
+    "icon": "desktop/assets/icon.ico",
+    "target": [{ "target": "zip", "arch": ["x64"] }],
+    "artifactName": "TNS-Tool-Portable-${version}-${arch}.${ext}"
+  },
+  "compression": "maximum"
+}

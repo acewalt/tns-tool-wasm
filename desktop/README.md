@@ -205,12 +205,44 @@ Supported profiles:
   profile. Native project preview still executes the actual compiled C and can
   be slow. The two previews are clearly labeled and validated separately.
 
-Input archives are limited to 16 MiB and must contain one cartridge. Extract a
-single game's file from larger collections first. Header-only detection reads at
-most 66,048 bytes, including for large files. SNES/GBA/NDS and other N64 games
-have no integrated backend and are explicitly rejected. Mapper availability is a structural check, not a
-guarantee that every game works. SM64 preview is slow; neither a successful build
-nor the preview certifies complete gameplay or physical calculator compatibility.
+Additional engines in 0.1.16:
+
+| Cartridge | Engine | Input limit | Native output |
+| --- | --- | --- | --- |
+| SNES LoROM/HiROM | PocketSNES/Snes9x | 8 MiB | Embedded cartridge TNS |
+| GBA | gpSP interpreter + open BIOS | 32 MiB | Embedded cartridge TNS |
+| N64 | Daedalus interpreter, experimental | 64 MiB | TNS; companion cartridge above 8 MiB |
+| Nintendo DS | NooDS direct boot, experimental | 128 MiB | TNS; companion cartridge above 4 MiB |
+
+The direct cartridge preview runs these actual cores as local WebAssembly.
+Editable source projects still compile and execute their actual ARM code;
+changing C never substitutes a stale cartridge preview. N64 and DS performance
+on a physical calculator is very limited and has not been certified. The DS
+port is new: original diagnostic software passes, but commercial DS games have
+not been validated. SPC7110, DSi, audio, links and special accessories are not
+implemented. Genesis, Master System and other consoles are rejected explicitly.
+
+Raw files and individual ZIPs are limited to 144 MiB; a ZIP must contain one
+cartridge. Extract one game from large collections first. Header detection reads
+at most 4.1 MiB and uses header fields rather than the extension. A recognized
+header or a successful build does not certify complete gameplay or physical
+compatibility.
+
+Large N64/DS cartridges are streamed from a companion `.tns` data file instead
+of being compiled into the calculator's limited RAM. Build TNS downloads a ZIP
+with both files: put them in the same calculator folder and open the program.
+The source project retains checked base64 chunks and recreates the same package
+after reopening. Resources have bounded lengths and SHA256 validation.
+
+DS preview shows both screens and accepts mouse input on the lower screen.
+On the calculator, hold Doc and use arrows to move its stylus cursor; Doc+Ctrl
+touches. Ctrl/Shift = A/B, Var/Delete = X/Y, Minus/Menu = L/R, Tab = Select,
+Enter = Start, Esc = save and exit. N64 uses 8/2/4/6 for the analog stick,
+arrows for C, Minus/Plus for A/B, Ctrl for Z, Shift/Var for L/R and Enter
+for Start. The direct preview provides labeled buttons for these controls.
+
+Preview binaries are ROM-free, SHA256-checked, reproducible with Emscripten
+3.1.74 and included offline. Source templates retain upstream licenses.
 
 `node desktop/prepare-rom.cjs` creates the source-only templates from pinned,
 SHA256-verified public archives. It takes no ROM input. Public SM64 extraction

@@ -1,0 +1,20 @@
+TNS Tool Portable
+
+1. Extrae TODO el ZIP una sola vez en una carpeta.
+2. Cierra cualquier version anterior que este abierta.
+3. Ejecuta "TNS Tool Portable.exe" dentro de la carpeta extraida.
+
+Conserva el ejecutable junto con las carpetas resources y locales y los demas
+archivos. Puedes mover la carpeta completa. No abras la app desde dentro del ZIP.
+No necesita instalar Node, Python, Rust ni el SDK de Ndless por separado.
+
+Este formato abre directamente desde la carpeta. El SDK viaja comprimido para
+evitar el error 0x80010135 del extractor de Windows por rutas demasiado largas.
+Al usar Ndless por primera vez, prepara el SDK en una ruta corta dentro de
+LOCALAPPDATA\TNS\sdk. Los siguientes usos reutilizan esa copia; no se descomprime
+en cada inicio y no necesita descargar nada. Esa primera preparacion puede tardar.
+
+Para ejecutar programas nativos TNS en la calculadora, Ndless debe estar activo.
+Las nuevas plantillas Basico y Graficos usan SDL y permanecen abiertas hasta ESC.
+Los proyectos anteriores conservan su codigo original: crear uno nuevo no cambia
+los archivos TNS que ya habias compilado.

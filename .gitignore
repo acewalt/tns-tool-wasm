@@ -1,3 +1,8 @@
 node_modules/
 __pycache__/
 *.pyc
+
+# Local desktop dependencies and Electron output
+desktop/vendor/
+release/
+dist-electron/

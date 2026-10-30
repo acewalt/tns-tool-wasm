@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "id": "gb",
+  "source": {
+    "repository": "https://github.com/binji/binjgb",
+    "commit": "16621111ed0ee73bcc45c912a823bcebedcffc0f",
+    "zipSha256": "9676618738334f7ec1fc7c9f77cb72ad5a2e9f2617d5f4a52cf617cd19e9e7c4"
+  },
+  "cartridgeTypes": [0, 1, 2, 3, 5, 6, 8, 9, 15, 16, 17, 18, 19, 25, 26, 27, 28, 29, 30]
+}
