@@ -93,7 +93,7 @@
     .then(() => loadScript('script[data-ndless-framebuffer-preview="true"]', `./ndless-framebuffer-preview.js?v=${V}`, "ndlessFramebufferPreview"))
     .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
     .then(() => loadScript('script[data-ndless-live-session="true"]', `./ndless-live-session.js?v=${V}`, "ndlessLiveSession"))
-    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=20261029-usb-rom-v21`, "ndlessProjectWorkspace"))
+    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=20261029-sidebar-workflow-v24`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-arm-runtime-v2="true"]', `./ndless-arm-runtime-v2.js?v=${V}`, "ndlessArmRuntimeV2"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
     .then(() => loadScript('script[data-ndless-project-file-tree="true"]', `./ndless-project-file-tree.js?v=${V}`, "ndlessProjectFileTree"))

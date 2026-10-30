@@ -774,6 +774,68 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.tools-sidebar > [hidden],
+#home-open-normal[hidden],
+#home-open-python[hidden],
+#xml-doctor-panel .doctor-toolbar > [hidden] {
+  display: none !important;
+}
+
+.tools-sidebar .calculator-launcher {
+  width: 100%;
+  color: var(--text);
+  background: var(--panel);
+  text-align: left;
+  white-space: normal;
+}
+.tools-sidebar .calculator-launcher:hover {
+  background: var(--panel);
+}
+.calculator-launcher .launcher-icon {
+  padding: 6px;
+  color: #2dd4bf;
+  background: rgb(45 212 191 / 12%);
+}
+.calculator-launcher .launcher-copy {
+  min-width: 0;
+  flex: 1;
+}
+.calculator-launcher .launcher-title {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 16px;
+  font-weight: 850;
+}
+.calculator-launcher .launcher-description {
+  display: block;
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+@media (max-width: 860px) {
+  .layout .tools-sidebar {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .layout .tools-sidebar > .doctor-launcher,
+  .layout .tools-sidebar > .calculator-launcher {
+    aspect-ratio: auto;
+    min-height: 116px;
+  }
+  .tools-sidebar .calculator-launcher .launcher-copy {
+    width: 100%;
+    flex: 0 1 auto;
+  }
+  .tools-sidebar .calculator-launcher .launcher-title {
+    font-size: clamp(11px, 3.15vw, 13px);
+    line-height: 1.16;
+    margin: 0;
+  }
+  .tools-sidebar .calculator-launcher .launcher-description {
+    display: none;
+  }
+}
+
 #xml-doctor-panel,
 #normal-module,
 #python-module {

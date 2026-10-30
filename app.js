@@ -48,6 +48,7 @@ const I18N = {
     saveXmlZip: "Guardar XML ZIP",
     createTnsFromDoctor: "Crear TNS",
     transferToCalculator: "Transferir a calculadora",
+    calculatorManagerDesc: "Archivos, capturas y almacenamiento por USB.",
     tnsOutputFileName: "Nombre del archivo TNS",
     fileMenu: "Archivo",
     editMenu: "Editar",
@@ -321,6 +322,7 @@ const I18N = {
     saveXmlZip: "Save XML ZIP",
     createTnsFromDoctor: "Create TNS",
     transferToCalculator: "Transfer to calculator",
+    calculatorManagerDesc: "Files, screenshots and storage over USB.",
     tnsOutputFileName: "TNS file name",
     fileMenu: "File",
     editMenu: "Edit",
@@ -594,6 +596,7 @@ const I18N = {
     saveXmlZip: "Enregistrer ZIP XML",
     createTnsFromDoctor: "Créer TNS",
     transferToCalculator: "Transférer vers calculatrice",
+    calculatorManagerDesc: "Fichiers, captures et stockage par USB.",
     tnsOutputFileName: "Nom du fichier TNS",
     fileMenu: "Fichier",
     editMenu: "Edition",
@@ -1956,7 +1959,18 @@ function setXmlDoctorEnabled(enabled) {
   document.querySelector("#xml-programs").disabled = !enabled;
   document.querySelector("#xml-code").disabled = !enabled;
   setStaticCodeEditorReadOnly("#xml-code", !enabled);
+  syncXmlDoctorToolbar();
   syncPrgmPreviewButton();
+}
+
+function syncXmlDoctorToolbar() {
+  const edit = document.querySelector('#xml-edit-menu');
+  if (edit) {
+    edit.hidden = document.querySelector('#xml-inspector-btn').disabled;
+    if (edit.hidden) edit.classList.remove('open');
+  }
+  const syntax = document.querySelector('#xml-syntax-btn');
+  syntax.hidden = syntax.disabled;
 }
 
 function syncPrgmPreviewButton() {
@@ -1983,6 +1997,7 @@ function setXmlDoctorDocumentActionsEnabled(enabled) {
     const el = document.querySelector(`#${id}`);
     if (el) el.disabled = !enabled;
   }
+  syncXmlDoctorToolbar();
 }
 
 function setPyDoctorEnabled(enabled) {

@@ -1,6 +1,6 @@
 # Administrador TI-Nspire nativo de TNS Tool WASM
 
-**Ubicación:** File / Archivo → Save / Guardar → Transferir a calculadora.
+**Ubicación:** barra lateral de herramientas → Transferir a calculadora. Se puede abrir sin crear ni cargar un documento.
 
 ## Funcionamiento
 

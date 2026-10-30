@@ -10,7 +10,7 @@ if (!$report.ok -or $report.version -ne $version -or @($report.cases | Where-Obj
 }
 if (!$report.prgmPreview.ok -or !$report.browserPrgmPreview.ok) { throw 'Prgm preview desktop/browser acceptance is required' }
 foreach ($feedback in @($report.feedback,$report.browserFeedback)) {
-    if (!$feedback.ok -or !$feedback.xmlSeparator -or !$feedback.clickFeedback) { throw 'File menu separator and click feedback acceptance is required' }
+    if (!$feedback.ok -or !$feedback.xmlSeparator -or !$feedback.clickFeedback -or !$feedback.sidebarTransfer) { throw 'File menu separator, click feedback and sidebar transfer acceptance is required' }
 }
 foreach ($manager in @($report.calculatorManager,$report.browserCalculatorManager)) {
     if (!$manager.ok -or !$manager.busyLabels -or !$manager.deviceStorage -or !$manager.dropUpload -or !$manager.nativeMove -or !$manager.collisionSafe -or $manager.webmBytes -lt 100 -or $manager.serialRequests -ne 1) { throw 'Calculator manager desktop/browser recording, drag/drop and storage acceptance is required' }
@@ -44,6 +44,8 @@ $gamePack = (Resolve-Path 'release/preview-games/TNS-Preview-Games.zip').Path
 $notes = Join-Path $stage 'notes.md'
 @"
 TNS Tool Portable **$version** para Windows x64.
+
+Navegación: la barra lateral muestra Syntax Doctor y el administrador de transferencia a calculadora, que se abre sin crear un documento. Los accesos de TNS normal y Python Program quedan ocultos; sus operaciones siguen disponibles internamente. Edit aparece cuando hay un documento y Run syntax cuando existe un bloque editable. El menú Archivo conserva un separador entre XML actions y ROM Converter cuando se ocultan las opciones de Ndless.
 
 Pantalla de carga: texto nítido con entrada legible, centro del logo ampliado y fijo, y un solo trazo animado que recorre su borde. Se eliminaron la respiración de escala/brillo, la doble animación SVG/CSS y los bucles de 1 ms con movimiento reducido. El controlador se carga antes del runtime y no vuelve a crear la pantalla cuando la carga ya terminó.
 
