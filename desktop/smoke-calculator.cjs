@@ -4,7 +4,7 @@ async function checkCalculator(win){
   let phase='startup';const wait=async fn=>{const end=Date.now()+20000;while(!await fn()){if(Date.now()>end)throw Error('Calculator acceptance timeout ('+phase+'): '+document.querySelector('[data-ti-status]')?.textContent);await new Promise(r=>setTimeout(r,30));}};
   await wait(()=>window.TnsCalculatorTransfer&&window.TnsNspireUSB);
   const original=window.TnsNspireUSB,entry=(path,isDir=false)=>({path,name:path.split('/').pop(),isDir,size:isDir?0:4});
-  const dirs=new Map([['/',[entry('/A',true),entry('/B',true)]],['/A',[entry('/A/test.tns')]],['/B',[]]]);let gate=null,captures=0,active=0,peak=0,moves=0,writes=0;
+  const dirs=new Map([['/',[entry('/A',true),entry('/B',true)]],['/A',[entry('/A/test.tns')]],['/B',[]]]);let gate=null,captures=0,active=0,peak=0,moves=0,writes=0;const deleted=[];let protectedPath=null;
   class Calculator{
    constructor(){this.device={productName:'Acceptance CX II'};this.connected=false;}
    static async select(){return new Calculator();}
@@ -14,6 +14,7 @@ async function checkCalculator(win){
    async storageInfo(){return {free:67108864,total:134217728,used:67108864};}
    async putFile(path,data,progress){writes++;const parent=path.slice(0,path.lastIndexOf('/'))||'/';dirs.get(parent).push(entry(path));progress(data.length,data.length);}
    async renameEntry(src,dest){moves++;const parent=src.slice(0,src.lastIndexOf('/'))||'/';dirs.set(parent,dirs.get(parent).filter(f=>f.path!==src));dirs.get(dest.slice(0,dest.lastIndexOf('/'))||'/').push(entry(dest));}
+   async deleteEntry(path,isDir){if(path===protectedPath)throw Object.assign(Error('Native rejection'),{code:'USB_DELETE_REJECTED',deviceStatus:'ff 04',path});if(isDir){if(dirs.get(path)?.length)throw Error('Directory is not empty');dirs.delete(path);}const parent=path.slice(0,path.lastIndexOf('/'))||'/';dirs.set(parent,dirs.get(parent).filter(f=>f.path!==path));deleted.push(path);}
    async screenshotRle(progress,ready){active++;peak=Math.max(peak,active);try{await new Promise(r=>setTimeout(r,40));const pixels=new Uint8Array(153600);for(let p=0;p<pixels.length;p+=2){pixels[p]=captures%2?0:255;pixels[p+1]=captures%2?248:7;}captures++;const image={width:320,height:240,bpp:16,pixels};ready(image);return image;}finally{active--;}}
   }
   window.TnsNspireUSB={...original,NspireUSB:Calculator};window.TnsCalculatorTransfer.open();
@@ -31,8 +32,17 @@ async function checkCalculator(win){
   const a=q('[data-ti-record-status] a'),video=await(await fetch(a.href)).arrayBuffer(),signature=[...new Uint8Array(video,0,4)];if(signature.join(',')!=='26,69,223,163'||video.byteLength<100)throw Error('Recording is not a real WebM file');if(peak!==1)throw Error('Concurrent screenshot requests');
   const player=document.createElement('video');player.muted=true;player.src=a.href;await new Promise((resolve,reject)=>{player.onloadeddata=resolve;player.onerror=()=>reject(Error('WebM did not decode'));player.load();});if(player.videoWidth!==320||player.videoHeight!==240)throw Error('Wrong recorded resolution');player.removeAttribute('src');player.load();
   q('[data-ti-capture]').click();await wait(()=>!q('[data-ti-capture]').disabled);if(captures<4)throw Error('USB did not resume after recording');
+  phase='recursive delete';const originalConfirm=window.confirm,language=document.documentElement.lang;let accept=false;const prompts=[];window.confirm=message=>{prompts.push(message);return accept;};
+  try{
+   dirs.get('/').push(entry('/Drafts',true));dirs.set('/Drafts',[entry('/Drafts/a.tns'),entry('/Drafts/sub',true)]);dirs.set('/Drafts/sub',[entry('/Drafts/sub/b.tns')]);
+   q('[data-ti-up]').click();await wait(()=>!q('[data-ti-capture]').disabled&&row('/Drafts'));
+   const erase=()=>row('/Drafts').querySelector('.ti-row-action-danger').click();erase();await wait(()=>prompts.length===1&&!q('[data-ti-capture]').disabled);if(deleted.length||!dirs.has('/Drafts'))throw Error('Cancel deleted calculator data');
+   accept=true;erase();await wait(()=>deleted.length===4&&!q('[data-ti-capture]').disabled);if(deleted.join('|')!=='/Drafts/a.tns|/Drafts/sub/b.tns|/Drafts/sub|/Drafts'||dirs.has('/Drafts'))throw Error('Folder was not deleted bottom-up');
+   dirs.get('/').push(entry('/Drafts',true));dirs.set('/Drafts',[entry('/Drafts/a.tns'),entry('/Drafts/locked.tns')]);protectedPath='/Drafts/locked.tns';q('[data-ti-refresh]').click();await wait(()=>!q('[data-ti-capture]').disabled&&row('/Drafts'));
+   document.documentElement.lang='en';erase();await wait(()=>deleted.length===5&&!q('[data-ti-capture]').disabled);const status=q('[data-ti-status]').textContent;if(!dirs.has('/Drafts')||!status.includes('FF 04')||!status.includes('Confirmed deletions: 1/3')||status.includes('Communication error'))throw Error('Deletion rejection hid confirmed progress: '+status);
+  }finally{window.confirm=originalConfirm;document.documentElement.lang=language;}
   await window.TnsCalculatorTransfer.close();window.TnsNspireUSB=original;
-  return{ok:true,busyLabels:true,deviceStorage:true,dropUpload:true,nativeMove:true,collisionSafe:true,webmBytes:video.byteLength,recordedScreenshots:captures,serialRequests:peak};
+  return{ok:true,busyLabels:true,deviceStorage:true,dropUpload:true,nativeMove:true,collisionSafe:true,webmBytes:video.byteLength,recordedScreenshots:captures,serialRequests:peak,recursiveDeletion:true,deleteCancelSafe:true,deleteRefusalDetails:true};
  })()`);
 }
 module.exports={checkCalculator};

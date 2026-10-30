@@ -39,6 +39,7 @@ jobs:
       - run: node tests/calculator-grid-view.test.js
       - run: node tests/calculator-upload-destination.test.js
       - run: node tests/calculator-actions.test.js
+      - run: node tests/calculator-delete.test.js
       - run: node tests/calculator-session.test.js
       - run: node tests/nnse-transport.test.js
       - run: node tests/ndless-project.test.js

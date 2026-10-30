@@ -144,6 +144,11 @@
     en:{storage:'Storage',storageUnknown:'Capacity unavailable',storageFree:'free of',storageUsed:'used',record:'Record screen',stopRecording:'Stop recording',recordHint:'Successive USB screenshots · silent WebM video · up to 2 minutes. Capture rate depends on the calculator.',recordUnsupported:'This browser does not support WebM canvas recording.',recording:'Recording',recordStopped:'Recording finished',downloadVideo:'Download WebM video',dropHint:'Drop TNS files onto a folder to upload; drag a calculator file to another folder to move it. The path bar targets the current folder.',onlyTns:'Select only .tns files.',moving:'Moving',moveConflict:'The destination already contains this name. Nothing was moved.',invalidMove:'An item cannot be moved inside itself.'},
     fr:{storage:'Stockage',storageUnknown:'Capacité indisponible',storageFree:'libres sur',storageUsed:'utilisés',record:'Enregistrer l’écran',stopRecording:'Arrêter l’enregistrement',recordHint:'Captures USB successives · vidéo WebM sans son · 2 minutes maximum. La fréquence dépend de la calculatrice.',recordUnsupported:'Ce navigateur ne permet pas l’enregistrement WebM du canevas.',recording:'Enregistrement',recordStopped:'Enregistrement terminé',downloadVideo:'Télécharger la vidéo WebM',dropHint:'Déposez des TNS sur un dossier pour les envoyer ; glissez un fichier de la calculatrice vers un autre dossier pour le déplacer. La barre du chemin cible le dossier actuel.',onlyTns:'Sélectionnez uniquement des fichiers .tns.',moving:'Déplacement',moveConflict:'Ce nom existe déjà dans la destination. Aucun déplacement.',invalidMove:'Un élément ne peut pas être déplacé dans lui-même.'}
   };
+  const deletionText={
+    es:{operationFailed:'No se pudo completar la operación',deleteScanning:'Revisando contenido para eliminar…',deleting:'Eliminando',deleteConfirm:'¿Eliminar permanentemente estos elementos y todo su contenido?',deleteSummary:'Archivos: {files} · Carpetas: {folders}',deleteIrreversible:'Esta acción no se puede deshacer.',deletePlanInvalid:'No se pudo verificar el contenido de la carpeta. No se inició el borrado.',deleteLimit:'El borrado supera 1000 elementos o 32 niveles. No se inició el borrado.',deleteRefused:'La calculadora rechazó borrar',deleteConfirmed:'Eliminaciones confirmadas'},
+    en:{operationFailed:'Operation failed',deleteScanning:'Checking contents before deletion…',deleting:'Deleting',deleteConfirm:'Permanently delete these items and all their contents?',deleteSummary:'Files: {files} · Folders: {folders}',deleteIrreversible:'This cannot be undone.',deletePlanInvalid:'Could not verify the folder contents. Deletion did not start.',deleteLimit:'Deletion exceeds 1000 items or 32 levels. Deletion did not start.',deleteRefused:'The calculator rejected deletion of',deleteConfirmed:'Confirmed deletions'},
+    fr:{operationFailed:'Opération impossible',deleteScanning:'Vérification du contenu avant suppression…',deleting:'Suppression',deleteConfirm:'Supprimer définitivement ces éléments et tout leur contenu ?',deleteSummary:'Fichiers : {files} · Dossiers : {folders}',deleteIrreversible:'Cette action est irréversible.',deletePlanInvalid:'Impossible de vérifier le contenu du dossier. Aucune suppression commencée.',deleteLimit:'La suppression dépasse 1000 éléments ou 32 niveaux. Aucune suppression commencée.',deleteRefused:'La calculatrice a refusé de supprimer',deleteConfirmed:'Suppressions confirmées'}
+  };
   const state={
     root:null,link:null,path:"/",files:[],chosen:new Set(),busy:false,
     cache:new Map(),expanded:new Set(["/"]),transferStarted:0,view:"list",
@@ -152,7 +157,7 @@
   };
   function tr(k){
     const language=String(document.documentElement.lang||"es").slice(0,2);
-    return (extraText[language]||extraText.es)[k]||(text[language]||text.es)[k]||k;
+    return (deletionText[language]||deletionText.es)[k]||(extraText[language]||extraText.es)[k]||(text[language]||text.es)[k]||k;
   }
   function say(value,error=false){
     const label=q("[data-ti-status]",state.root);
@@ -416,6 +421,7 @@
     try{await operation();completed=true;if(state.storageDirty)await readStorage();}
     catch(e){
       const broken=Boolean(state.link?.broken);
+      const deletionProgress=e.deletionProgress?' · '+tr('deleteConfirmed')+': '+e.deletionProgress.confirmed+'/'+e.deletionProgress.total:'';
       if(broken){
         const oldLink=state.link;
         state.link=null;state.files=[];state.cache.clear();
@@ -430,11 +436,12 @@
         const notice=state.lastDownloadSaved?tr("savedReconnect"):
           state.lastScreenshotReady?tr("captureSavedReconnect"):
           e.code==="USB_TIMEOUT"&&message===tr("capturePending")?tr("captureUnavailable"):tr("reconnect");
-        say(notice,true);
-        log(notice+" "+String(e.message||e));
+        say(notice+deletionProgress,true);
+        log(notice+deletionProgress+" "+String(e.message||e));
       }else{
-        say(tr("failed")+": "+(e.message||e),true);
-        log(String(e.message||e));
+        const detail=e.code==='USB_DELETE_REJECTED'?tr('deleteRefused')+' '+e.path+(e.deviceStatus?' ('+e.deviceStatus.toUpperCase()+')':''):(e.message||e);
+        say(tr('operationFailed')+": "+detail+deletionProgress,true);
+        log(String(detail)+deletionProgress);
       }
     }
     finally{state.busy=false;controls();if(progress)progress.hidden=true;}
@@ -873,17 +880,7 @@
     },tr("renameOne")+" "+file.name);
   }
   async function deleteOne(file){
-    if(!state.link?.connected||state.busy)return;
-    if(!confirm(tr("deletePrompt")+"\n"+file.path+
-       (file.isDir?"\n"+tr("folderWarning"):"")))return;
-    await working(async()=>{
-      await state.link.deleteEntry(file.path,file.isDir);
-      state.storageDirty=true;
-      state.chosen.delete(file.path);
-      if(file.isDir)dropFolderCache(file.path);
-      await refreshParent(parentPath(file.path));
-      say(tr("success"));
-    },tr("deleteOne")+" "+file.name);
+    return deleteTargets([file]);
   }
   async function mkdir(){
     const name=prompt(tr("promptFolder"));
@@ -897,21 +894,67 @@
     });
   }
   async function remove(){
-    const targets=selected();
-    if(!targets.length||!confirm(tr("confirmDelete")))return;
-    if(targets.some(x=>x.isDir)&&!confirm(tr("confirmFolders")))return;
-    await working(async()=>{
-      for(const f of targets) {
-        await state.link.deleteEntry(f.path,f.isDir);
-        state.storageDirty=true;
-        state.chosen.delete(f.path);
-        if(f.isDir)for(const key of [...state.cache.keys()])
-          if(key===f.path||key.startsWith(f.path+"/"))state.cache.delete(key);
+    return deleteTargets(selected());
+  }
+  async function planDeletion(targets){
+    const unique=new Map();
+    for(const file of targets){
+      const path=window.TnsNspireUSB.pathName(file.path);
+      if(path==='/'||path!==file.path)throw Error(tr('deletePlanInvalid'));
+      unique.set(path,file);
+    }
+    const all=[...unique.values()],roots=all.filter(file=>!all.some(parent=>parent.isDir&&parent.path!==file.path&&file.path.startsWith(parent.path+'/')));
+    const operations=[],seen=new Set();
+    const visit=async(file,depth)=>{
+      if(depth>32||seen.size>=1000)throw Error(tr('deleteLimit'));
+      if(seen.has(file.path))throw Error(tr('deletePlanInvalid'));seen.add(file.path);
+      if(file.isDir){
+        say(tr('deleteScanning')+' '+file.path);
+        const children=await state.link.listDir(file.path);
+        for(const child of children){
+          const expected=window.TnsNspireUSB.childPath(file.path,child.name);
+          if(child.path!==expected||parentPath(child.path)!==file.path)throw Error(tr('deletePlanInvalid'));
+          await visit(child,depth+1);
+        }
       }
-      state.files=await state.link.listDir(state.path);
-      state.cache.set(state.path,state.files);
-      state.chosen.clear();rows();say(tr("success"));
-    });
+      operations.push(file);
+    };
+    for(const root of roots)await visit(root,0);
+    return {roots,operations};
+  }
+  async function deleteTargets(targets){
+    if(!targets.length||!state.link?.connected||state.busy||state.recording)return;
+    await working(async()=>{
+      // Fully enumerate and validate the scope before confirming or writing.
+      // TI's 0B03 command only removes an empty directory.
+      const {roots,operations}=await planDeletion(targets),folders=operations.filter(f=>f.isDir).length;
+      const summary=tr('deleteSummary').replace('{files}',operations.length-folders).replace('{folders}',folders);
+      const names=roots.slice(0,10).map(f=>f.path).join('\n')+(roots.length>10?'\n… (+'+(roots.length-10)+')':'');
+      if(!confirm(tr('deleteConfirm')+'\n\n'+names+'\n\n'+summary+'\n'+tr('deleteIrreversible'))){say(tr('cancelled'));return;}
+      let confirmed=0,failure=null;
+      try{
+        for(const file of operations){
+          say(tr('deleting')+' '+file.path);
+          await state.link.deleteEntry(file.path,file.isDir);
+          confirmed++;state.storageDirty=true;state.chosen.delete(file.path);
+          if(file.isDir)dropFolderCache(file.path);
+          const parent=parentPath(file.path),cached=state.cache.get(parent);
+          if(cached)state.cache.set(parent,cached.filter(item=>item.path!==file.path));
+          const bar=q('[data-ti-bar]',state.root);bar.hidden=false;bar.value=Math.round(confirmed/operations.length*100);
+          log(tr('deleteConfirmed')+': '+confirmed+'/'+operations.length);
+        }
+      }catch(error){failure=error;}
+      // Reflect confirmed changes even when a later item is protected or fails.
+      if(state.link?.connected&&!state.link.broken){
+        try{
+          for(const parent of new Set(roots.map(f=>parentPath(f.path))))state.cache.set(parent,await state.link.listDir(parent));
+          state.files=state.cache.get(state.path)||[];rows();
+          if(state.storageDirty)await readStorage();
+        }catch(error){failure ||= error;}
+      }
+      if(failure){failure.deletionProgress={confirmed,total:operations.length};throw failure;}
+      say(tr('success')+' · '+summary);
+    },tr('deleteScanning'));
   }
   function showStorage(info){
     state.storage=info;if(!state.root)return;

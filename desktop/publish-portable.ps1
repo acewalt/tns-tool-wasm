@@ -9,8 +9,12 @@ if (!$report.ok -or $report.version -ne $version -or @($report.cases | Where-Obj
     throw 'A matching successful test of the public ZIP is required before publishing'
 }
 if (!$report.prgmPreview.ok -or !$report.browserPrgmPreview.ok) { throw 'Prgm preview desktop/browser acceptance is required' }
+foreach ($feedback in @($report.feedback,$report.browserFeedback)) {
+    if (!$feedback.ok -or !$feedback.xmlSeparator -or !$feedback.clickFeedback) { throw 'File menu separator and click feedback acceptance is required' }
+}
 foreach ($manager in @($report.calculatorManager,$report.browserCalculatorManager)) {
     if (!$manager.ok -or !$manager.busyLabels -or !$manager.deviceStorage -or !$manager.dropUpload -or !$manager.nativeMove -or !$manager.collisionSafe -or $manager.webmBytes -lt 100 -or $manager.serialRequests -ne 1) { throw 'Calculator manager desktop/browser recording, drag/drop and storage acceptance is required' }
+    if (!$manager.recursiveDeletion -or !$manager.deleteCancelSafe -or !$manager.deleteRefusalDetails) { throw 'Recursive folder deletion, cancellation and rejection details acceptance is required' }
 }
 if (!$report.prgmPreview.stableHistory -or !$report.prgmPreview.expandedCanvas -or !$report.browserPrgmPreview.stableHistory -or !$report.browserPrgmPreview.expandedCanvas) { throw 'Prgm history and expanded canvas acceptance is required' }
 if (!$report.prgmPreview.firstInputLayout -or !$report.browserPrgmPreview.firstInputLayout) { throw 'Prgm first Request and subsequent transcript layout acceptance is required' }
@@ -41,11 +45,11 @@ $notes = Join-Path $stage 'notes.md'
 @"
 TNS Tool Portable **$version** para Windows x64.
 
-Administrador USB: estado de carga legible, carpetas doradas, capacidad de almacenamiento consultada a la calculadora, envío de TNS al arrastrarlos sobre una carpeta y movimiento nativo entre carpetas sin reemplazos silenciosos. Graba capturas USB sucesivas y descarga un vídeo WebM sin audio de hasta dos minutos; la fluidez depende del dispositivo.
+El borrado de carpetas revisa primero todo el contenido y muestra los archivos y subcarpetas que se eliminarán. Después de confirmar, borra de dentro hacia fuera, como exige el protocolo USB. Cancelar no envía comandos de eliminación; ante un rechazo se detiene, conserva los elementos restantes y muestra la ruta, el estado del dispositivo y las eliminaciones confirmadas. Ya no presenta un rechazo de borrado como un fallo de comunicación.
 
-ROM Converter sigue visible al editar documentos normales. El preview NES usa directamente el mismo núcleo NesNspire compilado a WebAssembly y evita la doble emulación ARM. El mando N64 incorpora cruceta independiente, stick de ocho direcciones con zona muerta ajustable, botones C y gatillos; los FPS representan imágenes completadas. Se corrigió el desplazamiento de la ventana del convertidor.
+Archivo incorpora el separador entre Open TNS y XML actions. El anillo de clic vuelve a aparecer cuando Windows indica movimiento reducido; utiliza una expansión breve sin partículas en ese modo y conserva el efecto completo en el modo normal. No modifica preferencias de Windows.
 
-Incluye las correcciones anteriores de Prgm Preview y la compilación de proyectos Ndless para Windows con el SDK incluido. Las funciones USB se validan con un dispositivo simulado; la tasa y compatibilidad en hardware real pueden variar.
+Mantiene grabación WebM, almacenamiento, arrastre para enviar y mover, preview NES directo, controles N64 y la corrección de visitas tras reiniciar los contadores de 0.1.21. Las funciones USB se validan con un interlocutor simulado.
 
 Descarga **TNS-Tool-Portable-Windows-x64.zip**, extrae todo y abre **TNS Tool Portable.exe**. El título muestra la versión. El SDK y los motores están incluidos y funcionan sin conexión.
 

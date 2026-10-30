@@ -274,3 +274,7 @@ equivalen a esa comprobación.
 - El estado de carga conserva los nombres legibles y muestra actividad en el mensaje de estado, sin rectángulos grises sobre los archivos.
 
 La disposición del servicio de información y el comando de movimiento se contrastaron con [libnspire](https://github.com/Vogtinator/libnspire/tree/master/src/services). La prueba de aceptación usa la interfaz y el codificador WebM reales con un interlocutor USB simulado; también decodifica el vídeo generado a 320×240.
+
+## Eliminar carpetas con contenido (0.1.22)
+
+El comando USB de carpeta 0B03 solo elimina carpetas vacías. El administrador consulta primero sus archivos y subcarpetas (hasta 1000 elementos y 32 niveles) y muestra el alcance completo en una confirmación. Solo después de aceptar elimina archivos y subcarpetas, y finalmente la carpeta padre. Cancelar durante la confirmación no envía comandos de borrado. Si un elemento es rechazado o se pierde la conexión, se detiene y muestra las eliminaciones confirmadas; los borrados ya confirmados no se pueden deshacer. Un rechazo incluye su ruta y el estado devuelto por la calculadora, sin confundirlo con una desconexión.

@@ -437,7 +437,12 @@
         const command = isDir ? Uint8Array.of(0x0b, 0x03) : Uint8Array.of(0x09, 0x01);
         await this.sendData(concat(command, pathField(path)));
         const result = await this.recvData();
-        ensure(result.length >= 2 && result[0] === 0xff && result[1] === 0, "La calculadora rechazó la eliminación.");
+        if (!(result.length >= 2 && result[0] === 0xff && result[1] === 0)) {
+          const error = new NspireError("La calculadora rechazó la eliminación de " + path + ".", "USB_DELETE_REJECTED");
+          error.path = path;
+          error.deviceStatus = Array.from(result.subarray(0,2), n=>n.toString(16).padStart(2,"0")).join(" ");
+          throw error;
+        }
       });
     }
     async makeDir(path) {
