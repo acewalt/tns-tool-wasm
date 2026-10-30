@@ -45,6 +45,8 @@ $notes = Join-Path $stage 'notes.md'
 @"
 TNS Tool Portable **$version** para Windows x64.
 
+Pantalla de carga: texto nítido con entrada legible, centro del logo ampliado y fijo, y un solo trazo animado que recorre su borde. Se eliminaron la respiración de escala/brillo, la doble animación SVG/CSS y los bucles de 1 ms con movimiento reducido. El controlador se carga antes del runtime y no vuelve a crear la pantalla cuando la carga ya terminó.
+
 El borrado de carpetas revisa primero todo el contenido y muestra los archivos y subcarpetas que se eliminarán. Después de confirmar, borra de dentro hacia fuera, como exige el protocolo USB. Cancelar no envía comandos de eliminación; ante un rechazo se detiene, conserva los elementos restantes y muestra la ruta, el estado del dispositivo y las eliminaciones confirmadas. Ya no presenta un rechazo de borrado como un fallo de comunicación.
 
 Archivo incorpora el separador entre Open TNS y XML actions. El anillo de clic vuelve a aparecer cuando Windows indica movimiento reducido; utiliza una expansión breve sin partículas en ese modo y conserva el efecto completo en el modo normal. No modifica preferencias de Windows.
