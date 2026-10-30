@@ -157,6 +157,7 @@ class FakeNNSEUSB {
       this.respond(Uint8Array.of(255,0),service,dest);
     }
     else if(d[0]===14)this.respond(this.rootIndex++===0?dirRow("Examples"):Uint8Array.of(255,17),service,dest);
+    else if(this.rejectDelete&&[9,11].includes(d[0]))this.respond(Uint8Array.of(255,4),service,dest);
     else if([15,10,9,11].includes(d[0]))this.respond(Uint8Array.of(255,0),service,dest);
     else if(d[0]===3&&d[1]===1){
       this.expected=new DataView(d.buffer,d.byteOffset+d.length-4,4).getUint32(0);
@@ -222,6 +223,10 @@ assert.equal(files[0].name,"Examples");
 assert.equal(files[0].isDir,true);
 assert.ok(fake.seenFrames.includes(0x82),"NNSE time request answered");
 await controller.makeDir("/Examples/New");
+fake.rejectDelete=true;
+await assert.rejects(controller.deleteEntry('/Examples/denied',true),error=>error.code==='USB_DELETE_REJECTED'&&error.path==='/Examples/denied'&&error.deviceStatus==='ff 04');
+assert.equal(controller.connected,true,'A rejected delete is not a broken USB connection');
+fake.rejectDelete=false;
 await controller.renameEntry("/Examples/old.tns","/Examples/new.tns");
 assert.equal(fake.renameData[0],0x21);
 assert.equal(fake.renameData[1],0x01);
