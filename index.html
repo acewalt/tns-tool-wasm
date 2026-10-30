@@ -5,8 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>TNS Tool WASM</title>
     <link rel="stylesheet" href="./styles.css?v=20261029-click-feedback-v1" />
+    <link rel="stylesheet" href="./runtime-loading-overlay.css?v=20261029-startup-loader-v4" data-runtime-loading-overlay-style="true" />
     <link rel="stylesheet" href="./ti-calculator-transfer.css?v=20261029-usb-rom-v21" />
     <link rel="stylesheet" href="./dist/monaco-lua-editor.css?v=20260827-editor-ui-polish-v2" />
+    <script defer src="./runtime-loading-overlay.js?v=20261029-startup-loader-v4" data-runtime-loading-overlay="true"></script>
     <script defer src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>
     <script defer src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
     <script type="module" src="./dist/monaco-lua-editor.js?v=20260827-editor-ui-polish-v2"></script>
@@ -21,7 +23,7 @@
     <script defer src="./xml-program-editor-fix.js?v=20260826-program-editor-sync-v1"></script>
     <script defer src="./monaco-search-tools.js?v=20260827-editor-ui-polish-v2"></script>
     <script defer src="./monaco-search-adapter-fix.js?v=20260826-monaco-search-adapter-v1"></script>
-    <script defer src="./multi-image-upload.js?v=20261029-usb-rom-v21"></script>
+    <script defer src="./multi-image-upload.js?v=20261029-startup-loader-v4"></script>
     <script defer src="./ti-nspire-nnse.js?v=20261027-ack-sequence-v5"></script>
     <script defer src="./ti-nspire-webusb.js?v=20261029-recursive-delete-v1"></script>
     <script defer src="./ti-calculator-zip.js?v=20261022-item-actions-v5"></script>
@@ -31,17 +33,8 @@
     <div id="startup-loader" class="startup-loader" role="status" aria-live="polite">
       <div class="startup-loader-card">
         <div class="startup-loader-mark" aria-hidden="true">
-          <svg class="startup-loader-outline" viewBox="0 0 120 120" focusable="false" style="animation: none">
-            <rect x="8" y="8" width="104" height="104" rx="28" ry="28" pathLength="100"
-              fill="none" stroke="var(--lime)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"
-              stroke-dasharray="68 32">
-              <animate attributeName="stroke-dashoffset" from="0" to="-100" dur="1.7s" repeatCount="indefinite" />
-            </rect>
-            <rect x="15" y="15" width="90" height="90" rx="24" ry="24" pathLength="100"
-              fill="none" stroke="var(--lime)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"
-              stroke-opacity="0.82" stroke-dasharray="46 54">
-              <animate attributeName="stroke-dashoffset" from="0" to="100" dur="1.7s" repeatCount="indefinite" />
-            </rect>
+          <svg class="startup-loader-outline" viewBox="0 0 164 164" focusable="false">
+            <rect x="16" y="16" width="132" height="132" rx="34" pathLength="100" />
           </svg>
           <div class="startup-loader-core">TNS</div>
         </div>

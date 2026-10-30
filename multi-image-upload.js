@@ -31,6 +31,7 @@
   }
 
   const V="20261029-syntax-doctor-general-v1";
+  const RUNTIME_V="20261029-startup-loader-v4";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
   const NOTES_V="20260904-notepad-rich-v2";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
@@ -38,7 +39,7 @@
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
   const LOVE_PREVIEW_SIDE_V="20260903-side-controls-v4-split";
   const LOVE_PREVIEW_MATH_V="20260903-live-math-v1";
-  ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./runtime-loading-overlay.css?v=${V}`, "runtimeLoadingOverlayStyle");
+  ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./runtime-loading-overlay.css?v=${RUNTIME_V}`, "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${TNS_PROGRESS_V}`, "tnsTypeProgressStyle");
   ensureStyle('link[data-ndless-tns-inspector-style="true"]', `./ndless-tns-inspector.css?v=${V}`, "ndlessTnsInspectorStyle");
@@ -61,7 +62,7 @@
   ensureStyle('link[data-love-preview-side-controls-style="true"]', `./love-preview-side-controls.css?v=${LOVE_PREVIEW_SIDE_V}`, "lovePreviewSideControlsStyle");
   ensureStyle('link[data-love-preview-live-math-style="true"]', `./love-preview-live-math.css?v=${LOVE_PREVIEW_MATH_V}`, "lovePreviewLiveMathStyle");
 
-  loadScript('script[data-runtime-loading-overlay="true"]', `./runtime-loading-overlay.js?v=${V}`, "runtimeLoadingOverlay").catch(console.error);
+  loadScript('script[data-runtime-loading-overlay="true"]', `./runtime-loading-overlay.js?v=${RUNTIME_V}`, "runtimeLoadingOverlay").catch(console.error);
   loadScript('script[data-monaco-ti-reference-theme="true"]', "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v3", "monacoTiReferenceTheme").catch(console.error);
 
   const tnsChain = loadScript('script[data-tns-container-registry="true"]', `./tns-container-registry.js?v=${V}`, "tnsContainerRegistry")
