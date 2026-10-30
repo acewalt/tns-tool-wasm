@@ -1547,7 +1547,7 @@ function wireMouseGlow() {
 
 function wireClickBurst() {
   if (document.body?.dataset.clickBurstReady === "1") return;
-  if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+  const reducedMotion = window.matchMedia?.("(prefers-reduced-motion: reduce)");
   document.body.dataset.clickBurstReady = "1";
 
   const layer = document.createElement("div");
@@ -1586,7 +1586,8 @@ function wireClickBurst() {
     ring.addEventListener("animationend", () => ring.remove(), { once: true });
 
     const baseAngle = Math.random() * Math.PI * 2;
-    for (let index = 0; index < 8; index += 1) {
+    const particleCount = reducedMotion?.matches ? 0 : 8;
+    for (let index = 0; index < particleCount; index += 1) {
       const angle = baseAngle + (Math.PI * 2 * index) / 8 + (Math.random() - 0.5) * 0.35;
       const distance = 18 + Math.random() * 22;
       const particle = document.createElement("span");
