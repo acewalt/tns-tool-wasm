@@ -132,10 +132,25 @@
   async function downloadProject(){
     if(!state.project)return;saveCurrentFile();const entries=core().exportEntries(state.project);if(!window.JSZip){alert("JSZip is not ready.");return;}const zip=new JSZip();for(const [name,text] of Object.entries(entries))zip.file(name,String(text));const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`${core().sanitizeProjectName(state.project.name)}-ndless-project.zip`;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);renderConsole([tr("downloaded")]);
   }
+  async function restoreGbPaletteDependency(entries) {
+    const sources = Object.keys(entries).filter(name => /(?:^|\/)emulator\.c$/i.test(name));
+    let repaired = false;
+    for (const name of sources) {
+      if (!/#\s*include\s*["<]builtin-palettes\.def[">]/.test(entries[name])) continue;
+      const directory = name.slice(0, name.lastIndexOf('/') + 1);
+      const dependency = directory + 'builtin-palettes.def';
+      if (Object.hasOwn(entries, dependency)) continue;
+      const response = await fetch('./assets/rom/builtin-palettes.def');
+      if (!response.ok) throw new Error('Required binjgb palette include unavailable: ' + response.status);
+      entries[dependency] = await response.text();
+      repaired = true;
+    }
+    return repaired;
+  }
   async function openProjectZip(file){
     if(window.TnsNdlessDesktopRequired?.open())return;
     if(!file||hasNormalProject()&&!state.project)return;
-    if(!window.JSZip){alert("JSZip is not ready.");return;}const zip=await JSZip.loadAsync(file),entries={};for(const [name,obj] of Object.entries(zip.files)){if(obj.dir||name.includes("../")||name.startsWith("/"))continue;if(!isTextFile(name)&&name!==".tnsproject.json")continue;entries[name]=await obj.async("text");}activateProject(core().importEntries(entries));renderConsole(["Project imported."]);
+    if(!window.JSZip){alert("JSZip is not ready.");return;}const zip=await JSZip.loadAsync(file),entries={};for(const [name,obj] of Object.entries(zip.files)){if(obj.dir||name.includes("../")||name.startsWith("/"))continue;if(!isTextFile(name)&&name!==".tnsproject.json")continue;entries[name]=await obj.async("text");}const repaired=await restoreGbPaletteDependency(entries);activateProject(core().importEntries(entries));renderConsole([repaired?"Project imported. Missing binjgb palette dependency restored.":"Project imported."]);
   }
 
   function injectMenu(){
