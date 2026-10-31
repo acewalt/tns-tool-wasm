@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-09-01-ui-polish";
+const SOURCE_VERSION = "2026-10-31-ti-catalog-syntax-v1";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -1162,6 +1162,7 @@ const PYTHON_FILES = [
   "syntax_doctor_py_core.py",
   "convert/code_to_tns.py",
   "convert/tns_reader.py",
+  "editor_XML/ti_catalog.py",
   "editor_XML/ti_syntax.py",
   "editor_XML/ti_parser.py",
   "editor_XML/ti_serializer.py",
@@ -1666,7 +1667,7 @@ async function initPyodideRuntime() {
   await pyodide.runPythonAsync(`
 import sys
 for name in list(sys.modules):
-    if name in {"ti_syntax", "ti_parser", "ti_serializer", "xml_scanner", "xml_updater", "syntax_doctor_py_core"}:
+    if name in {"ti_catalog", "ti_syntax", "ti_parser", "ti_serializer", "xml_scanner", "xml_updater", "syntax_doctor_py_core"}:
         del sys.modules[name]
 sys.path.insert(0, "/home/pyodide")
 sys.path.insert(0, "/home/pyodide/convert")
