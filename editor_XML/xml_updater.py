@@ -76,7 +76,7 @@ class XMLUpdater:
         if document_type in {"Prgm", "Func"}:
             return document_type
         lines = multiline_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
-        first = lines[0].lstrip(": ").strip().lower() if lines else ""
+        first = next((line.lstrip(": ").strip().lower() for line in lines if line.strip()), "")
         return "Func" if first == "func" else "Prgm"
 
     @staticmethod
