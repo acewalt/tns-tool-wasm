@@ -4,6 +4,8 @@ import difflib
 import re
 from dataclasses import dataclass, field
 
+from ti_catalog import TI_CATALOG, TI_CATALOG_FUNCTIONS, TI_CATALOG_STATEMENTS, TI_CATALOG_NAMES
+
 
 @dataclass(frozen=True)
 class Diagnostic:
@@ -139,6 +141,9 @@ VALID_COMMANDS = {
     "while",
 }
 
+# Syntax Doctor recognizes names in the TI catalog independently of Preview support.
+VALID_COMMANDS.update(TI_CATALOG_STATEMENTS)
+
 BLOCK_PAIRS = {
     "if": "endif",
     "for": "endfor",
@@ -161,6 +166,7 @@ COMMAND_SIGNATURES: dict[str, tuple[int, int | None]] = {
     "circle": (3, 4),
     "cos": (1, 1),
     "disp": (0, None),
+    "dispat": (2, None),
     "drawarc": (6, 6),
     "drawcircle": (3, 3),
     "drawline": (4, 4),
@@ -192,6 +198,9 @@ COMMAND_STYLE_SIGNATURES: dict[str, tuple[int, int | None]] = {
     "fillcircle": (3, 3),
     "fillpoly": (2, None),
     "fillrect": (4, 4),
+    "dispat": (2, None),
+    "request": (2, 4),
+    "requeststr": (2, 4),
     "paintbuffer": (0, 0),
     "plotxy": (3, 3),
     "setcolor": (3, 3),
@@ -379,7 +388,7 @@ CRITICAL_PREFIXES = (
     "Missing",
 )
 
-BUILTIN_NAMES = VALID_COMMANDS | {
+BUILTIN_NAMES = VALID_COMMANDS | TI_CATALOG_NAMES | {
     "true",
     "false",
     "pi",
@@ -453,7 +462,7 @@ ASSIGN_ARROW_RE = re.compile(r"(.+?)(?:->|→|â†’)\s*(.+?)\s*$")
 
 IDENT_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 LOCAL_RE = re.compile(r"^\s*Local\s+(.+)$", re.IGNORECASE)
-REQUEST_RE = re.compile(r"^\s*Request\s+(.+)$", re.IGNORECASE)
+REQUEST_RE = re.compile(r"^\s*(RequestStr|Request)\s+(.+)$", re.IGNORECASE)
 IF_RE = re.compile(r"^\s*If\b(.*)$", re.IGNORECASE)
 ASSIGN_RE = re.compile(r"(.+?)(?:->|→)\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
 
@@ -518,8 +527,21 @@ def analyze_ti_code(
         command = _first_command(line)
         if command:
             lower_command = command.lower()
-            if lower_command not in VALID_COMMANDS and not _looks_like_expression(line) and not _looks_like_function_call(line):
-                report.diagnostics.append(ti_error(410, number, f"Comando desconocido: {command}"))
+            if lower_command in TI_CATALOG_FUNCTIONS and not re.match(r"^\s*" + re.escape(command) + r"\s*\(", line, flags=re.IGNORECASE):
+                # The catalog recognizes a function, but it still requires call syntax.
+                syntax = TI_CATALOG[lower_command][1]
+                report.diagnostics.append(ti_error(680, number, f"Missing ( after {command}", f"Sintaxis de referencia: {syntax}"))
+            elif lower_command not in VALID_COMMANDS and not _looks_like_expression(line) and not _looks_like_function_call(line):
+                choices = difflib.get_close_matches(lower_command, sorted(VALID_COMMANDS | TI_CATALOG_NAMES), n=3, cutoff=0.65)
+                hint = ""
+                if choices:
+                    suggested = choices[0]
+                    if suggested in TI_CATALOG:
+                        display, syntax, _ = TI_CATALOG[suggested]
+                        hint = f"¿Quisiste escribir {display}? Sintaxis: {syntax}"
+                    else:
+                        hint = "Quizá quisiste escribir: " + ", ".join(choices)
+                report.diagnostics.append(ti_error(410, number, f"Comando desconocido: {command}", hint))
             if lower_command in {"break", "cycle", "exit"} and not _has_any_open_block(block_stack, {"for", "while", "loop"}):
                 report.diagnostics.append(ti_error(560, number, f"{command} fuera de Loop/For/While"))
             if lower_command == "return" and not document_start_seen:
@@ -628,13 +650,13 @@ def analyze_ti_code(
             _close_block(report, block_stack, lower_first, number)
 
         if request_match := REQUEST_RE.match(line):
-            args = _split_args(request_match.group(1))
-            if len(args) < 2:
-                report.diagnostics.append(ti_error(930, number, "Request requiere 2 argumentos"))
-            else:
-                dest = args[-1].strip()
+            args = _split_args(request_match.group(2))
+            if len(args) >= 2:
+                dest = args[1].strip()
                 if _is_identifier(dest):
                     report.assigned.add(dest)
+                if len(args) == 4 and _is_identifier(args[3].strip()):
+                    report.assigned.add(args[3].strip())
 
         if line.lower() == "disp":
             report.diagnostics.append(internal_warning(number, "Disp sin argumentos"))
