@@ -86,8 +86,8 @@ class PrgmBoundaryTests(unittest.TestCase):
     # The user's screenshot has an empty first and last editor line.
     # TI.ProgramEditor inserts the read-only wrapper in the XML on its own.
     source = (
-        '\\nPrgm\\nLocal nombre,edad\\n\\nText "Bienvenido a TNS Tool"\\n'
-        'RequestStr "Tu nombre:",nombre\\nEndPrgm\\n'
+        '\nPrgm\nLocal nombre,edad\n\nText "Bienvenido a TNS Tool"\n'
+        'RequestStr "Tu nombre:",nombre\nEndPrgm\n'
     )
 
     def test_blank_lines_outside_program_are_errors(self):
@@ -99,8 +99,8 @@ class PrgmBoundaryTests(unittest.TestCase):
         fixed, actions = autofix_ti_code(self.source)
         self.assertEqual(
             fixed,
-            'Prgm\\nLocal nombre,edad\\n\\nText "Bienvenido a TNS Tool"\\n'
-            'RequestStr "Tu nombre:",nombre\\nEndPrgm',
+            'Prgm\nLocal nombre,edad\n\nText "Bienvenido a TNS Tool"\n'
+            'RequestStr "Tu nombre:",nombre\nEndPrgm',
         )
         self.assertIn("lineas vacias antes", actions)
         self.assertIn("lineas vacias despues", actions)
@@ -126,17 +126,17 @@ class PrgmBoundaryTests(unittest.TestCase):
         self.assertNotIn("EndPrgm", body_lines)
 
     def test_internal_blank_lines_are_not_errors(self):
-        code = 'Prgm\\n\\nDisp "ok"\\n\\nEndPrgm'
+        code = 'Prgm\n\nDisp "ok"\n\nEndPrgm'
         self.assertFalse(any(d.code == 730 for d in analyze_ti_code(code).errors))
         self.assertEqual(XMLUpdater._program_body_lines(code), ['', 'Disp "ok"', ''])
 
     def test_func_wrapper_uses_same_boundary_rule(self):
-        source = '\\nFunc\\nLocal x\\nEndFunc\\n'
+        source = '\nFunc\nLocal x\nEndFunc\n'
         report = analyze_ti_code(source)
         self.assertEqual([(d.code, d.line) for d in report.errors if d.code == 730],
                          [(730, 1), (730, 5)])
         fixed, _ = autofix_ti_code(source)
-        self.assertEqual(fixed, 'Func\\nLocal x\\nEndFunc')
+        self.assertEqual(fixed, 'Func\nLocal x\nEndFunc')
         self.assertEqual(XMLUpdater._program_body_lines(source, "Func"), ['Local x'])
 
 
