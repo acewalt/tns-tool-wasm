@@ -655,6 +655,8 @@ def analyze_ti_code(
                 dest = args[1].strip()
                 if _is_identifier(dest):
                     report.assigned.add(dest)
+                if len(args) == 4 and _is_identifier(args[3].strip()):
+                    report.assigned.add(args[3].strip())
 
         if line.lower() == "disp":
             report.diagnostics.append(internal_warning(number, "Disp sin argumentos"))
