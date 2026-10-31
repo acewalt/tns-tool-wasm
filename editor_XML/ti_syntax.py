@@ -491,6 +491,23 @@ def analyze_ti_code(
         report.diagnostics.append(ti_error(910, 0, "Programa vacio"))
         return report
 
+    # TI.ProgramEditor renders its own Prgm/EndPrgm wrapper. Boundary blank
+    # lines hide those tokens from the XML serializer's first/last-line checks.
+    # Report exactly the first padding line on either side, not every empty row.
+    nonempty = [i for i, value in enumerate(lines) if value.strip()]
+    if nonempty:
+        first, last = nonempty[0], nonempty[-1]
+        if first > 0 and lines[first].strip().lower() in {"prgm", "func"}:
+            report.diagnostics.append(ti_error(
+                730, 1,
+                "Lineas vacias antes de Prgm/Func: elimina el espacio exterior antes de guardar TNS",
+            ))
+        if last < len(lines) - 1 and lines[last].strip().lower() in {"endprgm", "endfunc"}:
+            report.diagnostics.append(ti_error(
+                730, last + 2,
+                "Lineas vacias despues de EndPrgm/EndFunc: elimina el espacio exterior antes de guardar TNS",
+            ))
+
     if parameters:
         for raw_name in parameters.split(","):
             name = raw_name.strip()
@@ -746,6 +763,17 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
     fixed_lines: list[str] = []
     if_stack: list[int] = []
     actions: list[str] = []
+    # Trim only whitespace OUTSIDE the complete program, keeping internal
+    # empty lines for readability and preserving existing program statements.
+    if any(line.strip() for line in original_lines):
+        while original_lines and not original_lines[0].strip():
+            original_lines.pop(0)
+            if "[100%] Eliminadas lineas vacias antes de Prgm/Func" not in actions:
+                actions.append("[100%] Eliminadas lineas vacias antes de Prgm/Func")
+        while original_lines and not original_lines[-1].strip():
+            original_lines.pop()
+            if "[100%] Eliminadas lineas vacias despues de EndPrgm/EndFunc" not in actions:
+                actions.append("[100%] Eliminadas lineas vacias despues de EndPrgm/EndFunc")
     seen_local_lines: set[str] = set()
     document_start_seen = False
     document_end_seen = False

@@ -7,7 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "editor_XML"))
 from ti_catalog import TI_CATALOG, TI_CATALOG_FUNCTIONS, TI_CATALOG_STATEMENTS
-from ti_syntax import analyze_ti_code
+from ti_syntax import analyze_ti_code, autofix_ti_code
 
 
 def errors(source):
@@ -78,6 +78,57 @@ EndPrgm"""
         # Semantic support and runtime support are intentionally separate.
         self.assertIn("solve", TI_CATALOG_FUNCTIONS)
         self.assertFalse(any(d.code == 410 for d in errors('Prgm\nsolve(x=2,x)→r\nEndPrgm')))
+
+
+class PrgmBoundaryTests(unittest.TestCase):
+    # The user's screenshot has an empty first and last editor line.
+    # Lines outside Prgm/EndPrgm must be reported; Auto Fix removes only those lines.
+    source = (
+        '\nPrgm\nLocal nombre,edad\n\nText "Bienvenido a TNS Tool"\n'
+        'RequestStr "Tu nombre:",nombre\nEndPrgm\n'
+    )
+
+    def test_blank_lines_outside_program_are_errors(self):
+        report = analyze_ti_code(self.source)
+        boundary = [(d.code, d.line) for d in report.errors if d.code == 730]
+        self.assertEqual(boundary, [(730, 1), (730, 8)], report.format())
+
+    def test_auto_fix_trims_only_exterior_blank_lines(self):
+        fixed, actions = autofix_ti_code(self.source)
+        self.assertEqual(
+            fixed,
+            'Prgm\nLocal nombre,edad\n\nText "Bienvenido a TNS Tool"\n'
+            'RequestStr "Tu nombre:",nombre\nEndPrgm',
+        )
+        self.assertIn("lineas vacias antes", actions)
+        self.assertIn("lineas vacias despues", actions)
+        self.assertFalse(any(d.code == 730 for d in analyze_ti_code(fixed).errors))
+
+    def test_internal_blank_lines_are_not_errors(self):
+        code = 'Prgm\n\nDisp "ok"\n\nEndPrgm'
+        self.assertFalse(any(d.code == 730 for d in analyze_ti_code(code).errors))
+
+    def test_autofix_is_idempotent(self):
+        fixed, _ = autofix_ti_code(self.source)
+        second, _ = autofix_ti_code(fixed)
+        self.assertEqual(second, fixed)
+        
+    def test_leading_and_trailing_whitespace_only_is_trimmed(self):
+        source = '  \n\t\nPrgm\nDisp "ok"\nEndPrgm\n  \n\t'
+        self.assertEqual(
+            [(d.code, d.line) for d in analyze_ti_code(source).errors if d.code == 730],
+            [(730, 1), (730, 6)],
+        )
+        fixed, _ = autofix_ti_code(source)
+        self.assertEqual(fixed, 'Prgm\nDisp "ok"\nEndPrgm')
+
+    def test_func_wrapper_uses_same_boundary_rule(self):
+        source = '\nFunc\nLocal x\nEndFunc\n'
+        report = analyze_ti_code(source)
+        self.assertEqual([(d.code, d.line) for d in report.errors if d.code == 730],
+                         [(730, 1), (730, 5)])
+        fixed, _ = autofix_ti_code(source)
+        self.assertEqual(fixed, 'Func\nLocal x\nEndFunc')
 
 
 if __name__ == "__main__":
