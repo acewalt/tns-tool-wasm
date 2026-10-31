@@ -243,7 +243,9 @@ jobs:
           if ($report.version -ne $version) { throw 'Downloaded portable has the wrong version' }
           if (@($report.cases | Where-Object { $_.entry -ne 'visible-menu-click' }).Count) { throw 'Project test bypassed the visible menu' }
       - name: Publish the verified Windows download
-        if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository || (github.event_name == 'push' && github.ref == 'refs/heads/feature/desktop-portable-ndless')
+        # PR builds are acceptance-only. Publishing a release from a PR commit
+        # consumes the version tag before the post-merge commit can publish it.
+        if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/feature/desktop-portable-ndless'
         shell: pwsh
         run: ./desktop/publish-portable.ps1
         env:

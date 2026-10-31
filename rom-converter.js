@@ -8,6 +8,28 @@
     title:'ROM Converter',intro:'Selecciona una ROM compatible para previsualizar su port nativo, exportar un proyecto Ndless editable o compilar un TNS.',supported:'Compatible: Super Mario 64 europeo original (8 MiB) y cartuchos NES, GB/GBC, SNES y GBA compatibles; DS y N64 experimentales. Detección automática por cabecera. Otros juegos N64 usan un emulador experimental.',select:'Seleccionar ROM',preview:'Previsualizar',project:'Descargar proyecto ZIP',open:'Abrir proyecto',build:'Compilar y descargar TNS',close:'Cerrar',working:'Leyendo y convirtiendo la ROM localmente…',ready:'Proyecto preparado. La compilación nativa del TNS puede tardar.',direct:'GB/GBC · Preview directo de la ROM',loading:'Cargando ROM local…',directHelp:'Este preview ejecuta la ROM con un emulador WebAssembly local. El proyecto editable y el TNS usan la compilación ARM nativa; se verifican por separado.',compiling:'Compilando el proyecto con el SDK incluido…',desktop:'Esta función requiere TNS Tool Portable y su SDK nativo. Tu ROM permanece en tu equipo.',download:'Descargar para Windows',pack:'Descargar programa + cartucho ZIP',experimental:'Emulador experimental: algunos juegos pueden mostrar pantalla negra o ser muy lentos.',limit:'El preview tiene rendimiento limitado. Compilar no certifica una partida completa ni compatibilidad física con la calculadora.'
   };}
   function save(bytes,name,type){const url=URL.createObjectURL(new Blob([bytes],{type})),a=document.createElement('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);}
+  // GB source projects use binjgb's generated palette include. Keep it beside emulator.c.
+  // Repair the editable ZIP before exporting, opening or compiling it (web + desktop).
+  async function repairGbProjectZip(bytes, info) {
+    if (info?.id !== 'gb') return new Uint8Array(bytes);
+    if (!window.JSZip) throw new Error('JSZip is required to verify the Game Boy source project.');
+    const zip = await window.JSZip.loadAsync(bytes);
+    const sources = Object.values(zip.files).filter(file => !file.dir && /(?:^|\/)emulator\.c$/i.test(file.name));
+    if (!sources.length) throw new Error('Game Boy project has no emulator.c to compile.');
+    let modified = false;
+    for (const source of sources) {
+      const text = await source.async('string');
+      if (!/#\s*include\s*["<]builtin-palettes\.def[">]/.test(text)) continue;
+      const dirname = source.name.slice(0, source.name.lastIndexOf('/') + 1);
+      const target = dirname + 'builtin-palettes.def';
+      if (zip.file(target)) continue;
+      const response = await fetch('./assets/rom/builtin-palettes.def');
+      if (!response.ok) throw new Error('Missing binjgb builtin-palettes.def asset (' + response.status + ').');
+      zip.file(target, await response.text());
+      modified = true;
+    }
+    return modified ? zip.generateAsync({type:'uint8array',compression:'DEFLATE'}) : new Uint8Array(bytes);
+  }
   function close(){if(!active)return;const ctx=active;active=null;ctx.controller?.stop();if(!window.TnsDesktop)window.TnsRomWeb?.close();ctx.overlay.remove();document.documentElement.classList.remove('rom-converter-lock');document.body.classList.remove('drop-target-active');const opener=ctx.opener?.isConnected&&ctx.opener.getClientRects().length?ctx.opener:document.querySelector('#xml-doctor-panel .menu-trigger');opener?.focus();}
   function open(){
     close();window.NdlessExecutablePreview?.stop();window.NdlessLivePreview?.stop();
@@ -44,7 +66,7 @@
         const detected=await backend.inspectRom({name:file.name,size:file.size,bytes:new Uint8Array(await file.slice(0,0x410200).arrayBuffer())});if(active!==ctx||revision!==ctx.revision)return;ctx.info=detected;view.detection(detected);
         if(!detected.convertible)throw Error(detected.reason);
         const result=await backend.convertRom({name:file.name,bytes:new Uint8Array(await file.arrayBuffer())});if(active!==ctx||revision!==ctx.revision)return;
-        ctx.zip=new Uint8Array(result.zip);ctx.previewRom=result.previewRom?new Uint8Array(result.previewRom):null;ctx.filename=result.filename;ctx.info=result.info;ctx.project={name:result.name,target:'zehn-modern',language:'c',files:{},settings:{}};
+        ctx.zip=await repairGbProjectZip(result.zip,result.info);if(active!==ctx||revision!==ctx.revision)return;ctx.previewRom=result.previewRom?new Uint8Array(result.previewRom):null;ctx.filename=result.filename;ctx.info=result.info;ctx.project={name:result.name,target:'zehn-modern',language:'c',files:{},settings:{}};
         view.detection(result.info);for(const b of buttons())b.disabled=false;q('[data-rom-build] [data-rom-action-label]').textContent=result.info.external?t.pack:t.build;
         view.step(2);view.preview({stage:'ready'});status(result.info.title+' · '+ui.ready+(result.info.experimental?' · '+t.experimental:''));
         if(q('[data-rom-autoplay]').checked)await preview();

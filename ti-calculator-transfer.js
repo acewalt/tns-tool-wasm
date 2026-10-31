@@ -198,6 +198,8 @@
   function controls(){
     if(!state.root)return;
     const online=Boolean(state.link?.connected);
+    // The workspace is shown only after USB negotiation confirms a connection.
+    q(".ti-manager-dialog",state.root)?.setAttribute("data-connection-state",online?"connected":"disconnected");
     const locked=state.busy||state.selecting||Boolean(state.destinationPicker)||Boolean(state.recording);
     q('.ti-manager-dialog',state.root)?.setAttribute('aria-busy',String(state.busy||state.selecting));
     const disable=(s,val)=>{const e=q("[data-ti-"+s+"]",state.root);if(e)e.disabled=val;};

@@ -30,6 +30,15 @@ assert.match(bridge.version, /v3$/);
 assert.equal(bridge.translateTiToGiac("deSolve(y'=x*y,x,y)"), "desolve(y'=x*y,x,y)");
 assert.equal(bridge.translateTiToGiac("nSolve(x^2-4=0,x)"), "fsolve(x^2-4=0,x)");
 assert.equal(bridge.translateGiacToTi("pi+infinity"), "π+∞");
+assert.equal(bridge.translateTiToGiac("integral(x^2,x)"), "integrate(x^2,x)");
+assert.equal(bridge.translateTiToGiac("derivative(x^3,x)"), "diff(x^3,x)");
+assert.equal(bridge.translateTiToGiac("d(x^2,x)"), "diff(x^2,x)");
+assert.equal(bridge.translateTiToGiac("lim(sin(x)/x,x,0)"), "limit(sin(x)/x,x,0)");
+assert.equal(bridge.translateTiToGiac("∫(x,x,0,1)"), "integrate(x,x,0,1)");
+assert.equal(bridge.translateTiToGiac("Σ(k,k,1,3)"), "sum(k,k,1,3)");
+assert.equal(bridge.shouldHandle("integral(x^2,x)", "eval", []), true);
+assert.equal(bridge.shouldHandle("d(x^2,x)", "eval", []), true);
+
 assert.equal(bridge.shouldHandle("factor(x^2-1)", "eval", []), true);
 assert.equal(bridge.shouldHandle('tolower("ABC")', "eval", []), false);
 assert.equal(bridge.shouldHandle("miFuncion(2)", "evalStr", ["miFuncion"]), false);
