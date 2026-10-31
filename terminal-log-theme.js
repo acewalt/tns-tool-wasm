@@ -161,7 +161,7 @@
         await loadScript("./ti-cas-hybrid-fallback-v1.js?v=20260903-ti-cas-hybrid-v1", "ti-cas-hybrid");
       }
       if (!window.__tnsCasPreviewBridgeInstalled) {
-        await loadScript("./ti-cas-preview-bridge-v3.js?v=20260903-giac-preview-v3", "ti-cas-preview-bridge");
+        await loadScript("./ti-cas-preview-bridge-v3.js?v=20261030-ti-catalog-alias-v1", "ti-cas-preview-bridge");
       }
     } catch (error) {
       console.warn("No se pudo cargar CAS Preview híbrido.", error);

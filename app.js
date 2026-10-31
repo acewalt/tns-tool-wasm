@@ -1966,7 +1966,10 @@ function setXmlDoctorEnabled(enabled) {
 function syncXmlDoctorToolbar() {
   const edit = document.querySelector('#xml-edit-menu');
   if (edit) {
-    edit.hidden = document.querySelector('#xml-inspector-btn').disabled;
+    // File/+Page, not TI-BASIC Edit, owns documents without an editable Prgm/Func.
+    const hasBasicProgram = !!xmlDoctor.current &&
+      (xmlDoctor.candidates || []).some(item => item.index === xmlDoctor.current.index);
+    edit.hidden = !hasBasicProgram || document.querySelector('#xml-inspector-btn').disabled;
     if (edit.hidden) edit.classList.remove('open');
   }
   const syntax = document.querySelector('#xml-syntax-btn');
@@ -2116,6 +2119,7 @@ json.dumps(items)
     setXmlDoctorEnabled(false);
     setXmlDoctorDocumentActionsEnabled(true);
     xmlDoctor.current = null;
+    syncXmlDoctorToolbar();
     document.querySelector("#xml-code").value = "";
     updateXmlLineNumbers();
     xmlLog(t("noEditablePrograms"));
