@@ -583,3 +583,43 @@
 .ti-manager-overlay[hidden]{display:none}
 
 .ti-manager-dialog .ti-destination-folder-icon{color:#edc35d}
+
+/* Before USB connection, use a compact, button-centered connection screen. */
+.ti-manager-dialog[data-connection-state="disconnected"] {
+  width: min(460px,100%);
+  height: min(300px,calc(100dvh - 24px));
+  min-height: 220px;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] .ti-manager-grid,
+.ti-manager-dialog[data-connection-state="disconnected"] .ti-manager-bottom {
+  display: none;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] .ti-manager-toolbar {
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] [data-ti-connect] {
+  min-width: min(260px,100%);
+  padding: 12px 20px;
+  font-size: 14px;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] [data-ti-status] {
+  display: none;
+  max-width: 100%;
+  text-align: center;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] [data-ti-status][data-error="1"],
+.ti-manager-dialog[data-connection-state="disconnected"][aria-busy="true"] [data-ti-status] {
+  display: block;
+}
+@media(max-width:760px) {
+  .ti-manager-dialog[data-connection-state="disconnected"] {
+    height: min(280px,calc(100dvh - 12px));
+    padding: 16px;
+  }
+}

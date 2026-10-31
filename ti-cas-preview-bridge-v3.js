@@ -12,10 +12,11 @@
   const BACKEND_TIMEOUT_MS = 20000;
 
   const CAS_FUNCTIONS = new Set([
-    "approx", "cfactor", "csolve", "desolve", "diff", "expand", "factor", "fsolve",
-    "gcd", "integrate", "int", "laplace", "lcm", "limit", "linsolve", "normal",
+    "approx", "cfactor", "csolve", "desolve", "diff", "derivative", "d",
+    "expand", "factor", "fsolve", "gcd", "integrate", "integral",
+    "laplace", "lcm", "lim", "limit", "linsolve", "normal",
     "partfrac", "product", "rsolve", "series", "simplify", "solve", "sum", "taylor",
-    "zeros", "ztrans"
+    "zeros", "ztrans", "det", "rref", "ref", "eigvl", "eigvc"
   ]);
 
   const LOCAL_PASSTHROUGH_FUNCTIONS = new Set([
@@ -61,7 +62,9 @@
     const value = String(name || "");
     if (/^deSolve$/i.test(value)) return "desolve";
     if (/^nSolve$/i.test(value)) return "fsolve";
-    if (/^derive$/i.test(value)) return "diff";
+    if (/^(?:derive|derivative|d)$/i.test(value)) return "diff";
+    if (/^integral$/i.test(value)) return "integrate";
+    if (/^lim$/i.test(value)) return "limit";
     return value.toLowerCase();
   }
 
@@ -77,7 +80,11 @@
       .replace(/√\s*\(/g, "sqrt(")
       .replace(/\bdeSolve\s*\(/gi, "desolve(")
       .replace(/\bnSolve\s*\(/gi, "fsolve(")
-      .replace(/\bderive\s*\(/gi, "diff(");
+      .replace(/\b(?:derive|derivative|d)\s*\(/gi, "diff(")
+      .replace(/\bintegral\s*\(/gi, "integrate(")
+      .replace(/\blim\s*\(/gi, "limit(")
+      .replace(/∫\s*\(/g, "integrate(")
+      .replace(/Σ\s*\(/g, "sum(");
   }
 
   function translateGiacToTi(result) {
@@ -122,6 +129,7 @@
     const excluded = new Set(Array.from(excludedFunctions || [], (name) => String(name).toLowerCase()));
     if (root && (excluded.has(root.toLowerCase()) || LOCAL_PASSTHROUGH_FUNCTIONS.has(root.toLowerCase()))) return false;
     if (root && CAS_FUNCTIONS.has(normalizedRoot)) return true;
+    if (/^\s*[∫Σ]\s*\(/.test(source)) return true;
     if (mode === "evalStr") return true;
 
     return /\b(?:deSolve|nSolve|solve|factor|expand|integrate|diff|limit|simplify|partfrac|taylor|series|sum|product)\s*\(/i.test(source);

@@ -109,7 +109,7 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   if (!document.querySelector('link[data-terminal-log-theme="true"]')) {
     const themeLink = document.createElement("link");
     themeLink.rel = "stylesheet";
-    themeLink.href = "./terminal-log-theme.css?v=20260827-terminal-v2";
+    themeLink.href = "./terminal-log-theme.css?v=20261029-main-log-fixed-v1";
     themeLink.dataset.terminalLogTheme = "true";
     document.head.appendChild(themeLink);
   }
