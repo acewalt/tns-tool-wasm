@@ -527,7 +527,7 @@ def analyze_ti_code(
         command = _first_command(line)
         if command:
             lower_command = command.lower()
-            if lower_command in TI_CATALOG_FUNCTIONS and not _looks_like_function_call(line):
+            if lower_command in TI_CATALOG_FUNCTIONS and not re.match(r"^\s*" + re.escape(command) + r"\s*\(", line, flags=re.IGNORECASE):
                 # The catalog recognizes a function, but it still requires call syntax.
                 syntax = TI_CATALOG[lower_command][1]
                 report.diagnostics.append(ti_error(680, number, f"Missing ( after {command}", f"Sintaxis de referencia: {syntax}"))
