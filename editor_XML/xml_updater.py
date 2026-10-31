@@ -453,6 +453,13 @@ class XMLUpdater:
         document_type: str | None = None,
     ) -> list[str]:
         lines = multiline_text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+        # The TI.ProgramEditor XML creates its own read-only Prgm/EndPrgm
+        # nodes. Strip only whitespace outside the user's wrapper before
+        # removing the textual wrapper; blank lines WITHIN remain editable.
+        while lines and not lines[0].strip():
+            lines.pop(0)
+        while lines and not lines[-1].strip():
+            lines.pop()
         if lines and lines[0].lstrip(": ").strip().lower() in {"prgm", "func"}:
             lines = lines[1:]
         if lines and lines[-1].lstrip(": ").strip().lower() in {"endprgm", "endfunc"}:
