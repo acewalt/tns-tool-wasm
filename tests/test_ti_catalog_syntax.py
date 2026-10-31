@@ -138,6 +138,7 @@ class PrgmBoundaryTests(unittest.TestCase):
         fixed, _ = autofix_ti_code(source)
         self.assertEqual(fixed, 'Func\nLocal x\nEndFunc')
         self.assertEqual(XMLUpdater._program_body_lines(source, "Func"), ['Local x'])
+        self.assertEqual(XMLUpdater._effective_document_type(source, None), "Func")
 
 
 if __name__ == "__main__":
