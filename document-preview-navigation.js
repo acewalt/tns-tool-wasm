@@ -27,12 +27,13 @@
     return { selected: index, start: first, indices: Array.from({ length: Math.min(3, count - first) }, (_, i) => first + i), previous: first > 0, next: first + 3 < count };
   }
   function pageLabel(item, index = 0) {
-    const problem = /Problem(\d+)\.xml$/i.exec(String(item?.file || '').replaceAll('\\', '/'))?.[1] || '1';
-    const card = /\/card(?:\[(\d+)\])?(?:\/|$)/.exec(String(item?.path || ''));
+    const page = item?.previewPage || item;
+    const problem = /Problem(\d+)\.xml$/i.exec(String(page?.file || '').replaceAll('\\', '/'))?.[1] || '1';
+    const card = /\/card(?:\[(\d+)\])?(?:\/|$)/.exec(String(page?.path || ''));
     return `${problem}.${card ? card[1] || '1' : index + 1}`;
   }
   function createTabs({ items = [], selected = 0, onSelect = () => {} } = {}) {
-    if (items.length < 2) return null;
+    if (!items.length) return null;
     const tabs = document.createElement('nav');
     tabs.className = 'document-preview-tabs';
     tabs.setAttribute('aria-label', 'Document pages');
@@ -60,5 +61,48 @@
     };
     render(); return tabs;
   }
-  globalThis.TnsDocumentPreviewNavigation = Object.freeze({ groups, windowFor, pageLabel, createTabs });
+  function updateChrome(host, { title, mode } = {}) {
+    const parts = host?.__tnsDocumentPreviewChrome;
+    if (!parts) return host;
+    if (title !== undefined) {
+      parts.title.textContent = String(title || 'documento').replace(/\.tns$/i, '');
+      parts.title.title = parts.title.textContent;
+    }
+    if (mode !== undefined) parts.mode.textContent = String(mode || 'RAD');
+    return host;
+  }
+  function createChrome({ items = [], selected = 0, onSelect = () => {}, title = 'documento', mode = 'RAD', onClose } = {}) {
+    const chrome = document.createElement('div'); chrome.className = 'document-preview-chrome';
+    const labelWidth = Math.max(3, ...items.map((item, index) => pageLabel(item, index).length));
+    const reserve = Math.min(150, Math.max(64, 27 + Math.min(3, items.length) * Math.max(27, labelWidth * 6 + 9)));
+    chrome.style.setProperty('--document-preview-title-reserve', `${reserve}px`);
+    const pages = document.createElement('div'); pages.className = 'document-preview-chrome-pages';
+    const tabs = createTabs({ items, selected, onSelect });
+    if (tabs) pages.append(tabs);
+    const name = document.createElement('span'); name.className = 'document-preview-chrome-title';
+    name.setAttribute('data-preview-document', ''); name.setAttribute('data-document', '');
+    const status = document.createElement('div'); status.className = 'document-preview-chrome-status';
+    const angle = document.createElement('span'); angle.className = 'document-preview-chrome-mode';
+    angle.setAttribute('data-preview-mode', ''); angle.setAttribute('data-mode', '');
+    const battery = document.createElement('span'); battery.className = 'document-preview-chrome-battery'; battery.setAttribute('aria-hidden', 'true');
+    const close = document.createElement('button'); close.type = 'button'; close.className = 'document-preview-chrome-close'; close.textContent = '×';
+    const lang = String(document.documentElement?.lang || 'en').slice(0, 2);
+    const closeLabel = ({ es: 'Cerrar preview', fr: 'Fermer l’aperçu', en: 'Close preview' })[lang] || 'Close preview';
+    close.setAttribute('aria-label', closeLabel); close.title = closeLabel;
+    close.disabled = typeof onClose !== 'function';
+    close.onclick = event => { event?.preventDefault?.(); event?.stopPropagation?.(); onClose?.(); };
+    status.append(angle, battery, close); chrome.append(pages, name, status);
+    chrome.__tnsDocumentPreviewChrome = { title: name, mode: angle, reserve };
+    return updateChrome(chrome, { title, mode });
+  }
+  function mountChrome(host, options = {}) {
+    if (!host) return null;
+    const chrome = createChrome(options);
+    host.classList.add('document-preview-chrome');
+    host.replaceChildren(...chrome.childNodes);
+    host.__tnsDocumentPreviewChrome = chrome.__tnsDocumentPreviewChrome;
+    host.style.setProperty('--document-preview-title-reserve', `${chrome.__tnsDocumentPreviewChrome.reserve}px`);
+    return host;
+  }
+  globalThis.TnsDocumentPreviewNavigation = Object.freeze({ groups, windowFor, pageLabel, createTabs, createChrome, mountChrome, updateChrome });
 })();

@@ -711,8 +711,9 @@
 
     const lang = getLanguage();
     const labels = uiText[lang];
-    const backdrop = document.createElement("div");
-    backdrop.className = "modal-backdrop";
+    const backdrop = window.makeDocumentPreviewBackdrop?.(options) || document.createElement("div");
+    backdrop.classList.add("modal-backdrop");
+    backdrop.replaceChildren();
 
     const modal = document.createElement("div");
     modal.className = "modal note-page-modal ti-note-rich-modal";

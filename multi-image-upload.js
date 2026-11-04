@@ -33,7 +33,7 @@
   const V="20261029-syntax-doctor-general-v1";
   const RUNTIME_V="20261029-startup-loader-v4";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
-  const NOTES_V="20261104-notepad-pages-v27";
+  const NOTES_V="20261104-preview-chrome-v28";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
   const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
@@ -93,7 +93,7 @@
     .then(() => loadScript('script[data-ndless-framebuffer-preview="true"]', `./ndless-framebuffer-preview.js?v=${V}`, "ndlessFramebufferPreview"))
     .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
     .then(() => loadScript('script[data-ndless-live-session="true"]', `./ndless-live-session.js?v=${V}`, "ndlessLiveSession"))
-    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=20261104-native-build-v27`, "ndlessProjectWorkspace"))
+    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=20261104-native-build-v28`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-arm-runtime-v2="true"]', `./ndless-arm-runtime-v2.js?v=${V}`, "ndlessArmRuntimeV2"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
     .then(() => loadScript('script[data-ndless-project-file-tree="true"]', `./ndless-project-file-tree.js?v=${V}`, "ndlessProjectFileTree"))
@@ -109,7 +109,7 @@
     .then(() => loadScript('script[data-rom-gb-preview="true"]', `./rom-gb-preview.js?v=20261029-usb-rom-v21`, "romGbPreview"))
     .then(() => loadScript('script[data-rom-web-converter="true"]', `./rom-web-converter.js?v=${V}`, "romWebConverter"))
     .then(() => loadScript('script[data-rom-converter-view="true"]', `./rom-converter-view.js?v=20261029-usb-rom-v21`, "romConverterView"))
-    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=20261104-native-v27`, "romConverter"));
+    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=20261104-native-v28`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
@@ -134,6 +134,6 @@
 
   loadScript('script[data-image-editor-i18n="true"]', "./image-editor-i18n.js?v=20260827-image-editor-v1", "imageEditorI18n")
     .then(() => loadScript('script[data-image-editor-core="true"]', "./image-editor-core.js?v=20260827-image-editor-v1", "imageEditorCore"))
-    .then(() => loadScript('script[data-image-editor-hooks="true"]', "./image-editor-hooks.js?v=20260827-image-editor-v1", "imageEditorHooks"))
+    .then(() => loadScript('script[data-image-editor-hooks="true"]', "./image-editor-hooks.js?v=20261104-image-preview-v28", "imageEditorHooks"))
     .catch(error => console.error("Image editor loader:", error));
 })();
