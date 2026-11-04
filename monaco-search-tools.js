@@ -5,6 +5,7 @@
   const PATCH_FLAG = "__tnsSearchToolsPatched";
   const CONTEXT_CLASS = "tns-monaco-context-menu";
   let activeContextMenu = null;
+  const editText = key => typeof window.t === "function" ? window.t(key) : key;
 
   function installStyles() {
     if (document.getElementById(STYLE_ID)) return;
@@ -164,7 +165,7 @@
       try { return await navigator.clipboard.readText(); }
       catch (_error) {}
     }
-    return window.prompt("Pega el texto aquí:", "");
+    return window.prompt(editText("editorPastePrompt"), "");
   }
 
   function decorate(container, adapter) {
@@ -416,11 +417,11 @@
     menu.className = CONTEXT_CLASS;
     menu.setAttribute("role","menu");
     menu.innerHTML = `
-      <button type="button" data-action="copy" ${hasSelection ? "" : "disabled"}>Copiar</button>
-      <button type="button" data-action="cut" ${hasSelection ? "" : "disabled"}>Cortar</button>
-      <button type="button" data-action="paste">Pegar</button>
+      <button type="button" data-action="copy" data-i18n="editorCopy" ${hasSelection ? "" : "disabled"}>${escapeHtml(editText("editorCopy"))}</button>
+      <button type="button" data-action="cut" data-i18n="editorCut" ${hasSelection ? "" : "disabled"}>${escapeHtml(editText("editorCut"))}</button>
+      <button type="button" data-action="paste" data-i18n="editorPaste">${escapeHtml(editText("editorPaste"))}</button>
       <div class="sep"></div>
-      <button type="button" data-action="select-all">Seleccionar todo</button>`;
+      <button type="button" data-action="select-all" data-i18n="editorSelectAll">${escapeHtml(editText("editorSelectAll"))}</button>`;
     menu.addEventListener("pointerdown",event => event.stopPropagation());
     menu.addEventListener("contextmenu",event => event.preventDefault());
     menu.addEventListener("click",async event => {
@@ -521,11 +522,12 @@
     if (panel) panel.hidden = true;
   }
 
-  function makeLuaEditButton(id,label,handler) {
+  function makeLuaEditButton(id,labelKey,handler) {
     const button = document.createElement("button");
     button.type = "button";
     button.id = id;
-    button.textContent = label;
+    button.dataset.i18n = labelKey;
+    button.textContent = editText(labelKey);
     button.addEventListener("click",async event => {
       event.preventDefault(); event.stopPropagation();
       try { await handler(); }
@@ -545,55 +547,55 @@
     separator.className = "lua-edit-mobile-separator";
     panel.append(separator);
 
-    panel.append(makeLuaEditButton("lua-select-all","Seleccionar todo",() => {
+    panel.append(makeLuaEditButton("lua-select-all","editorSelectAll",() => {
       const raw = luaEditorField();
       if (!raw) return;
       raw.setSelectionRange?.(0,String(raw.value || "").length);
       focusRawEditor(raw);
-      luaToolStatus("Todo el código seleccionado.");
+      luaToolStatus(editText("editorAllSelected"));
     }));
 
-    panel.append(makeLuaEditButton("lua-copy-selection","Copiar selección",async () => {
+    panel.append(makeLuaEditButton("lua-copy-selection","editorCopySelection",async () => {
       const raw = luaEditorField();
       if (!raw) return;
       const sel = rawSelection(raw);
-      if (sel.end <= sel.start) { luaToolStatus("No hay texto seleccionado."); return; }
+      if (sel.end <= sel.start) { luaToolStatus(editText("editorNoSelection")); return; }
       await writeClipboard(String(raw.value || "").slice(sel.start,sel.end));
-      luaToolStatus("Selección copiada.");
+      luaToolStatus(editText("editorSelectionCopied"));
     }));
 
-    panel.append(makeLuaEditButton("lua-cut-selection","Cortar selección",async () => {
+    panel.append(makeLuaEditButton("lua-cut-selection","editorCutSelection",async () => {
       const raw = luaEditorField();
       if (!raw) return;
       const sel = rawSelection(raw);
-      if (sel.end <= sel.start) { luaToolStatus("No hay texto seleccionado."); return; }
+      if (sel.end <= sel.start) { luaToolStatus(editText("editorNoSelection")); return; }
       await writeClipboard(String(raw.value || "").slice(sel.start,sel.end));
       replaceRawSelection(raw,"");
-      luaToolStatus("Selección cortada.");
+      luaToolStatus(editText("editorSelectionCut"));
     }));
 
-    panel.append(makeLuaEditButton("lua-paste-selection","Pegar",async () => {
+    panel.append(makeLuaEditButton("lua-paste-selection","editorPaste",async () => {
       const raw = luaEditorField();
       if (!raw) return;
       const text = await readClipboard();
       if (text === null) return;
       replaceRawSelection(raw,text);
-      luaToolStatus("Texto pegado.");
+      luaToolStatus(editText("editorTextPasted"));
     }));
 
     const separator2 = document.createElement("div");
     separator2.className = "lua-edit-mobile-separator";
     panel.append(separator2);
 
-    panel.append(makeLuaEditButton("lua-clear-document","Limpiar documento",() => {
+    panel.append(makeLuaEditButton("lua-clear-document","editorClearDocument",() => {
       const raw = luaEditorField();
       if (!raw) return;
-      if (!window.confirm("¿Eliminar todo el código Lua de este documento?")) return;
+      if (!window.confirm(editText("editorConfirmClearLua"))) return;
       raw.value = "";
       raw.setSelectionRange?.(0,0);
       emitRawInput(raw);
       focusRawEditor(raw);
-      luaToolStatus("Documento limpiado. Pulsa Guardar cuando quieras conservar el cambio.");
+      luaToolStatus(editText("editorDocumentCleared"));
     }));
     return true;
   }

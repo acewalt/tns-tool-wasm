@@ -11,14 +11,14 @@ function open(initial,options={}) {
   active?.close();
   const language=document.documentElement.lang?.slice(0,2),t=COPY[language]||COPY.es;
   const previous=document.activeElement;
-  const overlay=document.createElement('div');overlay.className='prgm-preview-overlay';
+  const overlay=options.createBackdrop?.('prgm-preview-overlay')||document.createElement('div');overlay.classList.add('prgm-preview-overlay');
   // Only constant markup is parsed as HTML; source, prompts and output use textContent.
   overlay.innerHTML=`<section class="prgm-preview-modal" role="dialog" aria-modal="true" aria-labelledby="prgm-preview-title" tabindex="-1">
     <header class="prgm-preview-heading"><div><span class="prgm-preview-eyebrow">TI-NSPIRE · TI-BASIC</span><h2 id="prgm-preview-title"></h2><p data-note></p></div><div class="prgm-preview-top"><button data-expand class="green-tool-button" aria-pressed="false"></button><button data-close></button></div></header>
     <div class="prgm-preview-workspace">
       <aside class="prgm-preview-controls"><button data-run class="green-tool-button"></button><button data-step></button><button data-stop></button><button data-restart></button><button data-clear-history disabled></button><div class="prgm-preview-pad"><button data-scroll="-1" aria-label="Scroll up">↑</button><button data-scroll="1" aria-label="Scroll down">↓</button><button data-enter>Enter</button><button data-escape>Esc</button></div><label class="prgm-preview-angle"><span data-angle-label></span><select data-angle><option>RAD</option><option>DEG</option></select></label><small data-keys></small></aside>
       <main class="prgm-preview-center"><div class="prgm-preview-size-label">320 × 240</div><div class="prgm-preview-screen-shell"><div class="prgm-preview-screen">
-        <div class="prgm-preview-chrome"><span class="prgm-preview-tabs"></span><span data-document></span><span data-mode>RAD</span><span class="prgm-preview-battery" aria-hidden="true">▰</span><span aria-hidden="true">×</span></div>
+        <div class="prgm-preview-chrome"></div>
         <div class="prgm-preview-history" tabindex="0" aria-label="Calculator output"><div data-previous-runs></div><div class="prgm-preview-entry" data-current-entry><div class="prgm-preview-call" data-call></div><div data-output></div><div class="prgm-preview-finish" data-finish hidden></div></div></div>
         <form class="prgm-preview-request" role="group" data-request hidden><div class="prgm-preview-request-row"><label for="prgm-preview-input" data-prompt></label><input id="prgm-preview-input" data-input autocomplete="off" spellcheck="false" maxlength="2048"></div><div class="prgm-preview-request-buttons"><button type="submit" data-ok></button><button type="button" data-cancel></button></div></form>
       </div></div><div class="prgm-preview-status" role="status" data-status></div><div class="prgm-preview-error" role="alert" data-error hidden></div></main>
@@ -29,15 +29,16 @@ function open(initial,options={}) {
   for(const [selector,value] of Object.entries({'#prgm-preview-title':t.title,'[data-note]':t.note,'[data-expand]':t.expand,'[data-close]':t.close,'[data-run]':t.run,'[data-step]':t.step,'[data-stop]':t.stop,'[data-restart]':t.restart,'[data-angle-label]':t.angle,'[data-keys]':t.keys,'[data-copy]':t.copy,'[data-line]':t.viewLine,'[data-variables-title]':t.variables,'[data-ok]':t.ok,'[data-cancel]':t.cancel,'[data-support]':t.support,'[data-help]':t.help}))$(selector).textContent=value;
   $('[data-clear-history]').textContent=HISTORY_COPY[language]||HISTORY_COPY.es;
   $('[data-request]').setAttribute('aria-label',t.request);
-  document.body.append(overlay);const oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
+  document.body.append(overlay);const oldOverflow=document.body.style.overflow;
+  if(!overlay.__documentPreviewRestore)overlay.__documentPreviewRestore=()=>{document.body.style.overflow=oldOverflow;previous?.focus();};
+  document.body.style.overflow='hidden';
   let runtime=null, snapshot=null, timer=null, automatic=false, expanded=Boolean(options.expanded), closed=false, requestToken='', renderedText='', inputResolved=false, data=initial;
   modal.classList.toggle('expanded', expanded);
   $('[data-expand]').textContent=expanded?t.normal:t.expand;
   $('[data-expand]').setAttribute('aria-pressed',String(expanded));
+  const tabOptions={...(options.pageNavigation||{items:[{file:initial.file||'Problem1.xml',path:initial.path||'/prob/card[1]/wdgt',name:initial.name}],selected:0}),onSelect:next=>{if(closed)return;close({switching:true});options.pageNavigation?.onSelect(next,{expanded});}};
+  window.TnsDocumentPreviewNavigation?.mountChrome($('.prgm-preview-chrome'),{...tabOptions,title:initial.documentName||initial.name||'documento',mode:'RAD',onClose:()=>close()});
   if(options.pageNavigation){
-    const tabOptions={...options.pageNavigation,onSelect:next=>{if(closed)return;close();options.pageNavigation.onSelect(next,{expanded});}};
-    const tabs=window.TnsDocumentPreviewNavigation?.createTabs(tabOptions);
-    if(tabs)$('.prgm-preview-tabs').append(tabs);
     const expandedTabs=window.TnsDocumentPreviewNavigation?.createTabs(tabOptions);
     if(expandedTabs){expandedTabs.classList.add('document-preview-expanded-tabs');$('.prgm-preview-top').prepend(expandedTabs);}
   }
@@ -86,7 +87,7 @@ function open(initial,options={}) {
     if(bottom)history.scrollTop=history.scrollHeight;
   }
   const resize=new ResizeObserver(layout);resize.observe($('.prgm-preview-center'));window.addEventListener('resize',layout);
-  function close(){if(closed)return;closed=true;clearTimeout(timer);runtime?.stop();resize.disconnect();window.removeEventListener('resize',layout);document.removeEventListener('keydown',keys,true);overlay.remove();document.body.style.overflow=oldOverflow;previous?.focus();if(active?.close===close)active=null;}
+  function close(state={}){if(closed)return;closed=true;clearTimeout(timer);runtime?.stop();resize.disconnect();window.removeEventListener('resize',layout);document.removeEventListener('keydown',keys,true);if(!state?.switching){overlay.remove();overlay.__documentPreviewRestore?.();delete overlay.__documentPreviewRestore;}if(active?.close===close)active=null;}
   function followOutput(){
     // Follow the latest result only when it is outside the viewport. Keeping
     // existing row nodes also preserves selection and avoids scroll anchoring jumps.
@@ -98,8 +99,7 @@ function open(initial,options={}) {
   function render(state,inputError=null){
     const changed=renderedText!==state.text||snapshot?.status!==state.status;
     snapshot=state;const request=state.pending;
-    $('[data-document]').textContent=(data.documentName||data.name||'documento').replace(/\.tns$/i,'').slice(0,30);
-    $('[data-mode]').textContent=state.angleMode;$('[data-call]').textContent=state.name+'()';
+    window.TnsDocumentPreviewNavigation?.updateChrome($('.prgm-preview-chrome'),{title:data.documentName||data.name||'documento',mode:state.angleMode});$('[data-call]').textContent=state.name+'()';
     if(renderedText!==state.text){
       while(output.children.length>state.output.length)output.lastElementChild.remove();
       state.output.forEach((row,index)=>{

@@ -14,7 +14,7 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.27/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.27)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.28/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.28)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
@@ -22,7 +22,7 @@ Close any older version, extract the entire ZIP into a new folder, and open **TN
 
 ## What's new
 
-Portable **0.1.27** synchronizes the website and Windows UI. Document Inspector now opens grouped app previews with up to three visible page tabs and arrows for more pages. Notes, sheets, graphs and calculator drafts survive page changes; Lua and Prgm keep their expanded view. Empty app counts are hidden, translated menus have more room, and XML Log scrolls inside a fixed-height panel. Bare graph functions are no longer reported as incomplete programs. Ndless builds select application sources from project settings or supported Makefile declarations, preventing test entry points from being linked into the application.
+Portable **0.1.28** adds a consistent calculator header across app previews, including real page tabs, a centered document title and the cyan divider. Page changes keep the same preview window open. The first Document Inspector action, **Widgets**, browses all document widgets in order. Image previews share the calculator frame and support native pixel panning, fitting the whole image and an expanded viewport. Lua Edit actions follow the active English, Spanish or French language. The fixed XML Log, bare Func validation and Ndless application-source selection introduced in 0.1.27 remain included.
 
 - **ROM Converter:** select a local cartridge, detect its console, preview it with interactive controls, and download an editable project or calculator package. Available in the web and Windows versions.
 - **Working Ndless Projects on Windows:** create, open, edit, preview and compile supported C/C++ projects using the bundled ARM SDK. Linux desktop support is planned next.

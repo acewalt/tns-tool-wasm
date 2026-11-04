@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-04-inspector-preview-v27";
+const SOURCE_VERSION = "2026-11-04-preview-chrome-v28";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -52,6 +52,21 @@ const I18N = {
     tnsOutputFileName: "Nombre del archivo TNS",
     fileMenu: "Archivo",
     editMenu: "Editar",
+    editorSelectAll: "Seleccionar todo",
+    editorCopy: "Copiar",
+    editorCopySelection: "Copiar selección",
+    editorCut: "Cortar",
+    editorCutSelection: "Cortar selección",
+    editorPaste: "Pegar",
+    editorClearDocument: "Limpiar documento",
+    editorPastePrompt: "Pega el texto aquí:",
+    editorAllSelected: "Todo el código seleccionado.",
+    editorNoSelection: "No hay texto seleccionado.",
+    editorSelectionCopied: "Selección copiada.",
+    editorSelectionCut: "Selección cortada.",
+    editorTextPasted: "Texto pegado.",
+    editorConfirmClearLua: "¿Eliminar todo el código Lua de este documento?",
+    editorDocumentCleared: "Documento limpiado. Pulsa Guardar cuando quieras conservar el cambio.",
     xmlActionsMenu: "Acciones XML",
     saveMenu: "Guardar",
     newXmlProject: "Nuevo documento",
@@ -142,7 +157,7 @@ const I18N = {
     luaGuide: "Guia Lua",
     luaTemplates: "Plantillas Lua",
     luaEditPages: "Editar paginas",
-    luaTnsConvert: "TNS to Lua convert code",
+    luaTnsConvert: "Convertir TNS a Lua",
     luaGuideSearch: "Buscar funciones, eventos o variables...",
     luaGuideCategoryAll: "Todo",
     luaGuideCategoryTi: "TI-Nspire",
@@ -326,6 +341,21 @@ const I18N = {
     tnsOutputFileName: "TNS file name",
     fileMenu: "File",
     editMenu: "Edit",
+    editorSelectAll: "Select all",
+    editorCopy: "Copy",
+    editorCopySelection: "Copy selection",
+    editorCut: "Cut",
+    editorCutSelection: "Cut selection",
+    editorPaste: "Paste",
+    editorClearDocument: "Clear document",
+    editorPastePrompt: "Paste the text here:",
+    editorAllSelected: "All code selected.",
+    editorNoSelection: "No text is selected.",
+    editorSelectionCopied: "Selection copied.",
+    editorSelectionCut: "Selection cut.",
+    editorTextPasted: "Text pasted.",
+    editorConfirmClearLua: "Delete all Lua code from this document?",
+    editorDocumentCleared: "Document cleared. Click Save to keep the change.",
     xmlActionsMenu: "XML actions",
     saveMenu: "Save",
     newXmlProject: "New document",
@@ -416,7 +446,7 @@ const I18N = {
     luaGuide: "Lua guide",
     luaTemplates: "Lua templates",
     luaEditPages: "Edit pages",
-    luaTnsConvert: "TNS to Lua convert code",
+    luaTnsConvert: "Convert TNS to Lua",
     luaGuideSearch: "Search functions, events, or variables...",
     luaGuideCategoryAll: "All",
     luaGuideCategoryTi: "TI-Nspire",
@@ -600,6 +630,21 @@ const I18N = {
     tnsOutputFileName: "Nom du fichier TNS",
     fileMenu: "Fichier",
     editMenu: "Edition",
+    editorSelectAll: "Tout sélectionner",
+    editorCopy: "Copier",
+    editorCopySelection: "Copier la sélection",
+    editorCut: "Couper",
+    editorCutSelection: "Couper la sélection",
+    editorPaste: "Coller",
+    editorClearDocument: "Vider le document",
+    editorPastePrompt: "Collez le texte ici :",
+    editorAllSelected: "Tout le code est sélectionné.",
+    editorNoSelection: "Aucun texte n’est sélectionné.",
+    editorSelectionCopied: "Sélection copiée.",
+    editorSelectionCut: "Sélection coupée.",
+    editorTextPasted: "Texte collé.",
+    editorConfirmClearLua: "Supprimer tout le code Lua de ce document ?",
+    editorDocumentCleared: "Document vidé. Cliquez sur Enregistrer pour conserver la modification.",
     xmlActionsMenu: "Actions XML",
     saveMenu: "Enregistrer",
     newXmlProject: "Nouveau document",
@@ -690,7 +735,7 @@ const I18N = {
     luaGuide: "Guide Lua",
     luaTemplates: "Modeles Lua",
     luaEditPages: "Editer pages",
-    luaTnsConvert: "TNS vers Lua",
+    luaTnsConvert: "Convertir TNS en Lua",
     luaGuideSearch: "Rechercher fonctions, evenements ou variables...",
     luaGuideCategoryAll: "Tout",
     luaGuideCategoryTi: "TI-Nspire",
@@ -2225,6 +2270,13 @@ for xml_file in sorted(root_path.rglob("*.xml")):
             summary["cards"] += 1
             items.append({"type": "Card", "name": f"Card {summary['cards']}", "file": str(xml_file), "path": element_path(element, parent_map), "detail": element.attrib, "raw_xml": raw_xml(element)})
         elif lname == "wdgt":
+            # Graphs stores editing controls as nested wdgt elements. Those
+            # belong to its renderer, not to the document's application pages.
+            ancestor = parent_map.get(element)
+            while ancestor is not None and local_name(ancestor.tag) != "wdgt":
+                ancestor = parent_map.get(ancestor)
+            if ancestor is not None:
+                continue
             summary["widgets"] += 1
             widget_type = element.attrib.get("type", "Unknown widget")
             detail = dict(element.attrib)
@@ -4339,82 +4391,102 @@ function imageResourceMetaText(width, height, extra = "") {
 }
 
 function showImageModal(item, options = {}) {
-  const imagePath = item?.detail?.image_file || item?.file || "";
+  const imagePath = item?.detail?.image_file || item?.file || '';
   if (!imagePath) return;
-  let bytes = null;
-  let url = "";
-  try {
-    bytes = pyodide.FS.readFile(imagePath);
-  } catch (error) {
-    showTextModal(`${t("viewImage")}: ${item?.name || ""}`, `ERROR: ${error.message}`);
-    return;
-  }
-  const backdrop = document.createElement("div");
-  backdrop.className = "modal-backdrop";
+  let bytes;
+  try { bytes = pyodide.FS.readFile(imagePath); }
+  catch (error) { showTextModal(`${t('viewImage')}: ${item?.name || ''}`, `ERROR: ${error.message}`); return; }
+  const backdrop = makeDocumentPreviewBackdrop(options);
+  backdrop.dataset.imageResourcePath = imagePath;
   backdrop.innerHTML = `
-    <div class="modal inspector-modal image-resource-modal">
+    <section class="modal inspector-modal image-resource-modal document-image-preview" role="dialog" aria-modal="true">
       <div class="image-resource-modal-header">
-        <div class="image-resource-heading">
-          <h2 class="image-resource-title">${escapeHtml(item?.name || t("viewImage"))}</h2>
-          <p id="image-resource-meta" class="image-resource-meta"></p>
-        </div>
+        <div class="image-resource-heading"><h2 class="image-resource-title"></h2><p id="image-resource-meta" class="image-resource-meta"></p></div>
         <div class="image-resource-top-actions">
-          <button type="button" id="image-calculator-toggle" class="green-tool-button">${escapeHtml(t("imageCalculatorView"))}</button>
-          <button type="button" id="image-close">${escapeHtml(t("close"))}</button>
+          <button type="button" id="image-expand" class="green-tool-button"></button>
+          <button type="button" id="image-calculator-toggle"></button>
+          <button type="button" id="image-close"></button>
         </div>
       </div>
-      <div class="image-resource-preview"></div>
-    </div>`;
+      <div class="image-resource-preview">
+        <div class="document-image-calculator"><div class="love-preview-calculator-bar"></div><canvas class="image-calculator-canvas" width="320" height="214" tabindex="0"></canvas></div>
+      </div>
+      <div class="document-image-controls"><button data-pan="left">←</button><button data-pan="up">↑</button><button data-pan="down">↓</button><button data-pan="right">→</button><button data-image-home>↖</button></div>
+    </section>`;
   document.body.append(backdrop);
-  const preview = backdrop.querySelector(".image-resource-preview");
-  mountDocumentPreviewTabs(backdrop, options, '.image-resource-preview', next => {
-    if (url) URL.revokeObjectURL(url);
-    closeModal(backdrop, () => options.pageNavigation.onSelect(next));
-  });
-  const meta = backdrop.querySelector("#image-resource-meta");
-  const setMeta = (width, height, extra = "") => {
-    if (meta) meta.textContent = imageResourceMetaText(width, height, extra);
+  const $ = selector => backdrop.querySelector(selector);
+  const modal = $('.document-image-preview'), frame = $('.document-image-calculator'), canvas = $('.image-calculator-canvas');
+  $('.image-resource-title').textContent = item.name || t('viewImage');
+  $('#image-close').textContent = t('close');
+  canvas.setAttribute('aria-label', item.name || t('viewImage'));
+  let source = null, url = '', closed = false, expanded = Boolean(options.expanded), drag = null;
+  const view = { x: options.draft?.x || 0, y: options.draft?.y || 0, fit: options.draft?.fit || false };
+  function dispose() { closed = true; window.removeEventListener('resize', setSize); if (url) URL.revokeObjectURL(url); }
+  function close() { dispose(); closeModal(backdrop); }
+  $('#image-close').onclick = close;
+  const setSize = () => {
+    if (closed) return;
+    modal.classList.toggle('document-image-expanded', expanded);
+    frame.style.width = expanded ? 'min(960px, 100%)' : '320px';
+    canvas.width = expanded ? Math.max(320, Math.round(frame.clientWidth)) : 320;
+    canvas.height = expanded ? Math.max(214, Math.min(600, Math.round(window.innerHeight * .62) - 26)) : 214;
+    $('#image-expand').textContent = t(expanded ? 'lovePreviewCalculatorView' : 'lovePreviewExpandedView');
+    $('#image-expand').setAttribute('aria-pressed', String(expanded));
+    draw();
   };
-  const isBmp = imageMimeFromName(imagePath) === "image/bmp" || isBmpBytes(bytes);
-  if (isBmp) {
-    try {
-      const canvas = document.createElement("canvas");
-      canvas.className = "image-source-preview";
-      canvas.setAttribute("aria-label", item?.name || "BMP preview");
-      const decoded = renderBmpToCanvas(canvas, bytes);
-      const formatNotes = [`${decoded.bpp} bpp`];
-      if (decoded.headerBpp && decoded.headerBpp !== decoded.bpp) {
-        formatNotes.push(`${decoded.headerBpp} bpp header`);
-      }
-      if (decoded.payloadSize > decoded.usefulPixelSize) {
-        formatNotes.push(t("imageExtraBytesIgnored"));
-      }
-      setMeta(decoded.width, decoded.height, formatNotes.join(" · "));
-      preview.append(canvas);
-      setupImageCalculatorToggle(backdrop, canvas);
-    } catch (error) {
-      preview.innerHTML = `<div class="image-resource-error">ERROR: ${escapeHtml(error.message)}</div>`;
+  function draw() {
+    if (closed || !source) return;
+    const width = source.naturalWidth || source.width, height = source.naturalHeight || source.height;
+    if (!width || !height) return;
+    const ctx = canvas.getContext('2d'); ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, canvas.width, canvas.height); ctx.imageSmoothingEnabled = false;
+    view.x = Math.round(Math.max(0, Math.min(Math.max(0, width - canvas.width), view.x)));
+    view.y = Math.round(Math.max(0, Math.min(Math.max(0, height - canvas.height), view.y)));
+    if (view.fit) {
+      const scale = Math.min(canvas.width / width, canvas.height / height, 1);
+      const w = Math.round(width * scale), h = Math.round(height * scale);
+      ctx.drawImage(source, Math.floor((canvas.width - w) / 2), Math.floor((canvas.height - h) / 2), w, h);
+    } else {
+      const w = Math.min(width - view.x, canvas.width), h = Math.min(height - view.y, canvas.height);
+      ctx.drawImage(source, view.x, view.y, w, h, 0, 0, w, h);
     }
-  } else {
-    const blob = new Blob([bytes], { type: imageMimeFromName(imagePath) });
-    url = URL.createObjectURL(blob);
-    const img = document.createElement("img");
-    img.className = "image-source-preview";
-    img.alt = item?.name || "image";
-    img.src = url;
-    img.addEventListener("load", () => {
-      setMeta(img.naturalWidth || img.width, img.naturalHeight || img.height);
-      configureImagePreviewElement(img, img.naturalWidth || img.width, img.naturalHeight || img.height);
-      setupImageCalculatorToggle(backdrop, img);
-    }, { once: true });
-    img.addEventListener("error", () => {
-      preview.innerHTML = `<div class="image-resource-error">ERROR: ${escapeHtml(t("viewImage"))}</div>`;
-    }, { once: true });
-    preview.append(img);
+    $('#image-calculator-toggle').textContent = t(view.fit ? 'imageCalculatorView' : 'imageOriginalView');
+    canvas.dataset.imageView = view.fit ? 'fit' : 'native';
+    canvas.dataset.viewX = String(view.x); canvas.dataset.viewY = String(view.y);
   }
-  backdrop.querySelector("#image-close").addEventListener("click", () => closeModal(backdrop, () => {
-    if (url) URL.revokeObjectURL(url);
-  }));
+  const pan = (x, y) => { view.fit = false; view.x += x; view.y += y; draw(); };
+  for (const button of backdrop.querySelectorAll('[data-pan]')) button.onclick = () => {
+    const [x, y] = { left: [-32, 0], right: [32, 0], up: [0, -32], down: [0, 32] }[button.dataset.pan]; pan(x, y);
+  };
+  $('[data-image-home]').onclick = () => { view.x = view.y = 0; view.fit = false; draw(); };
+  $('#image-calculator-toggle').onclick = () => { view.fit = !view.fit; draw(); };
+  $('#image-expand').onclick = () => { expanded = !expanded; setSize(); };
+  window.addEventListener('resize', setSize);
+  canvas.onkeydown = event => {
+    const step = event.shiftKey ? 96 : 24, direction = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
+    if (direction) { event.preventDefault(); pan(...direction); }
+  };
+  canvas.addEventListener('wheel', event => { event.preventDefault(); pan(event.deltaX, event.deltaY); }, { passive: false });
+  canvas.onpointerdown = event => { drag = { x: event.clientX, y: event.clientY, vx: view.x, vy: view.y }; canvas.setPointerCapture?.(event.pointerId); };
+  canvas.onpointermove = event => { if (!drag) return; view.fit = false; view.x = drag.vx + drag.x - event.clientX; view.y = drag.vy + drag.y - event.clientY; draw(); };
+  canvas.onpointerup = canvas.onpointercancel = () => { drag = null; };
+  mountDocumentPreviewTabs(backdrop, options, '.love-preview-calculator-bar', next => {
+    options.setDraft?.({ ...view }); dispose(); closeModal(backdrop, () => options.pageNavigation.onSelect(next, { expanded }));
+  }, true);
+  const ready = () => {
+    if (closed) return;
+    const width = source.naturalWidth || source.width, height = source.naturalHeight || source.height;
+    $('#image-resource-meta').textContent = imageResourceMetaText(width, height);
+    setSize(); modal.dataset.previewReady = 'true';
+  };
+  if (imageMimeFromName(imagePath) === 'image/bmp' || isBmpBytes(bytes)) {
+    try { source = document.createElement('canvas'); renderBmpToCanvas(source, bytes); ready(); }
+    catch (error) { $('#image-resource-meta').textContent = `ERROR: ${error.message}`; }
+  } else {
+    source = new Image(); source.onload = ready;
+    source.onerror = () => { if (!closed) $('#image-resource-meta').textContent = `ERROR: ${t('viewImage')}`; };
+    url = URL.createObjectURL(new Blob([bytes], { type: imageMimeFromName(imagePath) })); source.src = url;
+  }
+  setSize();
 }
 
 function closeDocumentInspectorModals() {
@@ -4427,9 +4499,17 @@ function closeDocumentInspectorModals() {
 
 function closeModal(backdrop, afterClose = null) {
   if (!backdrop || !backdrop.isConnected) return;
+  // Page changes keep the same backdrop mounted. Cleanup still runs in the
+  // outgoing preview, then the next app replaces its contents in place.
+  if (backdrop.dataset.previewSwitching === 'true' && typeof afterClose === 'function') {
+    afterClose();
+    return;
+  }
   backdrop.classList.add("closing");
   window.setTimeout(() => {
     if (typeof afterClose === "function") afterClose();
+    backdrop.__documentPreviewRestore?.();
+    delete backdrop.__documentPreviewRestore;
     backdrop.remove();
   }, 240);
 }
@@ -8696,13 +8776,13 @@ function showLuaEditor(item) {
         <button type="button" id="lua-love-preview" class="green-tool-button love-preview-tool-button">${escapeHtml(t("previewLove"))}</button>
         <button type="button" id="lua-guide" class="secondary-button">${escapeHtml(t("luaGuide"))}</button>
         <div class="lua-edit-menu">
-          <button type="button" id="lua-edit-menu-trigger" class="green-tool-button">${escapeHtml(t("editMenu"))}</button>
+          <button type="button" id="lua-edit-menu-trigger" class="green-tool-button" data-i18n="editMenu">${escapeHtml(t("editMenu"))}</button>
           <div id="lua-edit-menu-panel" class="lua-edit-menu-panel" hidden>
-            <button type="button" id="lua-templates">${escapeHtml(t("luaTemplates"))}</button>
-            <button type="button" id="lua-page-editor">${escapeHtml(t("luaEditPages"))}</button>
-            <button type="button" id="lua-tns-convert">${escapeHtml(t("luaTnsConvert"))}</button>
-            <button type="button" id="lua-love-convert">${escapeHtml(t("loveConvertNspire"))}</button>
-            <button type="button" id="lua-love-project-preview">${escapeHtml(t("previewLoveProject"))}</button>
+            <button type="button" id="lua-templates" data-i18n="luaTemplates">${escapeHtml(t("luaTemplates"))}</button>
+            <button type="button" id="lua-page-editor" data-i18n="luaEditPages">${escapeHtml(t("luaEditPages"))}</button>
+            <button type="button" id="lua-tns-convert" data-i18n="luaTnsConvert">${escapeHtml(t("luaTnsConvert"))}</button>
+            <button type="button" id="lua-love-convert" data-i18n="loveConvertNspire">${escapeHtml(t("loveConvertNspire"))}</button>
+            <button type="button" id="lua-love-project-preview" data-i18n="previewLoveProject">${escapeHtml(t("previewLoveProject"))}</button>
           </div>
         </div>
         <button type="button" id="lua-save" class="green-tool-button">${escapeHtml(t("saveMenu"))}</button>
@@ -8750,7 +8830,7 @@ function showLuaEditor(item) {
     const line = before.length;
     const col = before[before.length - 1].length + 1;
     const total = Math.max(1, editor.value.split("\n").length);
-    label.textContent = `Linea: ${line} Col: ${col} Total: ${total}`;
+    label.textContent = `${t("line")}: ${line} ${t("col")}: ${col} ${t("total")}: ${total}`;
   };
   const updateHighlight = () => {
     highlight.innerHTML = editor.value.split("\n").map((line, index) => {
@@ -9289,8 +9369,7 @@ json.dumps({"file": str(xml_file), "raw_xml": ET.tostring(wdgt, encoding="unicod
 
 function showNotepadModal(item, options = {}) {
   const initialText = options.draft?.text ?? (item?.content || extractNotepadTextFromRawXml(item?.raw_xml || ""));
-  const backdrop = document.createElement("div");
-  backdrop.className = "modal-backdrop";
+  const backdrop = makeDocumentPreviewBackdrop(options);
   backdrop.innerHTML = `
     <div class="modal note-page-modal">
       <div class="modal-top-actions">
@@ -11633,8 +11712,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   const projectInfo = project
     ? formatLoveProjectMessage(t("loveProjectLoaded"), { count: project.files.length, entry: project.entryPath })
     : "";
-  const backdrop = document.createElement("div");
-  backdrop.className = "modal-backdrop";
+  const backdrop = makeDocumentPreviewBackdrop(options);
   backdrop.innerHTML = `
     <div class="modal love-preview-modal">
       <div class="modal-top-actions">
@@ -16751,8 +16829,7 @@ function showSpreadsheetModal(item, options = {}) {
   };
   recalculateSpreadsheetCells(state.cells);
 
-  const backdrop = document.createElement("div");
-  backdrop.className = "modal-backdrop";
+  const backdrop = makeDocumentPreviewBackdrop(options);
   backdrop.innerHTML = `
     <div class="modal inspector-modal spreadsheet-modal">
       <div class="spreadsheet-modal-header">
@@ -16785,15 +16862,14 @@ function showSpreadsheetModal(item, options = {}) {
   document.body.append(backdrop);
 
   const grid = backdrop.querySelector(".spreadsheet-grid");
-  backdrop.querySelector('.spreadsheet-page-tab').replaceChildren();
-  mountDocumentPreviewTabs(backdrop, options, '.spreadsheet-page-tab', next => {
+  mountDocumentPreviewTabs(backdrop, options, '.spreadsheet-calc-topbar', next => {
     options.setDraft?.({ ...state, cells: Object.fromEntries(Object.entries(state.cells).map(([key, value]) => [key, { ...value }])) });
     closeModal(backdrop, () => options.pageNavigation.onSelect(next));
-  });
+  }, true);
   const cellName = backdrop.querySelector(".spreadsheet-cell-name");
   const formulaValue = backdrop.querySelector(".spreadsheet-formula-value");
   const sourceNameEl = backdrop.querySelector(".spreadsheet-source-name");
-  const docTitle = backdrop.querySelector(".spreadsheet-doc-title");
+  const docTitle = backdrop.querySelector("[data-preview-document]");
 
   const activeKey = () => `${state.activeRow}:${state.activeCol}`;
   const updateFormulaBar = () => {
@@ -16883,7 +16959,7 @@ function showSpreadsheetModal(item, options = {}) {
       state.cols = imported.cols;
       state.sourceName = imported.sourceName;
       sourceNameEl.textContent = imported.sourceName;
-      docTitle.textContent = imported.sourceName.replace(/\.xlsx$/i, "");
+      docTitle.textContent = options.documentName || documentPreviewDocumentName();
       state.activeRow = 0;
       state.activeCol = 0;
       render();
@@ -16926,24 +17002,56 @@ function showSpreadsheetModal(item, options = {}) {
 function mountDocumentPreviewTabs(backdrop, options, selector, onSelect, chrome = false) {
   const navigation = options?.pageNavigation;
   const host = backdrop.querySelector(selector);
-  if (!host || !navigation) return null;
+  if (!host) return null;
   const selectOnce = next => {
-    if (!backdrop.isConnected || backdrop.dataset.previewSwitching === 'true') return;
+    if (!backdrop.isConnected || !host.isConnected || backdrop.classList.contains('closing') || backdrop.dataset.previewSwitching === 'true') return;
     backdrop.dataset.previewSwitching = 'true'; onSelect(next);
   };
-  const tabs = window.TnsDocumentPreviewNavigation.createTabs({ ...navigation, onSelect: selectOnce });
-  if (!tabs) return null;
   if (chrome) {
-    const title = document.createElement('span');
-    title.className = 'document-preview-chrome-title'; title.textContent = host.textContent;
-    host.replaceChildren(tabs, title);
+    window.TnsDocumentPreviewNavigation.mountChrome(host, {
+      ...navigation, items: navigation?.items || [options.item || {}],
+      title: options.documentName || documentPreviewDocumentName(),
+      onSelect: selectOnce, onClose: () => backdrop.querySelector('#love-preview-close-top,#note-cancel,#image-close,#spreadsheet-cancel,[data-widget-close]')?.click(),
+    });
+    const tabs = host.querySelector('.document-preview-tabs');
     const expandedActions = backdrop.querySelector('.love-preview-modal .modal-top-actions');
-    if (expandedActions) {
+    if (expandedActions && navigation) {
       const expandedTabs = window.TnsDocumentPreviewNavigation.createTabs({ ...navigation, onSelect: selectOnce });
       expandedTabs.classList.add('document-preview-expanded-tabs'); expandedActions.prepend(expandedTabs);
     }
-  } else host.prepend(tabs);
+    return tabs;
+  }
+  if (!navigation) return null;
+  const tabs = window.TnsDocumentPreviewNavigation.createTabs({ ...navigation, onSelect: selectOnce });
+  if (tabs) host.prepend(tabs);
   return tabs;
+}
+
+function documentPreviewDocumentName() {
+  return String(xmlDoctor.outputFileName || 'documento').replace(/\.tns$/i, '');
+}
+
+function makeDocumentPreviewBackdrop(options = {}, className = 'modal-backdrop') {
+  return options.createBackdrop?.(className) || Object.assign(document.createElement('div'), { className });
+}
+
+function documentWidgetPreviewPages(items, groups) {
+  const sameFile = (a, b) => documentPreviewFileKey(a.file) === documentPreviewFileKey(b.file);
+  return items.filter(item => item.type === 'Widget').sort((a, b) =>
+    String(a.file).localeCompare(String(b.file), undefined, { numeric: true }) || String(a.path).localeCompare(String(b.path), undefined, { numeric: true })
+  ).map(widget => {
+    let kind = Object.keys(groups).find(key => groups[key].includes(widget));
+    let target = widget;
+    if (widget.name === 'TI.ScriptApp') {
+      const script = groups.lua.find(item => sameFile(item, widget) && item.path.startsWith(widget.path + '/'));
+      if (script) {
+        const resourceName = /\blocal\s+sourceName\s*=\s*["']([^"']+)["']/.exec(script.content || '')?.[1];
+        const image = resourceName && groups.images.find(item => item.name === resourceName || String(item.detail?.image_file || '').replaceAll('\\', '/').endsWith('/' + resourceName));
+        kind = image ? 'images' : 'lua'; target = image || script;
+      }
+    }
+    return { ...widget, previewKind: kind || 'unsupported', previewItem: target };
+  });
 }
 
 function documentPreviewFileKey(file = '') {
@@ -16966,16 +17074,44 @@ function documentProgramPreviewSource(item) {
 }
 
 async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) {
-  const items = groups[kind] || [], item = items[selected];
-  if (!item) return;
+  const items = groups[kind] || [], page = items[selected];
+  if (!page) return;
+  const item = page.previewItem || page;
+  const appKind = page.previewKind || kind;
+  const navigationItems = kind === 'images' && groups.widgets
+    ? items.map(image => groups.widgets.find(widget => widget.previewKind === 'images' && widget.previewItem === image) || image)
+    : items;
   session.drafts ||= new Map();
   const options = {
+    item, documentName: documentPreviewDocumentName(),
     expanded: session.expanded || false,
     draft: session.drafts.get(selected),
     setDraft: draft => session.drafts.set(selected, draft),
-    pageNavigation: { items, selected, onSelect: (next, state = {}) => openDocumentAppPreview(groups, kind, next, { ...session, ...state }).catch(error => xmlLog(`ERROR Preview: ${error.message}`)) },
+    createBackdrop: className => {
+      const reused = Boolean(session.backdrop?.isConnected);
+      const backdrop = session.backdrop || document.createElement('div');
+      if (!session.restore) {
+        const focus = document.activeElement, overflow = document.body.style.overflow;
+        session.restore = () => { document.body.style.overflow = overflow; if (focus?.isConnected) focus.focus(); };
+      }
+      backdrop.__documentPreviewRestore = session.restore;
+      backdrop.className = className + (reused ? ' document-preview-continuous' : '');
+      backdrop.dataset.previewSwitching = 'false';
+      backdrop.onclick = null;
+      delete backdrop.dataset.imageResourcePath;
+      backdrop.replaceChildren();
+      session.backdrop = backdrop;
+      return backdrop;
+    },
+    pageNavigation: { items: navigationItems, selected, onSelect: (next, state = {}) => {
+      Object.assign(session, state);
+      return openDocumentAppPreview(groups, kind, next, session).catch(error => {
+        if (session.backdrop) session.backdrop.dataset.previewSwitching = 'false';
+        xmlLog(`ERROR Preview: ${error.message}`);
+      });
+    } },
   };
-  if (kind === 'basic') {
+  if (appKind === 'basic') {
     if (!window.TnsPrgmPreview) throw new Error('Prgm Preview is still loading.');
     const readSource = () => documentProgramPreviewSource(item);
     return window.TnsPrgmPreview.open(readSource(), { ...options, readSource, revealLine: line => {
@@ -16985,13 +17121,20 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
       goToXmlLine(line);
     } });
   }
-  if (kind === 'lua') return showLovePreview(decodeXmlTextEntities(item.content || ''), null, null, { ...options, item });
-  if (kind === 'python') return openPyPreviewModal(item.content || '', options);
-  if (kind === 'images') return showImageModal(item, options);
-  if (kind === 'sheets') return showSpreadsheetModal(item, options);
-  if (kind === 'notes') return showNotepadModal(item, options);
-  if (kind === 'graphs') return openGraphInLovePreview(item, options);
-  if (kind === 'calculators') return openCalculatorInLovePreview(item, options);
+  if (appKind === 'lua') return showLovePreview(decodeXmlTextEntities(item.content || ''), null, null, options);
+  if (appKind === 'python') return openPyPreviewModal(item.content || '', options);
+  if (appKind === 'images') return showImageModal(item, options);
+  if (appKind === 'sheets') return showSpreadsheetModal(item, options);
+  if (appKind === 'notes') return showNotepadModal(item, options);
+  if (appKind === 'graphs') return openGraphInLovePreview(item, options);
+  if (appKind === 'calculators') return openCalculatorInLovePreview(item, options);
+  const backdrop = makeDocumentPreviewBackdrop(options);
+  backdrop.innerHTML = '<div class="modal inspector-modal"><div class="love-preview-calculator-bar"></div><h2></h2><p class="muted-text"></p><div class="modal-actions"><button data-widget-close></button></div></div>';
+  backdrop.querySelector('h2').textContent = item.name;
+  backdrop.querySelector('p').textContent = ({ es: 'Esta aplicación todavía no tiene un previsualizador disponible.', en: 'A preview is not available for this app yet.', fr: 'Un aperçu n’est pas encore disponible pour cette application.' })[String(document.documentElement.lang || 'en').slice(0, 2)] || 'A preview is not available for this app yet.';
+  const close = backdrop.querySelector('[data-widget-close]'); close.textContent = t('close'); close.onclick = () => closeModal(backdrop);
+  document.body.append(backdrop);
+  mountDocumentPreviewTabs(backdrop, options, '.love-preview-calculator-bar', next => closeModal(backdrop, () => options.pageNavigation.onSelect(next)), true);
 }
 
 async function openDocumentInspector() {
@@ -17000,8 +17143,9 @@ async function openDocumentInspector() {
   backdrop.className = "modal-backdrop";
   const summary = data.summary || {};
   const previewGroups = window.TnsDocumentPreviewNavigation.groups(data.items);
+  previewGroups.widgets = documentWidgetPreviewPages(data.items || [], previewGroups);
   const summaryHtml = [
-    ['XML', summary.files], ['Cards', summary.cards], ['Widgets', summary.widgets],
+    ['Widgets', previewGroups.widgets.length, previewGroups.widgets.length > 1 ? 'widgets' : null], ['XML', summary.files], ['Cards', summary.cards],
     ['Lua', previewGroups.lua.length, 'lua'], ['Python', previewGroups.python.length, 'python'],
     ['Resources', summary.resources], ['Images', previewGroups.images.length, 'images'],
     ['Sheets', previewGroups.sheets.length, 'sheets'], ['Notes', previewGroups.notes.length, 'notes'],
@@ -18048,8 +18192,7 @@ async function openPyPreviewModal(source = null, options = {}) {
   const terminalInputs = [];
   let lastResult = null;
   let running = false;
-  const backdrop = document.createElement("div");
-  backdrop.className = "modal-backdrop";
+  const backdrop = makeDocumentPreviewBackdrop(options);
   backdrop.innerHTML = `
     <div class="modal py-preview-modal">
       <h2>${escapeHtml(t("pythonPreviewTitle"))}</h2>

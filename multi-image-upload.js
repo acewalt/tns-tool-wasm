@@ -33,7 +33,7 @@
   const V="20261029-syntax-doctor-general-v1";
   const RUNTIME_V="20261029-startup-loader-v4";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
-  const NOTES_V="20261104-notepad-pages-v27";
+  const NOTES_V="20261104-preview-chrome-v28";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
   const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
@@ -134,6 +134,6 @@
 
   loadScript('script[data-image-editor-i18n="true"]', "./image-editor-i18n.js?v=20260827-image-editor-v1", "imageEditorI18n")
     .then(() => loadScript('script[data-image-editor-core="true"]', "./image-editor-core.js?v=20260827-image-editor-v1", "imageEditorCore"))
-    .then(() => loadScript('script[data-image-editor-hooks="true"]', "./image-editor-hooks.js?v=20260827-image-editor-v1", "imageEditorHooks"))
+    .then(() => loadScript('script[data-image-editor-hooks="true"]', "./image-editor-hooks.js?v=20261104-image-preview-v28", "imageEditorHooks"))
     .catch(error => console.error("Image editor loader:", error));
 })();

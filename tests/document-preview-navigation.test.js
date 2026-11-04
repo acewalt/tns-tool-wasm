@@ -7,9 +7,10 @@ const source = fs.readFileSync(new URL('../document-preview-navigation.js', impo
 
 function fixture() {
   class Element {
-    constructor(tagName) { this.tagName = tagName; this.children = []; this.attributes = {}; }
+    constructor(tagName) { this.tagName = tagName; this.children = []; this.attributes = {}; this.className = ''; this.style = { setProperty() {} }; this.classList = { add: name => { this.className = `${this.className} ${name}`.trim(); } }; }
+    get childNodes() { return this.children; }
     setAttribute(name, value) { this.attributes[name] = value; }
-    append(child) { this.children.push(child); }
+    append(...children) { this.children.push(...children); }
     replaceChildren(...children) { this.children = children; }
   }
   const context = { document: { createElement: name => new Element(name) } };
@@ -71,12 +72,17 @@ test('labels reference actual Problem/card paths, including Windows paths and im
   assert.equal(nav.pageLabel({ file: 'C:\\stage\\Problem3.xml', path: '/prob/card/wdgt' }, 9), '3.1');
   assert.equal(nav.pageLabel({ file: '/stage/Problem4.xml', path: '/prob/card[2]/wdgt/sc/lua' }, 8), '4.2');
   assert.equal(nav.pageLabel({ file: '/stage/image.BMP', path: '/image.BMP' }, 2), '1.3');
+  assert.equal(nav.pageLabel({ file: '/stage/page0.BMP', path: '/page0.BMP', previewPage: { file: '/stage/Problem2.xml', path: '/prob/card[12]/wdgt' } }, 0), '2.12');
 });
 
-test('zero/one page hides page navigation and visible window never exceeds three tabs', () => {
+test('empty navigation is hidden, a single actual page remains visible, and windows show at most three tabs', () => {
   const nav = fixture();
   assert.equal(nav.createTabs(), null);
-  assert.equal(nav.createTabs({ items: [page('Problem1.xml', 1)] }), null);
+  const single = nav.createTabs({ items: [page('Problem2.xml', 4)] });
+  assert.deepEqual(tabsOf(single).map(tab => tab.textContent), ['2.4']);
+  assert.equal(tabsOf(single)[0].attributes['aria-current'], 'page');
+  assert.equal(single.children[0].disabled, true);
+  assert.equal(single.children.at(-1).disabled, true);
   assert.deepEqual(values(nav.windowFor(0).indices), []);
   assert.deepEqual(values(nav.windowFor(1, 5).indices), [0]);
   assert.deepEqual(values(nav.windowFor(3, 1).indices), [0, 1, 2]);
@@ -89,6 +95,24 @@ test('zero/one page hides page navigation and visible window never exceeds three
     assert.equal(view.indices.length, 3);
     assert.ok(view.indices.includes(selected), `Selected page ${selected} must be visible`);
   }
+});
+
+test('shared chrome shows document title and mode, exposes close, and preserves navigation', () => {
+  const nav = fixture();
+  let closed = 0;
+  const chrome = nav.createChrome({ items: [page('Problem3.xml', 2)], title: 'Laplace <test>.tns', mode: 'DEG', onClose: () => closed++ });
+  const title = chrome.__tnsDocumentPreviewChrome.title;
+  assert.equal(title.textContent, 'Laplace <test>');
+  assert.equal(title.title, 'Laplace <test>');
+  assert.equal(chrome.__tnsDocumentPreviewChrome.mode.textContent, 'DEG');
+  const close = chrome.children.at(-1).children.at(-1);
+  assert.equal(close.disabled, false);
+  close.onclick();
+  assert.equal(closed, 1);
+  assert.deepEqual(tabsOf(chrome.children[0].children[0]).map(tab => tab.textContent), ['3.2']);
+  nav.updateChrome(chrome, { title: 'A new document.tns', mode: 'RAD' });
+  assert.equal(title.textContent, 'A new document');
+  assert.equal(chrome.__tnsDocumentPreviewChrome.mode.textContent, 'RAD');
 });
 
 test('arrows reveal more than three pages and clicking a page selects the correct original index', () => {
