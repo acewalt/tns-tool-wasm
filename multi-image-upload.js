@@ -109,7 +109,7 @@
     .then(() => loadScript('script[data-rom-gb-preview="true"]', `./rom-gb-preview.js?v=20261029-usb-rom-v21`, "romGbPreview"))
     .then(() => loadScript('script[data-rom-web-converter="true"]', `./rom-web-converter.js?v=${V}`, "romWebConverter"))
     .then(() => loadScript('script[data-rom-converter-view="true"]', `./rom-converter-view.js?v=20261029-usb-rom-v21`, "romConverterView"))
-    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=20261029-usb-rom-v21`, "romConverter"));
+    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=20261104-desktop-download-v28`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
