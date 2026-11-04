@@ -66,16 +66,19 @@ Do not open index.html through file://.
 
 ## Windows portable binary
 
-Run the GitHub Actions workflow **Desktop Portable Windows**. It downloads
-and SHA256-verifies the canonical v4 self-contained compiler, vendors browser
-dependencies, builds an Electron portable folder ZIP, and uploads the artifact.
-Extract the entire ZIP once, then run `TNS Tool Portable.exe` from that folder.
-After the extracted-ZIP acceptance test passes, internal repository builds
-publish a versioned GitHub Release with `TNS-Tool-Portable-Windows-x64.zip` and
-its SHA256 checksum, marked as the latest release. The web notice links directly
-to that public ZIP; it no longer asks users to choose a workflow artifact.
-Release publication is skipped for fork pull requests and refuses to reuse a
-version belonging to a different source commit.
+Run `COMPILAR_PORTABLE_WINDOWS.bat` from the root of the Windows desktop source
+copy. It can apply a source update ZIP, prepares dependencies and verified runtime
+resources, and builds the complete portable ZIP on your PC. The files to upload
+are `release/local-publish/TNS-Tool-Portable-Windows-x64.zip` and its SHA256 file.
+See [the local build guide](../docs/local-portable-build.md) for the update and
+resource-reuse options. The seed download selects the newest portable Release;
+compiler-only Releases cannot replace it.
+
+Quick source checks still run in Actions. **Desktop Portable Windows (manual)**
+only runs through `workflow_dispatch`, so pushes and pull requests do not start
+the long Windows packaging job. Publish the locally built ZIP and checksum in a
+versioned GitHub Release. Extract the entire ZIP once, then run
+`TNS Tool Portable.exe` from that folder.
 Keep its resources and DLLs together. Deep C++ include paths are stored inside
 `resources/compiler/sdk.bin.gz` so Explorer can extract the portable ZIP without
 error 0x80010135. The first compiler request verifies the bundle and prepares it

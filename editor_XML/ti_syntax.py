@@ -4,6 +4,8 @@ import difflib
 import re
 from dataclasses import dataclass, field
 
+from ti_catalog import TI_CATALOG, TI_CATALOG_FUNCTIONS, TI_CATALOG_STATEMENTS, TI_CATALOG_NAMES
+
 
 @dataclass(frozen=True)
 class Diagnostic:
@@ -139,6 +141,9 @@ VALID_COMMANDS = {
     "while",
 }
 
+# Syntax Doctor recognizes names in the TI catalog independently of Preview support.
+VALID_COMMANDS.update(TI_CATALOG_STATEMENTS)
+
 BLOCK_PAIRS = {
     "if": "endif",
     "for": "endfor",
@@ -161,6 +166,7 @@ COMMAND_SIGNATURES: dict[str, tuple[int, int | None]] = {
     "circle": (3, 4),
     "cos": (1, 1),
     "disp": (0, None),
+    "dispat": (2, None),
     "drawarc": (6, 6),
     "drawcircle": (3, 3),
     "drawline": (4, 4),
@@ -192,6 +198,9 @@ COMMAND_STYLE_SIGNATURES: dict[str, tuple[int, int | None]] = {
     "fillcircle": (3, 3),
     "fillpoly": (2, None),
     "fillrect": (4, 4),
+    "dispat": (2, None),
+    "request": (2, 4),
+    "requeststr": (2, 4),
     "paintbuffer": (0, 0),
     "plotxy": (3, 3),
     "setcolor": (3, 3),
@@ -379,7 +388,7 @@ CRITICAL_PREFIXES = (
     "Missing",
 )
 
-BUILTIN_NAMES = VALID_COMMANDS | {
+BUILTIN_NAMES = VALID_COMMANDS | TI_CATALOG_NAMES | {
     "true",
     "false",
     "pi",
@@ -453,7 +462,7 @@ ASSIGN_ARROW_RE = re.compile(r"(.+?)(?:->|→|â†’)\s*(.+?)\s*$")
 
 IDENT_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 LOCAL_RE = re.compile(r"^\s*Local\s+(.+)$", re.IGNORECASE)
-REQUEST_RE = re.compile(r"^\s*Request\s+(.+)$", re.IGNORECASE)
+REQUEST_RE = re.compile(r"^\s*(RequestStr|Request)\s+(.+)$", re.IGNORECASE)
 IF_RE = re.compile(r"^\s*If\b(.*)$", re.IGNORECASE)
 ASSIGN_RE = re.compile(r"(.+?)(?:->|→)\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
 
@@ -463,12 +472,14 @@ def analyze_ti_code(
     parameters: str | None = None,
     known_functions: set[str] | None = None,
     known_names: set[str] | None = None,
+    document_type: str | None = None,
 ) -> SyntaxReport:
     report = SyntaxReport()
     known_functions = known_functions or set()
     known_names = known_names or set()
     lines = _split_lines(text)
-    is_function_document = any(line.strip().lower() == "func" for line in lines[:3])
+    expression_function = _is_expression_function(lines, document_type)
+    is_function_document = expression_function or any(line.strip().lower() == "func" for line in lines[:3])
     if_stack: list[int] = []
     block_stack: list[tuple[str, int]] = []
     try_stack: list[list[object]] = []
@@ -481,6 +492,23 @@ def analyze_ti_code(
     if not lines:
         report.diagnostics.append(ti_error(910, 0, "Programa vacio"))
         return report
+
+    # TI.ProgramEditor renders its own Prgm/EndPrgm wrapper. Boundary blank
+    # lines hide those tokens from the XML serializer's first/last-line checks.
+    # Report exactly the first padding line on either side, not every empty row.
+    nonempty = [i for i, value in enumerate(lines) if value.strip()]
+    if nonempty:
+        first, last = nonempty[0], nonempty[-1]
+        if first > 0 and lines[first].strip().lower() in {"prgm", "func"}:
+            report.diagnostics.append(ti_error(
+                730, 1,
+                "Lineas vacias antes de Prgm/Func: elimina el espacio exterior antes de guardar TNS",
+            ))
+        if last < len(lines) - 1 and lines[last].strip().lower() in {"endprgm", "endfunc"}:
+            report.diagnostics.append(ti_error(
+                730, last + 2,
+                "Lineas vacias despues de EndPrgm/EndFunc: elimina el espacio exterior antes de guardar TNS",
+            ))
 
     if parameters:
         for raw_name in parameters.split(","):
@@ -518,8 +546,21 @@ def analyze_ti_code(
         command = _first_command(line)
         if command:
             lower_command = command.lower()
-            if lower_command not in VALID_COMMANDS and not _looks_like_expression(line) and not _looks_like_function_call(line):
-                report.diagnostics.append(ti_error(410, number, f"Comando desconocido: {command}"))
+            if lower_command in TI_CATALOG_FUNCTIONS and not re.match(r"^\s*" + re.escape(command) + r"\s*\(", line, flags=re.IGNORECASE):
+                # The catalog recognizes a function, but it still requires call syntax.
+                syntax = TI_CATALOG[lower_command][1]
+                report.diagnostics.append(ti_error(680, number, f"Missing ( after {command}", f"Sintaxis de referencia: {syntax}"))
+            elif lower_command not in VALID_COMMANDS and not _looks_like_expression(line) and not _looks_like_function_call(line):
+                choices = difflib.get_close_matches(lower_command, sorted(VALID_COMMANDS | TI_CATALOG_NAMES), n=3, cutoff=0.65)
+                hint = ""
+                if choices:
+                    suggested = choices[0]
+                    if suggested in TI_CATALOG:
+                        display, syntax, _ = TI_CATALOG[suggested]
+                        hint = f"¿Quisiste escribir {display}? Sintaxis: {syntax}"
+                    else:
+                        hint = "Quizá quisiste escribir: " + ", ".join(choices)
+                report.diagnostics.append(ti_error(410, number, f"Comando desconocido: {command}", hint))
             if lower_command in {"break", "cycle", "exit"} and not _has_any_open_block(block_stack, {"for", "while", "loop"}):
                 report.diagnostics.append(ti_error(560, number, f"{command} fuera de Loop/For/While"))
             if lower_command == "return" and not document_start_seen:
@@ -628,13 +669,13 @@ def analyze_ti_code(
             _close_block(report, block_stack, lower_first, number)
 
         if request_match := REQUEST_RE.match(line):
-            args = _split_args(request_match.group(1))
-            if len(args) < 2:
-                report.diagnostics.append(ti_error(930, number, "Request requiere 2 argumentos"))
-            else:
-                dest = args[-1].strip()
+            args = _split_args(request_match.group(2))
+            if len(args) >= 2:
+                dest = args[1].strip()
                 if _is_identifier(dest):
                     report.assigned.add(dest)
+                if len(args) == 4 and _is_identifier(args[3].strip()):
+                    report.assigned.add(args[3].strip())
 
         if line.lower() == "disp":
             report.diagnostics.append(internal_warning(number, "Disp sin argumentos"))
@@ -653,10 +694,10 @@ def analyze_ti_code(
         menu_options.update(_displayed_menu_options(line))
         _check_division_by_zero(report, number, line)
 
-    if not document_start_seen:
+    if not document_start_seen and not expression_function:
         report.diagnostics.append(ti_error(730, 1, "Documento no empieza con Prgm o Func"))
-    if not document_end_seen:
-        expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
+    if not document_end_seen and not expression_function:
+        expected_end = "EndFunc" if document_kind == "Func" or (document_kind is None and str(document_type).lower() == "func") else "EndPrgm"
         report.diagnostics.append(ti_error(730, len(lines), f"Documento no termina con {expected_end}"))
     for start_line in if_stack:
         report.diagnostics.append(ti_error(730, start_line, "If sin EndIf correspondiente"))
@@ -719,15 +760,27 @@ def format_ti_code(text: str) -> tuple[str, str]:
     return formatted, diff
 
 
-def autofix_ti_code(text: str) -> tuple[str, str]:
+def autofix_ti_code(text: str, document_type: str | None = None) -> tuple[str, str]:
     original_lines = _split_lines(text)
+    expression_function = _is_expression_function(original_lines, document_type)
     fixed_lines: list[str] = []
     if_stack: list[int] = []
     actions: list[str] = []
+    # Trim only whitespace OUTSIDE the complete program, keeping internal
+    # empty lines for readability and preserving existing program statements.
+    if any(line.strip() for line in original_lines):
+        while original_lines and not original_lines[0].strip():
+            original_lines.pop(0)
+            if "[100%] Eliminadas lineas vacias antes de Prgm/Func" not in actions:
+                actions.append("[100%] Eliminadas lineas vacias antes de Prgm/Func")
+        while original_lines and not original_lines[-1].strip():
+            original_lines.pop()
+            if "[100%] Eliminadas lineas vacias despues de EndPrgm/EndFunc" not in actions:
+                actions.append("[100%] Eliminadas lineas vacias despues de EndPrgm/EndFunc")
     seen_local_lines: set[str] = set()
     document_start_seen = False
     document_end_seen = False
-    document_kind = "Prgm"
+    document_kind = "Func" if str(document_type).lower() == "func" else "Prgm"
 
     for raw_line in original_lines:
         line = raw_line.rstrip()
@@ -793,10 +846,10 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
         if_stack.pop()
         actions.append("[100%] Anadido EndIf faltante")
 
-    if not document_start_seen:
-        fixed_lines.insert(0, "Prgm")
-        actions.append("[100%] Anadido Prgm inicial")
-    if not document_end_seen:
+    if not document_start_seen and not expression_function:
+        fixed_lines.insert(0, document_kind)
+        actions.append(f"[100%] Anadido {document_kind} inicial")
+    if not document_end_seen and not expression_function:
         expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
         fixed_lines.append(expected_end)
         actions.append(f"[100%] Anadido {expected_end} final")
@@ -817,6 +870,23 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
 
 def _split_lines(text: str) -> list[str]:
     return text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+
+def _is_expression_function(lines: list[str], document_type: str | None) -> bool:
+    """A graph/symbol Func can store one expression without Func/EndFunc.
+
+    Require the scanner's explicit Func context so an accidentally unwrapped
+    program is still diagnosed. ProgramEditor statements and explicit wrapper
+    tokens keep their normal block validation.
+    """
+    if str(document_type).lower() != "func":
+        return False
+    expressions = [line.strip() for line in lines if line.strip() and not _is_comment_line(line)]
+    if len(expressions) != 1:
+        return False
+    expression = expressions[0]
+    command = (_first_command(expression) or "").lower()
+    return command not in (TI_CATALOG_STATEMENTS | {"prgm", "func", "endprgm", "endfunc"})
 
 
 def _check_lexical(report: SyntaxReport, line_number: int, line: str) -> None:

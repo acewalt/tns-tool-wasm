@@ -54,6 +54,7 @@ state.root=root;
 manager.controls();
 assert.equal(controls["[data-ti-connect]"].hidden,false);
 assert.equal(controls["[data-ti-disconnect]"].hidden,true);
+assert.equal(controls[".ti-manager-dialog"].attributes["data-connection-state"],"disconnected");
 
 const calls=[];
 state.link={
@@ -71,6 +72,7 @@ state.files=state.cache.get("/");
 manager.rows();
 assert.equal(controls["[data-ti-connect]"].hidden,true);
 assert.equal(controls["[data-ti-disconnect]"].hidden,false);
+assert.equal(controls[".ti-manager-dialog"].attributes["data-connection-state"],"connected");
 assert.ok(descendants(controls["[data-ti-rows]"]).some(n=>n.className==="ti-tree-list"),
   "Default view must remain the existing nested list.");
 
@@ -111,10 +113,12 @@ manager.controls();
 assert.equal(controls["[data-ti-connect]"].hidden,false,
   "Connect returns when the calculator disconnects");
 assert.equal(controls["[data-ti-disconnect]"].hidden,true);
+assert.equal(controls[".ti-manager-dialog"].attributes["data-connection-state"],"disconnected");
 const css=fs.readFileSync(new URL("../ti-calculator-transfer.css",import.meta.url),"utf8");
 assert.match(css,/\.ti-grid-gallery/);
 assert.match(css,/\.ti-grid-tile:hover \.ti-row-actions/);
 assert.match(css,/\.ti-manager-table\[data-view="grid"\] \.ti-manager-cols/);
 assert.match(css,/\[data-ti-connect\]\[hidden\]/);
+assert.match(css,/\.ti-manager-dialog\[data-connection-state="disconnected"\] \.ti-manager-grid/);
 assert.match(css,/@media\(hover:none\),\(pointer:coarse\)/);
 console.log("Calculator connection button and list/grid selection/navigation tests passed.");

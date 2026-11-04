@@ -1,0 +1,117 @@
+// Read declarative source lists from a Makefile without running make or a shell.
+const SOURCE = /\.(?:c|cpp|cc|cxx|S|s)$/;
+const TEST_DIRECTORY = /(?:^|\/)(?:tests?|__tests__)(?:\/|$)/i;
+const words = value => String(value).trim().split(/\s+/).filter(Boolean);
+const escape = value => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+function match(pattern, value) {
+  const parts = pattern.split('%');
+  return new RegExp('^' + parts.map(escape).join('(.*)') + '$').exec(value);
+}
+function substitute(pattern, replacement, value) {
+  const found = match(pattern, value);
+  return found ? replacement.replace(/%/g, found[1] || '') : value;
+}
+function glob(pattern, value) {
+  return new RegExp('^' + escape(pattern).replace(/\\\*/g, '[^/]*').replace(/\\\?/g, '[^/]') + '$').test(value);
+}
+function argumentsOf(value) {
+  const result = []; let start = 0, depth = 0;
+  for (let i = 0; i < value.length; i++) {
+    if (value[i] === '(' || value[i] === '{') depth++;
+    else if (value[i] === ')' || value[i] === '}') depth--;
+    else if (value[i] === ',' && depth === 0) { result.push(value.slice(start, i)); start = i + 1; }
+  }
+  result.push(value.slice(start)); return result;
+}
+function makeSources(makefile, filenames) {
+  const variables = new Map(), available = new Set(filenames);
+  let expansions = 0;
+  const expand = (input, stack = []) => {
+    if (++expansions > 12000 || stack.length > 30) throw Error('Makefile source list is too complex. Use settings.build.sources in .tnsproject.json.');
+    const readVariable = name => {
+      if (stack.includes(name)) throw Error('Circular Makefile source variable: ' + name);
+      return expand(variables.get(name) || '', [...stack, name]);
+    };
+    let result = '';
+    for (let i = 0; i < input.length; i++) {
+      if (input[i] !== '$') { result += input[i]; continue; }
+      if (input[i + 1] === '$') { result += '$'; i++; continue; }
+      const closing = input[i + 1] === '(' ? ')' : input[i + 1] === '{' ? '}' : '';
+      if (!closing) throw Error('Unsupported Makefile source expression. Use settings.build.sources in .tnsproject.json.');
+      const start = i + 2; let depth = 1; i = start;
+      for (; i < input.length && depth; i++) {
+        if (input[i] === input[start - 1]) depth++;
+        else if (input[i] === closing) depth--;
+      }
+      if (depth) throw Error('Unclosed Makefile source expression.');
+      const expression = input.slice(start, i - 1).trim(); i--;
+      const func = /^([\w-]+)\s+([\s\S]*)$/.exec(expression);
+      if (!func) {
+        const suffix = /^([\w]+):([^=]+)=(.*)$/.exec(expression);
+        if (suffix) {
+          const from = suffix[2].includes('%') ? suffix[2] : '%' + suffix[2];
+          const to = suffix[2].includes('%') ? suffix[3] : '%' + suffix[3];
+          result += words(readVariable(suffix[1])).map(word => substitute(from, to, word)).join(' ');
+        } else if (/^\w+$/.test(expression)) result += readVariable(expression);
+        else throw Error('Unsupported Makefile source expression: ' + expression);
+        continue;
+      }
+      const [name, raw] = [func[1], func[2]], args = argumentsOf(raw).map(value => expand(value, stack));
+      if (name === 'wildcard') result += words(args.join(',')).flatMap(pattern => filenames.filter(file => glob(pattern, file)).sort()).join(' ');
+      else if (name === 'patsubst' && args.length === 3) result += words(args[2]).map(word => substitute(args[0].trim(), args[1].trim(), word)).join(' ');
+      else if (name === 'subst' && args.length === 3) result += args[2].split(args[0]).join(args[1]);
+      else if (name === 'addprefix' && args.length === 2) result += words(args[1]).map(word => args[0].trim() + word).join(' ');
+      else if (name === 'addsuffix' && args.length === 2) result += words(args[1]).map(word => word + args[0].trim()).join(' ');
+      else if ((name === 'filter' || name === 'filter-out') && args.length === 2) result += words(args[1]).filter(word => words(args[0]).some(pattern => !!match(pattern, word)) === (name === 'filter')).join(' ');
+      else if (name === 'sort') result += [...new Set(words(args.join(',')))].sort().join(' ');
+      else if (name === 'strip') result += words(args.join(',')).join(' ');
+      else throw Error('Unsupported Makefile source function: ' + name + '. Use settings.build.sources in .tnsproject.json.');
+    }
+    return result;
+  };
+  for (const line of makefile.replace(/\\\r?\n/g, ' ').split(/\r?\n/)) {
+    if (/^\t/.test(line)) continue; // Recipes are never interpreted.
+    const assignment = /^\s*([\w]+)\s*([:+?]?=)\s*(.*?)\s*(?:#.*)?$/.exec(line);
+    if (!assignment) continue;
+    const [, name, operator, raw] = assignment;
+    if (operator === '?=' && variables.has(name)) continue;
+    variables.set(name, operator === '+=' ? (variables.get(name) || '') + ' ' + raw : operator === ':=' ? expand(raw) : raw);
+  }
+  const sourceNames = ['SOURCES', 'SRCS', 'SOURCE_FILES', 'C_SOURCES', 'C_SRCS', 'CPP_SOURCES', 'CPP_SRCS'];
+  const objectNames = ['OBJS', 'OBJECTS', 'C_OBJS', 'CPP_OBJS'];
+  let chosen = sourceNames.filter(name => variables.has(name));
+  if (!chosen.length) chosen = objectNames.filter(name => variables.has(name));
+  if (!chosen.length) return null;
+  // Prefer a complete list; the per-language variables are often its ingredients.
+  if (['SOURCES', 'SRCS', 'SOURCE_FILES', 'OBJS', 'OBJECTS'].includes(chosen[0])) chosen = [chosen[0]];
+  const entries = [...new Set(chosen.flatMap(name => words(expand(variables.get(name)))) )];
+  if (!entries.length) throw Error('The Makefile declares an empty source list. Set settings.build.sources in .tnsproject.json.');
+  const sources = entries.map(entry => {
+    if (SOURCE.test(entry) && available.has(entry)) return entry;
+    if (/\.o$/.test(entry)) {
+      const stem = entry.slice(0, -2), candidates = ['.c', '.cpp', '.cc', '.cxx', '.S', '.s'].map(ext => stem + ext).filter(file => available.has(file));
+      if (candidates.length === 1) return candidates[0];
+    }
+    throw Error('Cannot resolve Makefile source: ' + entry + '. Set settings.build.sources in .tnsproject.json.');
+  });
+  const flags = ['CPPFLAGS', 'CFLAGS', 'GCCFLAGS', 'CXXFLAGS', 'GXXFLAGS'].filter(name => variables.has(name)).flatMap(name => words(expand(variables.get(name))));
+  const includeDirectories = ['.'], defines = [];
+  for (let i = 0; i < flags.length; i++) {
+    if (flags[i] === '-I' && flags[i + 1]) includeDirectories.push(flags[++i]);
+    else if (flags[i].startsWith('-I')) includeDirectories.push(flags[i].slice(2));
+    else if (flags[i] === '-D' && flags[i + 1]) defines.push(flags[++i]);
+    else if (flags[i].startsWith('-D')) defines.push(flags[i].slice(2));
+  }
+  return {version:1,sources:[...new Set(sources)],includeDirectories:[...new Set(includeDirectories)],defines:[...new Set(defines)],
+    optimization:flags.filter(flag => /^-O[0123s]$/.test(flag)).at(-1)?.slice(1) || 'O2',
+    unsignedChar:flags.includes('-funsigned-char'),fastMath:flags.includes('-ffast-math'),common:flags.includes('-fcommon'),gnuInline:flags.includes('-fgnu89-inline'),
+    sourceSelection:'Makefile ' + chosen.join(', ')};
+}
+function defaultSources(filenames) {
+  const sources = filenames.filter(name => SOURCE.test(name));
+  if (!sources.some(name => TEST_DIRECTORY.test(name))) return null;
+  const selected = sources.filter(name => !TEST_DIRECTORY.test(name));
+  if (!selected.length) throw Error('Only test sources were found. Set settings.build.sources in .tnsproject.json to select an application.');
+  return {version:1,sources:selected,sourceSelection:'Application sources (test directories excluded)'};
+}
+module.exports = {makeSources, defaultSources};

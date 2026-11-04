@@ -11,6 +11,7 @@ async function checkPrgm(win,report){
     const button=document.getElementById('xml-prgm-preview-btn');
     if(button.hidden||button.disabled)throw Error('Prgm toolbar button unavailable');
     button.click();
+    while(!document.querySelector(".prgm-preview-overlay")){if(Date.now()>end)throw Error("Prgm preview did not open");await new Promise(r=>setTimeout(r,30));}
     const $=s=>document.querySelector('.prgm-preview-overlay '+s);
     const state=()=>window.TnsPrgmPreview.getSnapshot();
     if(state().pending?.variable!=='opcion')throw Error('Main menu did not request input');

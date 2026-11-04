@@ -1,0 +1,29 @@
+name: Syntax Doctor TI catalog checks
+on:
+  push:
+    branches:
+      - fix/syntax-doctor-ti-catalog-20261031
+    paths:
+      - 'editor_XML/ti_catalog.py'
+      - 'editor_XML/ti_syntax.py'
+      - 'tests/test_ti_catalog_syntax.py'
+      - '.github/workflows/syntax-doctor-catalog.yml'
+  pull_request:
+    paths:
+      - 'editor_XML/ti_catalog.py'
+      - 'editor_XML/ti_syntax.py'
+      - 'tests/test_ti_catalog_syntax.py'
+      - 'app.js'
+      - '.github/workflows/syntax-doctor-catalog.yml'
+permissions:
+  contents: read
+jobs:
+  syntax-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m py_compile editor_XML/ti_catalog.py editor_XML/ti_syntax.py
+      - run: python -m unittest discover -s tests -p 'test_ti_catalog_syntax.py' -v

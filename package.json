@@ -1,6 +1,6 @@
 {
   "name": "tns-tool-wasm",
-  "version": "0.1.25",
+  "version": "0.1.27",
   "private": true,
   "type": "module",
   "scripts": {
@@ -16,12 +16,13 @@
     "desktop:vendor": "node desktop/prepare-vendor.mjs",
     "desktop:build:win": "electron-builder --win zip --x64",
     "desktop:build:single-exe": "electron-builder --win portable --x64",
-    "desktop:test": "node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs tests/desktop-sdk-runtime.test.cjs",
+    "desktop:test": "node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs tests/desktop-sdk-runtime.test.cjs tests/desktop-project-sources.test.cjs",
     "test:calculator-session": "node tests/calculator-session.test.js && node tests/nnse-transport.test.js",
     "test:prgm": "node --test tests/prgm-preview.test.js",
     "test:ndless-preview": "node --test tests/ndless-live-session.test.js && node tests/ndless-arm-runtime.test.js && node --test --test-concurrency=1 tests/ndless-preview-native.test.cjs tests/ndless-preview-lcd-files.test.cjs tests/ndless-preview-games.test.cjs",
     "test:ndless-games": "node --test --test-concurrency=1 tests/ndless-preview-games.test.cjs",
-    "test:ndless-community": "node tools/ndless-community-preview.cjs"
+    "test:ndless-community": "node tools/ndless-community-preview.cjs",
+    "test:document-preview": "node --test tests/document-preview-navigation.test.js tests/prgm-preview.test.js"
   },
   "engines": {
     "node": ">=18"

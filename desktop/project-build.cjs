@@ -18,8 +18,14 @@ async function readArchive(zip){
 }
 async function profileFromArchive(zip,exe){
  const runtime=path.join(path.dirname(exe),'runtime'),archive=await readArchive(zip),meta=archive.file('.tnsproject.json');
- if(!meta)return null;if(meta._data?.uncompressedSize>256*1024)throw Error('Project manifest too large');let total=0,count=0;for(const file of Object.values(archive.files)){if(file.dir)continue;const n=file._data?.uncompressedSize||0;total+=n;if(++count>16000||n>32*1024*1024||total>256*1024*1024)throw Error('Project archive exceeds resource limits');}const manifest=JSON.parse(await meta.async('string'));
- if(!manifest.settings?.build)return null;return{archive,manifest,profile:validate(manifest.settings.build),runtime};
+ if(meta?._data?.uncompressedSize>256*1024)throw Error('Project manifest too large');let total=0,count=0;for(const file of Object.values(archive.files)){if(file.dir)continue;const n=file._data?.uncompressedSize||0;total+=n;if(++count>16000||n>32*1024*1024||total>256*1024*1024)throw Error('Project archive exceeds resource limits');}const manifest=meta?JSON.parse(await meta.async('string')):{};
+ let build=manifest.settings?.build,sourceSelection='Project manifest';
+ if(!build){const files=Object.values(archive.files).filter(file=>!file.dir).map(file=>file.name),makefile=archive.file('Makefile')||archive.file('makefile')||archive.file('GNUmakefile'),selection=require('./project-sources.cjs');
+  if(makefile?._data?.uncompressedSize>256*1024)throw Error('Makefile too large');
+  build=makefile?selection.makeSources(await makefile.async('string'),files):null;
+  if(!build)build=selection.defaultSources(files);if(!build)return null;sourceSelection=build.sourceSelection;
+ }
+ return{archive,manifest,profile:validate(build),runtime,sourceSelection};
 }
 async function buildProfile(info,folder,name,run){
  const {archive,profile,runtime}=info;let total=0,count=0;
@@ -42,6 +48,6 @@ async function buildProfile(info,folder,name,run){
  if(profile.wrapFree)args.unshift('-Wl,--wrap=free');
  await fs.writeFile(response,args.map(quote).join('\n'));await run(path.join(tool,'arm-none-eabi-gcc.exe'),['@'+response],180000,{cwd:folder});
  const output=path.join(folder,name+'.tns');await run(path.join(runtime,'bin/genzehn.exe'),['--input',elf,'--output',output,'--name',name,'--uses-lcd-blit','1','--240x320-support','1','--color-support','1','--32MB-support','0','--compress'],120000,{cwd:folder});
- return{bytes:await fs.readFile(output),logs:['SDK profile: '+profile.sources.length+' translation units',...logs.slice(-12)]};
+ return{bytes:await fs.readFile(output),logs:['SDK profile: '+profile.sources.length+' translation units ('+(info.sourceSelection||'Project manifest')+')',...logs.slice(-12)]};
 }
 module.exports={validate,relative,profileFromArchive,buildProfile};

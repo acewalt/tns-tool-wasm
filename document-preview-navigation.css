@@ -1,0 +1,17 @@
+.document-preview-tabs{display:inline-flex;align-items:stretch;gap:1px;flex:none;min-height:25px;font:12px Arial,sans-serif;white-space:nowrap}
+.document-preview-tabs button{box-sizing:border-box;min-width:27px!important;min-height:25px!important;margin:0!important;padding:4px 5px!important;border:0!important;border-radius:0!important;background:#d5d8d3!important;color:#131712!important;font:12px Arial,sans-serif!important;box-shadow:none!important;transform:none!important;cursor:pointer}
+.document-preview-tabs button[aria-current="page"]{background:#fff!important;border-bottom:2px solid #9fe62e!important;font-weight:bold!important}
+.document-preview-tabs .document-preview-tab-arrow{min-width:15px!important;padding:4px 2px!important;background:#30342e!important;color:#83d5ee!important;font-size:9px!important}
+.document-preview-tabs button:disabled{opacity:.28;cursor:default}
+.document-preview-tabs button:focus-visible{outline:2px solid #5db5ec!important;outline-offset:-2px}
+.love-preview-calculator-bar:has(.document-preview-tabs),.note-calculator-shell>.love-preview-calculator-bar:has(.document-preview-tabs){display:flex;align-items:center;justify-content:flex-start;padding:0 5px 0 0;gap:8px;overflow:hidden}
+.document-preview-chrome-title{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;text-align:center}
+.image-resource-preview>.document-preview-tabs,.py-preview-modal>.document-preview-tabs{display:flex;width:max-content;max-width:100%;margin:0 auto 8px;background:#30342e}
+.prgm-preview-tabs:empty{display:none}
+.inspector-summary button.inspector-preview-action{border:1px solid #a5ed32;border-radius:999px;padding:8px 11px;background:linear-gradient(135deg,#b7f34d,#8de829);color:#1a3010;font:700 13px Arial,sans-serif;cursor:pointer;white-space:nowrap;box-shadow:0 4px 14px #90e72b24}
+.inspector-summary button.inspector-preview-action:hover{filter:brightness(1.08)}
+.inspector-summary button.inspector-preview-action:focus-visible{outline:2px solid #d9ff9b;outline-offset:3px}
+.document-preview-modal-tabs{display:flex;justify-content:center;margin:0 0 10px}
+.document-preview-expanded-tabs{display:none}
+.prgm-preview-modal.expanded .document-preview-expanded-tabs,.love-preview-modal.document-preview-expanded .document-preview-expanded-tabs{display:inline-flex}
+.prgm-preview-top:has(.document-preview-tabs){flex-wrap:wrap;justify-content:flex-end}

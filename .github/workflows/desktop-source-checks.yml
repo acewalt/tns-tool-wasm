@@ -1,0 +1,65 @@
+name: Desktop source checks
+
+on:
+  push:
+    branches: ['main', 'feature/desktop-portable-ndless']
+    paths:
+      - 'desktop/**'
+      - 'tests/desktop-*.cjs'
+      - 'tests/ndless-*.js'
+      - 'tests/ndless-*.cjs'
+      - 'ndless-*.js'
+      - 'prgm-preview.*'
+      - 'src/prgm/**'
+      - 'app.js'
+      - 'styles.css'
+      - 'index.html'
+      - 'electron-builder.json'
+      - 'package.json'
+      - 'COMPILAR_PORTABLE_WINDOWS.bat'
+      - '.github/workflows/desktop-source-checks.yml'
+  pull_request:
+    paths:
+      - 'desktop/**'
+      - 'tests/desktop-*.cjs'
+      - 'tests/ndless-*.js'
+      - 'tests/ndless-*.cjs'
+      - 'ndless-*.js'
+      - 'prgm-preview.*'
+      - 'src/prgm/**'
+      - 'app.js'
+      - 'styles.css'
+      - 'index.html'
+      - 'electron-builder.json'
+      - 'package.json'
+      - 'COMPILAR_PORTABLE_WINDOWS.bat'
+      - '.github/workflows/desktop-source-checks.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-source-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Check desktop adapters and local build source selection
+        run: node --test tests/desktop-portable.test.cjs tests/desktop-stats.test.cjs tests/desktop-sdk-runtime.test.cjs tests/desktop-project-sources.test.cjs
+      - run: node tests/calculator-upload-destination.test.js
+      - run: npm run test:calculator-session
+      - run: node tests/ndless-project.test.js
+      - run: node --test tests/ndless-live-session.test.js tests/desktop-project-profile.test.cjs
+      - run: node --test tests/rom-converter.test.cjs tests/rom-converter-design.test.cjs
+      - run: node tests/ndless-export-roundtrip.test.js
+      - run: node tests/ndless-arm-runtime.test.js
+      - run: node --test tests/prgm-preview.test.js
+      - run: node tests/ndless-desktop-required.test.js
+      - run: node tests/normal-ndless-menu-exclusivity.test.js
+      - run: node --check desktop/main.cjs && node --check desktop/compiler.cjs && node --check ndless-web-bridge.js
