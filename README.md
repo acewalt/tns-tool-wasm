@@ -14,13 +14,15 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/latest/download/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/latest)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.27/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.27)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
-Cierra la versión anterior, extrae todo el ZIP en una carpeta nueva y abre **TNS Tool Portable.exe**. La versión aparece en el título. El SDK de Ndless viene incluido. **Los proyectos Ndless C/C++ se compilan actualmente solo en Windows; la versión para Linux llegará próximamente y todavía no tiene una descarga publicada.**
+**Ndless C/C++ projects currently compile on Windows only. Linux desktop support is planned; no Linux download is published yet.**
 
 ## What's new
+
+Portable **0.1.27** synchronizes the website and Windows UI. Document Inspector now opens grouped app previews with up to three visible page tabs and arrows for more pages. Notes, sheets, graphs and calculator drafts survive page changes; Lua and Prgm keep their expanded view. Empty app counts are hidden, translated menus have more room, and XML Log scrolls inside a fixed-height panel. Bare graph functions are no longer reported as incomplete programs. Ndless builds select application sources from project settings or supported Makefile declarations, preventing test entry points from being linked into the application.
 
 - **ROM Converter:** select a local cartridge, detect its console, preview it with interactive controls, and download an editable project or calculator package. Available in the web and Windows versions.
 - **Working Ndless Projects on Windows:** create, open, edit, preview and compile supported C/C++ projects using the bundled ARM SDK. Linux desktop support is planned next.

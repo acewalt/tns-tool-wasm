@@ -705,9 +705,9 @@
     };
   }
 
-  window.showNotepadModal = function showRichNotepadModal(item) {
+  window.showNotepadModal = function showRichNotepadModal(item, options = {}) {
     const model = parseNotepadRichText(item?.raw_xml || "");
-    if (!model) return originalShowNotepadModal(item);
+    if (!model) return originalShowNotepadModal(item, options);
 
     const lang = getLanguage();
     const labels = uiText[lang];
@@ -745,9 +745,10 @@
     richView.setAttribute("contenteditable", "false");
     richView.spellcheck = false;
     renderRichModel(richView, model);
+    if (options.draft?.richNodes) richView.replaceChildren(...options.draft.richNodes.map(node => node.cloneNode(true)));
     shell.append(calculatorBar, richView);
 
-    let dirty = false;
+    let dirty = Boolean(options.draft?.richNodes);
     const markDirty = () => { dirty = true; };
     const toolbar = createFormatToolbar(labels, richView, markDirty);
 
@@ -760,13 +761,17 @@
     document.body.appendChild(backdrop);
 
     let closed = false;
-    function close() {
+    function close(afterClose = null) {
       if (closed) return;
       closed = true;
       toolbar.destroy();
-      if (typeof window.closeModal === "function") window.closeModal(backdrop);
-      else backdrop.remove();
+      if (typeof window.closeModal === "function") window.closeModal(backdrop, typeof afterClose === 'function' ? afterClose : null);
+      else { backdrop.remove(); if (typeof afterClose === 'function') afterClose(); }
     }
+    window.mountDocumentPreviewTabs?.(backdrop, options, '.love-preview-calculator-bar', next => {
+      options.setDraft?.({ richNodes: Array.from(richView.childNodes, node => node.cloneNode(true)) });
+      close(() => options.pageNavigation.onSelect(next));
+    }, true);
 
     function setMode(nextMode) {
       const editing = nextMode === "edit";

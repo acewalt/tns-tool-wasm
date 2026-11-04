@@ -1,4 +1,4 @@
-import {createPrgmPreview,formatPrgmValue} from './src/prgm/runtime.js?v=20261027-prgm-layout-v2';
+import {createPrgmPreview,formatPrgmValue} from './src/prgm/runtime.js?v=20261104-prgm-func-v27';
 
 const COPY={
   es:{title:'Preview Prgm',note:'Simulación numérica TI-BASIC · entradas, menús y salida de texto.',run:'Ejecutar',pause:'Pausar',step:'Paso',stop:'Detener',restart:'Reiniciar / actualizar',expand:'Vista ampliada',normal:'Tamaño calculadora',close:'Cerrar',variables:'Variables',empty:'Todavía no hay valores.',copy:'Copiar salida',copied:'Salida copiada.',ok:'OK',cancel:'Cancelar',done:'Hecho',line:'Línea',ready:'Listo',waiting:'Esperando entrada',paused:'Pausado',running:'Ejecutando',stopped:'Detenido',error:'Error',support:'Cobertura del preview',help:'Prgm sin parámetros; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, asignaciones, listas y matemáticas numéricas. ClrIO se omite para conservar el historial TI-Nspire. No reproduce CAS simbólico, unidades, gráficos ni funciones externas; las instrucciones no soportadas se indican con su línea.',keys:'Enter: aceptar · Esc: cancelar entrada · ↑/↓: desplazar salida',angle:'Ángulos (reinicia)',request:'Entrada del programa',viewLine:'Ver línea en editor'},
@@ -18,7 +18,7 @@ function open(initial,options={}) {
     <div class="prgm-preview-workspace">
       <aside class="prgm-preview-controls"><button data-run class="green-tool-button"></button><button data-step></button><button data-stop></button><button data-restart></button><button data-clear-history disabled></button><div class="prgm-preview-pad"><button data-scroll="-1" aria-label="Scroll up">↑</button><button data-scroll="1" aria-label="Scroll down">↓</button><button data-enter>Enter</button><button data-escape>Esc</button></div><label class="prgm-preview-angle"><span data-angle-label></span><select data-angle><option>RAD</option><option>DEG</option></select></label><small data-keys></small></aside>
       <main class="prgm-preview-center"><div class="prgm-preview-size-label">320 × 240</div><div class="prgm-preview-screen-shell"><div class="prgm-preview-screen">
-        <div class="prgm-preview-chrome"><span class="prgm-preview-tabs"><span>1.1</span><b>1.2</b></span><span data-document></span><span data-mode>RAD</span><span class="prgm-preview-battery" aria-hidden="true">▰</span><span aria-hidden="true">×</span></div>
+        <div class="prgm-preview-chrome"><span class="prgm-preview-tabs"></span><span data-document></span><span data-mode>RAD</span><span class="prgm-preview-battery" aria-hidden="true">▰</span><span aria-hidden="true">×</span></div>
         <div class="prgm-preview-history" tabindex="0" aria-label="Calculator output"><div data-previous-runs></div><div class="prgm-preview-entry" data-current-entry><div class="prgm-preview-call" data-call></div><div data-output></div><div class="prgm-preview-finish" data-finish hidden></div></div></div>
         <form class="prgm-preview-request" role="group" data-request hidden><div class="prgm-preview-request-row"><label for="prgm-preview-input" data-prompt></label><input id="prgm-preview-input" data-input autocomplete="off" spellcheck="false" maxlength="2048"></div><div class="prgm-preview-request-buttons"><button type="submit" data-ok></button><button type="button" data-cancel></button></div></form>
       </div></div><div class="prgm-preview-status" role="status" data-status></div><div class="prgm-preview-error" role="alert" data-error hidden></div></main>
@@ -30,7 +30,17 @@ function open(initial,options={}) {
   $('[data-clear-history]').textContent=HISTORY_COPY[language]||HISTORY_COPY.es;
   $('[data-request]').setAttribute('aria-label',t.request);
   document.body.append(overlay);const oldOverflow=document.body.style.overflow;document.body.style.overflow='hidden';
-  let runtime=null, snapshot=null, timer=null, automatic=false, expanded=false, closed=false, requestToken='', renderedText='', inputResolved=false, data=initial;
+  let runtime=null, snapshot=null, timer=null, automatic=false, expanded=Boolean(options.expanded), closed=false, requestToken='', renderedText='', inputResolved=false, data=initial;
+  modal.classList.toggle('expanded', expanded);
+  $('[data-expand]').textContent=expanded?t.normal:t.expand;
+  $('[data-expand]').setAttribute('aria-pressed',String(expanded));
+  if(options.pageNavigation){
+    const tabOptions={...options.pageNavigation,onSelect:next=>{if(closed)return;close();options.pageNavigation.onSelect(next,{expanded});}};
+    const tabs=window.TnsDocumentPreviewNavigation?.createTabs(tabOptions);
+    if(tabs)$('.prgm-preview-tabs').append(tabs);
+    const expandedTabs=window.TnsDocumentPreviewNavigation?.createTabs(tabOptions);
+    if(expandedTabs){expandedTabs.classList.add('document-preview-expanded-tabs');$('.prgm-preview-top').prepend(expandedTabs);}
+  }
   const history=$('.prgm-preview-history'), output=$('[data-output]'), shell=$('.prgm-preview-screen-shell'), previousRuns=$('[data-previous-runs]'), currentEntry=$('[data-current-entry]');
   function archiveRun(){
     if(!snapshot?.executed)return;
@@ -123,7 +133,7 @@ function open(initial,options={}) {
   }
   function tick(){if(closed||!automatic)return;const state=runtime.run(250);if(state.status!=='paused')automatic=false;render(state);if(automatic)timer=setTimeout(tick,0);}
   function run(){clearTimeout(timer);automatic=true;tick();}
-  function restart(){clearTimeout(timer);automatic=false;archiveRun();data=options.readSource?.()||initial;renderedText='\0';requestToken='';inputResolved=false;runtime=createPrgmPreview(data.source,{name:data.name,angleMode:$('[data-angle]').value});render(runtime.snapshot());run();}
+  function restart(){clearTimeout(timer);automatic=false;archiveRun();data=options.readSource?.()||initial;renderedText='\0';requestToken='';inputResolved=false;runtime=createPrgmPreview(data.source,{name:data.name,parameters:data.parameters||'',angleMode:$('[data-angle]').value});render(runtime.snapshot());run();}
   function answer(cancel=false){if(!runtime?.pending)return;const state=runtime.answer($('[data-input]').value,{cancel});if(state.inputError){render(state,state.inputError);$('[data-input]').focus({preventScroll:true});return;}inputResolved=true;run();}
   function scroll(direction){$('.prgm-preview-history').scrollBy({top:direction*48,behavior:'smooth'});}
   function keys(event){

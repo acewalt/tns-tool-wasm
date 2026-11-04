@@ -201,6 +201,27 @@
   min-height: 146px;
 }
 
+/* XML history stays inside one console instead of stretching the editor. */
+.doctor-side .terminal-log-window[data-terminal-for="xml-log"] {
+  flex: 0 0 320px;
+  height: 320px;
+  min-height: 320px;
+  max-height: 320px;
+}
+
+.doctor-side .terminal-log-window[data-terminal-for="xml-log"] .terminal-log-body {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.doctor-side .terminal-log-window[data-terminal-for="xml-log"] #xml-log {
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
 [data-theme="light"] .terminal-log-window {
   border-color: rgba(15, 23, 42, 0.2);
   box-shadow: 0 12px 28px rgba(15, 23, 42, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.08);

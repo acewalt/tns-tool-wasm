@@ -131,5 +131,48 @@ class PrgmBoundaryTests(unittest.TestCase):
         self.assertEqual(fixed, 'Func\nLocal x\nEndFunc')
 
 
+class ExpressionFunctionTests(unittest.TestCase):
+    def test_graph_function_expression_has_no_wrapper_errors(self):
+        report = analyze_ti_code('sin(x)', parameters='x', document_type='Func')
+        self.assertEqual(report.errors, [], report.format())
+
+    def test_expression_function_supports_scalar_and_symbolic_values(self):
+        for expression in ('5', 'x', 'x^2+1', 'sin(theta)'):
+            with self.subTest(expression=expression):
+                report = analyze_ti_code(expression, document_type='Func')
+                self.assertFalse(any(d.code == 730 for d in report.errors), report.format())
+
+    def test_expression_function_keeps_math_diagnostics(self):
+        report = analyze_ti_code('sin(x', parameters='x', document_type='Func')
+        self.assertTrue(report.errors, report.format())
+        self.assertFalse(any(d.code == 730 for d in report.errors), report.format())
+
+    def test_program_context_still_requires_wrappers(self):
+        for document_type in (None, 'Prgm'):
+            with self.subTest(document_type=document_type):
+                report = analyze_ti_code('sin(x)', document_type=document_type)
+                self.assertEqual(len([d for d in report.errors if d.code == 730]), 2)
+
+    def test_program_editor_function_still_requires_matching_endfunc(self):
+        report = analyze_ti_code('Func\nReturn sin(x)', document_type='Func')
+        self.assertTrue(any(d.code == 730 and 'EndFunc' in d.message for d in report.errors))
+        report = analyze_ti_code('Func\nReturn sin(x)\nEndPrgm', document_type='Func')
+        self.assertTrue(any(d.code == 730 and 'EndFunc' in d.message for d in report.errors))
+
+    def test_statement_is_not_treated_as_an_expression_function(self):
+        report = analyze_ti_code('Return sin(x)', document_type='Func')
+        self.assertTrue(any(d.code == 730 and 'EndFunc' in d.message for d in report.errors))
+
+    def test_autofix_preserves_expression_function(self):
+        fixed, _ = autofix_ti_code('sin(x)', document_type='Func')
+        self.assertEqual(fixed, 'sin(x)')
+        fixed, _ = autofix_ti_code('sin(x', document_type='Func')
+        self.assertEqual(fixed, 'sin(x)')
+
+    def test_autofix_uses_func_wrapper_for_func_statements(self):
+        fixed, _ = autofix_ti_code('Return sin(x)', document_type='Func')
+        self.assertEqual(fixed, 'Func\nReturn sin(x)\nEndFunc')
+
+
 if __name__ == "__main__":
     unittest.main()

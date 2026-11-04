@@ -33,7 +33,7 @@
   const V="20261029-syntax-doctor-general-v1";
   const RUNTIME_V="20261029-startup-loader-v4";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
-  const NOTES_V="20260904-notepad-rich-v2";
+  const NOTES_V="20261104-notepad-pages-v27";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
   const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
@@ -115,7 +115,7 @@
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
 
   const independent = [
-    ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20261015-import-dialog-lifecycle-v4", "mediaImportController"],
+    ['script[data-media-import-controller="true"]', "./media-import-controller.js?v=20261104-preview-pages-v27", "mediaImportController"],
     ['script[data-drag-drop-ui="true"]', "./drag-drop-ui.js?v=20261029-usb-rom-v21", "dragDropUi"],
     ['script[data-home-drop-import="true"]', "./home-drop-import.js?v=20261029-usb-rom-v21", "homeDropImport"],
     ['script[data-lua-drop-progress="true"]', "./lua-drop-progress.js?v=20261015-import-dialog-lifecycle-v4", "luaDropProgress"],

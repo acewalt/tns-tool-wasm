@@ -268,6 +268,7 @@
   }
 
   function bindChip(element, count) {
+    if (element?.dataset.previewKind) return; // The document's grouped preview owns modern buttons.
     if (!element || count < 1 || element.dataset.tnsImageGalleryBound === "1") return;
     element.dataset.tnsImageGalleryBound = "1";
     element.classList.add(CHIP_CLASS);

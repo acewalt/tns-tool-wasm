@@ -357,12 +357,13 @@ body.drop-target-active .click-burst-layer {
   align-items: center;
   justify-content: flex-end;
   gap: 10px;
-  min-width: 310px;
+  min-width: 0;
 }
 
 .site-stat {
-  min-width: 138px;
-  padding: 9px 13px;
+  flex: 0 0 auto;
+  min-width: 148px;
+  padding: 10px 16px;
   border: 1px solid rgba(151, 239, 54, 0.35);
   border-radius: 18px;
   background:
@@ -388,6 +389,8 @@ body.drop-target-active .click-burst-layer {
   font-weight: 900;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+  line-height: 1.35;
+  white-space: nowrap;
 }
 
 [data-theme="light"] .site-stat {
@@ -1091,6 +1094,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .nested-panel {
   top: 0;
   left: calc(100% + 10px);
+  width: min(340px, calc(100vw - 36px));
   transform-origin: top center;
 }
 
@@ -1098,7 +1102,7 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .file-menu-action {
   width: 100%;
   min-height: 40px;
-  padding: 10px 12px;
+  padding: 10px 16px;
   background: transparent;
   color: #e5e7eb;
   border: none;
@@ -1107,6 +1111,9 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
   cursor: pointer;
   font: inherit;
   font-weight: 700;
+  line-height: 1.35;
+  white-space: normal;
+  overflow-wrap: anywhere;
   transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
 }
 
@@ -1199,6 +1206,26 @@ html:not([data-theme="dark"]) .menu-trigger:hover:not(.green-menu-trigger) {
 .green-tool-button:hover {
   background: #bef264;
   box-shadow: 0 8px 20px rgb(132 204 22 / 18%);
+}
+
+/* Keep the Prgm launcher visually aligned with the adjacent Edit menu. */
+#xml-prgm-preview-btn:not(:disabled) {
+  border: none;
+  border-radius: 999px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--lime), var(--lime2));
+  color: #2d3d17;
+  font-weight: 800;
+  box-shadow: 0 0 20px rgb(183 243 77 / 25%);
+}
+
+#xml-prgm-preview-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 0 0 30px rgb(183 243 77 / 35%), 0 0 80px rgb(183 243 77 / 12%);
+}
+
+[data-theme="dark"] #xml-prgm-preview-btn:hover:not(:disabled) {
+  color: #ffffff;
 }
 
 .yellow-tool-button {
@@ -3141,6 +3168,28 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 }
 
 @media (max-width: 1100px) {
+  .shell-header {
+    flex-wrap: wrap;
+  }
+
+  /* Inline submenus have no safe space beside the File menu at this width. */
+  .doctor-toolbar .nested-panel {
+    position: static;
+    width: 100%;
+    margin-top: 6px;
+  }
+
+  .doctor-toolbar .nested-menu:not(.open) > .nested-panel {
+    display: none;
+  }
+
+  .doctor-toolbar .nested-menu.open > .nested-panel {
+    display: block;
+    opacity: 1;
+    transform: none;
+    pointer-events: auto;
+  }
+
   .doctor-grid,
   .lua-doctor-grid {
     grid-template-columns: 1fr;
@@ -3218,6 +3267,7 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 
   .site-stat span {
     overflow-wrap: anywhere;
+    white-space: normal;
     font-size: 10px;
     line-height: 1.15;
   }

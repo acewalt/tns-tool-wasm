@@ -155,17 +155,27 @@ export function compilePrgm(source) {
     const uncommented=split(raw,'©')[0];
     for(const text of split(uncommented,':'))if(text.trim())statements.push({text:text.trim(),line:index+1});
   }
-  const code=[], stack=[], labels=new Map(), warnings=[];let name='',parameters=[];
+  const code=[], stack=[], labels=new Map(), warnings=[];let name='',parameters=[],documentKind=null,documentLine=0,documentClosed=false;
   const parsed=s=>expressionTree(s);
   const variable=s=>{s=key(s.trim());if(!IDENT.test(s))fail('UNSUPPORTED_TARGET','Destino de variable no soportado: '+s);return s;};
   for(const stmt of statements) {
     try {
       const text=stmt.text;let match, op={...stmt,kind:'noop'};const i=code.length;
-      if((match=/^Define\s+(?:(?:LibPub|LibPriv)\s+)?([\p{L}_][\p{L}\p{N}_]*)\(([^)]*)\)\s*=\s*(Prgm)?$/iu.exec(text))){
+      if(documentClosed)fail('SYNTAX_ERROR','Hay instrucciones después del cierre del documento.');
+      if((match=/^Define\s+(?:(?:LibPub|LibPriv)\s+)?([\p{L}_][\p{L}\p{N}_]*)\(([^)]*)\)\s*=\s*(Prgm|Func)?$/iu.exec(text))){
         if(code.length)fail('UNSUPPORTED_COMMAND','Las definiciones anidadas no están soportadas.');
         name=match[1];parameters=match[2].trim()?split(match[2],',').map(variable):[];
-      }else if(/^Prgm$/i.test(text)){}
-      else if(/^EndPrgm$/i.test(text))op.kind='end';
+        if(match[3]){documentKind=key(match[3]);documentLine=stmt.line;}
+      }else if(/^(Prgm|Func)$/i.test(text)){
+        if(documentKind)fail('SYNTAX_ERROR','El documento contiene una apertura Prgm/Func duplicada.');
+        documentKind=key(text);documentLine=stmt.line;
+      }else if(/^End(Prgm|Func)$/i.test(text)){
+        const expected=documentKind==='func'?'EndFunc':'EndPrgm';
+        if(!documentKind)fail('SYNTAX_ERROR',text+' no tiene una apertura Prgm/Func.');
+        if(key(text)!==key(expected))fail('SYNTAX_ERROR','Se esperaba '+expected+', no '+text+'.');
+        if(stack.length)fail('SYNTAX_ERROR','Bloque sin cierre: '+stack.at(-1).kind);
+        documentClosed=true;op.kind='end';
+      }
       else if((match=/^(Local|DelVar)\s+(.+)$/i.exec(text))){op.kind=key(match[1]);op.names=split(match[2],',').map(variable);}
       else if((match=/^(DispAt|Disp|RequestStr|Request)\b\s*(.*)$/i.exec(text))){
         op.kind=key(match[1]);const args=split(match[2],',').map(s=>s.trim());
@@ -188,7 +198,8 @@ export function compilePrgm(source) {
         const block=stack.pop(),kind=text.slice(3).toLowerCase();if(block?.kind!==kind)fail('SYNTAX_ERROR',text+' sin apertura correspondiente.');op.kind='endloop';op.start=block.start;code[block.start].end=i;
       }else if(/^(Exit|Cycle)$/i.test(text)){
         const loop=stack.findLast(b=>['for','while','loop'].includes(b.kind));if(!loop)fail('SYNTAX_ERROR',text+' fuera de un bucle.');op.kind=key(text);op.start=loop.start;
-      }else if(/^Return\s*$/i.test(text)||/^Stop$/i.test(text))op.kind='end';
+      }else if((match=/^Return(?:\s+(.+))?$/i.exec(text))){op.kind=match[1]?'return':'end';if(match[1])op.expr=parsed(match[1]);}
+      else if(/^Stop$/i.test(text))op.kind='end';
       else if((match=/^(Lbl|Goto)\s+([\p{L}_][\p{L}\p{N}_]*)$/iu.exec(text))){op.kind=key(match[1]);op.name=key(match[2]);if(op.kind==='lbl'){if(labels.has(op.name))fail('SYNTAX_ERROR','Etiqueta duplicada: '+op.name);labels.set(op.name,i);}}
       else {
         const arrow=split(text,'→');const assignment=/^([\p{L}_][\p{L}\p{N}_]*)\s*:=\s*(.+)$/u.exec(text);
@@ -199,16 +210,29 @@ export function compilePrgm(source) {
       code.push(op);
     }catch(error){if(error instanceof PrgmError)error.line=stmt.line;throw error;}
   }
+  if(documentKind&&!documentClosed)throw new PrgmError('SYNTAX_ERROR','Falta '+(documentKind==='func'?'EndFunc':'EndPrgm')+' para cerrar el documento.',documentLine);
   if(stack.length)throw new PrgmError('SYNTAX_ERROR','Bloque sin cierre: '+stack.at(-1).kind,code[stack.at(-1).start].line);
   for(const op of code)if(op.kind==='goto'){if(!labels.has(op.name))throw new PrgmError('SYNTAX_ERROR','Etiqueta inexistente: '+op.name,op.line);op.jump=labels.get(op.name);}
-  return {code,name,parameters,warnings};
+  return {code,name,parameters,warnings,documentKind};
 }
 export class PrgmPreview {
   constructor(source,options={}) {
     this.source=String(source);this.options=options;this.angleMode=options.angleMode==='DEG'?'DEG':'RAD';this.vars=Object.create(null);this.output=[];this.events=[];this.status='ready';this.pc=0;this.executed=0;this.pending=null;this.error=null;this.lastLine=0;this.branches=new Set();this.loops=new Map();
     this.maxInstructions=Math.min(1000000,Math.max(1,options.maxInstructions||50000));this.maxLines=options.maxLines||1000;
     try {this.program=compilePrgm(this.source);this.name=options.name||this.program.name||'programa';
-      if(this.program.parameters.length)fail('UNSUPPORTED_PARAMETERS','Esta primera versión requiere programas sin parámetros.');
+      const supplied=Array.isArray(options.parameters)?options.parameters:String(options.parameters||'').trim()?String(options.parameters).split(','):[];
+      const metadata=supplied.map(name=>key(String(name).trim()));
+      if(metadata.some(name=>!IDENT.test(name)))fail('ARGUMENT_ERROR','La lista de parámetros del documento no es válida.');
+      if(metadata.length&&this.program.parameters.length&&JSON.stringify(metadata)!==JSON.stringify(this.program.parameters))fail('ARGUMENT_ERROR','Los parámetros del documento no coinciden con su definición.');
+      const parameters=this.program.parameters.length?this.program.parameters:metadata;
+      if(parameters.length&&options.args===undefined)fail('MISSING_ARGUMENTS','El preview necesita valores para los parámetros: '+parameters.join(', ')+'.');
+      if(options.args!==undefined&&(!Array.isArray(options.args)||options.args.length!==parameters.length))fail('ARGUMENT_ERROR','Se esperaban '+parameters.length+' argumentos para '+this.name+'().');
+      parameters.forEach((name,index)=>{
+        const value=options.args[index];
+        const valid=value=>typeof value==='number'?Number.isFinite(value):typeof value==='string'||typeof value==='boolean'||Array.isArray(value)&&value.every(valid);
+        if(!valid(value))fail('ARGUMENT_ERROR','El argumento «'+name+'» no es un valor válido del preview.');
+        this.vars[name]=value;
+      });
     } catch(error){this.program={code:[],warnings:[]};this.name=options.name||'programa';this.handleError(error);}
   }
   handleError(error) {this.error=error instanceof PrgmError?error:new PrgmError('RUNTIME_ERROR',String(error.message||error));if(!this.error.line)this.error.line=this.lastLine;this.status='error';this.pending=null;}
@@ -251,6 +275,7 @@ export class PrgmPreview {
       }else if(op.kind==='exit'){this.loops.delete(op.start);next=this.program.code[op.start].end+1;}
       else if(op.kind==='cycle')next=this.program.code[op.start].end;
       else if(op.kind==='goto'){this.loops.clear();this.branches.clear();next=op.jump;}
+      else if(op.kind==='return'){this.returnValue=this.ev(op.expr);this.append(formatPrgmValue(this.returnValue),'return');this.status='done';}
       else if(op.kind==='end')this.status='done';
       this.pc=next;
       if(this.pc>=this.program.code.length&&this.status==='paused')this.status='done';
@@ -272,7 +297,7 @@ export class PrgmPreview {
     return this.snapshot();
   }
   stop() {if(!['done','error'].includes(this.status))this.status='stopped';this.pending=null;return this.snapshot();}
-  snapshot() {return {success:this.status!=='error',status:this.status,name:this.name,line:this.lastLine,nextLine:this.program?.code[this.pc]?.line??null,executed:this.executed,angleMode:this.angleMode,output:this.output.map(row=>({...row})),text:this.output.map(row=>row.text).join('\n'),variables:{...this.vars},pending:this.pending?{...this.pending}:null,error:this.error?.toJSON()||null,warnings:this.program?.warnings||[]};}
+  snapshot() {return {success:this.status!=='error',status:this.status,name:this.name,line:this.lastLine,nextLine:this.program?.code[this.pc]?.line??null,executed:this.executed,angleMode:this.angleMode,output:this.output.map(row=>({...row})),text:this.output.map(row=>row.text).join('\n'),returnValue:this.returnValue,variables:{...this.vars},pending:this.pending?{...this.pending}:null,error:this.error?.toJSON()||null,warnings:this.program?.warnings||[]};}
 }
 export const createPrgmPreview=(source,options={})=>new PrgmPreview(source,options);
 export function runPrgmPreview(source,inputs=[],options={}) {

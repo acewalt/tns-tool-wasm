@@ -319,6 +319,7 @@
   }
 
   function bindImageChip(element, count) {
+    if (element?.dataset.previewKind) return; // Grouped app preview already owns this button.
     if (!element || count <= 1 || element.dataset.tnsImageGalleryBound === "1") return;
     element.dataset.tnsImageGalleryBound = "1";
     element.classList.add(CHIP_CLASS);

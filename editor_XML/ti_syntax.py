@@ -472,12 +472,14 @@ def analyze_ti_code(
     parameters: str | None = None,
     known_functions: set[str] | None = None,
     known_names: set[str] | None = None,
+    document_type: str | None = None,
 ) -> SyntaxReport:
     report = SyntaxReport()
     known_functions = known_functions or set()
     known_names = known_names or set()
     lines = _split_lines(text)
-    is_function_document = any(line.strip().lower() == "func" for line in lines[:3])
+    expression_function = _is_expression_function(lines, document_type)
+    is_function_document = expression_function or any(line.strip().lower() == "func" for line in lines[:3])
     if_stack: list[int] = []
     block_stack: list[tuple[str, int]] = []
     try_stack: list[list[object]] = []
@@ -692,10 +694,10 @@ def analyze_ti_code(
         menu_options.update(_displayed_menu_options(line))
         _check_division_by_zero(report, number, line)
 
-    if not document_start_seen:
+    if not document_start_seen and not expression_function:
         report.diagnostics.append(ti_error(730, 1, "Documento no empieza con Prgm o Func"))
-    if not document_end_seen:
-        expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
+    if not document_end_seen and not expression_function:
+        expected_end = "EndFunc" if document_kind == "Func" or (document_kind is None and str(document_type).lower() == "func") else "EndPrgm"
         report.diagnostics.append(ti_error(730, len(lines), f"Documento no termina con {expected_end}"))
     for start_line in if_stack:
         report.diagnostics.append(ti_error(730, start_line, "If sin EndIf correspondiente"))
@@ -758,8 +760,9 @@ def format_ti_code(text: str) -> tuple[str, str]:
     return formatted, diff
 
 
-def autofix_ti_code(text: str) -> tuple[str, str]:
+def autofix_ti_code(text: str, document_type: str | None = None) -> tuple[str, str]:
     original_lines = _split_lines(text)
+    expression_function = _is_expression_function(original_lines, document_type)
     fixed_lines: list[str] = []
     if_stack: list[int] = []
     actions: list[str] = []
@@ -777,7 +780,7 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
     seen_local_lines: set[str] = set()
     document_start_seen = False
     document_end_seen = False
-    document_kind = "Prgm"
+    document_kind = "Func" if str(document_type).lower() == "func" else "Prgm"
 
     for raw_line in original_lines:
         line = raw_line.rstrip()
@@ -843,10 +846,10 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
         if_stack.pop()
         actions.append("[100%] Anadido EndIf faltante")
 
-    if not document_start_seen:
-        fixed_lines.insert(0, "Prgm")
-        actions.append("[100%] Anadido Prgm inicial")
-    if not document_end_seen:
+    if not document_start_seen and not expression_function:
+        fixed_lines.insert(0, document_kind)
+        actions.append(f"[100%] Anadido {document_kind} inicial")
+    if not document_end_seen and not expression_function:
         expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
         fixed_lines.append(expected_end)
         actions.append(f"[100%] Anadido {expected_end} final")
@@ -867,6 +870,23 @@ def autofix_ti_code(text: str) -> tuple[str, str]:
 
 def _split_lines(text: str) -> list[str]:
     return text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+
+
+def _is_expression_function(lines: list[str], document_type: str | None) -> bool:
+    """A graph/symbol Func can store one expression without Func/EndFunc.
+
+    Require the scanner's explicit Func context so an accidentally unwrapped
+    program is still diagnosed. ProgramEditor statements and explicit wrapper
+    tokens keep their normal block validation.
+    """
+    if str(document_type).lower() != "func":
+        return False
+    expressions = [line.strip() for line in lines if line.strip() and not _is_comment_line(line)]
+    if len(expressions) != 1:
+        return False
+    expression = expressions[0]
+    command = (_first_command(expression) or "").lower()
+    return command not in (TI_CATALOG_STATEMENTS | {"prgm", "func", "endprgm", "endfunc"})
 
 
 def _check_lexical(report: SyntaxReport, line_number: int, line: str) -> None:

@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-10-31-ti-catalog-syntax-v1";
+const SOURCE_VERSION = "2026-11-04-inspector-preview-v27";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -1983,8 +1983,15 @@ function syncPrgmPreviewButton() {
   button.disabled = !isPrgm;
 }
 
-function openXmlPrgmPreview() {
+async function openXmlPrgmPreview() {
   if (!window.TnsPrgmPreview) { xmlLog('El preview Prgm todavía está cargando.'); return; }
+  const data = await inspectXmlDocument();
+  const groups = window.TnsDocumentPreviewNavigation.groups(data.items);
+  if (groups.basic.length) {
+    const selected = Math.max(0, groups.basic.findIndex(item => item.detail?.name === xmlDoctor.current?.program_name
+      && documentPreviewFileKey(item.file) === documentPreviewFileKey(xmlDoctor.current?.file)));
+    return openDocumentAppPreview(groups, 'basic', selected);
+  }
   const readSource = () => ({source: document.querySelector('#xml-code').value,
     name: xmlDoctor.current?.program_name || 'programa', documentName: xmlDoctor.outputFileName});
   window.TnsPrgmPreview.open(readSource(), {readSource, revealLine: line => {
@@ -4331,7 +4338,7 @@ function imageResourceMetaText(width, height, extra = "") {
   return `${t("imageResourceInfo")}: ${safeWidth} x ${safeHeight} · ratio ${ratio}${extra ? ` · ${extra}` : ""}`;
 }
 
-function showImageModal(item) {
+function showImageModal(item, options = {}) {
   const imagePath = item?.detail?.image_file || item?.file || "";
   if (!imagePath) return;
   let bytes = null;
@@ -4360,6 +4367,10 @@ function showImageModal(item) {
     </div>`;
   document.body.append(backdrop);
   const preview = backdrop.querySelector(".image-resource-preview");
+  mountDocumentPreviewTabs(backdrop, options, '.image-resource-preview', next => {
+    if (url) URL.revokeObjectURL(url);
+    closeModal(backdrop, () => options.pageNavigation.onSelect(next));
+  });
   const meta = backdrop.querySelector("#image-resource-meta");
   const setMeta = (width, height, extra = "") => {
     if (meta) meta.textContent = imageResourceMetaText(width, height, extra);
@@ -9276,8 +9287,8 @@ json.dumps({"file": str(xml_file), "raw_xml": ET.tostring(wdgt, encoding="unicod
   return JSON.parse(payload);
 }
 
-function showNotepadModal(item) {
-  const initialText = item?.content || extractNotepadTextFromRawXml(item?.raw_xml || "");
+function showNotepadModal(item, options = {}) {
+  const initialText = options.draft?.text ?? (item?.content || extractNotepadTextFromRawXml(item?.raw_xml || ""));
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
@@ -9294,6 +9305,10 @@ function showNotepadModal(item) {
     </div>`;
   document.body.append(backdrop);
   const editor = backdrop.querySelector("#note-editor");
+  mountDocumentPreviewTabs(backdrop, options, '.love-preview-calculator-bar', next => {
+    options.setDraft?.({ text: editor.value });
+    closeModal(backdrop, () => options.pageNavigation.onSelect(next));
+  }, true);
   editor.focus();
   backdrop.querySelector("#note-cancel").addEventListener("click", () => closeModal(backdrop));
   backdrop.querySelector("#note-save").addEventListener("click", async () => {
@@ -9912,15 +9927,16 @@ for row in rows:
     e=ET.SubElement(w,f"{{{sns}}}erow");ET.SubElement(e,f"{{{sns}}}entr").text=str(row.get("entry",''));ET.SubElement(e,f"{{{sns}}}exct").text=str(row.get("exact") or row.get("entry",''));r=ET.SubElement(e,f"{{{sns}}}rslt");ET.SubElement(r,f"{{{sns}}}warn2").text="{}";d=str(row.get("display") or row.get("full") or row.get("entry",''));ET.SubElement(r,f"{{{sns}}}disp").text=d;ET.SubElement(r,f"{{{sns}}}full").text=str(row.get("full") or d);ET.SubElement(e,f"{{{sns}}}ctxt",{"ang":"1","cplx":"1","comp":"1"})
 xf.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+ET.tostring(root,encoding="UTF-8",short_empty_elements=False));json.dumps({"file":str(xf),"saved_rows":len(rows),"raw_xml":ET.tostring(w,encoding="unicode",short_empty_elements=False)})
 `);xmlDoctor.embedded=true;xmlDoctor.stagePrepared=true;return JSON.parse(payload);}
-function openCalculatorInLovePreview(item){const a=extractCalculatorRowsFromRawXml(item?.raw_xml||""),b=Array.isArray(item?.detail?.rows)?item.detail.rows:[];return showLovePreview("",null,null,{calculatorEditor:{item,rows:(a.length?a:b).map(r=>({...r}))}});}
-function openGraphInLovePreview(item) {
+function openCalculatorInLovePreview(item, options = {}){const a=extractCalculatorRowsFromRawXml(item?.raw_xml||""),b=Array.isArray(item?.detail?.rows)?item.detail.rows:[];return showLovePreview("",null,null,{...options,calculatorEditor:{item,...options.draft,rows:(options.draft?.rows||(a.length?a:b)).map(r=>({...r}))}});}
+function openGraphInLovePreview(item, options = {}) {
   const state = extractGraphStateFromRawXml(item?.raw_xml || "");
   const functionName = item?.detail?.function || state.name || "f1";
   const formula = normalizeGraphFormulaInput(
-    item?.detail?.expression || item?.content || state.formula || "sin(x)"
+    options.draft?.formula || item?.detail?.expression || item?.content || state.formula || "sin(x)"
   ) || "sin(x)";
   const code = buildGraphPreviewLua(formula, functionName);
   return showLovePreview(code, null, null, {
+    ...options,
     graphEditor: {
       item,
       functionName,
@@ -11679,6 +11695,17 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   let runtime = null;
   let currentCode = String(code || "");
   let previewSizeMode = "calculator";
+  let previewClosed = false, previewRevision = 0;
+  const previewCleanups = [];
+  function closeLovePreview(afterClose = null) {
+    if (previewClosed) return;
+    previewClosed = true; previewRevision++;
+    for (const cleanup of previewCleanups) cleanup();
+    runtime?.close();
+    closeModal(backdrop, () => { if (typeof afterClose === 'function') afterClose(); });
+  }
+  backdrop.querySelector("#love-preview-close-top").addEventListener("click", () => closeLovePreview());
+  backdrop.querySelector("#love-preview-close").addEventListener("click", () => closeLovePreview());
   const applyPreviewSize = (mode, shouldLog = false) => {
     const normalizedMode = mode === "expanded" ? "expanded" : "calculator";
     const size = normalizedMode === "expanded" ? LOVE_PREVIEW_EXPANDED_SIZE : LOVE_PREVIEW_CALCULATOR_SIZE;
@@ -11686,6 +11713,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     canvas.width = size.width;
     canvas.height = size.height;
     stage.classList.toggle("expanded-view", normalizedMode === "expanded");
+    backdrop.querySelector('.love-preview-modal').classList.toggle('document-preview-expanded', normalizedMode === 'expanded');
     stage.classList.toggle("calculator-view", normalizedMode !== "expanded");
     canvas.classList.toggle("expanded-view", normalizedMode === "expanded");
     canvas.classList.toggle("calculator-view", normalizedMode !== "expanded");
@@ -11698,9 +11726,25 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       appendPreviewLog(previewLog, `${t("lovePreviewSizeChanged")}: ${size.width}x${totalHeight}${canvasNote}`);
     }
   };
-  applyPreviewSize("calculator");
+  applyPreviewSize(options.expanded ? "expanded" : "calculator");
+  sizeToggle.addEventListener("click", () => {
+    applyPreviewSize(previewSizeMode === "expanded" ? "calculator" : "expanded", true);
+    if (!calculatorEditor) canvas.focus();
+    else setTimeout(() => backdrop.querySelector('#love-calculator-composer .calc-visual-slot[contenteditable]')?.focus(), 0);
+  });
+  mountDocumentPreviewTabs(backdrop, options, '.love-preview-calculator-bar', next => {
+    if (graphEditor) options.setDraft?.({ formula: backdrop.querySelector('#love-graph-formula')?.value || graphEditor.formula });
+    if (calculatorEditor) options.setDraft?.({ rows: calculatorEditor.rows.map(row => ({ ...row })), composer: structuredClone(calculatorEditor.composer), selectedIndex: calculatorEditor.selectedIndex, scrollPx: calculatorEditor.scrollPx });
+    closeLovePreview(() => options.pageNavigation.onSelect(next, { expanded: previewSizeMode === 'expanded' }));
+  }, true);
   const bootPreviewSource = async (source) => {
-    currentCode = String(source || "");
+    if (previewClosed) return;
+    const revision = ++previewRevision, sourceText = String(source || "");
+    currentCode = sourceText;
+    const installRuntime = candidate => {
+      if (previewClosed || revision !== previewRevision || !backdrop.isConnected) { candidate.close(); return; }
+      runtime = candidate; runtime.boot();
+    };
     runtime?.close?.();
     runtime = null;
     if (calculatorEditor) {
@@ -11715,15 +11759,14 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     targetCtx.clearRect(0, 0, canvas.width, canvas.height);
     previewLog.textContent = "";
 
-    const isLoveSource = project || looksLikeLoveSource(currentCode);
-    const isNspireSource = looksLikeTINSPIRELuaSource(currentCode);
+    const isLoveSource = project || looksLikeLoveSource(sourceText);
+    const isNspireSource = looksLikeTINSPIRELuaSource(sourceText);
     if (isLoveSource && !isNspireSource) {
       appendPreviewLog(previewLog, t("lovePreviewCalculatorWarning"));
       if (project) appendPreviewLog(previewLog, t("loveProjectConversionDisabled"));
       if (!/\blove\.(draw|update|load)\b/.test(currentCode)) appendPreviewLog(previewLog, t("lovePreviewNoCallbacks"));
       try {
-        runtime = await createLovePreviewRuntime(currentCode, ctx, canvas, previewLog, { project });
-        runtime.boot();
+        installRuntime(await createLovePreviewRuntime(sourceText, ctx, canvas, previewLog, { project }));
       } catch (error) {
         appendPreviewLog(previewLog, `ERROR Preview LÖVE: ${describeLuaJsError(error)}\n${compactStack(error)}`);
       }
@@ -11731,13 +11774,13 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       appendPreviewLog(previewLog, t("lovePreviewNspireCompat"));
       try {
         const sourceItem = graphEditor?.item || options?.item || null;
-        const symbols = sourceItem ? await loadLuaPreviewSymbols(sourceItem, currentCode).catch((error) => {
+        const symbols = sourceItem ? await loadLuaPreviewSymbols(sourceItem, sourceText).catch((error) => {
           appendPreviewLog(previewLog, `ERROR recursos Preview LÖVE: ${describeLuaJsError(error)}`);
           return {};
         }) : {};
-        logPreviewImageResources(previewLog, symbols.resources || [], currentCode);
-        runtime = await createLovePreviewNspireRuntime(currentCode, ctx, canvas, previewLog, symbols);
-        runtime.boot();
+        if (previewClosed || revision !== previewRevision) return;
+        logPreviewImageResources(previewLog, symbols.resources || [], sourceText);
+        installRuntime(await createLovePreviewNspireRuntime(sourceText, ctx, canvas, previewLog, symbols));
       } catch (error) {
         appendPreviewLog(previewLog, `ERROR Preview LÖVE/TI-Nspire: ${describeLuaJsError(error)}\n${compactStack(error)}`);
       }
@@ -11747,6 +11790,8 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   };
 
   await bootPreviewSource(currentCode);
+  if (previewClosed) return;
+  backdrop.querySelector('.love-preview-modal').dataset.previewReady = 'true';
 
   for (const button of backdrop.querySelectorAll(".preview-controls button")) {
     button.addEventListener("click", () => {
@@ -11764,11 +11809,6 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       }
     });
   }
-  sizeToggle.addEventListener("click", () => {
-    applyPreviewSize(previewSizeMode === "expanded" ? "calculator" : "expanded", true);
-    if (!calculatorEditor) canvas.focus();
-    else setTimeout(() => backdrop.querySelector('#love-calculator-composer .calc-visual-slot[contenteditable]')?.focus(), 0);
-  });
   canvas.addEventListener("click", (event) => {
     const rect=canvas.getBoundingClientRect(),x=Math.round((event.clientX-rect.left)*(canvas.width/rect.width)),y=Math.round((event.clientY-rect.top)*(canvas.height/rect.height));
     if (calculatorEditor) {
@@ -11810,6 +11850,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   };
   document.addEventListener("keydown", keyDownHandler);
   document.addEventListener("keyup", keyUpHandler);
+  previewCleanups.push(() => { document.removeEventListener('keydown', keyDownHandler); document.removeEventListener('keyup', keyUpHandler); });
   backdrop.querySelector("#love-copy-nspire")?.addEventListener("click", async () => {
     await copyPlainText(convertLoveToNspireScriptApp(currentCode));
     appendPreviewLog(previewLog, t("loveCopiedNspire"));
@@ -11839,11 +11880,12 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     const toggle = backdrop.querySelector("#love-calculator-templates-toggle");
     const panel = backdrop.querySelector("#love-calculator-template-panel");
     const composer = backdrop.querySelector("#love-calculator-composer");
-    calculatorEditor.composer = calculatorNewComposer("plain");
-    calculatorEditor.selectedIndex = -1;
-    calculatorEditor.scrollPx = 0;
-    calculatorEditor.targetScrollPx = 0;
+    calculatorEditor.composer = calculatorEditor.composer || calculatorNewComposer("plain");
+    calculatorEditor.selectedIndex ??= -1;
+    calculatorEditor.scrollPx ||= 0;
+    calculatorEditor.targetScrollPx = calculatorEditor.scrollPx;
     let scrollAnimation = 0;
+    previewCleanups.push(() => cancelAnimationFrame(scrollAnimation));
 
     const redraw = () => drawCalculatorScratchpadPreviewV2(
       canvas, calculatorEditor.rows || [], calculatorEditor.selectedIndex ?? -1, calculatorEditor.scrollPx || 0
@@ -11879,7 +11921,8 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       return true;
     };
 
-    scrollToBottom(true); redraw(); calculatorRenderComposer(composer,calculatorEditor.composer,0);
+    if (!options.draft) scrollToBottom(true);
+    redraw(); calculatorRenderComposer(composer,calculatorEditor.composer,calculatorEditor.composer.active || 0);
 
     toggle?.addEventListener("click",()=>{panel.hidden=!panel.hidden;if(!panel.hidden)panel.querySelector('button')?.focus();});
     for(const b of backdrop.querySelectorAll(".love-calculator-template-button")){
@@ -11948,8 +11991,10 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     const graphSave = backdrop.querySelector("#love-graph-save");
     const graphFunctionName = graphEditor.functionName || "f1";
     let previewTimer = null;
+    previewCleanups.push(() => window.clearTimeout(previewTimer));
 
     const refreshGraphPreview = async () => {
+      if (previewClosed) return;
       const formula = normalizeGraphFormulaInput(graphInput?.value || "0") || "0";
       const source = buildGraphPreviewLua(formula, graphFunctionName);
       await bootPreviewSource(source);
@@ -12008,13 +12053,6 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     });
   }
 
-  const closeLovePreview = () => {
-    document.removeEventListener("keydown", keyDownHandler);
-    document.removeEventListener("keyup", keyUpHandler);
-    closeModal(backdrop, () => runtime?.close());
-  };
-  backdrop.querySelector("#love-preview-close-top").addEventListener("click", closeLovePreview);
-  backdrop.querySelector("#love-preview-close").addEventListener("click", closeLovePreview);
 }
 
 async function createLovePreviewNspireRuntime(code, ctx, canvas, logEl, symbols = {}) {
@@ -16698,11 +16736,11 @@ json.dumps({
   return JSON.parse(payload);
 }
 
-function showSpreadsheetModal(item) {
+function showSpreadsheetModal(item, options = {}) {
   const key = spreadsheetSessionKey(item);
   const xmlState = extractSpreadsheetStateFromRawXml(item?.raw_xml || "");
   const saved = spreadsheetPreviewSessions.get(key);
-  const baseState = saved && saved.rawXml === String(item?.raw_xml || "") ? saved : xmlState;
+  const baseState = options.draft || (saved && saved.rawXml === String(item?.raw_xml || "") ? saved : xmlState);
   const state = {
     cells: Object.fromEntries(Object.entries(baseState.cells || {}).map(([cellKey, cell]) => [cellKey, { formula: String(cell?.formula ?? ""), data: String(cell?.data ?? "") }])),
     rows: Math.max(20, baseState.rows || 20),
@@ -16747,6 +16785,11 @@ function showSpreadsheetModal(item) {
   document.body.append(backdrop);
 
   const grid = backdrop.querySelector(".spreadsheet-grid");
+  backdrop.querySelector('.spreadsheet-page-tab').replaceChildren();
+  mountDocumentPreviewTabs(backdrop, options, '.spreadsheet-page-tab', next => {
+    options.setDraft?.({ ...state, cells: Object.fromEntries(Object.entries(state.cells).map(([key, value]) => [key, { ...value }])) });
+    closeModal(backdrop, () => options.pageNavigation.onSelect(next));
+  });
   const cellName = backdrop.querySelector(".spreadsheet-cell-name");
   const formulaValue = backdrop.querySelector(".spreadsheet-formula-value");
   const sourceNameEl = backdrop.querySelector(".spreadsheet-source-name");
@@ -16880,11 +16923,94 @@ function showSpreadsheetModal(item) {
   render();
 }
 
+function mountDocumentPreviewTabs(backdrop, options, selector, onSelect, chrome = false) {
+  const navigation = options?.pageNavigation;
+  const host = backdrop.querySelector(selector);
+  if (!host || !navigation) return null;
+  const selectOnce = next => {
+    if (!backdrop.isConnected || backdrop.dataset.previewSwitching === 'true') return;
+    backdrop.dataset.previewSwitching = 'true'; onSelect(next);
+  };
+  const tabs = window.TnsDocumentPreviewNavigation.createTabs({ ...navigation, onSelect: selectOnce });
+  if (!tabs) return null;
+  if (chrome) {
+    const title = document.createElement('span');
+    title.className = 'document-preview-chrome-title'; title.textContent = host.textContent;
+    host.replaceChildren(tabs, title);
+    const expandedActions = backdrop.querySelector('.love-preview-modal .modal-top-actions');
+    if (expandedActions) {
+      const expandedTabs = window.TnsDocumentPreviewNavigation.createTabs({ ...navigation, onSelect: selectOnce });
+      expandedTabs.classList.add('document-preview-expanded-tabs'); expandedActions.prepend(expandedTabs);
+    }
+  } else host.prepend(tabs);
+  return tabs;
+}
+
+function documentPreviewFileKey(file = '') {
+  const value = String(file).replaceAll('\\', '/');
+  for (const base of [xmlDoctor.sourcePath, xmlDoctor.stagePath]) {
+    const prefix = String(base).replaceAll('\\', '/').replace(/\/$/, '') + '/';
+    if (value.startsWith(prefix)) return value.slice(prefix.length);
+  }
+  return value.split('/').pop();
+}
+
+function documentProgramPreviewSource(item) {
+  const name = item.detail?.name || item.name;
+  const candidate = xmlDoctor.candidates.find(entry => entry.program_name === name
+    && documentPreviewFileKey(entry.file) === documentPreviewFileKey(item.file));
+  let source = candidate ? (candidate.index === xmlDoctor.current?.index ? document.querySelector('#xml-code').value : candidate.code) : item.content || '';
+  source = source.replace(/^Define\s+[^=]*=\s*/i, '');
+  if (!source.trim()) source = item.detail?.type === 'Func' ? 'Func\nReturn 0\nEndFunc' : 'Prgm\n\nEndPrgm';
+  return { source, name, parameters: candidate?.parameters || '', documentName: xmlDoctor.outputFileName, candidate };
+}
+
+async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) {
+  const items = groups[kind] || [], item = items[selected];
+  if (!item) return;
+  session.drafts ||= new Map();
+  const options = {
+    expanded: session.expanded || false,
+    draft: session.drafts.get(selected),
+    setDraft: draft => session.drafts.set(selected, draft),
+    pageNavigation: { items, selected, onSelect: (next, state = {}) => openDocumentAppPreview(groups, kind, next, { ...session, ...state }).catch(error => xmlLog(`ERROR Preview: ${error.message}`)) },
+  };
+  if (kind === 'basic') {
+    if (!window.TnsPrgmPreview) throw new Error('Prgm Preview is still loading.');
+    const readSource = () => documentProgramPreviewSource(item);
+    return window.TnsPrgmPreview.open(readSource(), { ...options, readSource, revealLine: line => {
+      window.TnsPrgmPreview.close();
+      const candidate = readSource().candidate;
+      if (candidate) { document.querySelector('#xml-programs').value = candidate.index; selectXmlProgram(candidate.index); }
+      goToXmlLine(line);
+    } });
+  }
+  if (kind === 'lua') return showLovePreview(decodeXmlTextEntities(item.content || ''), null, null, { ...options, item });
+  if (kind === 'python') return openPyPreviewModal(item.content || '', options);
+  if (kind === 'images') return showImageModal(item, options);
+  if (kind === 'sheets') return showSpreadsheetModal(item, options);
+  if (kind === 'notes') return showNotepadModal(item, options);
+  if (kind === 'graphs') return openGraphInLovePreview(item, options);
+  if (kind === 'calculators') return openCalculatorInLovePreview(item, options);
+}
+
 async function openDocumentInspector() {
   const data = await inspectXmlDocument();
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   const summary = data.summary || {};
+  const previewGroups = window.TnsDocumentPreviewNavigation.groups(data.items);
+  const summaryHtml = [
+    ['XML', summary.files], ['Cards', summary.cards], ['Widgets', summary.widgets],
+    ['Lua', previewGroups.lua.length, 'lua'], ['Python', previewGroups.python.length, 'python'],
+    ['Resources', summary.resources], ['Images', previewGroups.images.length, 'images'],
+    ['Sheets', previewGroups.sheets.length, 'sheets'], ['Notes', previewGroups.notes.length, 'notes'],
+    ['Graphs', previewGroups.graphs.length, 'graphs'], ['Calculators', previewGroups.calculators.length, 'calculators'],
+    ['Basic', previewGroups.basic.length, 'basic'], ['Symbols', summary.symbols],
+  ].filter(([, count]) => Number(count) > 0).map(([label, count, kind]) => kind
+    ? `<button type="button" class="inspector-preview-action${kind === 'images' ? ' tns-image-gallery-chip' : ''}" data-preview-kind="${kind}" title="${escapeHtml(label)} preview">${label}: ${count}</button>`
+    : `<span>${label}: ${count}</span>`).join('');
+  const previewItem = (kind, item) => openDocumentAppPreview(previewGroups, kind, Math.max(0, previewGroups[kind].indexOf(item))).catch(error => xmlLog(`ERROR Preview: ${error.message}`));
   const sortedItems = [...(data.items || [])].sort((a, b) => {
     const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.content_label === "Spreadsheet" ? 2 : item.content_label === "Notepad" ? 3 : item.content_label === "Graph" ? 4 : item.content_label === "Image" ? 5 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 6 : item.type === "Card" ? 7 : 8;
     return rank(a) - rank(b) || String(a.file).localeCompare(String(b.file)) || String(a.path).localeCompare(String(b.path));
@@ -16892,7 +17018,9 @@ async function openDocumentInspector() {
   const rows = sortedItems.map((item, index) => {
     const detail = item.detail ? Object.entries(item.detail).map(([key, value]) => `${key}: ${value}`).join(", ") : "";
     let contentAction = "";
-    if (item.type === "Lua Script") {
+    if (item.content_label === 'ProgramEditor') {
+      contentAction = `<button type="button" class="mini-action program-preview-action green-mini-action" data-index="${index}">${escapeHtml(t('previewPrgm'))}</button>`;
+    } else if (item.type === "Lua Script") {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action green-mini-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`;
     } else if (item.content_label === "Python") {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openPython"))}</button><button type="button" class="mini-action edit-python-action green-mini-action" data-index="${index}">${escapeHtml(t("editPython"))}</button>`;
@@ -16918,19 +17046,7 @@ async function openDocumentInspector() {
       <h2>${escapeHtml(t("documentInspector"))}</h2>
       <h3>${escapeHtml(t("documentSummary"))}</h3>
       <div class="inspector-summary">
-        <span>XML: ${summary.files || 0}</span>
-        <span>Cards: ${summary.cards || 0}</span>
-        <span>Widgets: ${summary.widgets || 0}</span>
-        <span>Lua: ${summary.lua_scripts || 0}</span>
-        <span>Python: ${summary.python_editors || 0}</span>
-        <span>Resources: ${summary.resources || 0}</span>
-        <span>Images: ${summary.images || 0}</span>
-        <span>Sheets: ${summary.spreadsheets || 0}</span>
-        <span>Notes: ${summary.notepads || 0}</span>
-        <span>Graphs: ${summary.graphs || 0}</span>
-        <span>Calculators: ${summary.calculators || 0}</span>
-        <span>Basic: ${summary.basic_blocks || 0}</span>
-        <span>Symbols: ${summary.symbols || 0}</span>
+        ${summaryHtml}
       </div>
       <h3>${escapeHtml(t("documentElements"))}</h3>
       <div class="inspector-table-wrap">
@@ -16957,6 +17073,12 @@ async function openDocumentInspector() {
       </div>
     </div>`;
   document.body.append(backdrop);
+  for (const button of backdrop.querySelectorAll('[data-preview-kind]')) {
+    button.addEventListener('click', () => openDocumentAppPreview(previewGroups, button.dataset.previewKind).catch(error => xmlLog(`ERROR Preview: ${error.message}`)));
+  }
+  for (const button of backdrop.querySelectorAll('.program-preview-action')) {
+    button.addEventListener('click', () => previewItem('basic', sortedItems[Number(button.dataset.index)]));
+  }
   backdrop.querySelector("#inspector-close").addEventListener("click", () => closeModal(backdrop));
   const pageMenu = backdrop.querySelector(".inspector-page-menu");
   backdrop.querySelector("#inspector-page-trigger").addEventListener("click", (event) => {
@@ -17045,26 +17167,26 @@ async function openDocumentInspector() {
   for (const button of backdrop.querySelectorAll(".image-action")) {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
-      showImageModal(item);
+      previewItem('images', item);
     });
   }
   for (const button of backdrop.querySelectorAll(".spreadsheet-action")) {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
-      showSpreadsheetModal(item);
+      previewItem('sheets', item);
     });
   }
   for (const button of backdrop.querySelectorAll(".notepad-action")) {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
-      showNotepadModal(item);
+      previewItem('notes', item);
     });
   }
-  for(const button of backdrop.querySelectorAll(".calculator-action")){button.addEventListener("click",()=>{const item=sortedItems[Number(button.dataset.index)];openCalculatorInLovePreview(item).catch(e=>xmlLog(`ERROR Calculator Preview: ${e.message}`));});}
+  for(const button of backdrop.querySelectorAll(".calculator-action")){button.addEventListener("click",()=>previewItem('calculators',sortedItems[Number(button.dataset.index)]));}
   for (const button of backdrop.querySelectorAll(".graph-action")) {
     button.addEventListener("click", () => {
       const item = sortedItems[Number(button.dataset.index)];
-      openGraphInLovePreview(item).catch((error) => xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
+      previewItem('graphs', item);
     });
   }
   for (const button of backdrop.querySelectorAll(".edit-lua-action")) {
@@ -17229,6 +17351,7 @@ function goToXmlLine(line) {
 async function runXmlSyntax() {
   const code = document.querySelector("#xml-code").value;
   pyodide.globals.set("wasm_xml_code", code);
+  pyodide.globals.set("wasm_xml_document_type", xmlDoctor.current?.document_type || "");
   pyodide.globals.set("wasm_xml_parameters", xmlDoctor.current?.parameters || "");
   pyodide.globals.set("wasm_xml_known_functions", (xmlDoctor.candidates || []).map((item) => item.program_name));
   pyodide.globals.set("wasm_xml_all_program_names", (xmlDoctor.candidates || []).map((item) => item.program_name));
@@ -17268,6 +17391,7 @@ report = analyze_ti_code(
     parameters=wasm_xml_parameters,
     known_functions=known_functions,
     known_names=known_names,
+    document_type=wasm_xml_document_type,
 )
 json.dumps({
     "errors": len(report.errors),
@@ -17296,6 +17420,7 @@ json.dumps({
 async function autoFixXml() {
   const code = document.querySelector("#xml-code").value;
   pyodide.globals.set("wasm_xml_code", code);
+  pyodide.globals.set("wasm_xml_document_type", xmlDoctor.current?.document_type || "");
   const payload = await pyodide.runPythonAsync(`
 import json
 import importlib
@@ -17303,7 +17428,7 @@ import sys
 if "ti_syntax" in sys.modules:
     importlib.reload(sys.modules["ti_syntax"])
 from ti_syntax import autofix_ti_code
-fixed, diff = autofix_ti_code(wasm_xml_code)
+fixed, diff = autofix_ti_code(wasm_xml_code, document_type=wasm_xml_document_type)
 json.dumps({"fixed": fixed, "diff": diff})
 `);
   const result = JSON.parse(payload);
@@ -17918,8 +18043,8 @@ function formatPythonPreviewResult(result) {
   return sections.join("").trimStart();
 }
 
-async function openPyPreviewModal() {
-  const code = document.querySelector("#py-code").value;
+async function openPyPreviewModal(source = null, options = {}) {
+  const code = source ?? document.querySelector("#py-code").value;
   const terminalInputs = [];
   let lastResult = null;
   let running = false;
@@ -17949,8 +18074,12 @@ async function openPyPreviewModal() {
   const runButton = backdrop.querySelector("#py-preview-run");
   const sendButton = backdrop.querySelector("#py-preview-send");
   const restartButton = backdrop.querySelector("#py-preview-restart");
+  const pageTabs = mountDocumentPreviewTabs(backdrop, options, '.py-preview-modal', next => {
+    if (!running) closeModal(backdrop, () => options.pageNavigation.onSelect(next));
+  });
   const setBusy = (busy) => {
     running = busy;
+    if (pageTabs) pageTabs.inert = busy;
     runButton.disabled = busy;
     sendButton.disabled = busy || (lastResult && !lastResult.waitingForInput);
     restartButton.disabled = busy;
@@ -18267,7 +18396,7 @@ function wireEvents() {
   document.querySelector("#xml-toggle-btn").addEventListener("click", () => {
     toggleExclusivePanel(panelForTool("xml"));
   });
-  document.querySelector('#xml-prgm-preview-btn').addEventListener('click', openXmlPrgmPreview);
+  document.querySelector('#xml-prgm-preview-btn').addEventListener('click', () => openXmlPrgmPreview().catch(error => xmlLog(`ERROR Preview Prgm: ${error.message}`)));
   document.querySelector('#xml-code').addEventListener('input', syncPrgmPreviewButton);
   document.querySelector("#xml-tns-file").addEventListener("change", (event) => openTnsInXmlDoctor(event.target.files[0]).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));

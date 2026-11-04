@@ -91,7 +91,7 @@
     if (!galleryPromise) {
       galleryPromise = loadScriptOnce(
         'script[data-tns-image-gallery-continuous="1"]',
-        "./image-gallery-continuous.js?v=20260827-gallery-one-v1",
+        "./image-gallery-continuous.js?v=20261104-preview-pages-v27",
         "tnsImageGalleryContinuous"
       ).then(async () => {
         for (let i = 0; i < 40 && !window.TnsImageGallery?.openGallery; i += 1) {
