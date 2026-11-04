@@ -77,9 +77,10 @@ function open(initial,options={}) {
     return changed;
   }
   function layout(){
-    const available=$('.prgm-preview-center').clientWidth;
+    const shared=window.TnsPreviewWindow?.geometry(modal);
+    const available=shared?.width||$('.prgm-preview-center').clientWidth;
     const width=Math.max(1,Math.min(expanded?800:320,available));
-    const height=expanded?width*3/4:240;
+    const height=shared?.height||(expanded?width*3/4:240);
     const bottom=history.scrollHeight-history.clientHeight-history.scrollTop<2;
     shell.style.width=width+'px';shell.style.height=height+'px';
     $('.prgm-preview-size-label').textContent=Math.round(width)+' × '+Math.round(height);
@@ -87,7 +88,7 @@ function open(initial,options={}) {
     if(bottom)history.scrollTop=history.scrollHeight;
   }
   const resize=new ResizeObserver(layout);resize.observe($('.prgm-preview-center'));window.addEventListener('resize',layout);
-  function close(state={}){if(closed)return;closed=true;clearTimeout(timer);runtime?.stop();resize.disconnect();window.removeEventListener('resize',layout);document.removeEventListener('keydown',keys,true);if(!state?.switching){overlay.remove();overlay.__documentPreviewRestore?.();delete overlay.__documentPreviewRestore;}if(active?.close===close)active=null;}
+  function close(state={}){if(closed)return;closed=true;overlay.__previewWindowCleanup?.();delete overlay.__previewWindowCleanup;clearTimeout(timer);runtime?.stop();resize.disconnect();window.removeEventListener('resize',layout);document.removeEventListener('keydown',keys,true);if(!state?.switching){overlay.remove();overlay.__documentPreviewRestore?.();delete overlay.__documentPreviewRestore;}if(active?.close===close)active=null;}
   function followOutput(){
     // Follow the latest result only when it is outside the viewport. Keeping
     // existing row nodes also preserves selection and avoids scroll anchoring jumps.
@@ -154,6 +155,7 @@ function open(initial,options={}) {
   overlay.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>scroll(Number(b.dataset.scroll)));
   $('[data-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(snapshot.text);$('[data-status]').textContent=t.copied;}catch(error){$('[data-error]').hidden=false;$('[data-error]').textContent=error.message;}};
   $('[data-line]').onclick=()=>options.revealLine?.(snapshot.error?.line||snapshot.pending?.line||snapshot.line);
+  window.TnsPreviewWindow?.mount(overlay,{...options,pageNavigation:tabOptions,onResize:()=>layout()});
   document.addEventListener('keydown',keys,true);modal.focus();active={close,getSnapshot:()=>runtime.snapshot()};layout();restart();return active;
 }
 window.TnsPrgmPreview=Object.freeze({open,close:()=>active?.close(),getSnapshot:()=>active?.getSnapshot()||null});

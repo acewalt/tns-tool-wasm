@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-04-preview-chrome-v28";
+const SOURCE_VERSION = "2026-11-04-preview-layout-v29";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -4421,15 +4421,16 @@ function showImageModal(item, options = {}) {
   canvas.setAttribute('aria-label', item.name || t('viewImage'));
   let source = null, url = '', closed = false, expanded = Boolean(options.expanded), drag = null;
   const view = { x: options.draft?.x || 0, y: options.draft?.y || 0, fit: options.draft?.fit || false };
-  function dispose() { closed = true; window.removeEventListener('resize', setSize); if (url) URL.revokeObjectURL(url); }
+  function dispose() { closed = true; window.removeEventListener('resize', setSize); backdrop.removeEventListener('tns-preview-window-resize', resizeImage); if (url) URL.revokeObjectURL(url); }
   function close() { dispose(); closeModal(backdrop); }
   $('#image-close').onclick = close;
   const setSize = () => {
     if (closed) return;
     modal.classList.toggle('document-image-expanded', expanded);
     frame.style.width = expanded ? 'min(960px, 100%)' : '320px';
-    canvas.width = expanded ? Math.max(320, Math.round(frame.clientWidth)) : 320;
-    canvas.height = expanded ? Math.max(214, Math.min(600, Math.round(window.innerHeight * .62) - 26)) : 214;
+    const shared = window.TnsPreviewWindow?.geometry(modal);
+    canvas.width = shared?.width || (expanded ? Math.max(320, Math.round(frame.clientWidth)) : 320);
+    canvas.height = shared ? shared.height - (shared.expanded ? 0 : 26) : (expanded ? Math.max(214, Math.min(600, Math.round(window.innerHeight * .62) - 26)) : 214);
     $('#image-expand').textContent = t(expanded ? 'lovePreviewCalculatorView' : 'lovePreviewExpandedView');
     $('#image-expand').setAttribute('aria-pressed', String(expanded));
     draw();
@@ -4460,6 +4461,11 @@ function showImageModal(item, options = {}) {
   $('[data-image-home]').onclick = () => { view.x = view.y = 0; view.fit = false; draw(); };
   $('#image-calculator-toggle').onclick = () => { view.fit = !view.fit; draw(); };
   $('#image-expand').onclick = () => { expanded = !expanded; setSize(); };
+  function resizeImage(event) {
+    const size = event.detail;
+    canvas.width = size.width; canvas.height = size.height - (size.expanded ? 0 : 26); draw();
+  }
+  backdrop.addEventListener('tns-preview-window-resize', resizeImage);
   window.addEventListener('resize', setSize);
   canvas.onkeydown = event => {
     const step = event.shiftKey ? 96 : 24, direction = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[event.key];
@@ -4502,12 +4508,16 @@ function closeModal(backdrop, afterClose = null) {
   // Page changes keep the same backdrop mounted. Cleanup still runs in the
   // outgoing preview, then the next app replaces its contents in place.
   if (backdrop.dataset.previewSwitching === 'true' && typeof afterClose === 'function') {
+    backdrop.__previewWindowCleanup?.();
+    delete backdrop.__previewWindowCleanup;
     afterClose();
     return;
   }
   backdrop.classList.add("closing");
   window.setTimeout(() => {
     if (typeof afterClose === "function") afterClose();
+    backdrop.__previewWindowCleanup?.();
+    delete backdrop.__previewWindowCleanup;
     backdrop.__documentPreviewRestore?.();
     delete backdrop.__documentPreviewRestore;
     backdrop.remove();
@@ -11380,11 +11390,21 @@ function luaJsNativeEditorsFullText(nativeEditors = []) {
 
 async function showLuaPreview(code, item = null) {
   const backdrop = document.createElement("div");
+  const previousFocus = document.activeElement, previousOverflow = document.body.style.overflow;
+  backdrop.__documentPreviewRestore = () => {
+    document.body.style.overflow = previousOverflow;
+    if (previousFocus?.isConnected) previousFocus.focus({ preventScroll: true });
+  };
+  document.body.style.overflow = 'hidden';
   backdrop.className = "modal-backdrop";
   backdrop.innerHTML = `
     <div class="modal lua-preview-modal">
+      <div class="modal-top-actions"><button type="button" id="lua-preview-close">${escapeHtml(t("close"))}</button></div>
       <h2>${escapeHtml(t("previewLua"))}</h2>
-      <canvas id="lua-preview-canvas" width="318" height="212"></canvas>
+      <div class="lua-preview-calculator">
+        <div class="love-preview-calculator-bar"></div>
+        <canvas id="lua-preview-canvas" width="320" height="214"></canvas>
+      </div>
       <div class="preview-controls">
         <button type="button" data-event="on.enterKey">Enter</button>
         <button type="button" data-event="on.escapeKey">Esc</button>
@@ -11398,7 +11418,6 @@ async function showLuaPreview(code, item = null) {
       <div class="modal-actions">
         <button type="button" id="lua-preview-copy-content">${escapeHtml(t("copyScreenContent"))}</button>
         <button type="button" id="lua-preview-copy-log">${escapeHtml(t("copyLog"))}</button>
-        <button type="button" id="lua-preview-close">${escapeHtml(t("close"))}</button>
       </div>
     </div>`;
   document.body.append(backdrop);
@@ -11406,37 +11425,42 @@ async function showLuaPreview(code, item = null) {
   const ctx = canvas.getContext("2d");
   const previewLog = backdrop.querySelector("#lua-preview-log");
   const textCapture = backdrop.querySelector("#lua-preview-input");
-  const symbols = item ? await loadLuaPreviewSymbols(item, code).catch(() => ({})) : {};
   let runtime;
-  try {
-    runtime = await createLuaJsPreviewRuntime(code, ctx, canvas, previewLog, symbols);
-    runtime.boot();
-  } catch (error) {
-    previewLog.textContent = `LuaJS no pudo iniciar (${error.message}). Usando preview limitado.\n${error.stack || ""}`;
-    runtime = createLuaPreviewRuntime(code, ctx, canvas, previewLog);
-    runtime.boot();
-  }
+  let closed = false;
+  const resize = ({ width, height, expanded }) => {
+    const contentHeight = Math.max(1, height - (expanded ? 0 : 26));
+    if (runtime?.resize) runtime.resize(width, contentHeight);
+    else {
+      canvas.width = width; canvas.height = contentHeight;
+      runtime?.callEvent("on.paint");
+    }
+  };
+  window.TnsDocumentPreviewNavigation?.mountChrome(backdrop.querySelector('.love-preview-calculator-bar'), {
+    title: documentPreviewDocumentName(), items: [item || {}],
+    onClose: () => backdrop.querySelector('#lua-preview-close')?.click(),
+  });
+  window.TnsPreviewWindow?.mount(backdrop, { documentName: documentPreviewDocumentName(), onResize: resize });
   for (const button of backdrop.querySelectorAll(".preview-controls button")) {
     button.addEventListener("click", () => {
-      runtime.callEvent(button.dataset.event);
-      textCapture.focus();
+      runtime?.callEvent(button.dataset.event);
+      textCapture.focus({ preventScroll: true });
     });
   }
   textCapture.addEventListener("input", () => {
     const value = textCapture.value;
     if (!value) return;
-    for (const char of value) runtime.charIn(char);
+    for (const char of value) runtime?.charIn?.(char);
     textCapture.value = "";
   });
   canvas.addEventListener("click", (event) => {
     const rect = canvas.getBoundingClientRect();
     const x = Math.round((event.clientX - rect.left) * (canvas.width / rect.width));
     const y = Math.round((event.clientY - rect.top) * (canvas.height / rect.height));
-    if (runtime.mouseClick) runtime.mouseClick(x, y);
-    textCapture.focus();
+    runtime?.mouseClick?.(x, y);
+    textCapture.focus({ preventScroll: true });
   });
   const keyHandler = (event) => {
-    if (!backdrop.isConnected) return;
+    if (closed || !backdrop.isConnected || !runtime) return;
     if (event.ctrlKey || event.altKey || event.metaKey) return;
     const mapped = previewKeyboardEventToLua(event);
     if (!mapped) return;
@@ -11445,9 +11469,9 @@ async function showLuaPreview(code, item = null) {
     else runtime.callEvent(mapped.event);
   };
   document.addEventListener("keydown", keyHandler);
-  setTimeout(() => textCapture.focus(), 50);
+  setTimeout(() => { if (!closed) textCapture.focus({ preventScroll: true }); }, 50);
   backdrop.querySelector("#lua-preview-copy-content").addEventListener("click", async () => {
-    const text = runtime.getScreenText ? runtime.getScreenText() : "";
+    const text = runtime?.getScreenText ? runtime.getScreenText() : "";
     await copyPlainText(text);
     appendPreviewLog(previewLog, text.trim() ? t("screenContentCopied") : t("screenContentEmpty"));
   });
@@ -11456,9 +11480,26 @@ async function showLuaPreview(code, item = null) {
     appendPreviewLog(previewLog, t("logCopied"));
   });
   backdrop.querySelector("#lua-preview-close").addEventListener("click", () => {
+    if (closed) return;
+    closed = true;
     document.removeEventListener("keydown", keyHandler);
-    closeModal(backdrop, () => runtime.close());
+    closeModal(backdrop, () => runtime?.close());
   });
+  const symbols = item ? await loadLuaPreviewSymbols(item, code).catch(() => ({})) : {};
+  if (closed) return;
+  try {
+    runtime = await createLuaJsPreviewRuntime(code, ctx, canvas, previewLog, symbols);
+    if (closed) { runtime.close(); return; }
+    runtime.boot();
+  } catch (error) {
+    if (closed) return;
+    runtime?.close();
+    previewLog.textContent = `LuaJS no pudo iniciar (${error.message}). Usando preview limitado.\n${error.stack || ""}`;
+    runtime = createLuaPreviewRuntime(code, ctx, canvas, previewLog);
+    runtime.boot();
+  }
+  const size = window.TnsPreviewWindow?.geometry(backdrop.querySelector('.lua-preview-modal'));
+  if (size) resize(size);
 }
 
 const LOVE_PREVIEW_CALCULATOR_CHROME_HEIGHT = 26;
@@ -11798,6 +11839,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     sizeToggle.textContent = t(normalizedMode === "expanded" ? "lovePreviewCalculatorView" : "lovePreviewExpandedView");
     sizeToggle.setAttribute("aria-pressed", String(normalizedMode === "expanded"));
     runtime?.resize?.(size.width, size.height);
+    if (calculatorEditor) drawCalculatorScratchpadPreviewV2(canvas, calculatorEditor.rows || [], calculatorEditor.selectedIndex ?? -1, calculatorEditor.scrollPx ?? 0);
     if (shouldLog) {
       const totalHeight = normalizedMode === "calculator" ? size.height + LOVE_PREVIEW_CALCULATOR_CHROME_HEIGHT : size.height;
       const canvasNote = normalizedMode === "calculator" ? ` (canvas ${size.width}x${size.height})` : "";
@@ -11805,6 +11847,17 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     }
   };
   applyPreviewSize(options.expanded ? "expanded" : "calculator");
+  const resizeSharedPreview = event => {
+    const { width, height, expanded } = event.detail;
+    const contentHeight = height - (expanded ? 0 : LOVE_PREVIEW_CALCULATOR_CHROME_HEIGHT);
+    if (canvas.width !== width || canvas.height !== contentHeight) {
+      canvas.width = width; canvas.height = contentHeight;
+      runtime?.resize?.(width, contentHeight);
+      if (calculatorEditor) drawCalculatorScratchpadPreviewV2(canvas, calculatorEditor.rows || [], calculatorEditor.selectedIndex ?? -1, calculatorEditor.scrollPx ?? 0);
+    }
+  };
+  backdrop.addEventListener('tns-preview-window-resize', resizeSharedPreview);
+  previewCleanups.push(() => backdrop.removeEventListener('tns-preview-window-resize', resizeSharedPreview));
   sizeToggle.addEventListener("click", () => {
     applyPreviewSize(previewSizeMode === "expanded" ? "calculator" : "expanded", true);
     if (!calculatorEditor) canvas.focus();
@@ -17007,6 +17060,10 @@ function mountDocumentPreviewTabs(backdrop, options, selector, onSelect, chrome 
     if (!backdrop.isConnected || !host.isConnected || backdrop.classList.contains('closing') || backdrop.dataset.previewSwitching === 'true') return;
     backdrop.dataset.previewSwitching = 'true'; onSelect(next);
   };
+  const mountWindow = () => window.TnsPreviewWindow?.mount(backdrop, {
+    ...options, documentName: options.documentName || documentPreviewDocumentName(),
+    pageNavigation: navigation ? { ...navigation, onSelect: selectOnce } : null,
+  });
   if (chrome) {
     window.TnsDocumentPreviewNavigation.mountChrome(host, {
       ...navigation, items: navigation?.items || [options.item || {}],
@@ -17019,11 +17076,13 @@ function mountDocumentPreviewTabs(backdrop, options, selector, onSelect, chrome 
       const expandedTabs = window.TnsDocumentPreviewNavigation.createTabs({ ...navigation, onSelect: selectOnce });
       expandedTabs.classList.add('document-preview-expanded-tabs'); expandedActions.prepend(expandedTabs);
     }
+    mountWindow();
     return tabs;
   }
-  if (!navigation) return null;
+  if (!navigation) { mountWindow(); return null; }
   const tabs = window.TnsDocumentPreviewNavigation.createTabs({ ...navigation, onSelect: selectOnce });
   if (tabs) host.prepend(tabs);
+  mountWindow();
   return tabs;
 }
 
@@ -17085,6 +17144,7 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   const options = {
     item, documentName: documentPreviewDocumentName(),
     expanded: session.expanded || false,
+    setExpanded: value => { session.expanded = value; },
     draft: session.drafts.get(selected),
     setDraft: draft => session.drafts.set(selected, draft),
     createBackdrop: className => {
@@ -17129,9 +17189,9 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   if (appKind === 'graphs') return openGraphInLovePreview(item, options);
   if (appKind === 'calculators') return openCalculatorInLovePreview(item, options);
   const backdrop = makeDocumentPreviewBackdrop(options);
-  backdrop.innerHTML = '<div class="modal inspector-modal"><div class="love-preview-calculator-bar"></div><h2></h2><p class="muted-text"></p><div class="modal-actions"><button data-widget-close></button></div></div>';
+  backdrop.innerHTML = '<div class="modal inspector-modal widget-preview-modal"><div class="modal-top-actions"><button data-widget-close></button></div><h2></h2><div class="widget-preview-calculator"><div class="love-preview-calculator-bar"></div><p class="widget-preview-unavailable"></p></div></div>';
   backdrop.querySelector('h2').textContent = item.name;
-  backdrop.querySelector('p').textContent = ({ es: 'Esta aplicación todavía no tiene un previsualizador disponible.', en: 'A preview is not available for this app yet.', fr: 'Un aperçu n’est pas encore disponible pour cette application.' })[String(document.documentElement.lang || 'en').slice(0, 2)] || 'A preview is not available for this app yet.';
+  backdrop.querySelector('.widget-preview-unavailable').textContent = ({ es: 'Esta aplicación todavía no tiene un previsualizador disponible.', en: 'A preview is not available for this app yet.', fr: 'Un aperçu n’est pas encore disponible pour cette application.' })[String(document.documentElement.lang || 'en').slice(0, 2)] || 'A preview is not available for this app yet.';
   const close = backdrop.querySelector('[data-widget-close]'); close.textContent = t('close'); close.onclick = () => closeModal(backdrop);
   document.body.append(backdrop);
   mountDocumentPreviewTabs(backdrop, options, '.love-preview-calculator-bar', next => closeModal(backdrop, () => options.pageNavigation.onSelect(next)), true);
@@ -18223,6 +18283,7 @@ async function openPyPreviewModal(source = null, options = {}) {
   const setBusy = (busy) => {
     running = busy;
     if (pageTabs) pageTabs.inert = busy;
+    for (const tabs of backdrop.querySelectorAll('.document-preview-tabs')) tabs.inert = busy;
     runButton.disabled = busy;
     sendButton.disabled = busy || (lastResult && !lastResult.waitingForInput);
     restartButton.disabled = busy;
