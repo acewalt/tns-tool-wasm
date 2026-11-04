@@ -358,6 +358,14 @@
   }
 
   function setupWorkspace(modal, stage, controls) {
+    // Reuse the common display anchor instead of nesting a second workspace.
+    const shared = modal.querySelector(".preview-window-body");
+    if (shared) {
+      shared.classList.add("love-preview-side-workspace");
+      shared.querySelector(":scope > .preview-window-left")?.classList.add("love-preview-side-keys");
+      shared.querySelector(":scope > .preview-window-center")?.classList.add("love-preview-side-center");
+      shared.querySelector(":scope > .preview-window-right")?.classList.add("love-preview-side-actions");
+    }
     let workspace = modal.querySelector(".love-preview-side-workspace");
     let leftKeys = workspace?.querySelector(":scope > .love-preview-side-keys") || null;
     let center = workspace?.querySelector(":scope > .love-preview-side-center") || null;

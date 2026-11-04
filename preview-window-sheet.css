@@ -1,0 +1,95 @@
+/* Lists & Spreadsheet inside the shared preview window. Standalone layouts keep their existing dimensions. */
+.preview-window .spreadsheet-preview-stage {
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.preview-window .spreadsheet-calc {
+  box-sizing: border-box;
+  width: 320px;
+  max-width: 100%;
+  height: 240px;
+  min-width: 0;
+  min-height: 0;
+  flex: none;
+  display: grid;
+  grid-template-rows: 26px minmax(0, 1fr) 23px;
+  border: 0;
+  border-radius: 5px;
+  box-shadow: 0 6px 30px #0007;
+  overflow: hidden;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.preview-window.preview-window-expanded .spreadsheet-calc {
+  width: 100%;
+  height: 100%;
+}
+
+.preview-window .spreadsheet-calc-topbar.document-preview-chrome {
+  box-sizing: border-box;
+  width: 100%;
+  height: 26px;
+  min-height: 26px;
+  display: flex;
+  grid-template-columns: none;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  border-bottom: 1px solid #67cee6;
+  font-size: 11px;
+}
+
+.preview-window .spreadsheet-grid-shell {
+  min-width: 0;
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+
+.preview-window .spreadsheet-grid {
+  grid-template-columns: 32px repeat(var(--sheet-cols), 70px);
+  grid-auto-rows: 24px;
+}
+
+.preview-window .sheet-corner,
+.preview-window .sheet-col-header,
+.preview-window .sheet-row-header,
+.preview-window .sheet-cell {
+  box-sizing: border-box;
+  font-size: 12px;
+  line-height: 1.2;
+}
+
+.preview-window .sheet-cell {
+  padding: 4px 5px;
+}
+
+.preview-window .sheet-cell.active {
+  box-shadow: inset 0 0 0 2px #2a77d4;
+}
+
+.preview-window .spreadsheet-formula-bar {
+  min-width: 0;
+  min-height: 0;
+  grid-template-columns: 32px minmax(0, 1fr) 48px;
+  font-size: 11px;
+  line-height: 22px;
+}
+
+.preview-window .spreadsheet-formula-value {
+  min-width: 0;
+  padding: 0 6px;
+}
+
+.preview-window .spreadsheet-nav-arrows {
+  font-size: 11px;
+}
+
+.preview-window.preview-window-expanded .spreadsheet-calc{grid-template-rows:minmax(0,1fr) 23px}
