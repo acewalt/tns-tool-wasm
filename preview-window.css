@@ -35,6 +35,7 @@
 
 .preview-window .document-image-controls{display:flex;flex-wrap:wrap;justify-content:flex-start;gap:7px;width:100%}
 .preview-window .preview-window-body{overflow-x:hidden}
+.preview-window.preview-window{animation:none!important;transition:none!important}
 .preview-window .preview-window-left,.preview-window .preview-window-right{width:auto!important;max-width:100%;justify-content:flex-start;align-items:stretch}
 .preview-window .love-preview-live-math,.preview-window .lpm-panel{width:100%;max-width:100%;min-width:0;overflow:auto}
 .preview-window .lpm-source code{white-space:pre-wrap;overflow-wrap:anywhere}

@@ -524,8 +524,14 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions, "sources"
   };
 
   openDocumentInspector = async function () {
+    const previous = xmlDoctor.current ? {name:xmlDoctor.current.program_name,type:xmlDoctor.current.document_type,file:xmlDoctor.current.file} : null;
     if (xmlDoctor.current && !xmlDoctor.embedded) await persistCurrentProgram();
     await scanXmlPrograms();
+    if(previous){
+      const sameFile=(file)=>String(file||'').replace(/\\/g,'/').split('/').pop()===String(previous.file||'').replace(/\\/g,'/').split('/').pop();
+      const selected=xmlDoctor.candidates.find(item=>item.program_name===previous.name&&item.document_type===previous.type&&sameFile(item.file));
+      if(selected)selectXmlProgram(selected.index);
+    }
     const result = await oldInspector();
     patchInspectorIfEmpty();
     requestAnimationFrame(patchInspectorIfEmpty);

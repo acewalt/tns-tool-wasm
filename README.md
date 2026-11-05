@@ -8,13 +8,19 @@ It runs directly in the browser with Pyodide/WebAssembly and JavaScript, so it c
 
  ![New](docs/images/+page.png)
 
+## Program Editor and mathematics
+
+Syntax Doctor includes a Program Editor menu with nine categories, mathematical templates and a searchable catalog of 754 entries. The 2D view displays fractions, roots, powers, matrices, piecewise expressions, sums, products, derivatives, integrals and limits while preserving the original TI source. Click a line to edit its text, or switch back to the source editor. Matrix, system and piecewise templates can ask for dimensions before insertion.
+
+Calculator previews share these tools and evaluate numeric matrices and symbolic expressions with a local Giac/Xcas WebAssembly runtime. This is a partial TI-Nspire simulation; hardware, TI-Innovator and platform-specific operations still require the relevant device. Inserting a catalog entry does not certify that every TI command is supported in preview. Giac licenses and source-download information are in [assets/cas/README.md](assets/cas/README.md).
+
 ## Live Demo
 
 https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.28/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.28)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.30/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.30)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 

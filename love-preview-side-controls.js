@@ -52,6 +52,7 @@
         on: "ON",
         off: "OFF",
         templates: "Templates",
+        catalog: "Catalog",
         edit: "Editable TI syntax",
         hint: "Use ← →, Backspace or Delete to edit anywhere",
         preview: "Optimized mathematical view"
@@ -61,6 +62,7 @@
         on: "ON",
         off: "OFF",
         templates: "Plantillas",
+        catalog: "Catálogo",
         edit: "Sintaxis TI editable",
         hint: "Usa ← →, Backspace o Delete para editar en cualquier posición",
         preview: "Vista matemática optimizada"
@@ -70,6 +72,7 @@
         on: "ON",
         off: "OFF",
         templates: "Modèles",
+        catalog: "Catalogue",
         edit: "Syntaxe TI modifiable",
         hint: "Utilisez ← →, Retour arrière ou Suppr pour modifier partout",
         preview: "Vue mathématique optimisée"
@@ -111,13 +114,15 @@
   }
 
   function findActionRow(modal) {
+    const copy = modal.querySelector("#love-preview-copy-content,#lua-preview-copy-content");
+    const row = copy?.closest(".modal-actions");
+    if (row) return row;
     let best = null;
     let bestScore = -1;
     const candidates = [modal, ...modal.querySelectorAll("div, footer, section")];
 
     for (const candidate of candidates) {
       if (candidate.classList?.contains("preview-controls")) continue;
-      if (candidate.closest(".love-preview-side-actions")) continue;
       const score = actionScore(candidate);
       if (score > bestScore) {
         best = candidate;
@@ -197,7 +202,7 @@
 
   function setupEditableMathEntry(modal) {
     const host = modal.querySelector(".love-preview-live-math");
-    const canvas = modal.querySelector("#love-preview-canvas");
+    const canvas = modal.querySelector("#love-preview-canvas,#lua-preview-canvas");
     const source = host?.querySelector(".lpm-source code");
     const pretty = host?.querySelector(".lpm-pretty");
     if (!host || !canvas || !source || !pretty) return false;
@@ -323,15 +328,41 @@
 
     const labels = mathLabels();
 
+    let icons = actionRow.querySelector(".love-preview-tool-icons");
+    if (!icons) {
+      icons = document.createElement("div");
+      icons.className = "love-preview-tool-icons";
+      actionRow.appendChild(icons);
+    }
+
     templatesButton.classList.remove("green-tool-button");
     templatesButton.classList.add("love-preview-side-tool-button", "love-preview-templates-toggle");
-    templatesButton.textContent = labels.templates;
+    templatesButton.replaceChildren();
+    templatesButton.classList.add("ti-math-icon-button");
     templatesButton.setAttribute("aria-label", labels.templates);
     templatesButton.title = labels.templates;
-    if (templatesButton.parentNode !== actionRow) actionRow.appendChild(templatesButton);
+    if (templatesButton.parentNode !== icons) icons.appendChild(templatesButton);
 
-    if (templatesPanel && templatesPanel.parentNode !== rightActions) {
-      rightActions.appendChild(templatesPanel);
+    let catalog = icons.querySelector(".love-preview-catalog-toggle");
+    if (!catalog) {
+      catalog = document.createElement("button");
+      catalog.type = "button";
+      catalog.className = "love-preview-side-tool-button ti-math-icon-button love-preview-catalog-toggle";
+      icons.appendChild(catalog);
+      catalog.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        window.TnsMathTools?.openCatalog({
+          anchor: catalog,
+          insert: text => window.TnsLovePreviewLiveMath?.insert(modal, text)
+        });
+      });
+    }
+    catalog.setAttribute("aria-label", labels.catalog);
+    catalog.title = labels.catalog;
+
+    if (templatesPanel && templatesPanel.parentNode !== actionRow) {
+      actionRow.appendChild(templatesPanel);
     }
 
     let mathButton = actionRow.querySelector(".love-preview-math-entry-toggle");
@@ -432,18 +463,19 @@
   }
 
   function enhanceModal(modal) {
-    const stage = modal?.querySelector(".love-preview-stage");
+    const stage = modal?.querySelector(".love-preview-stage,.lua-preview-calculator");
     const controls = modal?.querySelector(".preview-controls");
     if (!stage || !controls) return false;
 
     setupKeys(controls);
     setupWorkspace(modal, stage, controls);
+    window.TnsLovePreviewLiveMath?.enhanceModal?.(modal);
     return true;
   }
 
   function enhanceAll() {
     let count = 0;
-    for (const modal of document.querySelectorAll(".love-preview-modal")) {
+    for (const modal of document.querySelectorAll(".love-preview-modal,.lua-preview-modal")) {
       if (enhanceModal(modal)) count += 1;
     }
     return count;
@@ -471,26 +503,49 @@
   if (!document.documentElement.hasAttribute(INSTALLED)) {
     document.documentElement.setAttribute(INSTALLED, "1");
 
-    // Keep the hotfix behavior: no global MutationObserver. Preview LÖVE
-    // updates snapshots/log DOM frequently, so we only enhance on user action
-    // and with a short bounded retry window.
+    // Observe only the body and each backdrop's direct children. Preview logs
+    // and canvases update deeply inside a modal and do not trigger this watcher.
+    const backdrops = new Map();
+    const isBackdrop = node => node?.nodeType === 1 && node.matches(".modal-backdrop,.prgm-preview-overlay,.preview-window-backdrop");
+    const watchBackdrop = node => {
+      if (!isBackdrop(node) || backdrops.has(node)) return;
+      const observer = new MutationObserver(() => enhanceAll());
+      observer.observe(node, { childList: true });
+      backdrops.set(node, observer);
+    };
+    const watchBody = () => {
+      for (const node of document.body.children) watchBackdrop(node);
+      const observer = new MutationObserver(records => {
+        for (const record of records) {
+          for (const node of record.removedNodes) {
+            backdrops.get(node)?.disconnect();
+            backdrops.delete(node);
+          }
+          for (const node of record.addedNodes) watchBackdrop(node);
+        }
+        enhanceAll();
+      });
+      observer.observe(document.body, { childList: true });
+      enhanceAll();
+    };
     document.addEventListener("click", event => {
       const button = event.target?.closest?.("button");
-      if (isPreviewOpenButton(button) || button?.closest?.(".love-preview-modal")) {
+      if (isPreviewOpenButton(button) || button?.closest?.(".love-preview-modal,.lua-preview-modal")) {
         scheduleBoundedRefresh();
       }
     });
 
-    if (document.readyState === "loading") {
-      document.addEventListener("DOMContentLoaded", enhanceAll, { once: true });
-    } else {
-      enhanceAll();
-    }
-
     window.TnsLovePreviewSideControls = {
-      version: "20260904-side-controls-v6-editable-math",
+      version: "20261104-preview-tools-v30",
       refresh: enhanceAll,
+      enhanceModal,
       setMathEntryEnabled
     };
+
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", watchBody, { once: true });
+    } else {
+      watchBody();
+    }
   }
 })();

@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-04-preview-layout-v29";
+const SOURCE_VERSION = "2026-11-04-math-tools-v30";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -1262,6 +1262,7 @@ const pyDoctorModal = {
   nextSibling: null,
 };
 const codeEditorAdapters = new Map();
+let tiProgramTools = null, tiMathEditor = null;
 
 function log(message) {
   if (!logEl) return;
@@ -1673,12 +1674,16 @@ function wireToolMenus() {
     });
   }
   for (const action of document.querySelectorAll(".menu-panel .menu-action")) {
+    if(action.hasAttribute('data-program-editor-tools')) continue;
     action.addEventListener("click", () => {
       if (action.classList.contains("nested-trigger")) return;
       window.setTimeout(() => closeToolMenus(), 80);
     });
   }
-  document.addEventListener("click", () => closeToolMenus());
+  document.addEventListener("click", event => {
+    if(event.target.closest?.('.program-editor-tools-panel'))return;
+    closeToolMenus();
+  });
   document.addEventListener("keydown", (event) => {
     if (event.key === "Escape") closeToolMenus();
   });
@@ -2010,22 +2015,78 @@ function setXmlDoctorEnabled(enabled) {
 }
 
 function syncXmlDoctorToolbar() {
+  initializeTiProgramTools();
   const edit = document.querySelector('#xml-edit-menu');
   if (edit) {
     edit.hidden = document.querySelector('#xml-inspector-btn').disabled;
     if (edit.hidden) edit.classList.remove('open');
   }
   const syntax = document.querySelector('#xml-syntax-btn');
-  syntax.hidden = syntax.disabled;
+  syntax.hidden = true;
+  tiProgramTools?.refresh();
+  tiMathEditor?.refresh();
 }
 
 function syncPrgmPreviewButton() {
   const button = document.querySelector('#xml-prgm-preview-btn');
   if (!button) return;
   const source = document.querySelector('#xml-code');
-  const isPrgm = !source.disabled && (/^\s*Prgm\b/im.test(source.value) || /\b=\s*Prgm\b/i.test(source.value));
+  const programEditor=isTiProgramEditorSelected();
+  const isPrgm = programEditor || (xmlDoctor.current?.is_program_editor == null && !source.disabled && /^\s*Prgm\b/im.test(source.value));
   button.hidden = !isPrgm;
   button.disabled = !isPrgm;
+  for (const id of ['xml-math-templates-btn','xml-math-catalog-btn','xml-math-view-btn']) {
+    const tool=document.getElementById(id);if(tool){tool.hidden=!programEditor;tool.disabled=!programEditor;}
+  }
+  tiProgramTools?.refresh();tiMathEditor?.refresh();
+}
+
+function isTiProgramEditorSelected() {
+  const current=xmlDoctor.current;
+  return Boolean(current && !document.querySelector('#xml-code').disabled && (current.is_program_editor || current.widget_type==='TI.ProgramEditor' || String(current.kind||'').startsWith('program_editor_')));
+}
+
+function insertXmlToolText(text, _node=null, _context=null, range=null) {
+  const source=document.querySelector('#xml-code'),adapter=codeEditorAdapters.get('#xml-code');
+  const start=range?.start ?? source.selectionStart ?? source.value.length,end=range?.end ?? source.selectionEnd ?? start;
+  if(adapter?.replaceRange)adapter.replaceRange(String(text),start,end);
+  else{source.value=source.value.slice(0,start)+text+source.value.slice(end);source.setSelectionRange(start+text.length,start+text.length);source.dispatchEvent(new Event('input',{bubbles:true}));}
+  if(xmlDoctor.current)xmlDoctor.current.code=source.value;
+  xmlDoctor.embedded=false;tiMathEditor?.refresh();
+}
+
+async function chooseTiProgramEditor() {
+  const candidates=xmlDoctor.candidates.filter(item=>item.is_program_editor||item.widget_type==='TI.ProgramEditor'||String(item.kind||'').startsWith('program_editor_'));
+  const backdrop=document.createElement('div');backdrop.className='modal-backdrop';
+  backdrop.innerHTML='<div class="modal document-modal"><h2></h2><div class="ti-program-open-list"></div><div class="modal-actions"><button data-close></button></div></div>';
+  backdrop.querySelector('h2').textContent=({es:'Abrir programa',en:'Open program',fr:'Ouvrir un programme'})[document.documentElement.lang]||'Open program';
+  for(const item of candidates){const button=document.createElement('button');button.type='button';button.className='green-tool-button';button.textContent=`${item.program_name} [${item.document_type}]`;button.onclick=()=>{setXmlDoctorEnabled(true);document.querySelector('#xml-programs').value=item.index;selectXmlProgram(item.index);closeModal(backdrop);};backdrop.querySelector('.ti-program-open-list').append(button);}
+  backdrop.querySelector('[data-close]').textContent=t('cancel');backdrop.querySelector('[data-close]').onclick=()=>closeModal(backdrop);document.body.append(backdrop);
+}
+
+async function copyTiProgramEditor() {
+  const copy={...xmlDoctor.current,code:document.querySelector('#xml-code').value};
+  const previous=xmlDoctor.current,created=await addProgramEditorToStage();
+  if(!created&&xmlDoctor.current===previous)return;
+  xmlDoctor.current.parameters=copy.parameters||'';xmlDoctor.current.library_access=copy.library_access||'None';xmlDoctor.current.document_type=copy.document_type||'Prgm';
+  document.querySelector('#xml-code').value=copy.code;xmlDoctor.current.code=copy.code;xmlDoctor.embedded=false;
+  document.querySelector('#xml-code').dispatchEvent(new Event('input',{bubbles:true}));
+  xmlLog(({es:'Copia creada. Verifica y almacena para guardar el código.',en:'Copy created. Check syntax and store to save its code.',fr:'Copie créée. Vérifiez la syntaxe et stockez le code.'})[document.documentElement.lang]||'Copy created. Check syntax and store to save its code.');
+}
+
+function importTiProgramEditor() {
+  const input=document.createElement('input');input.type='file';input.accept='.txt,.tib,.bas';
+  input.onchange=async()=>{if(!input.files[0])return;try{const source=await input.files[0].text(),previous=xmlDoctor.current,created=await addProgramEditorToStage();if(!created&&xmlDoctor.current===previous)return;document.querySelector('#xml-code').value=source;xmlDoctor.current.code=source;xmlDoctor.current.document_type=detectXmlDocumentType(source);xmlDoctor.embedded=false;document.querySelector('#xml-code').dispatchEvent(new Event('input',{bubbles:true}));}catch(error){xmlLog(`ERROR Import: ${error.message}`);}};input.click();
+}
+
+function initializeTiProgramTools() {
+  const host=document.querySelector('#xml-edit-menu .menu-panel'),source=document.querySelector('#xml-code');if(!host||!source)return;
+  if(!tiMathEditor&&window.TnsMathEditor)tiMathEditor=window.TnsMathEditor.install({host:document.querySelector('#xml-editor-wrap'),editor:source,isEnabled:isTiProgramEditorSelected,replaceRange:(text,start,end)=>insertXmlToolText(text,null,null,{start,end}),onChange:()=>{const button=document.querySelector('#xml-math-view-btn');button?.setAttribute('aria-pressed',String(tiMathEditor?.active||false));}});
+  if(!tiProgramTools&&window.TnsProgramEditorTools)tiProgramTools=window.TnsProgramEditorTools.install({host,getContext:()=>({enabled:isTiProgramEditorSelected(),editor:source,name:xmlDoctor.current?.program_name}),language:()=>document.documentElement.lang,insert:insertXmlToolText,onError:error=>xmlLog(`ERROR Program Editor: ${error.message}`),actions:{
+    new:()=>addProgramEditorToStage(),open:chooseTiProgramEditor,import:importTiProgramEditor,view:()=>openDocumentInspector(),copy:copyTiProgramEditor,
+    rename:()=>{const task=openXmlDocumentSettings();document.querySelector('#xpe-name,#doc-name')?.focus();return task;},library:()=>{const task=openXmlDocumentSettings();document.querySelector('#xpe-access,#doc-access')?.focus();return task;},
+    close:()=>{xmlDoctor.current=null;document.querySelector('#xml-code').value='';setXmlDoctorEnabled(false);setXmlDoctorDocumentActionsEnabled(true);document.querySelector('#xml-programs').disabled=!xmlDoctor.candidates.length;syncPrgmPreviewButton();},verifyStore:embedXmlCode,verify:runXmlSyntax,run:openXmlPrgmPreview,
+  }});
 }
 
 async function openXmlPrgmPreview() {
@@ -2115,6 +2176,20 @@ import json
 from pathlib import Path
 from xml_scanner import XMLScanner
 from ti_parser import ti_serialized_to_multiline
+import xml.etree.ElementTree as ET
+
+editor_names = {}
+def has_program_editor(candidate):
+    key = str(candidate.file)
+    if key not in editor_names:
+        names = set()
+        for widget in ET.parse(candidate.file).getroot().iter():
+            if widget.tag.rsplit('}', 1)[-1] == 'wdgt' and widget.attrib.get('type') == 'TI.ProgramEditor':
+                for child in widget.iter():
+                    if child.tag == '{urn:TI.ProgramEditor}name':
+                        names.add((child.text or '').strip())
+        editor_names[key] = names
+    return candidate.program_name in editor_names[key]
 
 def body_score(code):
     lines = []
@@ -2139,6 +2214,8 @@ for index, candidate in enumerate(XMLScanner(Path(wasm_xml_scan_path)).scan()):
         "file": str(candidate.file),
         "path": candidate.path,
         "kind": candidate.kind,
+        "widget_type": candidate.widget_type,
+        "is_program_editor": has_program_editor(candidate),
         "document_type": candidate.document_type,
         "library_access": candidate.library_access,
         "parameters": candidate.parameters or "",
@@ -2182,6 +2259,8 @@ json.dumps(items)
 function selectXmlProgram(index) {
   xmlDoctor.current = xmlDoctor.candidates.find((item) => item.index === Number(index));
   if (!xmlDoctor.current) return;
+  document.querySelector('#xml-programs').value=String(xmlDoctor.current.index);
+  if (document.querySelector('#xml-code').disabled) setXmlDoctorEnabled(true);
   const code = document.querySelector("#xml-code");
   code.value = xmlDoctor.current.code;
   syncPrgmPreviewButton();
@@ -8610,6 +8689,15 @@ function createCodeEditorAdapter(textarea, wrap, options = {}) {
       if (monacoInstance) monacoInstance.setSelectionRange(start, end);
       else textarea.setSelectionRange(start, end);
     },
+    replaceRange(text, start, end = start) {
+      if (monacoInstance?.editor) {
+        const editor = monacoInstance.editor,model=editor.getModel();
+        const from=model.getPositionAt(start),to=model.getPositionAt(end);
+        editor.pushUndoStop();
+        editor.executeEdits('ti-math-tool',[{range:{startLineNumber:from.lineNumber,startColumn:from.column,endLineNumber:to.lineNumber,endColumn:to.column},text:String(text),forceMoveMarkers:true}]);
+        editor.pushUndoStop();monacoInstance.setSelectionRange(start+text.length,start+text.length);
+      } else {adapter.value=adapter.value.slice(0,start)+text+adapter.value.slice(end);adapter.setSelectionRange(start+text.length,start+text.length);textarea.dispatchEvent(new Event('input',{bubbles:true}));}
+    },
     setDiagnostics(diagnostics) {
       monacoInstance?.setDiagnostics?.(diagnostics);
     },
@@ -9497,7 +9585,7 @@ function extractCalculatorRowsFromRawXml(rawXml=""){const rows=[];try{const d=ne
 function normalizeCalculatorEntry(t=""){return String(t||"").replace(/−/g,"-").replace(//g,"e").replace(//g,"d").trim();}
 function calcNum(expr,vars={}){let s=normalizeCalculatorEntry(expr).replace(/π/g,"Math.PI").replace(/\be\b/g,"Math.E").replace(/\^/g,"**").replace(/√\s*\(/g,"Math.sqrt(").replace(/\bsin\s*\(/gi,"Math.sin(").replace(/\bcos\s*\(/gi,"Math.cos(").replace(/\btan\s*\(/gi,"Math.tan(").replace(/\bln\s*\(/gi,"Math.log(").replace(/\babs\s*\(/gi,"Math.abs(");s=s.replace(/\blog\(([^,]+),([^\)]+)\)/gi,"(Math.log($1)/Math.log($2))").replace(/\broot\(([^,]+),([^\)]+)\)/gi,"Math.pow($1,1/($2))");try{const f=Function(...Object.keys(vars),`"use strict";return (${s});`),v=f(...Object.values(vars));return typeof v==="number"&&Number.isFinite(v)?v:NaN;}catch(_){return NaN;}}
 function calcFmt(v){return !Number.isFinite(v)?"":Math.abs(v-Math.round(v))<1e-10?String(Math.round(v)):String(Number(v.toPrecision(12)));}
-function calculateScratchpadRow(entry){const raw=String(entry||"").trim(),s=normalizeCalculatorEntry(raw);let display="",m;if((m=s.match(/^∑\((.+),([A-Za-z]+),([^,]+),([^\)]+)\)$/))){let lo=Math.round(calcNum(m[3])),hi=Math.round(calcNum(m[4])),v=0;for(let k=lo;k<=hi;k++){const q=calcNum(m[1],{[m[2]]:k});if(!Number.isFinite(q)){v=NaN;break;}v+=q;}display=calcFmt(v);}else if((m=s.match(/^∏\((.+),([A-Za-z]+),([^,]+),([^\)]+)\)$/))){let lo=Math.round(calcNum(m[3])),hi=Math.round(calcNum(m[4])),v=1;for(let k=lo;k<=hi;k++){const q=calcNum(m[1],{[m[2]]:k});if(!Number.isFinite(q)){v=NaN;break;}v*=q;}display=calcFmt(v);}else if((m=s.match(/^d\(([A-Za-z]+)\^([0-9]+),([A-Za-z]+)(?:,([0-9]+))?\)$/))){let p=+m[2],o=+(m[4]||1),c=1;if(m[1]===m[3]&&o<=p){for(let i=0;i<o;i++)c*=p-i;let r=p-o;display=r===0?String(c):r===1?`${c}*${m[3]}`:`${c}*${m[3]}^${r}`;}}else if((m=s.match(/^∫\(([A-Za-z]+)\^([0-9]+),([A-Za-z]+)\)$/))&&m[1]===m[3]){let p=+m[2];display=`${m[3]}^${p+1}/${p+1}`;}else if(/^lim\(sin\(x\)\/x,x,0\)$/i.test(s))display="1";else if((m=s.match(/^system\((.*)\)$/)))display=`{${m[1]}}`;else{display=calcFmt(calcNum(s));}return{entry:raw,exact:s.replace(/\^([0-9]+)/g,"^($1)"),display:display||raw,full:display||raw};}
+async function calculateScratchpadRow(entry,session=null){const raw=String(entry||'').trim();const evaluator=session||window.TnsTiBasicMath.createSession({language:document.documentElement.lang,angleMode:'RAD'});const answer=await evaluator.evaluateAsync(raw);return{entry:raw,exact:normalizeCalculatorEntry(raw),display:answer.display,full:answer.display};}
 function cMeasure(ctx,t,font="15px Arial"){ctx.save();ctx.font=font;const w=ctx.measureText(String(t)).width;ctx.restore();return w;}
 function cTopSlash(t){let d=0;for(let i=0;i<t.length;i++){if("([{ ".includes(t[i]))d++;else if(")] }".includes(t[i]))d=Math.max(0,d-1);else if(t[i]==="/"&&d===0)return i;}return-1;}
 function drawCalculatorInlineV2(ctx,text,x,y,fontSize=15){
@@ -9607,6 +9695,10 @@ function calculatorNewComposer(type = "plain", carry = "") {
 
 function calculatorComposerCoreSerialize(state) {
   const s = (i) => String(state?.slots?.[i] || "").trim();
+  if(state.type==='matrixN')return '['+Array.from({length:state.rows},(_,r)=>'['+Array.from({length:state.columns},(_,c)=>s(r*state.columns+c)).join(',')+']').join('')+']';
+  if(state.type==='systemN'||state.type==='piecewiseN')return `${state.type==='systemN'?'system':'piecewise'}(${state.slots.map((_,i)=>s(i)).join(',')})`;
+  if(state.type==='subscript')return s(0)+s(1).replace(/[0-9]/g,c=>'₀₁₂₃₄₅₆₇₈₉'[Number(c)]);
+  if(state.type==='limitDirected')return `lim(${s(0)},${s(1)},${s(2)},${s(3)})`;
   switch (state?.type || "plain") {
     case "fraction": return `${s(0)}/${s(1)}`;
     case "power": return `${s(0)}^${s(1)}`;
@@ -9661,6 +9753,7 @@ function calculatorComposerTemplateSlotsEmpty(state) {
 
 function calculatorComposerIsComplete(state) {
   if (!calculatorComposerHasContent(state)) return false;
+  if(['matrixN','systemN','piecewiseN','subscript','limitDirected'].includes(state.type))return state.slots.every(value=>String(value).trim());
   if ((state?.type || "plain") === "plain") return Boolean(String(state?.slots?.[0] || "").trim());
   const required = ({
     fraction:[0,1], power:[0,1], sqrt:[0], root:[0,1], exp:[0], log:[0,1],
@@ -9682,6 +9775,11 @@ function calculatorAffixHtml(name, text = "") {
 
 function calculatorComposerTemplateMarkup(state) {
   const slot = calculatorSlotHtml;
+  if(state.type==='matrixN')return `<span class="calc-v-matrix"><span class="calc-v-bracket">[</span><span class="calc-v-matrix-grid" style="grid-template-columns:repeat(${state.columns},auto)">${state.slots.map((_,i)=>slot(i)).join('')}</span><span class="calc-v-bracket">]</span></span>`;
+  if(state.type==='systemN')return `<span class="calc-v-system"><span class="calc-v-brace">{</span><span class="calc-v-system-rows">${state.slots.map((_,i)=>slot(i)).join('')}</span></span>`;
+  if(state.type==='piecewiseN')return `<span class="calc-v-system"><span class="calc-v-brace">{</span><span class="calc-v-piece-rows">${Array.from({length:state.rows},(_,i)=>`<span>${slot(i*2)}<span class="calc-v-if">,</span>${slot(i*2+1)}</span>`).join('')}</span></span>`;
+  if(state.type==='subscript')return `<span class="calc-v-inline">${slot(0)}<sub>${slot(1)}</sub></span>`;
+  if(state.type==='limitDirected')return `<span class="calc-v-limit"><span class="calc-v-lim-stack"><span class="calc-v-lim">lim</span><span class="calc-v-lower">${slot(1)}<span>→</span>${slot(2)}<sup>${slot(3)}</sup></span></span>${slot(0)}</span>`;
   switch (state.type) {
     case "fraction": return `<span class="calc-v-frac"><span class="calc-v-frac-num">${slot(0)}</span><span class="calc-v-frac-bar"></span><span class="calc-v-frac-den">${slot(1)}</span></span>`;
     case "power": return `<span class="calc-v-power"><span class="calc-v-base">${slot(0)}</span><sup>${slot(1,"calc-v-sup-slot")}</sup></span>`;
@@ -9865,6 +9963,16 @@ function calculatorSetTemplate(container, state, file) {
   next.carets = { prefix: prefix.length, "slot:0": 0, suffix: 0 };
   Object.assign(state, next);
   calculatorRenderComposer(container, state, 0);
+}
+
+function calculatorInsertMathTool(container,state,source,template=null) {
+  if(!template){const combined=calculatorComposerSerialize(state)+source;Object.assign(state,calculatorNewComposer('plain',combined));calculatorRenderComposer(container,state,0);return;}
+  const dynamic=['matrixN','systemN','piecewiseN','subscript'].includes(template.id),type=dynamic?template.id:template.id==='limit'?'limitDirected':calculatorTemplateType(template.icon||'');
+  const prefix=calculatorComposerHasContent(state)?calculatorComposerSerialize(state):'',next=calculatorNewComposer(type);
+  if(dynamic){next.rows=template.rows||3;next.columns=template.columns||3;next.slots=Array(type==='matrixN'?next.rows*next.columns:type==='systemN'?next.rows:type==='piecewiseN'?next.rows*2:2).fill('1');}
+  else if(type==='limitDirected')next.slots=Array(4).fill('1');
+  else next.slots.fill('1');
+  next.prefix=prefix;Object.assign(state,next);calculatorRenderComposer(container,state,0);
 }
 
 function calculatorVisualMove(container, state, delta) {
@@ -11776,7 +11884,8 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       ${calculatorEditor ? `
       <div class="love-calculator-editor">
         <div class="love-calculator-editor-row love-calculator-toolbar">
-          <button type="button" id="love-calculator-templates-toggle" class="green-tool-button">${escapeHtml(t("calculatorTemplates"))}</button>
+          <button type="button" id="love-calculator-templates-toggle" class="green-tool-button ti-math-icon-button" title="${escapeHtml(t('calculatorTemplates'))}" aria-label="${escapeHtml(t('calculatorTemplates'))}"><span aria-hidden="true" class="ti-math-tool-icon ti-math-icon-templates"></span></button>
+          <button type="button" id="love-calculator-catalog-toggle" class="green-tool-button ti-math-icon-button" title="${escapeHtml(({es:'Catálogo',en:'Catalog',fr:'Catalogue'})[document.documentElement.lang]||'Catalog')}" aria-label="Catalog"><span aria-hidden="true" class="ti-math-tool-icon ti-math-icon-catalog"></span></button>
           <span class="love-calculator-toolbar-spacer"></span>
           <button type="button" id="love-calculator-save" class="green-tool-button">${escapeHtml(t("calculatorSave"))}</button>
           <button type="button" id="love-calculator-cancel">${escapeHtml(t("calculatorCancel"))}</button>
@@ -11865,7 +11974,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
   });
   mountDocumentPreviewTabs(backdrop, options, '.love-preview-calculator-bar', next => {
     if (graphEditor) options.setDraft?.({ formula: backdrop.querySelector('#love-graph-formula')?.value || graphEditor.formula });
-    if (calculatorEditor) options.setDraft?.({ rows: calculatorEditor.rows.map(row => ({ ...row })), composer: structuredClone(calculatorEditor.composer), selectedIndex: calculatorEditor.selectedIndex, scrollPx: calculatorEditor.scrollPx });
+    if (calculatorEditor) options.setDraft?.({ rows: calculatorEditor.rows.map(row => ({ ...row })), composer: structuredClone(calculatorEditor.composer), selectedIndex: calculatorEditor.selectedIndex, scrollPx: calculatorEditor.scrollPx, mathSession:calculatorEditor.mathSession });
     closeLovePreview(() => options.pageNavigation.onSelect(next, { expanded: previewSizeMode === 'expanded' }));
   }, true);
   const bootPreviewSource = async (source) => {
@@ -12040,25 +12149,32 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       startScrollAnimation();
     };
 
-    calculatorEditor.commitComposer = () => {
+    calculatorEditor.mathSession ||= window.TnsTiBasicMath?.createSession({language:document.documentElement.lang,angleMode:'rad'});
+    if(calculatorEditor.mathSession&&!options.draft?.mathSession){for(const row of calculatorEditor.rows||[]){try{calculatorEditor.mathSession.evaluate(row.entry);}catch(_){/* Unsupported historic entries remain unchanged. */}}}
+    calculatorEditor.commitComposer = async () => {
       const raw=calculatorComposerSerialize(calculatorEditor.composer).trim();
-      if(!raw || !calculatorComposerIsComplete(calculatorEditor.composer)) return false;
-      calculatorEditor.rows.push(calculateScratchpadRow(raw));
+      if(!raw || !calculatorComposerIsComplete(calculatorEditor.composer)||calculatorEditor.busy) return false;
+      calculatorEditor.busy=true;composer.inert=true;
+      try {
+      if(!calculatorEditor.mathSession)throw Error('The mathematical runtime is still loading.');
+      const answer=await calculateScratchpadRow(raw,calculatorEditor.mathSession);
+      if(previewClosed)return false;
+      calculatorEditor.rows.push({entry:raw,exact:normalizeCalculatorEntry(raw),display:answer.display,full:answer.display});
       calculatorEditor.selectedIndex=calculatorEditor.rows.length-1;
       calculatorEditor.composer=calculatorNewComposer("plain");
       calculatorRenderComposer(composer,calculatorEditor.composer,0);
       scrollToBottom(true);redraw();
       previewLog.textContent="";appendPreviewLog(previewLog,`Entrada: ${raw}`);
       return true;
+      } catch(error){if(!previewClosed){calculatorEditor.rows.push({entry:raw,exact:raw,display:`Error: ${error.message}`,full:`Error: ${error.message}`});scrollToBottom(true);redraw();appendPreviewLog(previewLog,`ERROR: ${error.message}`);}return false;}
+      finally{calculatorEditor.busy=false;composer.inert=false;}
     };
 
     if (!options.draft) scrollToBottom(true);
     redraw(); calculatorRenderComposer(composer,calculatorEditor.composer,calculatorEditor.composer.active || 0);
 
-    toggle?.addEventListener("click",()=>{panel.hidden=!panel.hidden;if(!panel.hidden)panel.querySelector('button')?.focus();});
-    for(const b of backdrop.querySelectorAll(".love-calculator-template-button")){
-      b.addEventListener("click",()=>{calculatorSetTemplate(composer,calculatorEditor.composer,b.dataset.file||"");panel.hidden=true;});
-    }
+    toggle?.addEventListener('click',()=>window.TnsMathTools.openTemplates({anchor:toggle,insert:(source,template)=>calculatorInsertMathTool(composer,calculatorEditor.composer,source,template)}));
+    backdrop.querySelector('#love-calculator-catalog-toggle')?.addEventListener('click',event=>window.TnsMathTools.openCatalog({anchor:event.currentTarget,insert:source=>calculatorInsertMathTool(composer,calculatorEditor.composer,source)}));
 
     // Physical keyboard Enter behaves like the calculator: commit the current 2D entry.
     composer.addEventListener("keydown",(event)=>{
@@ -12105,7 +12221,7 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
       save.disabled=true;
       try{
         // If a complete expression is still in the current entry line, include it on Save.
-        if(calculatorComposerIsComplete(calculatorEditor.composer)) calculatorEditor.commitComposer();
+        if(calculatorComposerIsComplete(calculatorEditor.composer)) await calculatorEditor.commitComposer();
         const r=await saveCalculatorWidgetToStage(calculatorEditor.item,calculatorEditor.rows);
         calculatorEditor.item.raw_xml=r.raw_xml||calculatorEditor.item.raw_xml;
         calculatorEditor.item.file=r.file||calculatorEditor.item.file;
@@ -18601,6 +18717,9 @@ function wireEvents() {
     toggleExclusivePanel(panelForTool("xml"));
   });
   document.querySelector('#xml-prgm-preview-btn').addEventListener('click', () => openXmlPrgmPreview().catch(error => xmlLog(`ERROR Preview Prgm: ${error.message}`)));
+  document.querySelector('#xml-math-templates-btn').addEventListener('click', event => window.TnsMathTools.openTemplates({anchor:event.currentTarget,insert:text=>{insertXmlToolText(text);tiMathEditor?.setActive(true);},getMathView:()=>tiMathEditor?.active||false,setMathView:value=>tiMathEditor?.setActive(value)}));
+  document.querySelector('#xml-math-catalog-btn').addEventListener('click', event => window.TnsMathTools.openCatalog({anchor:event.currentTarget,insert:insertXmlToolText}));
+  document.querySelector('#xml-math-view-btn').addEventListener('click',()=>tiMathEditor?.setActive(!tiMathEditor.active));
   document.querySelector('#xml-code').addEventListener('input', syncPrgmPreviewButton);
   document.querySelector("#xml-tns-file").addEventListener("change", (event) => openTnsInXmlDoctor(event.target.files[0]).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));

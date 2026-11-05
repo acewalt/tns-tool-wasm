@@ -87,7 +87,7 @@ async function installFixture() {
   const addImage = addImageWidgetToStage.__tnsImportProgressOriginal || addImageWidgetToStage;
   await addImage(new File([encodeCanvasToTiRgb565Bmp(bitmap)], 'v29-layout.bmp', { type: 'image/bmp' }));
   await addGraphWidgetToStage();
-  const calculator = await addCalculatorWidgetToStage(); await saveCalculatorWidgetToStage(calculator, [calculateScratchpadRow('29+7')]);
+  const calculator = await addCalculatorWidgetToStage(); await saveCalculatorWidgetToStage(calculator, [await calculateScratchpadRow('29+7')]);
   await addSpreadsheetWidgetToStage(); await addPythonEditorToStage();
   await scanXmlPrograms();
   const data = await inspectXmlDocument(), groups = window.TnsDocumentPreviewNavigation.groups(data.items);

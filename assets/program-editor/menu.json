@@ -1,0 +1,2625 @@
+{
+  "source": "docs/program-editor-menu-reference.md",
+  "sourceSha256": "dbb8d8176e7726de8138ee5698d68fb971a5961ed86bf973140fae7f62445b1b",
+  "categories": [
+    {
+      "id": "1",
+      "label": "Acciones",
+      "icon": "01_rayo.svg",
+      "children": [
+        {
+          "id": "1.1",
+          "label": "Nuevo...",
+          "action": "new",
+          "kind": "action"
+        },
+        {
+          "id": "1.2",
+          "label": "Abrir...",
+          "action": "open",
+          "kind": "action"
+        },
+        {
+          "id": "1.3",
+          "label": "Importar...",
+          "action": "import",
+          "kind": "action"
+        },
+        {
+          "id": "1.4",
+          "label": "Ver...",
+          "action": "view",
+          "kind": "action"
+        },
+        {
+          "id": "1.5",
+          "label": "Crear copia...",
+          "action": "copy",
+          "kind": "action"
+        },
+        {
+          "id": "1.6",
+          "label": "Renombrar...",
+          "action": "rename",
+          "kind": "action"
+        },
+        {
+          "id": "1.7",
+          "label": "Cambiar acceso a librería...",
+          "action": "library",
+          "kind": "action"
+        },
+        {
+          "id": "1.8",
+          "label": "Comentar/descomentar (Ctrl+T)",
+          "action": "comment",
+          "kind": "action"
+        },
+        {
+          "id": "1.9",
+          "label": "Encontrar... (Ctrl+F)",
+          "action": "find",
+          "kind": "action"
+        },
+        {
+          "id": "1.A",
+          "label": "Encontrar y reemplazar... (Ctrl+H)",
+          "action": "replace",
+          "kind": "action"
+        },
+        {
+          "id": "1.B",
+          "label": "Ir a la línea... (Ctrl+G)",
+          "action": "line",
+          "kind": "action"
+        },
+        {
+          "id": "1.C",
+          "label": "Regresar",
+          "action": "back",
+          "kind": "action"
+        },
+        {
+          "id": "1.D",
+          "label": "Cerrar",
+          "action": "close",
+          "kind": "action"
+        }
+      ]
+    },
+    {
+      "id": "2",
+      "label": "Verificar Sintaxis y Almacenar",
+      "icon": "02_guardar_verificar.svg",
+      "children": [
+        {
+          "id": "2.1",
+          "label": "Verificar sintaxis y almacenar (Ctrl+B)",
+          "action": "verifyStore",
+          "kind": "action"
+        },
+        {
+          "id": "2.2",
+          "label": "Verificar sintaxis",
+          "action": "verify",
+          "kind": "action"
+        },
+        {
+          "id": "2.3",
+          "label": "Ejecutar (Ctrl+R)",
+          "action": "run",
+          "kind": "action"
+        }
+      ]
+    },
+    {
+      "id": "3",
+      "label": "Definir variables",
+      "icon": "03_lista.svg",
+      "children": [
+        {
+          "id": "3.1",
+          "label": "Local",
+          "code": "Local a,b",
+          "kind": "command"
+        },
+        {
+          "id": "3.2",
+          "label": "Define",
+          "code": "Define f(x)=x^2",
+          "kind": "command"
+        },
+        {
+          "id": "3.3",
+          "label": "Borrar variable",
+          "code": "DelVar a",
+          "kind": "command"
+        },
+        {
+          "id": "3.4",
+          "label": "Func...EndFunc",
+          "code": "Define f(x)=\nFunc\nReturn x^2\nEndFunc",
+          "kind": "command"
+        },
+        {
+          "id": "3.5",
+          "label": "Prgm...EndPrgm",
+          "code": "Define p()=\nPrgm\nDisp \"Hola\"\nEndPrgm",
+          "kind": "command"
+        },
+        {
+          "id": "3.6",
+          "label": "Bloquear",
+          "children": [
+            {
+              "id": "3.6.1",
+              "label": "Bloquear variable",
+              "code": "Lock a",
+              "kind": "command"
+            },
+            {
+              "id": "3.6.2",
+              "label": "Desbloquear variable",
+              "code": "Unlock a",
+              "kind": "command"
+            },
+            {
+              "id": "3.6.3",
+              "label": "Obtener info de bloqueo",
+              "code": "getLockInfo(a)",
+              "kind": "command"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "4",
+      "label": "Control",
+      "icon": "04_if_condicional.svg",
+      "children": [
+        {
+          "id": "4.1",
+          "label": "If",
+          "code": "If x>0:Disp \"Positivo\"",
+          "kind": "command"
+        },
+        {
+          "id": "4.2",
+          "label": "If...Then...EndIf",
+          "code": "If x>0 Then\nDisp \"Positivo\"\nEndIf",
+          "kind": "command"
+        },
+        {
+          "id": "4.3",
+          "label": "If...Then...Else...EndIf",
+          "code": "If x>0 Then\nDisp \"Positivo\"\nElse\nDisp \"Otro\"\nEndIf",
+          "kind": "command"
+        },
+        {
+          "id": "4.4",
+          "label": "ElseIf...Then",
+          "code": "ElseIf x=0 Then",
+          "kind": "command"
+        },
+        {
+          "id": "4.5",
+          "label": "For...EndFor",
+          "code": "For i,1,10\nDisp i\nEndFor",
+          "kind": "command"
+        },
+        {
+          "id": "4.6",
+          "label": "While...EndWhile",
+          "code": "While x<10\nx+1→x\nEndWhile",
+          "kind": "command"
+        },
+        {
+          "id": "4.7",
+          "label": "Loop...EndLoop",
+          "code": "Loop\n...\nEndLoop",
+          "kind": "command"
+        },
+        {
+          "id": "4.8",
+          "label": "Try...Else...EndTry",
+          "code": "Try\n...\nElse\n...\nEndTry",
+          "kind": "command"
+        },
+        {
+          "id": "4.9",
+          "label": "ClrErr",
+          "code": "ClrErr",
+          "kind": "command"
+        },
+        {
+          "id": "4.A",
+          "label": "PassErr",
+          "code": "PassErr",
+          "kind": "command"
+        },
+        {
+          "id": "4.B",
+          "label": "errCode",
+          "code": "errCode",
+          "kind": "command"
+        },
+        {
+          "id": "4.C",
+          "label": "warnCodes",
+          "code": "warnCodes",
+          "kind": "command"
+        },
+        {
+          "id": "4.D",
+          "label": "Wait",
+          "code": "Wait 1",
+          "kind": "command"
+        }
+      ]
+    },
+    {
+      "id": "5",
+      "label": "Transferencias",
+      "icon": "05_arriba_abajo.svg",
+      "children": [
+        {
+          "id": "5.1",
+          "label": "Return",
+          "code": "Return valor",
+          "kind": "command"
+        },
+        {
+          "id": "5.2",
+          "label": "Cycle",
+          "code": "Cycle",
+          "kind": "command"
+        },
+        {
+          "id": "5.3",
+          "label": "Exit",
+          "code": "Exit",
+          "kind": "command"
+        },
+        {
+          "id": "5.4",
+          "label": "Lbl",
+          "code": "Lbl inicio",
+          "kind": "command"
+        },
+        {
+          "id": "5.5",
+          "label": "GoTo Lbl",
+          "code": "Goto inicio",
+          "kind": "command"
+        },
+        {
+          "id": "5.6",
+          "label": "Stop",
+          "code": "Stop",
+          "kind": "command"
+        }
+      ]
+    },
+    {
+      "id": "6",
+      "label": "E/S",
+      "icon": "06_entrada_salida.svg",
+      "children": [
+        {
+          "id": "6.1",
+          "label": "Disp",
+          "code": "Disp \"Resultado\",r",
+          "kind": "command"
+        },
+        {
+          "id": "6.2",
+          "label": "DispAt",
+          "code": "DispAt 1,\"Mensaje\"",
+          "kind": "command"
+        },
+        {
+          "id": "6.3",
+          "label": "Request",
+          "code": "Request \"Número:\",n",
+          "kind": "command"
+        },
+        {
+          "id": "6.4",
+          "label": "RequestStr",
+          "code": "RequestStr \"Nombre:\",s",
+          "kind": "command"
+        },
+        {
+          "id": "6.5",
+          "label": "Text",
+          "code": "Text \"Mensaje\"",
+          "kind": "command"
+        },
+        {
+          "id": "6.6",
+          "label": "getKey",
+          "code": "getKey()",
+          "kind": "command"
+        },
+        {
+          "id": "6.7",
+          "label": "Get",
+          "code": "Get n",
+          "kind": "command"
+        },
+        {
+          "id": "6.8",
+          "label": "GetStr",
+          "code": "GetStr s",
+          "kind": "command"
+        },
+        {
+          "id": "6.9",
+          "label": "Send",
+          "code": "Send \"SET LIGHT ON\"",
+          "kind": "command"
+        },
+        {
+          "id": "6.A",
+          "label": "RefreshProbeVars",
+          "code": "RefreshProbeVars",
+          "kind": "command"
+        }
+      ]
+    },
+    {
+      "id": "7",
+      "label": "Modo",
+      "icon": "07_numero_decimal.svg",
+      "children": [
+        {
+          "id": "7.1",
+          "label": "Mostrar dígitos",
+          "children": [
+            {
+              "id": "7.1.1",
+              "label": "Flotante",
+              "code": "setMode(1,1)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.2",
+              "label": "Flotante1",
+              "code": "setMode(1,2)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.3",
+              "label": "Flotante2",
+              "code": "setMode(1,3)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.4",
+              "label": "Flotante3",
+              "code": "setMode(1,4)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.5",
+              "label": "Flotante4",
+              "code": "setMode(1,5)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.6",
+              "label": "Flotante5",
+              "code": "setMode(1,6)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.7",
+              "label": "Flotante6",
+              "code": "setMode(1,7)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.8",
+              "label": "Flotante7",
+              "code": "setMode(1,8)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.9",
+              "label": "Flotante8",
+              "code": "setMode(1,9)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.A",
+              "label": "Flotante9",
+              "code": "setMode(1,10)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.B",
+              "label": "Flotante10",
+              "code": "setMode(1,11)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.C",
+              "label": "Flotante11",
+              "code": "setMode(1,12)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.D",
+              "label": "Flotante12",
+              "code": "setMode(1,13)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.E",
+              "label": "Fijo0",
+              "code": "setMode(1,14)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.F",
+              "label": "Fijo1",
+              "code": "setMode(1,15)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.G",
+              "label": "Fijo2",
+              "code": "setMode(1,16)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.H",
+              "label": "Fijo3",
+              "code": "setMode(1,17)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.I",
+              "label": "Fijo4",
+              "code": "setMode(1,18)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.J",
+              "label": "Fijo5",
+              "code": "setMode(1,19)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.K",
+              "label": "Fijo6",
+              "code": "setMode(1,20)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.L",
+              "label": "Fijo7",
+              "code": "setMode(1,21)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.M",
+              "label": "Fijo8",
+              "code": "setMode(1,22)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.N",
+              "label": "Fijo9",
+              "code": "setMode(1,23)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.O",
+              "label": "Fijo10",
+              "code": "setMode(1,24)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.P",
+              "label": "Fijo11",
+              "code": "setMode(1,25)",
+              "kind": "command"
+            },
+            {
+              "id": "7.1.Q",
+              "label": "Fijo12",
+              "code": "setMode(1,26)",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "7.2",
+          "label": "Ángulos",
+          "children": [
+            {
+              "id": "7.2.1",
+              "label": "Radián",
+              "code": "setMode(2,1)",
+              "kind": "command"
+            },
+            {
+              "id": "7.2.2",
+              "label": "Grado",
+              "code": "setMode(2,2)",
+              "kind": "command"
+            },
+            {
+              "id": "7.2.3",
+              "label": "Gradián",
+              "code": "setMode(2,3)",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "7.3",
+          "label": "Formato exponencial",
+          "children": [
+            {
+              "id": "7.3.1",
+              "label": "Normal",
+              "code": "setMode(3,1)",
+              "kind": "command"
+            },
+            {
+              "id": "7.3.2",
+              "label": "Científico",
+              "code": "setMode(3,2)",
+              "kind": "command"
+            },
+            {
+              "id": "7.3.3",
+              "label": "Ingeniería",
+              "code": "setMode(3,3)",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "7.4",
+          "label": "Real o complejo",
+          "children": [
+            {
+              "id": "7.4.1",
+              "label": "Real",
+              "code": "setMode(4,1)",
+              "kind": "command"
+            },
+            {
+              "id": "7.4.2",
+              "label": "Rectangular",
+              "code": "setMode(4,2)",
+              "kind": "command"
+            },
+            {
+              "id": "7.4.3",
+              "label": "Polar",
+              "code": "setMode(4,3)",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "7.5",
+          "label": "Auto o aprox",
+          "children": [
+            {
+              "id": "7.5.1",
+              "label": "Auto",
+              "code": "setMode(5,1)",
+              "kind": "command"
+            },
+            {
+              "id": "7.5.2",
+              "label": "Aproximado",
+              "code": "setMode(5,2)",
+              "kind": "command"
+            },
+            {
+              "id": "7.5.3",
+              "label": "Exacto",
+              "code": "setMode(5,3)",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "7.6",
+          "label": "Formato de vector",
+          "children": [
+            {
+              "id": "7.6.1",
+              "label": "Rectangular",
+              "code": "setMode(6,1)",
+              "kind": "command"
+            },
+            {
+              "id": "7.6.2",
+              "label": "Cilíndrico",
+              "code": "setMode(6,2)",
+              "kind": "command"
+            },
+            {
+              "id": "7.6.3",
+              "label": "Esférico",
+              "code": "setMode(6,3)",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "7.7",
+          "label": "Base",
+          "children": [
+            {
+              "id": "7.7.1",
+              "label": "Decimal",
+              "code": "setMode(7,1)",
+              "kind": "command"
+            },
+            {
+              "id": "7.7.2",
+              "label": "Hexadecimal",
+              "code": "setMode(7,2)",
+              "kind": "command"
+            },
+            {
+              "id": "7.7.3",
+              "label": "Binario",
+              "code": "setMode(7,3)",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "7.8",
+          "label": "Sistema de unidades",
+          "children": [
+            {
+              "id": "7.8.1",
+              "label": "SI",
+              "code": "setMode(8,1)",
+              "kind": "command"
+            },
+            {
+              "id": "7.8.2",
+              "label": "Inglés (EE. UU.)",
+              "code": "setMode(8,2)",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "7.9",
+          "label": "Obtener modo",
+          "code": "getMode(0)",
+          "kind": "command"
+        },
+        {
+          "id": "7.A",
+          "label": "Obtener información de idioma",
+          "code": "getLangInfo()",
+          "kind": "command"
+        },
+        {
+          "id": "7.B",
+          "label": "Obtener información de la plataforma",
+          "code": "getPlatform()",
+          "kind": "command"
+        }
+      ]
+    },
+    {
+      "id": "8",
+      "label": "Hub",
+      "icon": "08_direcciones.svg",
+      "children": [
+        {
+          "id": "8.1",
+          "label": "Send \"SET\"",
+          "children": [
+            {
+              "id": "8.1.1",
+              "label": "LIGHT",
+              "code": "Send \"SET LIGHT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.2",
+              "label": "COLOR",
+              "code": "Send \"SET COLOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.3",
+              "label": "SOUND",
+              "code": "Send \"SET SOUND ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.4",
+              "label": "LED",
+              "code": "Send \"SET LED ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.5",
+              "label": "RGB",
+              "code": "Send \"SET RGB ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.6",
+              "label": "SPEAKER",
+              "code": "Send \"SET SPEAKER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.7",
+              "label": "POWER",
+              "code": "Send \"SET POWER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.8",
+              "label": "SERVO.CONTINUOUS",
+              "code": "Send \"SET SERVO.CONTINUOUS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.9",
+              "label": "ANALOG.OUT",
+              "code": "Send \"SET ANALOG.OUT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.10",
+              "label": "VIB.MOTOR",
+              "code": "Send \"SET VIB.MOTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.11",
+              "label": "COLOR.RED",
+              "code": "Send \"SET COLOR.RED ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.12",
+              "label": "COLOR.GREEN",
+              "code": "Send \"SET COLOR.GREEN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.13",
+              "label": "COLOR.BLUE",
+              "code": "Send \"SET COLOR.BLUE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.14",
+              "label": "BUZZER",
+              "code": "Send \"SET BUZZER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.15",
+              "label": "RELAY",
+              "code": "Send \"SET RELAY ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.16",
+              "label": "SERVO",
+              "code": "Send \"SET SERVO ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.17",
+              "label": "SQUAREWAVE",
+              "code": "Send \"SET SQUAREWAVE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.18",
+              "label": "DIGITAL.OUT",
+              "code": "Send \"SET DIGITAL.OUT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.19",
+              "label": "AVERAGING",
+              "code": "Send \"SET AVERAGING ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.20",
+              "label": "BBPORT",
+              "code": "Send \"SET BBPORT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.1.21",
+              "label": "Send \"SET\"",
+              "code": "Send \"SET\"",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "8.2",
+          "label": "Send \"READ\"",
+          "children": [
+            {
+              "id": "8.2.1",
+              "label": "BRIGHTNESS",
+              "code": "Send \"READ BRIGHTNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.2",
+              "label": "DHT",
+              "code": "Send \"READ DHT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.3",
+              "label": "RANGER",
+              "code": "Send \"READ RANGER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.4",
+              "label": "LIGHTLEVEL",
+              "code": "Send \"READ LIGHTLEVEL ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.5",
+              "label": "TEMPERATURE",
+              "code": "Send \"READ TEMPERATURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.6",
+              "label": "MOISTURE",
+              "code": "Send \"READ MOISTURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.7",
+              "label": "MAGNETIC",
+              "code": "Send \"READ MAGNETIC ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.8",
+              "label": "VERNIER",
+              "code": "Send \"READ VERNIER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.9",
+              "label": "ANALOG.IN",
+              "code": "Send \"READ ANALOG.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.10",
+              "label": "DIGITAL.IN",
+              "code": "Send \"READ DIGITAL.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.11",
+              "label": "SWITCH",
+              "code": "Send \"READ SWITCH ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.12",
+              "label": "BUTTON",
+              "code": "Send \"READ BUTTON ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.13",
+              "label": "MOTION",
+              "code": "Send \"READ MOTION ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.14",
+              "label": "POTENTIOMETER",
+              "code": "Send \"READ POTENTIOMETER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.15",
+              "label": "THERMISTOR",
+              "code": "Send \"READ THERMISTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.16",
+              "label": "AVERAGING",
+              "code": "Send \"READ AVERAGING ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.17",
+              "label": "RGB",
+              "code": "Send \"READ RGB ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.18",
+              "label": "LOUDNESS",
+              "code": "Send \"READ LOUDNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.19",
+              "label": "BBPORT",
+              "code": "Send \"READ BBPORT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.2.20",
+              "label": "Send \"READ\"",
+              "code": "Send \"READ\"",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "8.3",
+          "label": "Settings",
+          "children": [
+            {
+              "id": "8.3.1",
+              "label": "ON",
+              "code": "ON",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.2",
+              "label": "OFF",
+              "code": "OFF",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.3",
+              "label": "TO",
+              "code": "TO",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.4",
+              "label": "TIME",
+              "code": "TIME",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.5",
+              "label": "BLINK",
+              "code": "BLINK",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.6",
+              "label": "TEMPERATURE",
+              "code": "TEMPERATURE",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.7",
+              "label": "HUMIDITY",
+              "code": "HUMIDITY",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.8",
+              "label": "CW",
+              "code": "CW",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.9",
+              "label": "CCW",
+              "code": "CCW",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.10",
+              "label": "NAMED",
+              "code": "NAMED",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.11",
+              "label": "PULLDOWN",
+              "code": "PULLDOWN",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.12",
+              "label": "INPUT",
+              "code": "INPUT",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.13",
+              "label": "PH",
+              "code": "PH",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.14",
+              "label": "FORCE10",
+              "code": "FORCE10",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.15",
+              "label": "FORCE50",
+              "code": "FORCE50",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.16",
+              "label": "PRESSURE",
+              "code": "PRESSURE",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.17",
+              "label": "PRESSURE2",
+              "code": "PRESSURE2",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.18",
+              "label": "TEMPO",
+              "code": "TEMPO",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.19",
+              "label": "PATTERN",
+              "code": "PATTERN",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.20",
+              "label": "AND",
+              "code": "AND",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.3.21",
+              "label": "RATE",
+              "code": "RATE",
+              "kind": "fragment"
+            }
+          ]
+        },
+        {
+          "id": "8.4",
+          "label": "Wait",
+          "code": "Wait 1",
+          "kind": "command"
+        },
+        {
+          "id": "8.5",
+          "label": "Get",
+          "code": "Get valor",
+          "kind": "command"
+        },
+        {
+          "id": "8.6",
+          "label": "eval(",
+          "code": "eval(expresión)",
+          "kind": "command"
+        },
+        {
+          "id": "8.7",
+          "label": "Rover (RV)",
+          "children": [
+            {
+              "id": "8.7.1",
+              "label": "Drive RV",
+              "children": [
+                {
+                  "id": "8.7.1.1",
+                  "label": "FORWARD",
+                  "code": "FORWARD",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.1.2",
+                  "label": "BACKWARD",
+                  "code": "BACKWARD",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.1.3",
+                  "label": "LEFT",
+                  "code": "LEFT",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.1.4",
+                  "label": "RIGHT",
+                  "code": "RIGHT",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.1.5",
+                  "label": "STOP",
+                  "code": "STOP",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.1.6",
+                  "label": "RESUME",
+                  "code": "RESUME",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.1.7",
+                  "label": "STAY",
+                  "code": "STAY",
+                  "kind": "fragment"
+                }
+              ]
+            },
+            {
+              "id": "8.7.2",
+              "label": "Read RV Sensors",
+              "children": [
+                {
+                  "id": "8.7.2.1",
+                  "label": "RV.RANGER",
+                  "code": "RV.RANGER",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.2.2",
+                  "label": "RV.COLORINPUT",
+                  "code": "RV.COLORINPUT",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.2.3",
+                  "label": "RV.COLORINPUT.RED",
+                  "code": "RV.COLORINPUT.RED",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.2.4",
+                  "label": "RV.COLORINPUT.GREEN",
+                  "code": "RV.COLORINPUT.GREEN",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.2.5",
+                  "label": "RV.COLORINPUT.BLUE",
+                  "code": "RV.COLORINPUT.BLUE",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.2.6",
+                  "label": "RV.COLORINPUT.GRAY",
+                  "code": "RV.COLORINPUT.GRAY",
+                  "kind": "fragment"
+                }
+              ]
+            },
+            {
+              "id": "8.7.3",
+              "label": "RV Settings",
+              "children": [
+                {
+                  "id": "8.7.3.1",
+                  "label": "SPEED",
+                  "code": "SPEED",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.2",
+                  "label": "TIME",
+                  "code": "TIME",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.3",
+                  "label": "DISTANCE",
+                  "code": "DISTANCE",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.4",
+                  "label": "UNITS/S",
+                  "code": "UNITS/S",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.5",
+                  "label": "M/S",
+                  "code": "M/S",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.6",
+                  "label": "REVS/S",
+                  "code": "REVS/S",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.7",
+                  "label": "UNITS",
+                  "code": "UNITS",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.8",
+                  "label": "M",
+                  "code": "M",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.9",
+                  "label": "REVS",
+                  "code": "REVS",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.10",
+                  "label": "DEGREES",
+                  "code": "DEGREES",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.11",
+                  "label": "RADIANS",
+                  "code": "RADIANS",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.12",
+                  "label": "GRADS",
+                  "code": "GRADS",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.13",
+                  "label": "XYLINE",
+                  "code": "XYLINE",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.14",
+                  "label": "LEFT",
+                  "code": "LEFT",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.15",
+                  "label": "RIGHT",
+                  "code": "RIGHT",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.16",
+                  "label": "BRAKE",
+                  "code": "BRAKE",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.17",
+                  "label": "COAST",
+                  "code": "COAST",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.18",
+                  "label": "CW",
+                  "code": "CW",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.3.19",
+                  "label": "CCW",
+                  "code": "CCW",
+                  "kind": "fragment"
+                }
+              ]
+            },
+            {
+              "id": "8.7.4",
+              "label": "Read RV Path",
+              "children": [
+                {
+                  "id": "8.7.4.1",
+                  "label": "RV.WAYPOINT.XYTHDRN",
+                  "code": "RV.WAYPOINT.XYTHDRN",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.2",
+                  "label": "RV.WAYPOINT.PREV",
+                  "code": "RV.WAYPOINT.PREV",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.3",
+                  "label": "RV.WAYPOINT.CMDNUM",
+                  "code": "RV.WAYPOINT.CMDNUM",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.4",
+                  "label": "RV.PATHLIST.X",
+                  "code": "RV.PATHLIST.X",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.5",
+                  "label": "RV.PATHLIST.Y",
+                  "code": "RV.PATHLIST.Y",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.6",
+                  "label": "RV.PATHLIST.TIME",
+                  "code": "RV.PATHLIST.TIME",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.7",
+                  "label": "RV.PATHLIST.HEADING",
+                  "code": "RV.PATHLIST.HEADING",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.8",
+                  "label": "RV.PATHLIST.DISTANCE",
+                  "code": "RV.PATHLIST.DISTANCE",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.9",
+                  "label": "RV.PATHLIST.REVS",
+                  "code": "RV.PATHLIST.REVS",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.10",
+                  "label": "RV.PATHLIST.CMDNUM",
+                  "code": "RV.PATHLIST.CMDNUM",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.11",
+                  "label": "RV.WAYPOINT.X",
+                  "code": "RV.WAYPOINT.X",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.12",
+                  "label": "RV.WAYPOINT.Y",
+                  "code": "RV.WAYPOINT.Y",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.13",
+                  "label": "RV.WAYPOINT.TIME",
+                  "code": "RV.WAYPOINT.TIME",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.14",
+                  "label": "RV.WAYPOINT.HEADING",
+                  "code": "RV.WAYPOINT.HEADING",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.15",
+                  "label": "RV.WAYPOINT.DISTANCE",
+                  "code": "RV.WAYPOINT.DISTANCE",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.4.16",
+                  "label": "RV.WAYPOINT.REVS",
+                  "code": "RV.WAYPOINT.REVS",
+                  "kind": "fragment"
+                }
+              ]
+            },
+            {
+              "id": "8.7.5",
+              "label": "RV Color",
+              "children": [
+                {
+                  "id": "8.7.5.1",
+                  "label": "RV.COLOR",
+                  "code": "RV.COLOR",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.5.2",
+                  "label": "RV.COLOR.RED",
+                  "code": "RV.COLOR.RED",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.5.3",
+                  "label": "RV.COLOR.GREEN",
+                  "code": "RV.COLOR.GREEN",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.5.4",
+                  "label": "RV.COLOR.BLUE",
+                  "code": "RV.COLOR.BLUE",
+                  "kind": "fragment"
+                }
+              ]
+            },
+            {
+              "id": "8.7.6",
+              "label": "RV Setup",
+              "children": [
+                {
+                  "id": "8.7.6.1",
+                  "label": "RV.POSITION",
+                  "code": "RV.POSITION",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.6.2",
+                  "label": "RV.GYRO",
+                  "code": "RV.GYRO",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.6.3",
+                  "label": "RV.GRID.ORIGIN",
+                  "code": "RV.GRID.ORIGIN",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.6.4",
+                  "label": "RV.GRID.M/UNIT",
+                  "code": "RV.GRID.M/UNIT",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.6.5",
+                  "label": "RV.PATH CLEAR",
+                  "code": "RV.PATH CLEAR",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.6.6",
+                  "label": "RV.MARK",
+                  "code": "RV.MARK",
+                  "kind": "fragment"
+                }
+              ]
+            },
+            {
+              "id": "8.7.7",
+              "label": "RV Control",
+              "children": [
+                {
+                  "id": "8.7.7.1",
+                  "label": "SET RV.MOTORS",
+                  "code": "SET RV.MOTORS",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.7.2",
+                  "label": "SET RV.MOTOR.L",
+                  "code": "SET RV.MOTOR.L",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.7.3",
+                  "label": "SET RV.MOTOR.R",
+                  "code": "SET RV.MOTOR.R",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.7.4",
+                  "label": "SET RV.ENCODERSGYRO 0",
+                  "code": "SET RV.ENCODERSGYRO 0",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.7.5",
+                  "label": "READ RV.ENCODERSGYRO",
+                  "code": "READ RV.ENCODERSGYRO",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.7.6",
+                  "label": "READ RV.GYRO",
+                  "code": "READ RV.GYRO",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.7.7",
+                  "label": "READ RV.DONE",
+                  "code": "READ RV.DONE",
+                  "kind": "fragment"
+                },
+                {
+                  "id": "8.7.7.8",
+                  "label": "READ RV.ETA",
+                  "code": "READ RV.ETA",
+                  "kind": "fragment"
+                }
+              ]
+            },
+            {
+              "id": "8.7.8",
+              "label": "Send \"CONNECT RV\"",
+              "code": "Send \"CONNECT RV\"",
+              "kind": "command"
+            },
+            {
+              "id": "8.7.9",
+              "label": "Send \"DISCONNECT RV\"",
+              "code": "Send \"DISCONNECT RV\"",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "8.8",
+          "label": "Send \"CONNECT–Output\"",
+          "children": [
+            {
+              "id": "8.8.1",
+              "label": "LED",
+              "code": "Send \"CONNECT LED ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.2",
+              "label": "RGB",
+              "code": "Send \"CONNECT RGB ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.3",
+              "label": "SPEAKER",
+              "code": "Send \"CONNECT SPEAKER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.4",
+              "label": "POWER",
+              "code": "Send \"CONNECT POWER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.5",
+              "label": "SERVO.CONTINUOUS",
+              "code": "Send \"CONNECT SERVO.CONTINUOUS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.6",
+              "label": "ANALOG.OUT",
+              "code": "Send \"CONNECT ANALOG.OUT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.7",
+              "label": "VIB.MOTOR",
+              "code": "Send \"CONNECT VIB.MOTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.8",
+              "label": "BUZZER",
+              "code": "Send \"CONNECT BUZZER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.9",
+              "label": "RELAY",
+              "code": "Send \"CONNECT RELAY ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.10",
+              "label": "SERVO",
+              "code": "Send \"CONNECT SERVO ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.11",
+              "label": "SQUAREWAVE",
+              "code": "Send \"CONNECT SQUAREWAVE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.12",
+              "label": "DIGITAL.OUT",
+              "code": "Send \"CONNECT DIGITAL.OUT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.13",
+              "label": "BBPORT",
+              "code": "Send \"CONNECT BBPORT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.8.14",
+              "label": "Send \"CONNECT\"",
+              "code": "Send \"CONNECT\"",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "8.9",
+          "label": "Send \"CONNECT–Input\"",
+          "children": [
+            {
+              "id": "8.9.1",
+              "label": "DHT",
+              "code": "Send \"CONNECT DHT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.2",
+              "label": "RANGER",
+              "code": "Send \"CONNECT RANGER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.3",
+              "label": "LIGHTLEVEL",
+              "code": "Send \"CONNECT LIGHTLEVEL ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.4",
+              "label": "TEMPERATURE",
+              "code": "Send \"CONNECT TEMPERATURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.5",
+              "label": "MOISTURE",
+              "code": "Send \"CONNECT MOISTURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.6",
+              "label": "MAGNETIC",
+              "code": "Send \"CONNECT MAGNETIC ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.7",
+              "label": "VERNIER",
+              "code": "Send \"CONNECT VERNIER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.8",
+              "label": "ANALOG.IN",
+              "code": "Send \"CONNECT ANALOG.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.9",
+              "label": "DIGITAL.IN",
+              "code": "Send \"CONNECT DIGITAL.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.10",
+              "label": "SWITCH",
+              "code": "Send \"CONNECT SWITCH ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.11",
+              "label": "BUTTON",
+              "code": "Send \"CONNECT BUTTON ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.12",
+              "label": "MOTION",
+              "code": "Send \"CONNECT MOTION ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.13",
+              "label": "POTENTIOMETER",
+              "code": "Send \"CONNECT POTENTIOMETER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.14",
+              "label": "THERMISTOR",
+              "code": "Send \"CONNECT THERMISTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.15",
+              "label": "RGB",
+              "code": "Send \"CONNECT RGB ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.16",
+              "label": "LOUDNESS",
+              "code": "Send \"CONNECT LOUDNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.17",
+              "label": "BBPORT",
+              "code": "Send \"CONNECT BBPORT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.9.18",
+              "label": "Send \"CONNECT\"",
+              "code": "Send \"CONNECT\"",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "8.A",
+          "label": "Ports",
+          "children": [
+            {
+              "id": "8.A.1",
+              "label": "OUT 1",
+              "code": "OUT 1",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.2",
+              "label": "OUT 2",
+              "code": "OUT 2",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.3",
+              "label": "OUT 3",
+              "code": "OUT 3",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.4",
+              "label": "IN 1",
+              "code": "IN 1",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.5",
+              "label": "IN 2",
+              "code": "IN 2",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.6",
+              "label": "IN 3",
+              "code": "IN 3",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.7",
+              "label": "I2C",
+              "code": "I2C",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.8",
+              "label": "BB 1",
+              "code": "BB 1",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.9",
+              "label": "BB 2",
+              "code": "BB 2",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.10",
+              "label": "BB 3",
+              "code": "BB 3",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.11",
+              "label": "BB 4",
+              "code": "BB 4",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.12",
+              "label": "BB 5",
+              "code": "BB 5",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.13",
+              "label": "BB 6",
+              "code": "BB 6",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.14",
+              "label": "BB 7",
+              "code": "BB 7",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.15",
+              "label": "BB 8",
+              "code": "BB 8",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.16",
+              "label": "BB 9",
+              "code": "BB 9",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.17",
+              "label": "BB 10",
+              "code": "BB 10",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.A.18",
+              "label": "BBPORT",
+              "code": "BBPORT",
+              "kind": "fragment"
+            }
+          ]
+        },
+        {
+          "id": "8.B",
+          "label": "Send \"RANGE\"",
+          "children": [
+            {
+              "id": "8.B.1",
+              "label": "BRIGHTNESS",
+              "code": "Send \"RANGE BRIGHTNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.B.2",
+              "label": "LOUDNESS",
+              "code": "Send \"RANGE LOUDNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.B.3",
+              "label": "LIGHTLEVEL",
+              "code": "Send \"RANGE LIGHTLEVEL ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.B.4",
+              "label": "TEMPERATURE",
+              "code": "Send \"RANGE TEMPERATURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.B.5",
+              "label": "POTENTIOMETER",
+              "code": "Send \"RANGE POTENTIOMETER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.B.6",
+              "label": "MOISTURE",
+              "code": "Send \"RANGE MOISTURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.B.7",
+              "label": "THERMISTOR",
+              "code": "Send \"RANGE THERMISTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.B.8",
+              "label": "ANALOG.IN",
+              "code": "Send \"RANGE ANALOG.IN ...\"",
+              "kind": "fragment"
+            }
+          ]
+        },
+        {
+          "id": "8.C",
+          "label": "Send \"AVERAGE\"",
+          "children": [
+            {
+              "id": "8.C.1",
+              "label": "BRIGHTNESS",
+              "code": "Send \"AVERAGE BRIGHTNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.C.2",
+              "label": "LOUDNESS",
+              "code": "Send \"AVERAGE LOUDNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.C.3",
+              "label": "LIGHTLEVEL",
+              "code": "Send \"AVERAGE LIGHTLEVEL ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.C.4",
+              "label": "TEMPERATURE",
+              "code": "Send \"AVERAGE TEMPERATURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.C.5",
+              "label": "POTENTIOMETER",
+              "code": "Send \"AVERAGE POTENTIOMETER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.C.6",
+              "label": "MOISTURE",
+              "code": "Send \"AVERAGE MOISTURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.C.7",
+              "label": "THERMISTOR",
+              "code": "Send \"AVERAGE THERMISTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.C.8",
+              "label": "ANALOG.IN",
+              "code": "Send \"AVERAGE ANALOG.IN ...\"",
+              "kind": "fragment"
+            }
+          ]
+        },
+        {
+          "id": "8.D",
+          "label": "Send \"DISCONNECT–Output\"",
+          "children": [
+            {
+              "id": "8.D.1",
+              "label": "LED",
+              "code": "Send \"DISCONNECT LED ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.2",
+              "label": "RGB",
+              "code": "Send \"DISCONNECT RGB ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.3",
+              "label": "SPEAKER",
+              "code": "Send \"DISCONNECT SPEAKER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.4",
+              "label": "POWER",
+              "code": "Send \"DISCONNECT POWER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.5",
+              "label": "SERVO.CONTINUOUS",
+              "code": "Send \"DISCONNECT SERVO.CONTINUOUS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.6",
+              "label": "ANALOG.OUT",
+              "code": "Send \"DISCONNECT ANALOG.OUT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.7",
+              "label": "VIB.MOTOR",
+              "code": "Send \"DISCONNECT VIB.MOTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.8",
+              "label": "BUZZER",
+              "code": "Send \"DISCONNECT BUZZER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.9",
+              "label": "RELAY",
+              "code": "Send \"DISCONNECT RELAY ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.10",
+              "label": "SERVO",
+              "code": "Send \"DISCONNECT SERVO ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.11",
+              "label": "SQUAREWAVE",
+              "code": "Send \"DISCONNECT SQUAREWAVE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.12",
+              "label": "DIGITAL.OUT",
+              "code": "Send \"DISCONNECT DIGITAL.OUT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.13",
+              "label": "BBPORT",
+              "code": "Send \"DISCONNECT BBPORT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.D.14",
+              "label": "Send \"DISCONNECT\"",
+              "code": "Send \"DISCONNECT\"",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "8.E",
+          "label": "Send \"DISCONNECT–Input\"",
+          "children": [
+            {
+              "id": "8.E.1",
+              "label": "DHT",
+              "code": "Send \"DISCONNECT DHT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.2",
+              "label": "RANGER",
+              "code": "Send \"DISCONNECT RANGER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.3",
+              "label": "LIGHTLEVEL",
+              "code": "Send \"DISCONNECT LIGHTLEVEL ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.4",
+              "label": "TEMPERATURE",
+              "code": "Send \"DISCONNECT TEMPERATURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.5",
+              "label": "MOISTURE",
+              "code": "Send \"DISCONNECT MOISTURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.6",
+              "label": "MAGNETIC",
+              "code": "Send \"DISCONNECT MAGNETIC ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.7",
+              "label": "VERNIER",
+              "code": "Send \"DISCONNECT VERNIER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.8",
+              "label": "ANALOG.IN",
+              "code": "Send \"DISCONNECT ANALOG.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.9",
+              "label": "DIGITAL.IN",
+              "code": "Send \"DISCONNECT DIGITAL.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.10",
+              "label": "SWITCH",
+              "code": "Send \"DISCONNECT SWITCH ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.11",
+              "label": "BUTTON",
+              "code": "Send \"DISCONNECT BUTTON ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.12",
+              "label": "MOTION",
+              "code": "Send \"DISCONNECT MOTION ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.13",
+              "label": "POTENTIOMETER",
+              "code": "Send \"DISCONNECT POTENTIOMETER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.14",
+              "label": "THERMISTOR",
+              "code": "Send \"DISCONNECT THERMISTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.15",
+              "label": "RGB",
+              "code": "Send \"DISCONNECT RGB ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.16",
+              "label": "LOUDNESS",
+              "code": "Send \"DISCONNECT LOUDNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.17",
+              "label": "BBPORT",
+              "code": "Send \"DISCONNECT BBPORT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.E.18",
+              "label": "Send \"DISCONNECT\"",
+              "code": "Send \"DISCONNECT\"",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "8.F",
+          "label": "Manage",
+          "children": [
+            {
+              "id": "8.F.1",
+              "label": "Send \"BEGIN\"",
+              "code": "Send \"BEGIN\"",
+              "kind": "command"
+            },
+            {
+              "id": "8.F.2",
+              "label": "Send \"ISTI\"",
+              "code": "Send \"ISTI\"",
+              "kind": "command"
+            },
+            {
+              "id": "8.F.3",
+              "label": "Send \"WHO\"",
+              "code": "Send \"WHO\"",
+              "kind": "command"
+            },
+            {
+              "id": "8.F.4",
+              "label": "Send \"WHAT\"",
+              "code": "Send \"WHAT\"",
+              "kind": "command"
+            },
+            {
+              "id": "8.F.5",
+              "label": "Send \"HELP\"",
+              "code": "Send \"HELP\"",
+              "kind": "command"
+            },
+            {
+              "id": "8.F.6",
+              "label": "Send \"VERSION\"",
+              "code": "Send \"VERSION\"",
+              "kind": "command"
+            },
+            {
+              "id": "8.F.7",
+              "label": "Send \"ABOUT\"",
+              "code": "Send \"ABOUT\"",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "8.G",
+          "label": "Send \"COLLECT\"",
+          "children": [
+            {
+              "id": "8.G.1",
+              "label": "Send \"COLLECT\"",
+              "code": "Send \"COLLECT\"",
+              "kind": "command"
+            },
+            {
+              "id": "8.G.2",
+              "label": "BRIGHTNESS",
+              "code": "Send \"COLLECT BRIGHTNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.3",
+              "label": "DHT",
+              "code": "Send \"COLLECT DHT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.4",
+              "label": "RANGER",
+              "code": "Send \"COLLECT RANGER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.5",
+              "label": "LIGHTLEVEL",
+              "code": "Send \"COLLECT LIGHTLEVEL ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.6",
+              "label": "TEMPERATURE",
+              "code": "Send \"COLLECT TEMPERATURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.7",
+              "label": "MOISTURE",
+              "code": "Send \"COLLECT MOISTURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.8",
+              "label": "MAGNETIC",
+              "code": "Send \"COLLECT MAGNETIC ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.9",
+              "label": "VERNIER",
+              "code": "Send \"COLLECT VERNIER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.10",
+              "label": "ANALOG.IN",
+              "code": "Send \"COLLECT ANALOG.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.11",
+              "label": "DIGITAL.IN",
+              "code": "Send \"COLLECT DIGITAL.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.12",
+              "label": "SWITCH",
+              "code": "Send \"COLLECT SWITCH ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.13",
+              "label": "BUTTON",
+              "code": "Send \"COLLECT BUTTON ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.14",
+              "label": "MOTION",
+              "code": "Send \"COLLECT MOTION ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.15",
+              "label": "POTENTIOMETER",
+              "code": "Send \"COLLECT POTENTIOMETER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.16",
+              "label": "THERMISTOR",
+              "code": "Send \"COLLECT THERMISTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.17",
+              "label": "LOUDNESS",
+              "code": "Send \"COLLECT LOUDNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.G.18",
+              "label": "BBPORT",
+              "code": "Send \"COLLECT BBPORT ...\"",
+              "kind": "fragment"
+            }
+          ]
+        },
+        {
+          "id": "8.H",
+          "label": "Send \"READ LIST\"",
+          "children": [
+            {
+              "id": "8.H.1",
+              "label": "BRIGHTNESS",
+              "code": "Send \"READ LIST BRIGHTNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.2",
+              "label": "DHT",
+              "code": "Send \"READ LIST DHT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.3",
+              "label": "RANGER",
+              "code": "Send \"READ LIST RANGER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.4",
+              "label": "LIGHTLEVEL",
+              "code": "Send \"READ LIST LIGHTLEVEL ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.5",
+              "label": "TEMPERATURE",
+              "code": "Send \"READ LIST TEMPERATURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.6",
+              "label": "MOISTURE",
+              "code": "Send \"READ LIST MOISTURE ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.7",
+              "label": "MAGNETIC",
+              "code": "Send \"READ LIST MAGNETIC ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.8",
+              "label": "VERNIER",
+              "code": "Send \"READ LIST VERNIER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.9",
+              "label": "ANALOG.IN",
+              "code": "Send \"READ LIST ANALOG.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.10",
+              "label": "DIGITAL.IN",
+              "code": "Send \"READ LIST DIGITAL.IN ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.11",
+              "label": "SWITCH",
+              "code": "Send \"READ LIST SWITCH ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.12",
+              "label": "BUTTON",
+              "code": "Send \"READ LIST BUTTON ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.13",
+              "label": "MOTION",
+              "code": "Send \"READ LIST MOTION ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.14",
+              "label": "POTENTIOMETER",
+              "code": "Send \"READ LIST POTENTIOMETER ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.15",
+              "label": "THERMISTOR",
+              "code": "Send \"READ LIST THERMISTOR ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.16",
+              "label": "LOUDNESS",
+              "code": "Send \"READ LIST LOUDNESS ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.17",
+              "label": "BBPORT",
+              "code": "Send \"READ LIST BBPORT ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.18",
+              "label": "TIME",
+              "code": "Send \"READ LIST TIME ...\"",
+              "kind": "fragment"
+            },
+            {
+              "id": "8.H.19",
+              "label": "Send \"READ LIST\"",
+              "code": "Send \"READ LIST\"",
+              "kind": "command"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "9",
+      "label": "Dibujar",
+      "icon": "09_figuras.svg",
+      "children": [
+        {
+          "id": "9.1",
+          "label": "Formas",
+          "children": [
+            {
+              "id": "9.1.1",
+              "label": "DrawLine",
+              "code": "DrawLine x1,y1,x2,y2",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.2",
+              "label": "DrawRect",
+              "code": "DrawRect x,y,ancho,alto",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.3",
+              "label": "FillRect",
+              "code": "FillRect x,y,ancho,alto",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.4",
+              "label": "DrawCircle",
+              "code": "DrawCircle x,y,radio",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.5",
+              "label": "FillCircle",
+              "code": "FillCircle x,y,radio",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.6",
+              "label": "DrawText",
+              "code": "DrawText x,y,\"Texto\"",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.7",
+              "label": "DrawArc",
+              "code": "DrawArc x,y,ancho,alto,angInicio,angArco",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.8",
+              "label": "FillArc",
+              "code": "FillArc x,y,ancho,alto,angInicio,angArco",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.9",
+              "label": "DrawPoly",
+              "code": "DrawPoly x1,y1,x2,y2,x3,y3",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.A",
+              "label": "FillPoly",
+              "code": "FillPoly x1,y1,x2,y2,x3,y3",
+              "kind": "command"
+            },
+            {
+              "id": "9.1.B",
+              "label": "PlotXY",
+              "code": "PlotXY x,y,estilo",
+              "kind": "command"
+            }
+          ]
+        },
+        {
+          "id": "9.2",
+          "label": "Control",
+          "children": [
+            {
+              "id": "9.2.1",
+              "label": "Clear",
+              "code": "Clear",
+              "kind": "command"
+            },
+            {
+              "id": "9.2.2",
+              "label": "SetColor",
+              "code": "SetColor rojo,verde,azul",
+              "kind": "command"
+            },
+            {
+              "id": "9.2.3",
+              "label": "SetPen",
+              "code": "SetPen grosor,estilo",
+              "kind": "command"
+            },
+            {
+              "id": "9.2.4",
+              "label": "SetWindow",
+              "code": "SetWindow xmin,xmax,ymin,ymax",
+              "kind": "command"
+            },
+            {
+              "id": "9.2.5",
+              "label": "UseBuffer",
+              "code": "UseBuffer",
+              "kind": "command"
+            },
+            {
+              "id": "9.2.6",
+              "label": "PaintBuffer",
+              "code": "PaintBuffer",
+              "kind": "command"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
