@@ -168,6 +168,7 @@
     }
     async connect() {
       ensure(!this.connected, "Ya existe una conexión.");
+      let phase = 'open';
       try {
         if (!this.device.opened) await this.device.open();
         // Older Nspire handsets issue their address-request packet after a
@@ -183,7 +184,9 @@
             entry.alt.endpoints?.some(p => p.type === "bulk" && p.direction === "out"));
         ensure(found, "La interfaz USB de la calculadora no ofrece endpoints de transferencia.");
         this.iface = found.iface.interfaceNumber;
+        phase = 'claimInterface';
         await this.device.claimInterface(this.iface);
+        phase = 'initialize';
         if (found.alt.alternateSetting) await this.device.selectAlternateInterface(this.iface, found.alt.alternateSetting);
         const inEp = found.alt.endpoints.find(p => p.type === "bulk" && p.direction === "in");
         const outEp = found.alt.endpoints.find(p => p.type === "bulk" && p.direction === "out");
@@ -205,7 +208,11 @@
         return files;
       } catch (e) {
         await this.close();
-        throw new NspireError("No se pudo establecer el protocolo TI-Nspire: " + (e.message || e));
+        const error = new NspireError("No se pudo establecer el protocolo TI-Nspire: " + (e.message || e),
+          phase === 'claimInterface' ? 'USB_INTERFACE_CLAIM' : typeof e.code === 'string' ? e.code : undefined);
+        error.cause = e;
+        error.usbPhase = phase;
+        throw error;
       }
     }
     async close() {

@@ -4,7 +4,7 @@ import difflib
 import re
 from dataclasses import dataclass, field
 
-from ti_catalog import TI_CATALOG, TI_CATALOG_FUNCTIONS, TI_CATALOG_STATEMENTS, TI_CATALOG_NAMES, TI_GLYPH_ALIASES
+from ti_catalog import TI_CATALOG, TI_CATALOG_FUNCTIONS, TI_CATALOG_STATEMENTS, TI_CATALOG_NAMES, TI_GLYPH_ALIASES, TI_UNIT_CONSTANT_TOKENS
 
 
 @dataclass(frozen=True)
@@ -205,6 +205,7 @@ COMMAND_SIGNATURES: dict[str, tuple[int, int | None]] = {
 }
 
 COMMAND_STYLE_SIGNATURES: dict[str, tuple[int, int | None]] = {
+    "clear": (0, 4),
     "drawarc": (6, 6),
     "drawcircle": (3, 3),
     "drawline": (4, 4),
@@ -223,6 +224,8 @@ COMMAND_STYLE_SIGNATURES: dict[str, tuple[int, int | None]] = {
     "setcolor": (3, 3),
     "setpen": (2, 2),
     "setwindow": (4, 4),
+    "usebuffer": (0, 0),
+    "wait": (1, 1),
     "text": (1, None),
 }
 
@@ -405,10 +408,11 @@ CRITICAL_PREFIXES = (
     "Missing",
 )
 
-BUILTIN_NAMES = VALID_COMMANDS | TI_CATALOG_NAMES | {
+BUILTIN_NAMES = VALID_COMMANDS | TI_CATALOG_NAMES | {name.lower() for name in TI_UNIT_CONSTANT_TOKENS} | {
     "true",
     "false",
     "pi",
+    "π",
     "e",
     "string",
     "sin",
@@ -477,11 +481,106 @@ BUILTIN_NAMES = VALID_COMMANDS | TI_CATALOG_NAMES | {
 RESERVED_NAMES = {"and", "define", "else", "elseif", "endif", "endfor", "endloop", "endprgm", "endtry", "endwhile", "false", "for", "func", "if", "local", "loop", "or", "prgm", "return", "then", "true", "try", "while"}
 ASSIGN_ARROW_RE = re.compile(r"(.+?)(?:->|→|â†’)\s*(.+?)\s*$")
 
-IDENT_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
+TI_IDENTIFIER = r"[^\W\d]\w*"
+IDENT_RE = re.compile(r"\b" + TI_IDENTIFIER + r"\b", re.UNICODE)
 LOCAL_RE = re.compile(r"^\s*Local\s+(.+)$", re.IGNORECASE)
 REQUEST_RE = re.compile(r"^\s*(RequestStr|Request)\s+(.+)$", re.IGNORECASE)
 IF_RE = re.compile(r"^\s*If\b(.*)$", re.IGNORECASE)
 ASSIGN_RE = re.compile(r"(.+?)(?:->|→)\s*([A-Za-z_][A-Za-z0-9_]*)\s*$")
+DEFINE_PROGRAM_RE = re.compile(
+    r"^\s*Define\s+(?:(?:LibPub|LibPriv)\s+)?(" + TI_IDENTIFIER + r")\s*\(([^)]*)\)\s*=\s*(Prgm|Func)?\s*$",
+    re.IGNORECASE,
+)
+
+
+def _statement_line(line: str) -> str:
+    """Ignore TI's leading statement separator without touching := or strings."""
+    return re.sub(r"^(\s*):[ \t]*", r"\1", line, count=1)
+
+
+def _assignment_parts(line: str) -> tuple[str, str] | None:
+    """Return expression/target for either TI storage spelling, outside strings."""
+    clean = _strip_strings_keep_layout(line)
+    colon = clean.find(":=")
+    if colon >= 0:
+        return line[colon + 2:].strip(), line[:colon].strip()
+    match = ASSIGN_ARROW_RE.match(clean)
+    if match:
+        return line[:match.end(1)].strip(), line[match.start(2):].strip()
+    return None
+
+
+def _assignment_base(target: str) -> str | None:
+    match = re.fullmatch(r"(" + TI_IDENTIFIER + r")(?:\s*\[[^\[\]]+\])?", target.strip())
+    return match.group(1) if match else None
+
+
+def _program_scopes(lines: list[str]) -> tuple[list[dict], list[Diagnostic]]:
+    """Separate real Define/Prgm scopes without changing source line numbers.
+
+    TI subroutines have their own Local/parameter/label namespace. Plain Prgm
+    tokens are not pushed here: an unexpected duplicate remains a flat-analyzer
+    error instead of becoming an accidentally accepted nested scope.
+    """
+    root = {"name": "", "kind": None, "params": "", "parent": None, "lines": {}, "start": 1}
+    scopes = [root]
+    stack = [root]
+    diagnostics = []
+    first_statement = True
+    pending = None
+    for number, raw in enumerate(lines, 1):
+        raw = _statement_line(raw)
+        statement = raw.strip()
+        scope = stack[-1]
+        if not statement or _is_comment_line(statement):
+            scope["lines"][number] = raw
+            continue
+        header = DEFINE_PROGRAM_RE.fullmatch(statement)
+        if header:
+            kind = ("Func" if header.group(3).lower() == "func" else "Prgm") if header.group(3) else None
+            is_root = first_statement
+            if is_root:
+                scope.update(name=header.group(1), params=header.group(2), kind=kind, start=number)
+            else:
+                if len(scopes) >= 128 or len(stack) >= 16:
+                    diagnostics.append(ti_error(910, number, "Se excedió el límite de subrutinas del analizador"))
+                    scope["lines"][number] = "© definition limit"
+                    continue
+                child = {"name": header.group(1), "kind": kind, "params": header.group(2), "parent": scope,
+                         "lines": {}, "start": number}
+                scope["lines"][number] = "© internal definition"
+                scopes.append(child)
+                stack.append(child)
+                scope = child
+            scope["lines"][number] = kind or "© Define header"
+            pending = scope if not kind else None
+            if scope["parent"] and scope["parent"]["kind"] == "Func" and kind == "Prgm":
+                diagnostics.append(ti_error(730, number, "No se puede definir Prgm dentro de Func"))
+        elif pending is scope and statement.lower() in {"prgm", "func"}:
+            scope["kind"] = "Prgm" if statement.lower() == "prgm" else "Func"
+            scope["lines"][number] = statement
+            if scope["parent"] and scope["parent"]["kind"] == "Func" and scope["kind"] == "Prgm":
+                diagnostics.append(ti_error(730, number, "No se puede definir Prgm dentro de Func"))
+            pending = None
+        elif statement.lower() in {"endprgm", "endfunc"} and scope is not root:
+            expected = "EndFunc" if scope["kind"] == "Func" else "EndPrgm"
+            if statement.lower() != expected.lower():
+                diagnostics.append(ti_error(730, number, f"Se esperaba {expected}, no {statement}"))
+            # The typed mismatch is diagnosed above; normalize only this scope's
+            # analysis copy to avoid a second misleading duplicate-end message.
+            scope["lines"][number] = expected
+            stack.pop()
+            pending = None
+        else:
+            scope["lines"][number] = raw
+            if first_statement and statement.lower() in {"prgm", "func"}:
+                scope["kind"] = "Prgm" if statement.lower() == "prgm" else "Func"
+        first_statement = False
+    for scope in scopes:
+        scope["locals"] = {part.strip() for line in scope["lines"].values()
+                            if (match := LOCAL_RE.match(line.strip())) for part in match.group(1).split(",")}
+        scope["parameters"] = {part.strip() for part in scope["params"].split(",") if part.strip()}
+    return scopes, diagnostics
 
 
 def analyze_ti_code(
@@ -491,12 +590,65 @@ def analyze_ti_code(
     known_names: set[str] | None = None,
     document_type: str | None = None,
 ) -> SyntaxReport:
+    lines = _split_lines(text)
+    scopes, structural = _program_scopes(lines)
+    if len(scopes) == 1 and not scopes[0]["name"]:
+        return _analyze_flat_ti_code(text, parameters, known_functions, known_names, document_type)
+    root = scopes[0]
+    external_names, external_functions = set(known_names or ()), set(known_functions or ())
+    global_assignments = set()
+    global_functions = {scope["name"] for scope in scopes if scope["name"] and
+                        (scope["parent"] is None or scope["name"] not in scope["parent"]["locals"])}
+    for scope in scopes:
+        for line in scope["lines"].values():
+            if _is_comment_line(line):
+                continue
+            if parts := _assignment_parts(line):
+                base = _assignment_base(parts[1])
+                if base and base not in scope["locals"] | scope["parameters"]:
+                    global_assignments.add(base)
+    aggregate = SyntaxReport()
+    aggregate.diagnostics.extend(structural)
+    for scope in scopes:
+        visible_functions = external_functions | global_functions | {
+            child["name"] for child in scopes if child["parent"] is scope
+        }
+        scoped_lines = [scope["lines"].get(number, "© separate program scope") for number in range(1, len(lines) + 1)]
+        local_report = _analyze_flat_ti_code(
+            "\n".join(scoped_lines), scope["params"] or (parameters if scope is root else None),
+            visible_functions, external_names | global_assignments | visible_functions,
+            scope["kind"] or (document_type if scope is root else None),
+        )
+        aggregate.diagnostics.extend(local_report.diagnostics)
+        aggregate.infos.extend(local_report.infos)
+        aggregate.variables.update(local_report.variables)
+        aggregate.assigned.update(local_report.assigned)
+        aggregate.used.update(local_report.used)
+        aggregate.variable_lines.update(local_report.variable_lines)
+        aggregate.used_lines.update(local_report.used_lines)
+        aggregate.if_count += local_report.if_count
+        aggregate.endif_count += local_report.endif_count
+        for key, count in local_report.block_counts.items():
+            aggregate.block_counts[key] = aggregate.block_counts.get(key, 0) + count
+    aggregate.diagnostics.sort(key=lambda diagnostic: diagnostic.line)
+    return aggregate
+
+
+def _analyze_flat_ti_code(
+    text: str,
+    parameters: str | None = None,
+    known_functions: set[str] | None = None,
+    known_names: set[str] | None = None,
+    document_type: str | None = None,
+) -> SyntaxReport:
     report = SyntaxReport()
     known_functions = known_functions or set()
     known_names = known_names or set()
-    lines = _split_lines(text)
+    lines = [_statement_line(line) for line in _split_lines(text)]
     expression_function = _is_expression_function(lines, document_type)
-    is_function_document = expression_function or any(line.strip().lower() == "func" for line in lines[:3])
+    is_function_document = expression_function or str(document_type).lower() == "func" or any(line.strip().lower() == "func" for line in lines[:3])
+    parameter_names = {name.strip() for name in (parameters or "").split(",") if name.strip()}
+    explicit_locals: set[str] = set()
     if_stack: list[int] = []
     block_stack: list[tuple[str, int]] = []
     try_stack: list[list[object]] = []
@@ -548,7 +700,7 @@ def analyze_ti_code(
         _check_function_arguments(report, number, raw_line)
         _check_command_style_arguments(report, number, raw_line)
         _check_invalid_implied_multiply(report, number, raw_line, report.variables | report.assigned)
-        _check_assignment_errors(report, number, raw_line, report.variables | report.assigned)
+        _check_assignment_errors(report, number, raw_line, report.variables | report.assigned | known_names)
         _check_missing_function_parenthesis(report, number, raw_line)
         _check_function_references(
             report,
@@ -613,8 +765,9 @@ def analyze_ti_code(
                     report.diagnostics.append(ti_error(610, number, f"Invalid variable name in Local statement: {raw_name}"))
             names = [name for name in raw_names if _is_identifier(name)]
             for name in names:
-                if name in report.variables:
+                if name in report.variables and (name not in parameter_names or name in explicit_locals):
                     report.diagnostics.append(ti_error(270, number, f"Variable ya declarada: {name}"))
+                explicit_locals.add(name)
                 report.variables.add(name)
                 report.variable_lines.setdefault(name, number)
             report.infos.append(f"[INFO] Linea {number}: {len(names)} variables declaradas")
@@ -697,12 +850,11 @@ def analyze_ti_code(
         if line.lower() == "disp":
             report.diagnostics.append(internal_warning(number, "Disp sin argumentos"))
 
-        assign_match = ASSIGN_RE.match(line)
-        if assign_match:
-            destination = assign_match.group(2)
+        assignment = _assignment_parts(line)
+        if assignment and (destination := _assignment_base(assignment[1])):
             report.assigned.add(destination)
             report.used.discard(destination)
-            _collect_used_vars(report, assign_match.group(1), number)
+            _collect_used_vars(report, assignment[0], number)
         elif lower_first in {"goto", "lbl", "label", "text"}:
             pass
         else:
@@ -781,7 +933,6 @@ def autofix_ti_code(text: str, document_type: str | None = None) -> tuple[str, s
     original_lines = _split_lines(text)
     expression_function = _is_expression_function(original_lines, document_type)
     fixed_lines: list[str] = []
-    if_stack: list[int] = []
     actions: list[str] = []
     # Trim only whitespace OUTSIDE the complete program, keeping internal
     # empty lines for readability and preserving existing program statements.
@@ -794,48 +945,73 @@ def autofix_ti_code(text: str, document_type: str | None = None) -> tuple[str, s
             original_lines.pop()
             if "[100%] Eliminadas lineas vacias despues de EndPrgm/EndFunc" not in actions:
                 actions.append("[100%] Eliminadas lineas vacias despues de EndPrgm/EndFunc")
-    seen_local_lines: set[str] = set()
-    document_start_seen = False
-    document_end_seen = False
-    document_kind = "Func" if str(document_type).lower() == "func" else "Prgm"
+    def new_scope(kind: str | None = None) -> dict:
+        return {"kind": kind or "Prgm", "start_seen": bool(kind), "end_seen": False,
+                "locals": set(), "ifs": []}
+
+    # Internal Define blocks are independent programs. Their wrappers, Local
+    # declarations and incomplete If blocks must never affect a sibling/parent.
+    root_scope = new_scope()
+    root_scope["kind"] = "Func" if str(document_type).lower() == "func" else "Prgm"
+    scope_stack = [root_scope]
+    first_statement = True
+
+    def close_ifs(scope: dict) -> None:
+        while scope["ifs"]:
+            fixed_lines.append("EndIf")
+            scope["ifs"].pop()
+            actions.append("[100%] Anadido EndIf faltante")
 
     for raw_line in original_lines:
-        line = raw_line.rstrip()
+        original_line = raw_line.rstrip()
+        line = _statement_line(original_line)
+        separated = line != original_line
         stripped = line.strip()
+        scope = scope_stack[-1]
+        header = DEFINE_PROGRAM_RE.fullmatch(stripped)
+        if header:
+            kind = ("Func" if header.group(3).lower() == "func" else "Prgm") if header.group(3) else None
+            if first_statement:
+                scope["kind"] = kind or scope["kind"]
+                scope["start_seen"] = bool(kind)
+            else:
+                scope = new_scope(kind)
+                scope_stack.append(scope)
+        if stripped and not _is_comment_line(stripped):
+            first_statement = False
 
         if stripped.lower().startswith("if "):
             line = re.sub(r"\s+", " ", line).strip()
             if re.search(r"\bThen\b", line, flags=re.IGNORECASE):
-                if_stack.append(len(fixed_lines))
+                scope["ifs"].append(len(fixed_lines))
                 actions.append("[100%] Normalizado espacio en If")
             else:
-                if_stack.append(len(fixed_lines))
+                scope["ifs"].append(len(fixed_lines))
 
-        if stripped.lower() == "endif" and if_stack:
-            if_stack.pop()
+        if stripped.lower() == "endif" and scope["ifs"]:
+            scope["ifs"].pop()
 
         if stripped.lower() in {"prgm", "func"}:
             start_name = "Prgm" if stripped.lower() == "prgm" else "Func"
-            if document_start_seen:
+            if scope["start_seen"]:
                 actions.append(f"[100%] Eliminado {start_name} duplicado")
                 continue
-            document_start_seen = True
-            document_kind = start_name
+            scope["start_seen"] = True
+            scope["kind"] = start_name
 
         if stripped.lower() in {"endprgm", "endfunc"}:
             end_name = "EndPrgm" if stripped.lower() == "endprgm" else "EndFunc"
-            expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
-            if document_end_seen:
+            expected_end = "EndFunc" if scope["kind"] == "Func" else "EndPrgm"
+            if scope["end_seen"]:
                 actions.append(f"[100%] Eliminado {end_name} duplicado")
                 continue
-            while if_stack:
-                fixed_lines.append("EndIf")
-                if_stack.pop()
-                actions.append("[100%] Anadido EndIf faltante")
+            close_ifs(scope)
             if end_name != expected_end:
                 line = expected_end
                 actions.append(f"[100%] Corregido cierre a {expected_end}")
-            document_end_seen = True
+            scope["end_seen"] = True
+            if scope is not root_scope:
+                scope_stack.pop()
 
         if LOCAL_RE.match(stripped):
             line, removed_names = _dedupe_local_line(line)
@@ -843,10 +1019,10 @@ def autofix_ti_code(text: str, document_type: str | None = None) -> tuple[str, s
                 actions.append("[100%] Eliminadas variables Local duplicadas: " + ", ".join(removed_names))
                 stripped = line.strip()
             normalized_local = re.sub(r"\s+", "", stripped).lower()
-            if normalized_local in seen_local_lines:
+            if normalized_local in scope["locals"]:
                 actions.append("[100%] Eliminada linea Local duplicada exacta")
                 continue
-            seen_local_lines.add(normalized_local)
+            scope["locals"].add(normalized_local)
 
         line, quote_action = _fix_command_string(line)
         if quote_action:
@@ -856,18 +1032,24 @@ def autofix_ti_code(text: str, document_type: str | None = None) -> tuple[str, s
         if paren_count:
             actions.append(f"[95%] Anadidos {paren_count} parentesis faltantes")
 
+        if separated:
+            indent = len(line) - len(line.lstrip())
+            line = line[:indent] + ":" + line[indent:]
         fixed_lines.append(line)
 
-    while if_stack:
-        fixed_lines.append("EndIf")
-        if_stack.pop()
-        actions.append("[100%] Anadido EndIf faltante")
+    while len(scope_stack) > 1:
+        scope = scope_stack.pop()
+        close_ifs(scope)
+        expected_end = "EndFunc" if scope["kind"] == "Func" else "EndPrgm"
+        fixed_lines.append(expected_end)
+        actions.append(f"[100%] Anadido {expected_end} final de subrutina")
+    close_ifs(root_scope)
 
-    if not document_start_seen and not expression_function:
-        fixed_lines.insert(0, document_kind)
-        actions.append(f"[100%] Anadido {document_kind} inicial")
-    if not document_end_seen and not expression_function:
-        expected_end = "EndFunc" if document_kind == "Func" else "EndPrgm"
+    if not root_scope["start_seen"] and not expression_function:
+        fixed_lines.insert(0, root_scope["kind"])
+        actions.append(f"[100%] Anadido {root_scope['kind']} inicial")
+    if not root_scope["end_seen"] and not expression_function:
+        expected_end = "EndFunc" if root_scope["kind"] == "Func" else "EndPrgm"
         fixed_lines.append(expected_end)
         actions.append(f"[100%] Anadido {expected_end} final")
 
@@ -1040,6 +1222,10 @@ def _check_command_style_arguments(report: SyntaxReport, line_number: int, line:
         report.diagnostics.append(ti_error(930, line_number, f"Too few arguments for {command}", f"Expected at least {min_args}; received {count}"))
     elif max_args is not None and count > max_args:
         report.diagnostics.append(ti_error(940, line_number, f"Too many arguments for {command}", f"Expected at most {max_args}; received {count}"))
+    elif lower_command == "clear" and count not in (0, 4):
+        report.diagnostics.append(ti_error(40, line_number, "Clear requires zero or four arguments"))
+    elif lower_command in ("drawpoly", "fillpoly") and count > 2 and count % 2:
+        report.diagnostics.append(ti_error(40, line_number, f"{command} requires x,y coordinate pairs or two lists"))
 
 
 def _check_invalid_implied_multiply(report: SyntaxReport, line_number: int, line: str, known_vars: set[str]) -> None:
@@ -1077,22 +1263,25 @@ def _check_math_domains(report: SyntaxReport, line_number: int, line: str) -> No
 
 
 def _check_assignment_errors(report: SyntaxReport, line_number: int, line: str, known_names: set[str]) -> None:
-    match = ASSIGN_ARROW_RE.match(_strip_strings_keep_layout(line))
-    if not match:
+    parts = _assignment_parts(line)
+    if not parts:
         return
-    source, destination = match.group(1).strip(), match.group(2).strip()
+    source, destination = parts
     if not destination:
         report.diagnostics.append(ti_error(390, line_number, "Invalid assignment"))
         return
     if "\\" in destination:
         report.diagnostics.append(ti_error(1170, line_number, "Invalid use of library pathname"))
         return
-    if not _is_identifier(destination):
+    base = _assignment_base(destination)
+    if not base:
         report.diagnostics.append(ti_error(910, line_number, f"Syntax error: invalid assignment target {destination}"))
         return
-    if destination.lower() in RESERVED_NAMES:
+    if base.lower() in RESERVED_NAMES:
         report.diagnostics.append(ti_error(870, line_number, f"Reserved name or system variable: {destination}"))
-    if re.search(rf"\b{re.escape(destination)}\b", source) and destination not in known_names:
+    if base != destination and base not in known_names:
+        report.diagnostics.append(ti_error(960, line_number, f"Variable no declarada: {base}"))
+    if re.search(rf"\b{re.escape(base)}\b", source) and base not in known_names:
         report.diagnostics.append(ti_error(190, line_number, f"Circular definition: {destination}"))
 
 
@@ -1116,7 +1305,7 @@ def _check_function_references(
 ) -> None:
     clean = _strip_strings_keep_layout(line)
     clean = _strip_matrix_literals(clean)
-    for match in re.finditer(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(", clean):
+    for match in re.finditer(r"\b(" + TI_IDENTIFIER + r")\s*\(", clean):
         name = match.group(1)
         lower = name.lower()
         if lower in BUILTIN_NAMES or lower in COMMAND_SIGNATURES or lower in COMMAND_STYLE_SIGNATURES:
@@ -1311,7 +1500,7 @@ def _strip_strings_keep_layout(text: str) -> str:
 
 
 def _is_identifier(text: str) -> bool:
-    return bool(re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", text))
+    return bool(re.fullmatch(TI_IDENTIFIER, text))
 
 
 def _is_symbolic_single_letter(text: str) -> bool:
@@ -1325,11 +1514,15 @@ def _is_comment_line(text: str) -> bool:
 
 def _collect_used_vars(report: SyntaxReport, text: str, line_number: int) -> None:
     clean = re.sub(r'"[^"]*"', "", text)
+    # Mask exact catalog tokens before the ASCII identifier scanner; otherwise
+    # Greek constants and degree units would become partial names such as '_'.
+    for token in sorted(TI_UNIT_CONSTANT_TOKENS, key=len, reverse=True):
+        clean = re.sub(r"(?<![\w])" + re.escape(token) + r"(?![\w])", "0", clean)
     clean = _strip_matrix_literals(clean)
     clean = _strip_function_calls(clean, {"solve", "nsolve", "csolve"})
     clean = re.sub(r"(?i)^\s*Text\b.*$", "", clean)
     clean = re.sub(r"\b(?:Goto|Lbl|Label)\s+[A-Za-z_][A-Za-z0-9_]*", "", clean, flags=re.IGNORECASE)
-    clean = re.sub(r"\b[A-Za-z_][A-Za-z0-9_]*\s*(?=\()", "", clean)
+    clean = re.sub(r"\b" + TI_IDENTIFIER + r"\s*(?=\()", "", clean)
     for name in IDENT_RE.findall(clean):
         lower = name.lower()
         if lower in BUILTIN_NAMES:

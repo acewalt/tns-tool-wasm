@@ -20,13 +20,15 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.30/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.30)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.31/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.31)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
 **Ndless C/C++ projects currently compile on Windows only. Linux desktop support is planned; no Linux download is published yet.**
 
 ## What's new
+
+**0.1.31:** cursor-aware Math view, hierarchical catalogs, a symbols grid, two-dimensional Calculator history and TI-BASIC graphical drawing with buffered animation. Program Editor navigation retains drafts. USB interface-claim failures show recovery and WinUSB setup guidance.
 
 Portable **0.1.28** adds a consistent calculator header across app previews, including real page tabs, a centered document title and the cyan divider. Page changes keep the same preview window open. The first Document Inspector action, **Widgets**, browses all document widgets in order. Image previews share the calculator frame and support native pixel panning, fitting the whole image and an expanded viewport. Lua Edit actions follow the active English, Spanish or French language. The fixed XML Log, bare Func validation and Ndless application-source selection introduced in 0.1.27 remain included.
 

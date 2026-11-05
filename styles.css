@@ -4255,3 +4255,9 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
   background: var(--line);
   opacity: .85;
 }
+.love-calculator-history{position:absolute;top:26px;left:0;right:0;bottom:var(--calc-entry-height,58px);overflow:auto;overscroll-behavior:contain;background:#fff;color:#111;z-index:7;font:16px/1.3 "Times New Roman",Cambria,serif;scrollbar-width:thin}
+.calculator-editor-stage.expanded-view .love-calculator-history{top:0;font-size:21px}
+.calculator-math-history-row{box-sizing:border-box;min-height:52px;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:10px 8px;border-bottom:1px solid #ddd;max-width:100%}.calculator-math-history-row:nth-child(even){background:#f5f5f5}.calculator-math-history-row.selected{background:#c0e6f3}
+.calculator-math-history-entry,.calculator-math-history-result{min-width:0;max-width:100%;overflow-x:auto;overflow-y:hidden;padding:5px 0}.calculator-math-history-result{margin-left:auto;text-align:right}.love-calculator-history math{font-family:"Cambria Math","STIX Two Math",serif;display:inline-block;overflow:visible!important;font-size:1em;vertical-align:middle}.love-calculator-history math mtable{line-height:1.2}
+.love-calculator-composer.love-calculator-composer{box-sizing:border-box;max-height:calc(100% - 62px);align-items:center;overflow:auto;scrollbar-width:thin;padding-top:8px;padding-bottom:8px}.love-calculator-composer>.calc-v-expression,.love-calculator-composer>.calc-v-plain{flex-shrink:0}
+.preview-window .love-calculator-toolbar{display:flex;flex-wrap:wrap;gap:8px}.preview-window .love-calculator-toolbar #love-calculator-save{flex:1 0 100%;margin-top:4px}

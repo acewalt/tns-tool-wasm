@@ -116,7 +116,7 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
 
   if (!document.querySelector('script[data-terminal-log-theme="true"]')) {
     const themeScript = document.createElement("script");
-    themeScript.src = "./terminal-log-theme.js?v=20261104-math-tools-v30";
+    themeScript.src = "./terminal-log-theme.js?v=20261105-preview-fixes-v31";
     themeScript.dataset.terminalLogTheme = "true";
     document.head.appendChild(themeScript);
   }
