@@ -1,0 +1,41 @@
+Define LibPub doce()=
+Prgm
+:Clear
+:UseBuffer
+:SetWindow 0,0,0,0
+:SetPen 1,1
+:SetColor 16,24,43
+:FillRect 0,0,318,212
+:SetColor 35,53,82
+:FillRect 8,8,302,32
+:SetColor 255,255,255
+:DrawText 17,29,"TNS TOOL - DRAW TEST"
+:SetColor 53,189,117
+:FillCircle 293,24,6
+:SetColor 40,54,77
+:FillRect 8,48,145,144
+:FillRect 162,48,148,144
+:SetColor 245,206,101
+:DrawText 18,67,"SHAPES"
+:SetColor 91,179,250
+:DrawRect 20,80,48,36
+:FillRect 84,80,47,36
+:SetColor 235,108,129
+:DrawCircle 44,151,20
+:FillCircle 108,151,20
+:SetColor 255,255,255
+:DrawLine 167,94,304,94
+:SetColor 150,220,246
+:DrawPoly 175,140,195,111,218,140,237,111,258,140
+:SetColor 247,183,106
+:FillPoly 271,116,301,143,259,143,271,116
+:SetColor 115,212,172
+:DrawArc 171,150,45,29,0,180
+:SetColor 171,129,250
+:FillArc 226,150,40,30,45,270
+:SetColor 255,255,255
+:PlotXY 287,170,5
+:SetColor 132,152,179
+:DrawText 12,207,"RGB / POLY / ARC"
+:PaintBuffer
+:EndPrgm

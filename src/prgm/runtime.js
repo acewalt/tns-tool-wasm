@@ -1,5 +1,6 @@
-// Shared, DOM-free TI-BASIC text preview.
+// Shared, DOM-free TI-BASIC text and CX II graphics preview.
 import { IDENT, key, PrgmError, fail, number, truth, split, expressionTree, evaluate, createMathContext, formatPrgmValue, evaluatePrgmExpression } from './math.js';
+import {PrgmDrawing, isDrawingCommand} from './drawing.js';
 export { PrgmError, formatPrgmValue, evaluatePrgmExpression } from './math.js';
 export function compilePrgm(source) {
   const statements=[];
@@ -33,6 +34,10 @@ export function compilePrgm(source) {
         documentClosed=true;op.kind='end';
       }
       else if((match=/^(Local|DelVar|Lock|Unlock)\s+(.+)$/i.exec(text))){op.kind=key(match[1]);op.names=split(match[2],',').map(variable);}
+      else if((match=/^([A-Za-z]+)\b\s*(.*)$/i.exec(text))&&isDrawingCommand(match[1])){
+        op.kind='drawing';op.command=key(match[1]);op.args=match[2].trim()?split(match[2],',').map(parsed):[];
+      }
+      else if((match=/^Wait\s+(.+)$/i.exec(text))){op.kind='wait';op.expr=parsed(match[1]);}
       else if((match=/^(DispAt|Disp|RequestStr|Request)\b\s*(.*)$/i.exec(text))){
         op.kind=key(match[1]);const args=split(match[2],',').map(s=>s.trim());
         if(op.kind.startsWith('request')){if(args.length<2||args.length>4)fail('SYNTAX_ERROR','Request requiere mensaje, variable y hasta dos opciones.');op.prompt=parsed(args[0]);op.name=variable(args[1]);op.flag=args[2]?parsed(args[2]):null;op.statusName=args[3]?variable(args[3]):null;}
@@ -81,7 +86,7 @@ export function compilePrgm(source) {
 export class PrgmPreview {
   constructor(source,options={}) {
     this.source=String(source);this.options=options;this.angleMode=options.angleMode==='DEG'?'DEG':'RAD';this.vars=Object.create(null);this.output=[];this.events=[];this.status='ready';this.pc=0;this.executed=0;this.pending=null;this.error=null;this.lastLine=0;this.branches=new Set();this.loops=new Map();
-    this.mathContext=createMathContext(options);this.tries=[];this.lastCaughtError=null;
+    this.mathContext=createMathContext(options);this.tries=[];this.lastCaughtError=null;this.graphics=new PrgmDrawing(options);this.waitUntil=0;this.frameYield=false;
     this.maxInstructions=Math.min(1000000,Math.max(1,options.maxInstructions||50000));this.maxLines=options.maxLines||1000;
     try {this.program=compilePrgm(this.source);this.name=options.name||this.program.name||'programa';
       const supplied=Array.isArray(options.parameters)?options.parameters:String(options.parameters||'').trim()?String(options.parameters).split(','):[];
@@ -103,9 +108,10 @@ export class PrgmPreview {
   ev(node) {this.mathContext.steps=0;const value=evaluate(node,this.vars,this.angleMode,this.mathContext);this.angleMode=this.mathContext.modes[2]===2?'DEG':this.mathContext.modes[2]===3?'GRAD':'RAD';return value;}
   append(text,kind='disp') {if(this.output.length>=this.maxLines)fail('OUTPUT_LIMIT','Límite de historial alcanzado.');const row={text:String(text),kind,line:this.lastLine};this.output.push(row);this.event({type:'output',...row});}
   event(value) {this.events.push(value);if(this.events.length>2000)this.events.shift();}
-  step() {
-    if(['waiting','done','stopped','error'].includes(this.status))return this.snapshot();
-    if(this.pc>=this.program.code.length){this.status='done';return this.snapshot();}
+  step(emitSnapshot=true) {
+    if(['waiting','done','stopped','error'].includes(this.status))return emitSnapshot?this.snapshot():undefined;
+    if(this.waitUntil){if((this.options.now||Date.now)()<this.waitUntil)return emitSnapshot?this.snapshot():undefined;this.waitUntil=0;}
+    if(this.pc>=this.program.code.length){this.status='done';return emitSnapshot?this.snapshot():undefined;}
     const op=this.program.code[this.pc];this.lastLine=op.line;this.status='paused';
     try {
       if(++this.executed>this.maxInstructions)fail('EXECUTION_LIMIT','Se alcanzó el límite de instrucciones; posible bucle infinito.');
@@ -116,6 +122,8 @@ export class PrgmPreview {
       else if(op.kind==='assign'){if(this.mathContext.locks.has(op.name))fail('LOCKED_VARIABLE','La variable «'+op.name+'» está bloqueada.');this.vars[op.name]=this.ev(op.expr);}
       else if(op.kind==='defineFunction')this.mathContext.functions[op.name]={parameters:op.parameters,body:op.body};
       else if(op.kind==='evaluate')this.ev(op.expr);
+      else if(op.kind==='drawing'){this.graphics.execute(op.command,op.args.map(n=>this.ev(n)));this.event({type:'graphics',command:op.command,revision:this.graphics.revision,line:op.line});if(op.command==='paintbuffer')this.frameYield=true;}
+      else if(op.kind==='wait'){const seconds=number(this.ev(op.expr));if(seconds<0||seconds>86400)fail('DOMAIN_ERROR','Wait requiere un tiempo entre 0 y 86400 segundos.');if(!this.options.skipWait)this.waitUntil=(this.options.now||Date.now)()+seconds*1000;}
       else if(op.kind==='disp'||op.kind==='dispat') {
         const args=op.args.map(n=>this.ev(n));
         if(op.kind==='disp')this.append(args.map(formatPrgmValue).join('\u2009'));
@@ -127,6 +135,7 @@ export class PrgmPreview {
       else if(op.kind==='clrerr'){this.vars.errcode=0;this.lastCaughtError=null;}
       else if(op.kind==='passerr'){if(this.lastCaughtError)throw this.lastCaughtError;fail('NO_ACTIVE_ERROR','PassErr requiere un error capturado.');}
       else if(op.kind==='request'||op.kind==='requeststr') {
+        if(this.graphics.active)fail('GRAPHICS_MODE_REQUEST','Request/RequestStr no puede ejecutarse en el modo gráfico.');
         const prompt=this.ev(op.prompt);if(typeof prompt!=='string')fail('TYPE_ERROR','El mensaje Request debe ser texto.');
         this.pending={kind:op.kind,prompt,variable:op.name,display:op.flag?this.ev(op.flag)!==0:true,statusVariable:op.statusName,line:op.line};this.status='waiting';
       }else if(op.kind==='if'||op.kind==='ifSingle') {
@@ -164,9 +173,9 @@ export class PrgmPreview {
         this.pc=frame.handler;this.status='paused';this.event({type:'caughtError',code:error.code,line:this.lastLine});
       }else this.handleError(error);
     }
-    return this.snapshot();
+    return emitSnapshot?this.snapshot():undefined;
   }
-  run(budget=500) {for(let i=0;i<budget&&!['waiting','done','stopped','error'].includes(this.status);i++)this.step();return this.snapshot();}
+  run(budget=500) {this.frameYield=false;for(let i=0;i<budget&&!['waiting','done','stopped','error'].includes(this.status);i++){if(this.waitUntil&&(this.options.now||Date.now)()<this.waitUntil)break;this.step(false);if(this.frameYield)break;}return this.snapshot();}
   answer(raw,{cancel=false}={}) {
     if(this.status!=='waiting')return this.snapshot();
     const pending=this.pending;
@@ -181,12 +190,13 @@ export class PrgmPreview {
     return this.snapshot();
   }
   stop() {if(!['done','error'].includes(this.status))this.status='stopped';this.pending=null;return this.snapshot();}
-  snapshot() {return {success:this.status!=='error',status:this.status,name:this.name,line:this.lastLine,nextLine:this.program?.code[this.pc]?.line??null,executed:this.executed,angleMode:this.angleMode,output:this.output.map(row=>({...row})),text:this.output.map(row=>row.text).join('\n'),returnValue:this.returnValue,variables:{...this.vars},pending:this.pending?{...this.pending}:null,error:this.error?.toJSON()||null,warnings:this.program?.warnings||[]};}
+  snapshot() {return {success:this.status!=='error',status:this.status,name:this.name,line:this.lastLine,nextLine:this.program?.code[this.pc]?.line??null,executed:this.executed,angleMode:this.angleMode,output:this.output.map(row=>({...row})),text:this.output.map(row=>row.text).join('\n'),returnValue:this.returnValue,variables:{...this.vars},pending:this.pending?{...this.pending}:null,error:this.error?.toJSON()||null,warnings:this.program?.warnings||[],graphics:this.graphics.snapshot(),waitRemainingMs:Math.max(0,this.waitUntil-(this.options.now||Date.now)())};}
 }
 export const createPrgmPreview=(source,options={})=>new PrgmPreview(source,options);
 export function runPrgmPreview(source,inputs=[],options={}) {
-  const preview=createPrgmPreview(source,options);let state=preview.run();let used=0;
+  const preview=createPrgmPreview(source,{skipWait:true,...options});let state=preview.run();let used=0;
   while(true) {
+    if(state.waitRemainingMs>0)return {...state,inputsUsed:used};
     if(state.status==='paused'){state=preview.run();continue;}
     if(state.status==='waiting'&&used<inputs.length){const input=inputs[used++];state=preview.answer(input?.cancel?'':input,{cancel:input?.cancel===true});if(state.inputError)return {...state,inputsUsed:used};state=preview.run();continue;}
     return {...state,inputsUsed:used};

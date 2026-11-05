@@ -19,6 +19,12 @@ Se filtran los dispositivos Texas Instruments con identificadores `0451:e012` (f
 
 ## Acciones implementadas
 
+### Si aparece `Unable to claim interface`
+
+El administrador muestra ayuda dentro del módulo y conserva un botón para reintentar. Primero cierra el software TI y otras pestañas que puedan estar usando la calculadora. En Windows, si la interfaz sigue inaccesible, abre [Zadig](https://zadig.akeo.ie/), activa **Options → List All Devices**, selecciona exclusivamente la TI-Nspire y comprueba el identificador mostrado por el módulo: `0451:e012` o `0451:e022`. Selecciona **WinUSB** y usa **Replace Driver** o **Install Driver**; después reconecta el cable y pulsa Reintentar.
+
+No cambies el controlador del teclado, ratón o concentrador USB. El controlador TI puede necesitar restaurarse para usar de nuevo su software oficial. La página muestra estas instrucciones; no modifica controladores del sistema. Véanse las [condiciones de acceso a interfaces WebUSB](https://developer.chrome.com/docs/capabilities/build-for-webusb).
+
 1. **Conectar calculadora**: solicita permiso WebUSB y establece una sesión TI-Nspire real. No muestra archivos artificiales.
 2. **Actualizar / carpetas**: consulta directorios reales y permite entrar o regresar.
 3. **Enviar TNS**: elige uno o varios documentos `.tns` del ordenador, confirma reemplazos y los transmite a la carpeta abierta.

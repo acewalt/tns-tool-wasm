@@ -73,7 +73,7 @@ test('unsupported constructs, undefined variables and dangerous input fail expli
   const s=runPrgmPreview('Prgm\nLocal a\nDisp a\nEndPrgm');assert.equal(s.error.code,'UNDEFINED_VARIABLE');assert.equal(s.error.line,3);
   assert.equal(runPrgmPreview('Disp solve(x=1,x)').error.code,'UNSUPPORTED_FUNCTION');
   assert.equal(runPrgmPreview('Disp solve(1,2)').error.code,'UNSUPPORTED_FUNCTION');
-  assert.equal(runPrgmPreview('DrawLine 1,2,3,4').error.code,'UNSUPPORTED_COMMAND');
+  assert.equal(runPrgmPreview('UnknownCommand 1,2,3,4').error.code,'UNSUPPORTED_COMMAND');
   assert.equal(runPrgmPreview('If true Then\nDisp 1').error.code,'SYNTAX_ERROR');
   assert.equal(runPrgmPreview('Disp 1/0').error.code,'DIVISION_BY_ZERO');
   assert.equal(runPrgmPreview('Loop\nEndLoop',[],{maxInstructions:100}).error.code,'EXECUTION_LIMIT');

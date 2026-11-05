@@ -623,3 +623,8 @@
     padding: 16px;
   }
 }
+.ti-usb-help{box-sizing:border-box;padding:18px;margin:14px 0;border:1px solid #b1a15b;border-radius:12px;background:var(--panel,#101a2a);color:var(--text,#e5edf8);max-height:55vh;overflow:auto;font:13px/1.55 Arial,sans-serif}
+.ti-usb-help[hidden]{display:none}.ti-usb-help h3{margin:0 0 10px}.ti-usb-help p{margin:10px 0}.ti-usb-help code{display:block;overflow-wrap:anywhere}.ti-usb-help details{margin:14px 0}.ti-usb-help summary{cursor:pointer;font-weight:700}.ti-usb-help li{margin:7px 0}.ti-usb-help a{color:#56d9d0}.ti-usb-help-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.ti-manager-dialog[data-connection-state="disconnected"]:has(.ti-usb-help:not([hidden])){width:min(720px,100%);height:min(760px,calc(100dvh - 28px))}
+.ti-manager-dialog[data-connection-state="disconnected"]:has(.ti-usb-help:not([hidden])) .ti-manager-toolbar{flex:0 0 auto;min-height:80px}
+.ti-manager-dialog:has(.ti-usb-help:not([hidden])) .ti-usb-help{flex:1;min-height:0;max-height:none;margin:0}

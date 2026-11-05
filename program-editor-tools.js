@@ -83,15 +83,18 @@
     if(!host)throw Error('Program Editor menu host is required');
     const trigger=document.createElement('button');trigger.type='button';trigger.className='menu-action program-editor-trigger';trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-expanded','false');trigger.dataset.programEditorTools='';
     const panel=document.createElement('section');panel.className='program-editor-tools-panel';panel.hidden=true;panel.setAttribute('role','dialog');
-    panel.setAttribute('aria-modal','false');panel.tabIndex=-1;document.body.append(panel);host.append(trigger);
+    panel.setAttribute('aria-modal','false');panel.tabIndex=-1;document.body.append(panel);host.prepend(trigger);
     let data=null, path=[], busy=false, disposed=false;
     const currentLanguage=()=>language(options.language?.());
     const currentWords=()=>words(currentLanguage());
     const fail=error=>{const output=panel.querySelector('[data-program-menu-status]');if(output)output.textContent=error.message||currentWords().failed;options.onError?.(error);};
     function position() {
       if(panel.hidden)return;
-      const box=trigger.getBoundingClientRect(),width=Math.min(420,innerWidth-24),top=Math.max(12,Math.min(box.bottom+8,innerHeight-170));
-      panel.style.width=width+'px';panel.style.left=Math.max(12,Math.min(box.left,innerWidth-width-12))+'px';panel.style.top=top+'px';panel.style.maxHeight=Math.max(150,innerHeight-top-12)+'px';
+      const box=host.getBoundingClientRect(),width=Math.min(420,innerWidth-24),top=Math.max(12,Math.min(box.top,innerHeight-220));
+      const right=box.right+10,left=box.left-width-10;
+      const x=right+width<=innerWidth-12?right:left>=12?left:Math.max(12,Math.min(box.left,innerWidth-width-12));
+      panel.dataset.placement=x===right?'right':x===left?'left':'overlay';
+      panel.style.width=width+'px';panel.style.left=x+'px';panel.style.top=top+'px';panel.style.maxHeight=Math.max(150,innerHeight-top-12)+'px';
     }
     function close(restore=true) { panel.hidden=true;trigger.setAttribute('aria-expanded','false');path=[];if(restore&&!disposed&&!trigger.hidden)trigger.focus({preventScroll:true}); }
     function render() {

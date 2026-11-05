@@ -320,6 +320,8 @@
   }
 
   function setupMathTools(modal, rightActions) {
+    // Calculator already has its own editable MathPrint entry and palettes.
+    if (modal.querySelector('#love-calculator-composer')) return true;
     const host = modal.querySelector(".love-preview-live-math");
     const templatesButton = modal.querySelector(".lpm-toggle");
     const templatesPanel = modal.querySelector(".lpm-panel");

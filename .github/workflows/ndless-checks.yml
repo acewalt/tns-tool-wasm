@@ -155,5 +155,13 @@ jobs:
         run: node tests/smoke.test.js
       - name: TI-BASIC Prgm preview
         run: node --test tests/prgm-preview.test.js
+      - name: Math tools and graphical preview regressions
+        run: |
+          node --test tests/ti-basic-math.test.js tests/ti-basic-cas-session.test.js tests/ti-math-typeset.test.js tests/program-editor-tools.test.js tests/catalog-hierarchy-v31.test.js tests/prgm-drawing.test.js
+          node tests/calculator-usb-help.test.js
+          python -m unittest discover -s tests -p 'test_ti_*syntax.py'
+          python -m unittest discover -s tests -p 'test_ti_catalog_units.py'
+          python -m unittest discover -s tests -p 'test_ti_internal_programs.py'
+          python -m unittest discover -s tests -p 'test_prgm_drawing_syntax.py'
       - name: CLI e2e tests
         run: node tests/e2e.test.js

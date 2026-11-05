@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-04-math-tools-v30";
+const SOURCE_VERSION = "2026-11-05-preview-fixes-v31";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -2047,6 +2047,7 @@ function isTiProgramEditorSelected() {
 }
 
 function insertXmlToolText(text, _node=null, _context=null, range=null) {
+  if (!range && tiMathEditor?.active && tiMathEditor.replaceSelection(String(text))) return;
   const source=document.querySelector('#xml-code'),adapter=codeEditorAdapters.get('#xml-code');
   const start=range?.start ?? source.selectionStart ?? source.value.length,end=range?.end ?? source.selectionEnd ?? start;
   if(adapter?.replaceRange)adapter.replaceRange(String(text),start,end);
@@ -2257,12 +2258,14 @@ json.dumps(items)
 }
 
 function selectXmlProgram(index) {
+  tiMathEditor?.flush();
   xmlDoctor.current = xmlDoctor.candidates.find((item) => item.index === Number(index));
   if (!xmlDoctor.current) return;
   document.querySelector('#xml-programs').value=String(xmlDoctor.current.index);
   if (document.querySelector('#xml-code').disabled) setXmlDoctorEnabled(true);
   const code = document.querySelector("#xml-code");
   code.value = xmlDoctor.current.code;
+  tiMathEditor?.resetSelection();
   syncPrgmPreviewButton();
   xmlDoctor.lastDiff = "";
   xmlDoctor.embedded = false;
@@ -9948,6 +9951,21 @@ function calculatorRenderComposer(container, state, focusTarget = null) {
     calculatorPlaceCaret(target, requestedOffset == null ? state.carets?.[target.dataset.editorPart] : requestedOffset);
     state.activePart = target.dataset.editorPart;
   }, 0);
+  const resizeEntry=()=>{
+    if(!container.isConnected)return;
+    const stage=container.closest('.calculator-editor-stage');if(!stage)return;
+    const content=container.firstElementChild;
+    const height=Math.min(Math.max(58,(content?.scrollHeight||24)+18),Math.max(58,stage.clientHeight-62));
+    container.style.height=height+'px';container.style.minHeight=height+'px';
+    stage.style.setProperty('--calc-entry-height',height+'px');
+  };
+  container.__mathResizeObserver?.disconnect();
+  if(typeof ResizeObserver!=='undefined'){
+    container.__mathResizeObserver=new ResizeObserver(resizeEntry);
+    const stage=container.closest('.calculator-editor-stage');if(stage)container.__mathResizeObserver.observe(stage);
+    if(container.firstElementChild)container.__mathResizeObserver.observe(container.firstElementChild);
+  }
+  resizeEntry();requestAnimationFrame(resizeEntry);
 }
 
 function calculatorSetTemplate(container, state, file) {
@@ -10024,14 +10042,26 @@ function calculatorRowHeightV2(row) {
 }
 
 function calculatorHistoryMetrics(rows, viewHeight) {
-  const heights = rows.map(calculatorRowHeightV2);
+  const history=typeof document!=='undefined'?document.querySelector('#love-calculator-history'):null;
+  const displayed=history?.children;
+  const heights=displayed?.length===rows.length?[...displayed].map(row=>row.offsetHeight):rows.map(calculatorRowHeightV2);
   const total = heights.reduce((a,b)=>a+b,0);
   return { heights, total, maxScroll: Math.max(0,total-viewHeight) };
 }
 
 function drawCalculatorScratchpadPreviewV2(canvas, rows=[], selected=-1, scrollPx=0) {
   const ctx=canvas.getContext('2d'), w=canvas.width||320, h=canvas.height||214;
-  const viewH=Math.max(40,h-CALCULATOR_COMPOSER_RESERVED_HEIGHT);
+  const stage=canvas.closest?.('.calculator-editor-stage'),history=stage?.querySelector('#love-calculator-history');
+  const viewH=Math.max(40,history?.clientHeight||h-CALCULATOR_COMPOSER_RESERVED_HEIGHT);
+  if(history&&window.TnsMathTypeset){
+    const signature=JSON.stringify(rows.map(row=>[row.entry,row.display||row.full]));
+    if(history.dataset.rows!==signature){
+      history.innerHTML=rows.map((row,index)=>`<div class="calculator-math-history-row" data-calculator-row="${index}"><div class="calculator-math-history-entry">${window.TnsMathTypeset.render(row.entry||'')}</div><div class="calculator-math-history-result">${/^Error:/.test(row.display||row.full||'')?escapeHtml(row.display||row.full):window.TnsMathTypeset.render(row.display||row.full||'')}</div></div>`).join('');
+      history.dataset.rows=signature;
+    }
+    for(const row of history.children)row.classList.toggle('selected',Number(row.dataset.calculatorRow)===selected);
+    history.scrollTop=Math.max(0,Number(scrollPx)||0);
+  }
   const metrics=calculatorHistoryMetrics(rows,viewH);
   const scroll=Math.max(0,Math.min(metrics.maxScroll,Number(scrollPx||0)));
   ctx.setTransform(1,0,0,1,0,0); ctx.fillStyle='#fff'; ctx.fillRect(0,0,w,h);
@@ -11888,12 +11918,12 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
           <button type="button" id="love-calculator-catalog-toggle" class="green-tool-button ti-math-icon-button" title="${escapeHtml(({es:'Catálogo',en:'Catalog',fr:'Catalogue'})[document.documentElement.lang]||'Catalog')}" aria-label="Catalog"><span aria-hidden="true" class="ti-math-tool-icon ti-math-icon-catalog"></span></button>
           <span class="love-calculator-toolbar-spacer"></span>
           <button type="button" id="love-calculator-save" class="green-tool-button">${escapeHtml(t("calculatorSave"))}</button>
-          <button type="button" id="love-calculator-cancel">${escapeHtml(t("calculatorCancel"))}</button>
         </div>
         <div id="love-calculator-template-panel" class="love-calculator-template-panel" hidden>${TI_CALCULATOR_TEMPLATES.map(([file,template,label])=>`<button type="button" class="love-calculator-template-button" data-file="${escapeHtml(file)}" data-template="${escapeHtml(template)}" title="${escapeHtml(label)}"><img src="./assets/calculator-icons/${escapeHtml(file)}" alt="${escapeHtml(label)}" /></button>`).join("")}</div>
       </div>` : ""}
       <div id="love-preview-stage" class="love-preview-stage calculator-view ${calculatorEditor ? "calculator-editor-stage" : ""}">
         <div class="love-preview-calculator-bar">${escapeHtml(t("lovePreviewCalculatorChromeTitle"))}</div>
+        ${calculatorEditor ? `<div id="love-calculator-history" class="love-calculator-history" role="log" aria-label="Calculator history"></div>` : ""}
         <canvas id="love-preview-canvas" class="calculator-view" width="320" height="214" tabindex="0"></canvas>
         ${calculatorEditor ? `<div id="love-calculator-composer" class="love-calculator-composer" tabindex="0" aria-label="TI-Nspire math entry"></div>` : ""}
       </div>
@@ -12120,10 +12150,14 @@ async function showLovePreview(code, editor = null, editorLog = null, options = 
     const toggle = backdrop.querySelector("#love-calculator-templates-toggle");
     const panel = backdrop.querySelector("#love-calculator-template-panel");
     const composer = backdrop.querySelector("#love-calculator-composer");
+    const mathHistory=backdrop.querySelector('#love-calculator-history');
+    previewCleanups.push(()=>composer.__mathResizeObserver?.disconnect());
     calculatorEditor.composer = calculatorEditor.composer || calculatorNewComposer("plain");
     calculatorEditor.selectedIndex ??= -1;
     calculatorEditor.scrollPx ||= 0;
     calculatorEditor.targetScrollPx = calculatorEditor.scrollPx;
+    mathHistory.addEventListener('click',event=>{const row=event.target.closest('[data-calculator-row]');if(!row)return;calculatorEditor.selectedIndex=Number(row.dataset.calculatorRow);redraw();});
+    mathHistory.addEventListener('scroll',()=>{calculatorEditor.scrollPx=mathHistory.scrollTop;calculatorEditor.targetScrollPx=mathHistory.scrollTop;});
     let scrollAnimation = 0;
     previewCleanups.push(() => cancelAnimationFrame(scrollAnimation));
 

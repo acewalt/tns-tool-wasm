@@ -139,6 +139,28 @@
     }
   };
   const q=(selector,root=document)=>root?.querySelector(selector);
+  const usbHelpText={
+    es:{title:'Conexión USB: liberar la interfaz',reason:'El navegador no pudo tomar la interfaz USB. Puede estar ocupada por otro programa o usar un controlador incompatible.',first:'Cierra TI-Nspire Student Software, TI Connect, otras pestañas de transferencias y cualquier aplicación que use la calculadora. Después vuelve a intentar conectar.',windows:'Si sigue ocurriendo en Windows',steps:['Abre Zadig desde su página oficial.','En Options, activa List All Devices.','Selecciona únicamente tu TI-Nspire y comprueba el identificador USB mostrado aquí.','Elige WinUSB y pulsa Replace Driver o Install Driver.','Desconecta y vuelve a conectar el cable, y pulsa Reintentar.'],warning:'No selecciones teclado, ratón ni un concentrador USB. Cambiar el controlador de TI puede requerir restaurarlo para volver a usar el software oficial.',device:'Dispositivo seleccionado',retry:'Reintentar conexión',dismiss:'Ocultar ayuda',download:'Abrir página oficial de Zadig'},
+    en:{title:'USB connection: release the interface',reason:'The browser could not claim the USB interface. Another application may be using it, or its driver may be incompatible.',first:'Close TI-Nspire Student Software, TI Connect, other transfer tabs and any application using the calculator. Then try connecting again.',windows:'If this continues on Windows',steps:['Open Zadig from its official website.','Under Options, enable List All Devices.','Select only your TI-Nspire and check the USB identifier shown here.','Choose WinUSB and click Replace Driver or Install Driver.','Unplug and reconnect the cable, then click Retry.'],warning:'Do not select your keyboard, mouse or a USB hub. Replacing the TI driver may require restoring it before using official TI software again.',device:'Selected device',retry:'Retry connection',dismiss:'Hide help',download:'Open official Zadig website'},
+    fr:{title:'Connexion USB : libérer l’interface',reason:'Le navigateur ne peut pas prendre l’interface USB. Une autre application peut l’utiliser, ou son pilote peut être incompatible.',first:'Fermez TI-Nspire Student Software, TI Connect, les autres onglets de transfert et les applications utilisant la calculatrice. Réessayez ensuite.',windows:'Si le problème persiste sous Windows',steps:['Ouvrez Zadig depuis son site officiel.','Dans Options, activez List All Devices.','Sélectionnez uniquement votre TI-Nspire et vérifiez l’identifiant USB affiché ici.','Choisissez WinUSB puis Replace Driver ou Install Driver.','Débranchez et rebranchez le câble, puis cliquez sur Réessayer.'],warning:'Ne sélectionnez ni clavier, ni souris, ni concentrateur USB. Il peut être nécessaire de restaurer le pilote TI pour réutiliser le logiciel officiel.',device:'Appareil sélectionné',retry:'Réessayer la connexion',dismiss:'Masquer l’aide',download:'Ouvrir le site officiel de Zadig'}
+  };
+  function showUsbHelp(show=true){
+    const host=q('[data-ti-usb-help]',state.root);if(!host)return;
+    host.hidden=!show;if(!show)return;
+    const words=usbHelpText[String(document.documentElement.lang||'en').slice(0,2)]||usbHelpText.en;
+    host.replaceChildren();
+    const title=document.createElement('h3');title.textContent=words.title;host.append(title);
+    for(const value of [words.reason,words.first]){const p=document.createElement('p');p.textContent=value;host.append(p);}
+    const device=state.lastDevice;if(device){const info=document.createElement('code');info.textContent=words.device+': '+(device.productName||'TI-Nspire')+' · '+Number(device.vendorId||0x0451).toString(16).padStart(4,'0')+':'+Number(device.productId||0).toString(16).padStart(4,'0');host.append(info);}
+    const details=document.createElement('details'),summary=document.createElement('summary');summary.textContent=words.windows;details.append(summary);
+    details.open=typeof navigator!=='undefined'&&/win/i.test(navigator.userAgentData?.platform||navigator.platform||'');
+    const list=document.createElement('ol');for(const step of words.steps){const li=document.createElement('li');li.textContent=step;list.append(li);}details.append(list);
+    const warning=document.createElement('p');warning.textContent=words.warning;details.append(warning);
+    const link=document.createElement('a');link.href='https://zadig.akeo.ie/';link.target='_blank';link.rel='noopener noreferrer';link.textContent=words.download;details.append(link);host.append(details);
+    const actions=document.createElement('div');actions.className='ti-usb-help-actions';
+    const retry=document.createElement('button');retry.type='button';retry.className='green-tool-button';retry.textContent=words.retry;retry.onclick=()=>void connect();
+    const dismiss=document.createElement('button');dismiss.type='button';dismiss.textContent=words.dismiss;dismiss.onclick=()=>showUsbHelp(false);actions.append(retry,dismiss);host.append(actions);
+  }
   const extraText={
     es:{storage:'Almacenamiento',storageUnknown:'Capacidad no disponible',storageFree:'libres de',storageUsed:'usados',record:'Grabar pantalla',stopRecording:'Detener grabación',recordHint:'Capturas USB sucesivas · vídeo WebM sin audio · máximo 2 minutos. La frecuencia depende de la calculadora.',recordUnsupported:'Este navegador no admite grabación WebM del lienzo.',recording:'Grabando',recordStopped:'Grabación finalizada',downloadVideo:'Descargar vídeo WebM',dropHint:'Arrastra TNS a una carpeta para enviarlos; arrastra un archivo de la calculadora a otra carpeta para moverlo. La barra de ruta es el destino de la carpeta actual.',onlyTns:'Selecciona únicamente archivos .tns.',moving:'Moviendo',moveConflict:'El destino ya contiene ese nombre. No se movió el archivo.',invalidMove:'No se puede mover un elemento dentro de sí mismo.'},
     en:{storage:'Storage',storageUnknown:'Capacity unavailable',storageFree:'free of',storageUsed:'used',record:'Record screen',stopRecording:'Stop recording',recordHint:'Successive USB screenshots · silent WebM video · up to 2 minutes. Capture rate depends on the calculator.',recordUnsupported:'This browser does not support WebM canvas recording.',recording:'Recording',recordStopped:'Recording finished',downloadVideo:'Download WebM video',dropHint:'Drop TNS files onto a folder to upload; drag a calculator file to another folder to move it. The path bar targets the current folder.',onlyTns:'Select only .tns files.',moving:'Moving',moveConflict:'The destination already contains this name. Nothing was moved.',invalidMove:'An item cannot be moved inside itself.'},
@@ -422,6 +444,7 @@
     let completed=false;
     try{await operation();completed=true;if(state.storageDirty)await readStorage();}
     catch(e){
+      if(e.code==='USB_INTERFACE_CLAIM'||/claimInterface|unable to claim interface/i.test(String(e.message||e)))showUsbHelp();
       const broken=Boolean(state.link?.broken);
       const deletionProgress=e.deletionProgress?' · '+tr('deleteConfirmed')+': '+e.deletionProgress.confirmed+'/'+e.deletionProgress.total:'';
       if(broken){
@@ -466,6 +489,7 @@
       state.lastDevice=device.device;
       say(tr("connecting"));
       state.files=await device.connect();
+      showUsbHelp(false);
       state.cache.clear();state.cache.set("/",state.files);
       state.expanded=new Set(["/"]);state.path="/";state.chosen.clear();
       q("[data-ti-device]",state.root).textContent=device.device.productName||
@@ -1128,6 +1152,7 @@
       '<button type="button" data-ti-close class="ti-manager-x" aria-label="Close">×</button></header>',
       '<div class="ti-manager-toolbar"><button type="button" data-ti-connect class="ti-manager-primary"></button>',
       '<button type="button" data-ti-disconnect disabled></button><span data-ti-status></span></div>',
+      '<section class="ti-usb-help" data-ti-usb-help aria-live="polite" hidden></section>',
       '<div class="ti-manager-grid"><aside class="ti-manager-side">',
       '<h3 data-ti-model-label></h3><div class="ti-manager-device" data-ti-device>—</div>',
       '<section class="ti-storage"><div><h3 data-ti-storage-label></h3><button type="button" data-ti-storage-refresh aria-label="Refresh storage">↻</button></div><meter data-ti-storage-meter min="0" max="1" value="0" hidden></meter><output data-ti-storage></output></section>',
@@ -1194,6 +1219,7 @@
     q("[data-ti-close]",root).addEventListener("click",close);
     q("[data-ti-connect]",root).addEventListener("click",connect);
     q("[data-ti-disconnect]",root).addEventListener("click",disconnect);
+    q('[data-ti-help]',root).addEventListener('click',event=>{event.preventDefault();showUsbHelp();});
     q("[data-ti-refresh]",root).addEventListener("click",()=>list(state.path));
     q("[data-ti-mkdir]",root).addEventListener("click",mkdir);
     q("[data-ti-receive]",root).addEventListener("click",receive);
