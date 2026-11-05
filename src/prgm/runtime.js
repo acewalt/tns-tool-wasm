@@ -1,153 +1,6 @@
-// Shared, DOM-free TI-BASIC text preview. Source is parsed, never evaluated as JS.
-const IDENT = /^[\p{L}_][\p{L}\p{N}_]*$/u;
-const key = value => String(value).toLowerCase();
-export class PrgmError extends Error {
-  constructor(code, message, line = 0) { super(message); this.code = code; this.line = line; }
-  toJSON() { return {code:this.code, message:this.message, line:this.line}; }
-}
-const fail = (code, message) => { throw new PrgmError(code, message); };
-export function formatPrgmValue(value) {
-  if (typeof value === 'number') return Object.is(value,-0) ? '0' : String(Number(value.toPrecision(6)));
-  if (Array.isArray(value)) return '{'+value.map(formatPrgmValue).join(',')+'}';
-  return String(value);
-}
-function number(value) {
-  if (typeof value !== 'number' || !Number.isFinite(value)) fail('TYPE_ERROR','Se esperaba un número real finito.');
-  return value;
-}
-function truth(value) {
-  if (typeof value === 'boolean') return value;
-  fail('TYPE_ERROR','La condición debe ser verdadera o falsa.');
-}
-// Split only outside quoted strings and paired brackets. Colons inside := stay intact.
-function split(source, separator) {
-  const parts=[]; let start=0, quote='', depth=0;
-  for(let i=0;i<source.length;i++) {
-    const c=source[i];
-    if(quote) { if(c===quote){if(source[i+1]===quote){i++;continue;}quote='';} continue; }
-    if(c==='"'||c==='“') { quote=c==='“'?'”':'"'; continue; }
-    if('({['.includes(c))depth++;
-    if(')}]'.includes(c))depth--;
-    if(c===separator && depth===0 && !(c===':'&&source[i+1]==='=')) {parts.push(source.slice(start,i));start=i+1;}
-  }
-  parts.push(source.slice(start)); return parts;
-}
-function tokens(source) {
-  const out=[]; let i=0;
-  const symbols={'−':'-','–':'-','×':'*','·':'*','÷':'/','≤':'<=','≥':'>=','≠':'!=','√':'sqrt'};
-  while(i<source.length) {
-    const c=source[i];
-    if(/\s/u.test(c)){i++;continue;}
-    if(c==='"'||c==='“') {
-      const end=c==='“'?'”':'"'; let text='',closed=false;i++;
-      while(i<source.length){if(source[i]===end){i++;if(source[i]===end){text+=end;i++;}else{closed=true;break;}}else text+=source[i++];}
-      if(!closed)fail('SYNTAX_ERROR','Cadena sin comillas de cierre.');
-      out.push({type:'string',value:text});continue;
-    }
-    const numeric=/^(?:\d+(?:\.\d*)?|\.\d+)(?:[eEᴇ][+−-]?\d+)?/.exec(source.slice(i));
-    if(numeric){out.push({type:'number',value:Number(numeric[0].replace('ᴇ','e').replace('−','-'))});i+=numeric[0].length;continue;}
-    const id=/^[\p{L}_][\p{L}\p{N}_]*/u.exec(source.slice(i));
-    if(id){out.push({type:'id',value:key(id[0])});i+=id[0].length;continue;}
-    const pair=source.slice(i,i+2);
-    if(['<=','>=','!=','<>','=='].includes(pair)){out.push({type:'op',value:pair});i+=2;continue;}
-    if('+-*/^&=<>(),{}[]!°'.includes(c)||symbols[c]){out.push({type:'op',value:symbols[c]||c});i++;continue;}
-    fail('UNSUPPORTED_EXPRESSION','Símbolo no soportado en una expresión: '+c);
-  }
-  out.push({type:'end',value:''});return out;
-}
-const PRECEDENCE={or:1,xor:1,and:2,'=':3,'==':3,'!=':3,'<>':3,'<':3,'>':3,'<=':3,'>=':3,'&':4,'+':5,'-':5,'*':6,'/':6,'^':8};
-const FUNCTIONS=new Set('string dim left right mid approx sqrt abs floor ceiling ipart exp ln log sign sin cos tan asin acos atan min max round mod remain'.split(' '));
-function expressionTree(source) {
-  const ts=tokens(source);let at=0;
-  const peek=()=>ts[at], take=()=>ts[at++];
-  const expect=v=>{if(take().value!==v)fail('SYNTAX_ERROR','Se esperaba '+v+'.');};
-  function expr(min=0) {
-    const token=take();let node;
-    if(token.type==='number'||token.type==='string')node={type:'literal',value:token.value};
-    else if(['+','-','not'].includes(token.value))node={type:'unary',op:token.value,arg:expr(token.value==='not'?3:7)};
-    else if(token.value==='('){node=expr();expect(')');}
-    else if(token.value==='{') {
-      const args=[];if(peek().value!=='}'){do{args.push(expr());if(peek().value!==',')break;take();}while(true);}expect('}');node={type:'list',args};
-    } else if(token.type==='id'||token.value==='sqrt') {
-      if(peek().value==='('){take();const args=[];if(peek().value!==')'){do{args.push(expr());if(peek().value!==',')break;take();}while(true);}expect(')');node={type:'call',name:token.value,args};}
-      else node={type:'variable',name:token.value};
-    } else fail('SYNTAX_ERROR','Expresión incompleta cerca de «'+token.value+'».');
-    while(true) {
-      const next=peek();
-      if(next.value==='['){take();const index=expr();expect(']');node={type:'index',base:node,index};continue;}
-      if(next.value==='!'||next.value==='°'){take();node={type:'unary',op:next.value,arg:node};continue;}
-      let op=next.value, implicit=false;
-      if((next.type==='number'||next.type==='id'&&!['and','or','xor'].includes(next.value)||next.value==='(')&&PRECEDENCE[op]===undefined){op='*';implicit=true;}
-      const priority=PRECEDENCE[op]; if(priority===undefined||priority<min)break;
-      if(!implicit)take();node={type:'binary',op,left:node,right:expr(priority+(op==='^'?0:1))};
-    }
-    return node;
-  }
-  const result=expr();if(peek().type!=='end')fail('SYNTAX_ERROR','Texto inesperado: '+peek().value);return result;
-}
-function evaluate(node, vars, angle) {
-  const ev=n=>evaluate(n,vars,angle);
-  if(node.type==='literal')return node.value;
-  if(node.type==='list')return node.args.map(ev);
-  if(node.type==='variable') {
-    if(Object.hasOwn(vars,node.name))return vars[node.name];
-    const constants={pi:Math.PI,'π':Math.PI,'ℯ':Math.E,true:true,false:false};
-    if(Object.hasOwn(constants,node.name))return constants[node.name];
-    fail('UNDEFINED_VARIABLE','La variable «'+node.name+'» no está definida.');
-  }
-  if(node.type==='index') {
-    const list=ev(node.base), index=number(ev(node.index));
-    if(!Array.isArray(list)||!Number.isInteger(index)||index<1||index>list.length)fail('INDEX_ERROR','Índice de lista fuera de rango.');
-    return list[index-1];
-  }
-  if(node.type==='unary') {
-    const value=ev(node.arg);
-    if(node.op==='not')return !truth(value);
-    const n=number(value);
-    if(node.op==='-')return -n;if(node.op==='+')return n;
-    if(node.op==='°')return n*Math.PI/180;
-    if(!Number.isInteger(n)||n<0||n>170)fail('DOMAIN_ERROR','Factorial fuera del dominio soportado.');
-    let f=1;for(let k=2;k<=n;k++)f*=k;return f;
-  }
-  if(node.type==='binary') {
-    const a=ev(node.left);
-    if(node.op==='and')return truth(a)&&truth(ev(node.right));
-    if(node.op==='or')return truth(a)||truth(ev(node.right));
-    const b=ev(node.right);
-    if(node.op==='xor')return truth(a)!==truth(b);
-    if(node.op==='&')return formatPrgmValue(a)+formatPrgmValue(b);
-    if(['=','==','!=','<>'].includes(node.op))return ['=','=='].includes(node.op)?JSON.stringify(a)===JSON.stringify(b):JSON.stringify(a)!==JSON.stringify(b);
-    if(['<','>','<=','>='].includes(node.op)) {
-      if(typeof a!==typeof b||!['number','string'].includes(typeof a))fail('TYPE_ERROR','Comparación de tipos incompatibles.');
-      return node.op==='<'?a<b:node.op==='>'?a>b:node.op==='<='?a<=b:a>=b;
-    }
-    const x=number(a),y=number(b);
-    if(node.op==='/'&&y===0)fail('DIVISION_BY_ZERO','División por cero.');
-    return number(node.op==='+'?x+y:node.op==='-'?x-y:node.op==='*'?x*y:node.op==='/'?x/y:x**y);
-  }
-  if(node.type==='call') {
-    if(!FUNCTIONS.has(node.name))fail('UNSUPPORTED_FUNCTION','Función no soportada por el preview numérico: '+node.name+'().');
-    const args=node.args.map(ev), n=node.name;
-    const arity=(min,max=min)=>{if(args.length<min||args.length>max)fail('ARGUMENT_ERROR','Número de argumentos incorrecto para '+n+'().');};
-    if(n==='string'){arity(1);return formatPrgmValue(args[0]);}
-    if(n==='dim'){arity(1);if(typeof args[0]!=='string'&&!Array.isArray(args[0]))fail('TYPE_ERROR','dim() requiere texto o lista.');return args[0].length;}
-    if(n==='left'||n==='right'||n==='mid'){arity(n==='mid'?2:1,n==='mid'?3:2);const text=args[0];if(typeof text!=='string')fail('TYPE_ERROR','Se esperaba texto.');const count=args[1]??1;return n==='left'?text.slice(0,count):n==='right'?text.slice(-count):text.slice(count-1,args[2]===undefined?undefined:count-1+args[2]);}
-    const degree=angle==='DEG'&&node.args[0]?.op!=='°';
-    const functions={approx:x=>x,sqrt:Math.sqrt,abs:Math.abs,floor:Math.floor,ceiling:Math.ceil,ipart:Math.trunc,exp:Math.exp,ln:Math.log,log:Math.log10,sign:Math.sign,
-      sin:x=>Math.sin(degree?x*Math.PI/180:x),cos:x=>Math.cos(degree?x*Math.PI/180:x),tan:x=>Math.tan(degree?x*Math.PI/180:x),
-      asin:x=>Math.asin(x)*(angle==='DEG'?180/Math.PI:1),acos:x=>Math.acos(x)*(angle==='DEG'?180/Math.PI:1),atan:x=>Math.atan(x)*(angle==='DEG'?180/Math.PI:1)};
-    if(Object.hasOwn(functions,n)){arity(1);return number(functions[n](number(args[0])));}
-    if(n==='min'||n==='max'){arity(1,100);const values=args.length===1&&Array.isArray(args[0])?args[0]:args;return number(Math[n](...values.map(number)));}
-    if(n==='round'){arity(1,2);const factor=10**(args[1]===undefined?0:number(args[1]));return number(Math.round(number(args[0])*factor)/factor);}
-    if(n==='mod'||n==='remain'){arity(2);const a=number(args[0]),b=number(args[1]);if(!b)fail('DIVISION_BY_ZERO','División por cero.');return n==='mod'?((a%b)+b)%b:a%b;}
-    fail('UNSUPPORTED_FUNCTION','Función no soportada por el preview numérico: '+n+'().');
-  }
-  fail('INTERNAL_ERROR','Expresión desconocida.');
-}
-export function evaluatePrgmExpression(source, variables={}, options={}) {
-  const vars=Object.create(null);for(const [name,value] of Object.entries(variables))vars[key(name)]=value;
-  return evaluate(expressionTree(String(source)),vars,options.angleMode==='DEG'?'DEG':'RAD');
-}
+// Shared, DOM-free TI-BASIC text preview.
+import { IDENT, key, PrgmError, fail, number, truth, split, expressionTree, evaluate, createMathContext, formatPrgmValue, evaluatePrgmExpression } from './math.js';
+export { PrgmError, formatPrgmValue, evaluatePrgmExpression } from './math.js';
 export function compilePrgm(source) {
   const statements=[];
   for(const [index,raw] of String(source).replace(/\r\n?/g,'\n').split('\n').entries()) {
@@ -166,6 +19,9 @@ export function compilePrgm(source) {
         if(code.length)fail('UNSUPPORTED_COMMAND','Las definiciones anidadas no están soportadas.');
         name=match[1];parameters=match[2].trim()?split(match[2],',').map(variable):[];
         if(match[3]){documentKind=key(match[3]);documentLine=stmt.line;}
+      }else if((match=/^Define\s+([\p{L}_][\p{L}\p{N}_]*)\(([^)]*)\)\s*=\s*(.+)$/iu.exec(text))){
+        op.kind='defineFunction';op.name=variable(match[1]);op.parameters=match[2].trim()?split(match[2],',').map(variable):[];op.body=parsed(match[3]);
+      }else if((match=/^Define\s+([\p{L}_][\p{L}\p{N}_]*)\s*=\s*(.+)$/iu.exec(text))){op.kind='assign';op.name=variable(match[1]);op.expr=parsed(match[2]);
       }else if(/^(Prgm|Func)$/i.test(text)){
         if(documentKind)fail('SYNTAX_ERROR','El documento contiene una apertura Prgm/Func duplicada.');
         documentKind=key(text);documentLine=stmt.line;
@@ -176,7 +32,7 @@ export function compilePrgm(source) {
         if(stack.length)fail('SYNTAX_ERROR','Bloque sin cierre: '+stack.at(-1).kind);
         documentClosed=true;op.kind='end';
       }
-      else if((match=/^(Local|DelVar)\s+(.+)$/i.exec(text))){op.kind=key(match[1]);op.names=split(match[2],',').map(variable);}
+      else if((match=/^(Local|DelVar|Lock|Unlock)\s+(.+)$/i.exec(text))){op.kind=key(match[1]);op.names=split(match[2],',').map(variable);}
       else if((match=/^(DispAt|Disp|RequestStr|Request)\b\s*(.*)$/i.exec(text))){
         op.kind=key(match[1]);const args=split(match[2],',').map(s=>s.trim());
         if(op.kind.startsWith('request')){if(args.length<2||args.length>4)fail('SYNTAX_ERROR','Request requiere mensaje, variable y hasta dos opciones.');op.prompt=parsed(args[0]);op.name=variable(args[1]);op.flag=args[2]?parsed(args[2]):null;op.statusName=args[3]?variable(args[3]):null;}
@@ -184,6 +40,12 @@ export function compilePrgm(source) {
       }else if(/^ClrIO$/i.test(text)){op.kind='clear';warnings.push({code:'COMPAT_CLRIO',line:stmt.line,message:'ClrIO no es una instrucción TI-Nspire; se omite y se conserva el historial.'});}
       else if((match=/^If\s+(.+?)\s+Then$/i.exec(text))){op.kind='if';op.expr=parsed(match[1]);stack.push({kind:'if',start:i,branch:i,ends:[],hasElse:false});}
       else if((match=/^If\s+(.+)$/i.exec(text))){op.kind='ifSingle';op.expr=parsed(match[1]);}
+      else if(/^Try$/i.test(text)){op.kind='try';stack.push({kind:'try',start:i,hasElse:false});}
+      else if(/^Else$/i.test(text)&&stack.at(-1)?.kind==='try'){
+        const block=stack.at(-1);if(block.hasElse)fail('SYNTAX_ERROR','Else duplicado en Try.');block.hasElse=true;block.branch=i;code[block.start].handler=i+1;op.kind='tryElse';op.start=block.start;
+      }else if(/^EndTry$/i.test(text)){
+        const block=stack.pop();if(block?.kind!=='try'||!block.hasElse)fail('SYNTAX_ERROR','Try requiere Else y EndTry.');code[block.start].end=i;code[block.branch].end=i;op.kind='endtry';op.start=block.start;
+      }else if(/^(ClrErr|PassErr)$/i.test(text))op.kind=key(text);
       else if((match=/^ElseIf\s+(.+?)\s+Then$/i.exec(text))||/^Else$/i.test(text)){
         const block=stack.at(-1);if(block?.kind!=='if'||block.hasElse)fail('SYNTAX_ERROR','Else/ElseIf sin If válido.');
         code[block.branch].jump=i;op.kind=match?'elseif':'else';op.block=block.start;if(match)op.expr=parsed(match[1]);else block.hasElse=true;block.ends.push(i);block.branch=i;
@@ -205,6 +67,7 @@ export function compilePrgm(source) {
         const arrow=split(text,'→');const assignment=/^([\p{L}_][\p{L}\p{N}_]*)\s*:=\s*(.+)$/u.exec(text);
         if(arrow.length===2){op.kind='assign';op.name=variable(arrow[1]);op.expr=parsed(arrow[0]);}
         else if(assignment){op.kind='assign';op.name=variable(assignment[1]);op.expr=parsed(assignment[2]);}
+        else if(/^[\p{L}_][\p{L}\p{N}_]*\s*\(/u.test(text)||/^(?:\d|[([{√+−-])/.test(text)){op.kind='evaluate';op.expr=parsed(text);}
         else fail('UNSUPPORTED_COMMAND','Instrucción no soportada: '+text.slice(0,90));
       }
       code.push(op);
@@ -218,6 +81,7 @@ export function compilePrgm(source) {
 export class PrgmPreview {
   constructor(source,options={}) {
     this.source=String(source);this.options=options;this.angleMode=options.angleMode==='DEG'?'DEG':'RAD';this.vars=Object.create(null);this.output=[];this.events=[];this.status='ready';this.pc=0;this.executed=0;this.pending=null;this.error=null;this.lastLine=0;this.branches=new Set();this.loops=new Map();
+    this.mathContext=createMathContext(options);this.tries=[];this.lastCaughtError=null;
     this.maxInstructions=Math.min(1000000,Math.max(1,options.maxInstructions||50000));this.maxLines=options.maxLines||1000;
     try {this.program=compilePrgm(this.source);this.name=options.name||this.program.name||'programa';
       const supplied=Array.isArray(options.parameters)?options.parameters:String(options.parameters||'').trim()?String(options.parameters).split(','):[];
@@ -236,7 +100,7 @@ export class PrgmPreview {
     } catch(error){this.program={code:[],warnings:[]};this.name=options.name||'programa';this.handleError(error);}
   }
   handleError(error) {this.error=error instanceof PrgmError?error:new PrgmError('RUNTIME_ERROR',String(error.message||error));if(!this.error.line)this.error.line=this.lastLine;this.status='error';this.pending=null;}
-  ev(node) {return evaluate(node,this.vars,this.angleMode);}
+  ev(node) {this.mathContext.steps=0;const value=evaluate(node,this.vars,this.angleMode,this.mathContext);this.angleMode=this.mathContext.modes[2]===2?'DEG':this.mathContext.modes[2]===3?'GRAD':'RAD';return value;}
   append(text,kind='disp') {if(this.output.length>=this.maxLines)fail('OUTPUT_LIMIT','Límite de historial alcanzado.');const row={text:String(text),kind,line:this.lastLine};this.output.push(row);this.event({type:'output',...row});}
   event(value) {this.events.push(value);if(this.events.length>2000)this.events.shift();}
   step() {
@@ -247,13 +111,21 @@ export class PrgmPreview {
       if(++this.executed>this.maxInstructions)fail('EXECUTION_LIMIT','Se alcanzó el límite de instrucciones; posible bucle infinito.');
       let next=this.pc+1;
       if(op.kind==='local'){} // Declaring Local never defines it as zero.
-      else if(op.kind==='delvar')op.names.forEach(n=>delete this.vars[n]);
-      else if(op.kind==='assign')this.vars[op.name]=this.ev(op.expr);
+      else if(op.kind==='delvar')op.names.forEach(n=>{if(this.mathContext.locks.has(n))fail('LOCKED_VARIABLE','La variable «'+n+'» está bloqueada.');delete this.vars[n];delete this.mathContext.functions[n];});
+      else if(op.kind==='lock'||op.kind==='unlock')op.names.forEach(n=>op.kind==='lock'?this.mathContext.locks.add(n):this.mathContext.locks.delete(n));
+      else if(op.kind==='assign'){if(this.mathContext.locks.has(op.name))fail('LOCKED_VARIABLE','La variable «'+op.name+'» está bloqueada.');this.vars[op.name]=this.ev(op.expr);}
+      else if(op.kind==='defineFunction')this.mathContext.functions[op.name]={parameters:op.parameters,body:op.body};
+      else if(op.kind==='evaluate')this.ev(op.expr);
       else if(op.kind==='disp'||op.kind==='dispat') {
         const args=op.args.map(n=>this.ev(n));
         if(op.kind==='disp')this.append(args.map(formatPrgmValue).join('\u2009'));
         else {const row=number(args.shift());if(!Number.isInteger(row)||row<1||row>8)fail('DOMAIN_ERROR','DispAt requiere una fila entre 1 y 8.');while(this.output.length<row)this.append('');this.output[row-1]={text:args.map(formatPrgmValue).join('\u2009'),kind:'disp',line:op.line};}
       }else if(op.kind==='clear'){this.event({type:'compatibility',command:'ClrIO',ignored:true,line:op.line});}
+      else if(op.kind==='try')this.tries.push({start:this.pc,handler:op.handler,end:op.end});
+      else if(op.kind==='tryElse'){this.tries=this.tries.filter(t=>t.start!==op.start);next=op.end+1;}
+      else if(op.kind==='endtry')this.tries=this.tries.filter(t=>t.start!==op.start);
+      else if(op.kind==='clrerr'){this.vars.errcode=0;this.lastCaughtError=null;}
+      else if(op.kind==='passerr'){if(this.lastCaughtError)throw this.lastCaughtError;fail('NO_ACTIVE_ERROR','PassErr requiere un error capturado.');}
       else if(op.kind==='request'||op.kind==='requeststr') {
         const prompt=this.ev(op.prompt);if(typeof prompt!=='string')fail('TYPE_ERROR','El mensaje Request debe ser texto.');
         this.pending={kind:op.kind,prompt,variable:op.name,display:op.flag?this.ev(op.flag)!==0:true,statusVariable:op.statusName,line:op.line};this.status='waiting';
@@ -271,15 +143,27 @@ export class PrgmPreview {
         if(!frame){frame={step:number(this.ev(op.increment)),limit:number(this.ev(op.limit))};if(frame.step===0)fail('DOMAIN_ERROR','El paso de For no puede ser cero.');this.vars[op.name]=number(this.ev(op.start));this.loops.set(this.pc,frame);}
         if(frame.step>0?this.vars[op.name]>frame.limit:this.vars[op.name]<frame.limit){this.loops.delete(this.pc);next=op.end+1;}
       }else if(op.kind==='endloop') {
-        const begin=this.program.code[op.start];if(begin.kind==='for'){const frame=this.loops.get(op.start);this.vars[begin.name]=number(this.vars[begin.name])+frame.step;}next=op.start;
+        const begin=this.program.code[op.start];if(begin.kind==='for'){const frame=this.loops.get(op.start);if(!frame)fail('INVALID_CONTROL_FLOW','Goto entró en For sin ejecutar su apertura.');this.vars[begin.name]=number(this.vars[begin.name])+frame.step;}next=op.start;
       }else if(op.kind==='exit'){this.loops.delete(op.start);next=this.program.code[op.start].end+1;}
       else if(op.kind==='cycle')next=this.program.code[op.start].end;
-      else if(op.kind==='goto'){this.loops.clear();this.branches.clear();next=op.jump;}
+      else if(op.kind==='goto'){
+        // A jump inside a loop must retain its For counter; only scopes actually
+        // exited by the jump lose their state.
+        for(const start of this.loops.keys())if(!(start<op.jump&&op.jump<=this.program.code[start].end))this.loops.delete(start);
+        for(const start of this.branches)if(!(start<op.jump&&op.jump<=this.program.code[start].end))this.branches.delete(start);
+        this.tries=this.tries.filter(frame=>frame.start<op.jump&&op.jump<=frame.end);next=op.jump;
+      }
       else if(op.kind==='return'){this.returnValue=this.ev(op.expr);this.append(formatPrgmValue(this.returnValue),'return');this.status='done';}
       else if(op.kind==='end')this.status='done';
       this.pc=next;
       if(this.pc>=this.program.code.length&&this.status==='paused')this.status='done';
-    }catch(error){this.handleError(error);}
+    }catch(error){
+      const frame=this.tries.pop();
+      if(frame&&!['EXECUTION_LIMIT','OUTPUT_LIMIT','RESOURCE_LIMIT'].includes(error.code)){
+        this.lastCaughtError=error;this.vars.errcode=({DIVISION_BY_ZERO:250,DOMAIN_ERROR:260,TYPE_ERROR:210,INDEX_ERROR:350,UNDEFINED_VARIABLE:960,UNSUPPORTED_FUNCTION:1040})[error.code]||900;
+        this.pc=frame.handler;this.status='paused';this.event({type:'caughtError',code:error.code,line:this.lastLine});
+      }else this.handleError(error);
+    }
     return this.snapshot();
   }
   run(budget=500) {for(let i=0;i<budget&&!['waiting','done','stopped','error'].includes(this.status);i++)this.step();return this.snapshot();}
@@ -287,7 +171,7 @@ export class PrgmPreview {
     if(this.status!=='waiting')return this.snapshot();
     const pending=this.pending;
     // Invalid input is recoverable: keep the same dialog and program counter.
-    if(!cancel){try{const value=pending.kind==='requeststr'?String(raw):evaluatePrgmExpression(String(raw),this.vars,{angleMode:this.angleMode});this.vars[pending.variable]=value;}catch(error){return {...this.snapshot(),success:false,inputError:{code:error.code||'INPUT_ERROR',message:error.message,line:pending.line}};}}
+    if(!cancel){try{this.mathContext.steps=0;const value=pending.kind==='requeststr'?String(raw):evaluatePrgmExpression(String(raw),this.vars,{angleMode:this.angleMode,context:this.mathContext});this.vars[pending.variable]=value;}catch(error){return {...this.snapshot(),success:false,inputError:{code:error.code||'INPUT_ERROR',message:error.message,line:pending.line}};}}
     try {
       if(pending.statusVariable)this.vars[pending.statusVariable]=cancel?0:1;
       if(!cancel&&pending.display)this.append(pending.prompt+' '+String(raw),'input');

@@ -1,0 +1,97 @@
+{
+  "component": "Giac/Xcas WebAssembly CAS",
+  "runtimeVersion": "giac 1.9.0-xx",
+  "runtimeSha256": "a39869bb02000d0baaf8a24907a57552ab4b63f1944b53c222db8fba2840cb7c",
+  "runtimeBytes": 19016229,
+  "runtimeSource": "https://raw.githubusercontent.com/OpenMath-eu/onlymath-engine/7d3ccf044bd7fdd9468299ba03b8ff01b1981d39/giacwasm.js",
+  "runtimeMirrorCommit": "7d3ccf044bd7fdd9468299ba03b8ff01b1981d39",
+  "sourceRetrieved": "2026-11-04",
+  "compiler": "Emscripten 1.38.41 (per upstream README)",
+  "license": "GPL-3.0-or-later",
+  "sourceArchives": [
+    {
+      "file": "emgiac_wasm.tgz",
+      "component": "Giac/Xcas 1.9.0-xx WebAssembly source and Makefile",
+      "url": "https://www-fourier.univ-grenoble-alpes.fr/~parisse/giac/emgiac_wasm.tgz",
+      "license": "GPL-3.0-or-later",
+      "bytes": 27511802,
+      "sha256": "c3f1beffe1f21cfa7fa39e7b5c8656ad5be33da6f6b001a424e96b1da1299866"
+    },
+    {
+      "file": "gmp-6.0.0a.tar.xz",
+      "component": "GNU GMP 6.0.0",
+      "url": "https://ftp.gnu.org/gnu/gmp/gmp-6.0.0a.tar.xz",
+      "license": "LGPL-3.0-or-later OR GPL-2.0-or-later",
+      "bytes": 1904112,
+      "sha256": "9156d32edac6955bc53b0218f5f3763facb890b73a835d5e1b901dcf8eb8b764"
+    },
+    {
+      "file": "mpfr-3.1.2.tar.xz",
+      "component": "GNU MPFR 3.1.2",
+      "url": "https://www.mpfr.org/mpfr-3.1.2/mpfr-3.1.2.tar.xz",
+      "license": "LGPL-3.0-or-later",
+      "bytes": 1074388,
+      "sha256": "399d0f47ef6608cc01d29ed1b99c7faff36d9994c45f36f41ba250147100453b"
+    },
+    {
+      "file": "mpfi-1.5.1.tar.gz",
+      "component": "MPFI 1.5.1",
+      "url": "https://archive.debian.org/debian/pool/main/m/mpfi/mpfi_1.5.1.orig.tar.gz",
+      "license": "LGPL-2.1-or-later",
+      "bytes": 520274,
+      "sha256": "ea2725c6f38ddd8f3677c9b0ce8da8f52fe69e34aa85c01fb98074dc4e3458bc"
+    },
+    {
+      "file": "glpk-4.63.tar.gz",
+      "component": "GNU GLPK 4.63",
+      "url": "https://ftp.gnu.org/gnu/glpk/glpk-4.63.tar.gz",
+      "license": "GPL-3.0-or-later",
+      "bytes": 4131787,
+      "sha256": "914d27f1a51c2bf4a51f1bd4a507f875fcca99db7b219380b836a25b29b3e7f6"
+    },
+    {
+      "file": "pari-2.7.3.tar.gz",
+      "component": "PARI/GP 2.7.3",
+      "url": "https://pari.math.u-bordeaux.fr/pub/pari/OLD/2.7/pari-2.7.3.tar.gz",
+      "license": "GPL-2.0-or-later",
+      "bytes": 3147790,
+      "sha256": "38032944bf4182cecbe438b888ec095ae7768fdbdd2adc1f25251f724f25650a"
+    },
+    {
+      "file": "micropython_emscripten.tgz",
+      "component": "Author-provided MicroPython Emscripten port, including ulab",
+      "url": "https://www-fourier.univ-grenoble-alpes.fr/~parisse/giac/micropython_emscripten.tgz",
+      "license": "MIT",
+      "bytes": 5131025,
+      "sha256": "60c74340e34e5e9af1ccea1bcd19931015a546b350fd3f007b86c81f55480840"
+    }
+  ],
+  "provenance": "The official source archive config.h reports the same 1.9.0-xx version as caseval(version()). The prebuilt mirror does not publish an exact C++ revision or reproducible-build provenance. These sources and upstream build files are supplied without a bit-identical rebuild claim.",
+  "file": "giacwasm.js",
+  "singleFile": true,
+  "embeddedWasm": true,
+  "networkRequired": false,
+  "unmodifiedRuntime": true,
+  "sourceBundle": {
+    "file": "TNS-Giac-CAS-Source.tar.gz",
+    "url": "https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.30/TNS-Giac-CAS-Source.tar.gz",
+    "bytes": 43445099,
+    "sha256": "0e6024da7c71c3f29ce904f1cf9fe560f54ee91508987adc0ad42b8b8f7fa99d"
+  },
+  "licenseFiles": [
+    "LICENSE-Emscripten.txt",
+    "LICENSE-GPL-2.0.txt",
+    "LICENSE-GPL-3.0.txt",
+    "LICENSE-LGPL-2.1.txt",
+    "LICENSE-LGPL-3.0.txt",
+    "LICENSE-MicroPython.txt",
+    "LICENSE-QuickJS.txt",
+    "LICENSE-ULAB.txt"
+  ],
+  "test": {
+    "offlineChromium": true,
+    "externalRequests": 0,
+    "versionCall": "giac 1.9.0-xx",
+    "reference": "tools/smoke-cas-offline-v30.cjs"
+  }
+}

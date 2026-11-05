@@ -95,6 +95,7 @@
     mutation.observe(modal,{attributes:true,attributeFilter:['class']});
     function dispose() {observer.disconnect();mutation.disconnect();layouts.delete(modal);}
     const previousCleanup=backdrop.__previewWindowCleanup;previousCleanup?.();backdrop.__previewWindowCleanup=dispose;
+    window.TnsLovePreviewSideControls?.enhanceModal?.(modal);
     refresh(); requestAnimationFrame(refresh);
     return state;
   }

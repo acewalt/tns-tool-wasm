@@ -4,7 +4,7 @@ import difflib
 import re
 from dataclasses import dataclass, field
 
-from ti_catalog import TI_CATALOG, TI_CATALOG_FUNCTIONS, TI_CATALOG_STATEMENTS, TI_CATALOG_NAMES
+from ti_catalog import TI_CATALOG, TI_CATALOG_FUNCTIONS, TI_CATALOG_STATEMENTS, TI_CATALOG_NAMES, TI_GLYPH_ALIASES
 
 
 @dataclass(frozen=True)
@@ -177,14 +177,31 @@ COMMAND_SIGNATURES: dict[str, tuple[int, int | None]] = {
     "fillrect": (4, 4),
     "line": (4, 4),
     "log": (1, 2),
-    "max": (2, None),
-    "min": (2, None),
+    "max": (1, None),
+    "min": (1, None),
     "request": (2, 2),
     "sin": (1, 1),
     "sqrt": (1, 1),
     "string": (1, 1),
     "tan": (1, 1),
     "rand": (0, 1),
+    "root": (1, 2),
+    "piecewise": (2, None),
+    "system": (2, None),
+    "newmat": (2, 2),
+    "randmat": (2, 2),
+    "identity": (1, 1),
+    "diag": (1, 1),
+    "sumseq": (4, 4),
+    "prodseq": (4, 4),
+    "d": (2, 3),
+    "derivative": (2, 3),
+    "integral": (2, 4),
+    "lim": (3, 4),
+    "limit": (3, 4),
+    "randint": (2, 3),
+    "setmode": (1, 2),
+    "getmode": (1, 1),
 }
 
 COMMAND_STYLE_SIGNATURES: dict[str, tuple[int, int | None]] = {
@@ -550,7 +567,7 @@ def analyze_ti_code(
                 # The catalog recognizes a function, but it still requires call syntax.
                 syntax = TI_CATALOG[lower_command][1]
                 report.diagnostics.append(ti_error(680, number, f"Missing ( after {command}", f"Sintaxis de referencia: {syntax}"))
-            elif lower_command not in VALID_COMMANDS and not _looks_like_expression(line) and not _looks_like_function_call(line):
+            elif lower_command not in VALID_COMMANDS and command not in (report.variables | report.assigned | known_names) and not _is_symbolic_single_letter(command) and not _looks_like_expression(line) and not _looks_like_function_call(line):
                 choices = difflib.get_close_matches(lower_command, sorted(VALID_COMMANDS | TI_CATALOG_NAMES), n=3, cutoff=0.65)
                 hint = ""
                 if choices:
@@ -869,7 +886,26 @@ def autofix_ti_code(text: str, document_type: str | None = None) -> tuple[str, s
 
 
 def _split_lines(text: str) -> list[str]:
-    return text.replace("\r\n", "\n").replace("\r", "\n").split("\n")
+    # Private math-font glyphs are lexical aliases, not undefined functions.
+    # Preserve physical newlines so error locations still match the editor.
+    result = []
+    quoted = False
+    aliases = {"\uf03f": "e", "\uf008": "d", "∑": "sumSeq", "Σ": "sumSeq", "∏": "prodSeq", "Π": "prodSeq", "∫": "integral"}
+    index = 0
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    while index < len(text):
+        char = text[index]
+        if char == '"':
+            quoted = not quoted
+        result.append(char if quoted else aliases.get(char, char))
+        index += 1
+    normalized = "".join(result)
+    # Do not turn a label or quoted example into a mathematical operation.
+    parts = re.split(r'("(?:[^"]|"")*")', normalized)
+    for index in range(0, len(parts), 2):
+        for glyph, spelling in sorted(TI_GLYPH_ALIASES.items(), key=lambda item: len(item[0]), reverse=True):
+            parts[index] = parts[index].replace(glyph, spelling)
+    return "".join(parts).split("\n")
 
 
 def _is_expression_function(lines: list[str], document_type: str | None) -> bool:
@@ -1142,11 +1178,15 @@ def _strip_function_calls(text: str, names: set[str]) -> str:
 
 def _check_subscripts(report: SyntaxReport, line_number: int, line: str) -> None:
     clean = _strip_strings_keep_layout(line)
-    if re.search(r"\[[^\]]*,[^\]]*,[^\]]*\]", clean):
-        report.diagnostics.append(ti_error(950, line_number, "Too many subscripts"))
-    for match in re.finditer(r"\[([+-]?\d+)\]", clean):
-        if int(match.group(1)) <= 0:
-            report.diagnostics.append(ti_error(350, line_number, "Index out of range"))
+    # Brackets at the start of an expression or after another '[' are matrix
+    # literals. Only brackets following a variable/expression are subscripts.
+    for match in re.finditer(r"(?<=[A-Za-z0-9_)])\s*\[([^\[\]]*)\]", clean):
+        arguments = _split_args(match.group(1))
+        if len(arguments) > 2:
+            report.diagnostics.append(ti_error(950, line_number, "Too many subscripts"))
+        for argument in arguments:
+            if re.fullmatch(r"[+-]?\d+", argument.strip()) and int(argument) <= 0:
+                report.diagnostics.append(ti_error(350, line_number, "Index out of range"))
 
 
 def _check_ans_usage(report: SyntaxReport, line_number: int, line: str) -> None:
@@ -1160,7 +1200,7 @@ def _first_command(line: str) -> str | None:
 
 
 def _looks_like_expression(line: str) -> bool:
-    return bool(re.search(r"(=|:=|->|→|[+\-*/^])", line))
+    return bool(re.search(r"(=|:=|->|→|▶|[+\-*/^])", line))
 
 
 def _has_open_block(block_stack: list[tuple[str, int]], block: str) -> bool:

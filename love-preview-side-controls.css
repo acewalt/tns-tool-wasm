@@ -168,15 +168,22 @@
   letter-spacing: .04em;
 }
 
-/* The Templates palette is reparented to the right rail. On desktop it opens
-   toward the calculator instead of overflowing beyond the modal. */
-@media (min-width: 981px) {
-  .love-preview-side-actions > .lpm-panel {
-    left: auto !important;
-    right: calc(100% + 12px) !important;
-    top: 0 !important;
-  }
+/* The legacy palette remains below its icon while the common Math Tools
+   popover loads. It never covers the calculator from a side dock. */
+.love-preview-side-actions .lpm-panel {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100%;
+  max-height: 360px;
+  overflow: auto;
 }
+.love-preview-side-actions .lpm-grid { grid-template-columns: repeat(auto-fit, minmax(38px, 1fr)); }
+.love-preview-side-actions .lpm-template { width: 100% !important; max-width: 100% !important; }
 
 /* The existing .preview-controls remains the event container. It is moved to
    the left rail and its directional keys are arranged like a keyboard D-pad. */
@@ -314,3 +321,14 @@
     flex-wrap: wrap;
   }
 }
+
+/* Shared icon controls and D-pad keep their footprint at every entrypoint. */
+.love-preview-tool-icons{display:flex;align-items:center;justify-content:flex-start;gap:8px;width:100%;flex-wrap:wrap}
+.love-preview-side-actions .love-preview-tool-icons>.love-preview-side-tool-button{box-sizing:border-box;width:44px!important;max-width:44px!important;min-width:44px!important;min-height:40px!important;height:40px;padding:7px!important;flex:none!important;border-radius:10px;background:var(--lime,#a5ed32);color:#17250b}
+.love-preview-tool-icons .ti-math-icon-button::before{content:"";display:block;width:25px;height:25px;background:currentColor;mask:url("./assets/math-tools/templates.svg") center/contain no-repeat;-webkit-mask:url("./assets/math-tools/templates.svg") center/contain no-repeat}
+.love-preview-tool-icons .love-preview-catalog-toggle::before{mask-image:url("./assets/math-tools/catalog.svg");-webkit-mask-image:url("./assets/math-tools/catalog.svg")}
+.preview-window .preview-controls.love-preview-keyboard-controls{flex-direction:column;align-items:center;flex-wrap:nowrap}
+.preview-window .love-preview-dpad{width:min(154px,100%);grid-template-columns:repeat(3,minmax(0,1fr))}
+.preview-window .love-preview-dpad>button{box-sizing:border-box;min-width:0!important;width:100%!important}
+.preview-window .love-preview-aux-keys{max-width:100%;flex-wrap:wrap}
+.lua-preview-modal .love-preview-live-math[hidden]{display:none!important}

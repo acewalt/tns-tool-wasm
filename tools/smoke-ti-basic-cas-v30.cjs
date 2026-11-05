@@ -1,0 +1,41 @@
+// Actual offline Giac + Calculator math-session acceptance; no DOM-click mocks.
+const { app, BrowserWindow, session } = require('electron');
+const fs = require('fs'), path = require('path');
+const root = path.resolve(__dirname, '..'), desktop = path.resolve(root, '../portable-0.1.27/desktop');
+const { makeServer, listen } = require(path.join(desktop, 'server.cjs'));
+const report = { ok: false, blocked: [] }, output = path.join(root, 'release/qa/ti-basic-cas-v30.json');
+let server, win;
+app.commandLine.appendSwitch('disable-gpu');
+app.whenReady().then(async () => {
+  fs.mkdirSync(path.dirname(output), { recursive: true });
+  server = makeServer(root, path.join(desktop, 'vendor')); const origin = await listen(server);
+  session.defaultSession.webRequest.onBeforeRequest({ urls: ['*://*/*'] }, (details, done) => { const blocked = !details.url.startsWith(origin); if (blocked) report.blocked.push(details.url); done({ cancel: blocked }); });
+  win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true, backgroundThrottling: false } });
+  win.webContents.on('console-message', (_event, level, message) => fs.appendFileSync(output + '.console.log', level + ': ' + message + '\n'));
+  await win.loadURL(origin + 'release/qa/love-controls-fixture-v30.html');
+  report.result = await win.webContents.executeJavaScript(String.raw`(async () => {
+    const script = document.createElement('script'); script.src = '/ti-cas-preview-bridge-v3.js';
+    await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; document.head.append(script); });
+    const {createMathSession} = await import('/src/prgm/math-api.js');
+    const cases = [], bridge = window.TnsCasBridge;
+    const check = async (name, fn) => { try { const detail = await fn(); cases.push({name,ok:true,detail}); } catch (error) { cases.push({name,ok:false,error:error.message,code:error.code}); } };
+    const assert = (ok, message) => { if (!ok) throw Error(message); };
+    const ready = await bridge.ensureReady(); assert(ready, JSON.stringify(bridge.getStatus()));
+    const a = createMathSession({language:'en'}), b = createMathSession({language:'en'});
+    await check('local Giac backend', () => { assert(bridge.getStatus().backend === 'Giac WASM local', 'Expected local backend'); return bridge.getStatus().backend; });
+    await check('TI derivative and integral glyphs', async () => { const derivative = await a.evaluateAsync('\uf008(x^3,x)'), integral = await a.evaluateAsync('∫(x^2,x)'); assert(/3.*x\^2|x\^2.*3/.test(derivative.display), derivative.display); assert(/x\^3\/3/.test(integral.display), integral.display); return {derivative:derivative.display,integral:integral.display}; });
+    await check('limit and equation system', async () => { const limit = await a.evaluateAsync('lim(sin(x)/x,x,0)'), solve = await a.evaluateAsync('solve(system(x+y=3,x-y=1),{x,y})'); assert(limit.display === '1', limit.display); assert(/2/.test(solve.display) && /1/.test(solve.display), solve.display); return {limit:limit.display,solve:solve.display}; });
+    await check('independent symbolic namespaces', async () => { await a.evaluateAsync('a:=∫(x^2,x)'); await b.evaluateAsync('a:=∫(x,x)'); const aa = await a.evaluateAsync('a+1'), bb = await b.evaluateAsync('a+1'); assert(aa.display.includes('x^3'), aa.display); assert(bb.display.includes('x^2'), bb.display); return {a:aa.display,b:bb.display}; });
+    await check('legitimate unevaluated symbolic function', async () => { const result = await a.evaluateAsync('sin(x)'); assert(result.display === 'sin(x)', result.display); return result.display; });
+    await check('unknown nested call fails explicitly', async () => { let error; try { await a.evaluateAsync('1+unknownv30(2)'); } catch (e) { error=e; } assert(error && /UNSUPPORTED|CAS_ERROR/.test(error.code), 'Unknown function was accepted'); return {code:error.code}; });
+    await check('numeric matrices and CAS share real variables', async () => { await a.evaluateAsync('Define c=[[3,4][5,6]]'); const d = await a.evaluateAsync('diag(c)'); assert(JSON.stringify(d.value) === '[[3,6]]', JSON.stringify(d)); const t = await a.evaluateAsync('factor(t^2-1)'); const c = await a.evaluateAsync('c'); assert(JSON.stringify(c.value) === '[[3,4],[5,6]]', JSON.stringify(c)); return {diagonal:d.display,factor:t.display}; });
+    await check('symbolic variable deletion does not revive in CAS', async () => { await b.evaluateAsync('z:=∫(x^2,x)'); await b.evaluateAsync('DelVar z'); const value = await b.evaluateAsync('z+1'); assert(!value.display.includes('x^3'), value.display); return value.display; });
+    await check('string variables are mirrored as literals', async () => { await a.evaluateAsync('Define title="x"'); const value = await a.evaluateAsync('d(q^2,q)'); assert(value.display.includes('q'), value.display); return value.display; });
+    await check('symbolic function parameters stay local', async () => { bridge.evaluate('x:=99',{mode:'evalStr'}); try { await b.evaluateAsync('Define f(x)=integral(x,x)'); const result=await b.evaluateAsync('f(3)'); assert(['9/2','4.5','9/2=4.5'].includes(result.display),result.display); return result.display; } finally { bridge.evaluate('purge(x)',{mode:'evalStr'}); } });
+    await check('piecewise preserves TI expression/condition ordering', async () => { const result=await b.evaluateAsync('piecewise(x^2,x<0,x+1,x>=0)'); assert(result.display.includes('piecewise')&&result.display.includes('x^2'),result.display); return result.display; });
+    await check('unused invalid function does not poison unrelated CAS entries', async () => { const c=createMathSession({language:'en'}); await c.evaluateAsync('Define broken(x)=unknownv30(x)'); const good=await c.evaluateAsync('integral(x,x)'); assert(good.display.includes('x^2'),good.display); let error;try { await c.evaluateAsync('broken(2)'); } catch(e){error=e;} assert(error?.code==='UNSUPPORTED_FUNCTION','Unknown nested function was accepted');return good.display; });
+    return {ok:cases.every(c=>c.ok),cases,status:bridge.getStatus()};
+  })()`);
+  report.ok = report.result.ok && !report.blocked.length;
+  fs.writeFileSync(output, JSON.stringify(report, null, 2)); console.log(JSON.stringify(report)); win.destroy(); server.close(); app.exit(report.ok ? 0 : 1);
+}).catch(error => { report.error = error.stack; fs.mkdirSync(path.dirname(output), { recursive: true }); fs.writeFileSync(output, JSON.stringify(report, null, 2)); console.error(error); win?.destroy(); server?.close(); app.exit(1); });

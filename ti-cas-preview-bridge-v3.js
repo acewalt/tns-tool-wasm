@@ -1,7 +1,8 @@
 (() => {
   "use strict";
 
-  const BRIDGE_VERSION = "2026-09-03-giac-preview-v3";
+  const BRIDGE_VERSION = "2026-11-04-ti-template-cas-v3";
+  const GIAC_LOCAL_SCRIPT_URL = "./assets/cas/giacwasm.js";
   // Single-file Emscripten build with the WASM payload embedded as base64.
   // This avoids the cross-origin .wasm fetch/MIME problem seen on GitHub Pages.
   const GIAC_EMBEDDED_SCRIPT_URL = "https://cdn.jsdelivr.net/gh/OpenMath-eu/onlymath-engine@7d3ccf044bd7fdd9468299ba03b8ff01b1981d39/giacwasm.js";
@@ -12,11 +13,10 @@
   const BACKEND_TIMEOUT_MS = 20000;
 
   const CAS_FUNCTIONS = new Set([
-    "approx", "cfactor", "csolve", "desolve", "diff", "derivative", "d",
-    "expand", "factor", "fsolve", "gcd", "integrate", "integral",
-    "laplace", "lcm", "lim", "limit", "linsolve", "normal",
+    "approx", "cfactor", "csolve", "desolve", "diff", "expand", "factor", "fsolve",
+    "gcd", "integrate", "int", "laplace", "lcm", "limit", "linsolve", "normal",
     "partfrac", "product", "rsolve", "series", "simplify", "solve", "sum", "taylor",
-    "zeros", "ztrans", "det", "rref", "ref", "eigvl", "eigvc"
+    "zeros", "ztrans", "d", "derivative", "integral", "lim", "root", "sumseq", "prodseq", "piecewise", "system", "det", "rref", "ref", "eigvl", "eigvc"
   ]);
 
   const LOCAL_PASSTHROUGH_FUNCTIONS = new Set([
@@ -68,31 +68,62 @@
     return value.toLowerCase();
   }
 
+  function outsideStrings(source, transform) {
+    return String(source).split(/("(?:[^"\\]|\\.|"")*")/g).map((part, i) => i % 2 ? part : transform(part)).join("");
+  }
+  function callArgs(source) {
+    const result = []; let quote = false, depth = 0, start = 0;
+    for (let i = 0; i < source.length; i++) {
+      const c = source[i]; if (c === '"' && source[i - 1] !== '\\') quote = !quote;
+      if (quote) continue; if ('([{'.includes(c)) depth++; if (')]}'.includes(c)) depth--;
+      if (c === ',' && !depth) { result.push(source.slice(start, i)); start = i + 1; }
+    }
+    if (source.trim()) result.push(source.slice(start)); return result;
+  }
+  function rewriteTiCalls(source) {
+    let result = '', quote = false;
+    for (let i = 0; i < source.length;) {
+      if (source[i] === '"' && source[i - 1] !== '\\') { quote = !quote; result += source[i++]; continue; }
+      const call = !quote && /^([A-Za-z_][A-Za-z0-9_]*)\s*\(/.exec(source.slice(i));
+      if (!call) { result += source[i++]; continue; }
+      const open = i + call[0].length - 1; let depth = 1, end = open + 1, innerQuote = false;
+      for (; end < source.length; end++) { const c = source[end]; if (c === '"' && source[end - 1] !== '\\') innerQuote = !innerQuote; if (!innerQuote) { if (c === '(') depth++; if (c === ')' && --depth === 0) break; } }
+      if (depth) { result += source.slice(i); break; }
+      const args = callArgs(source.slice(open + 1, end)).map(rewriteTiCalls), lower = call[1].toLowerCase();
+      const alias = { d: 'diff', derivative: 'diff', derive: 'diff', integral: 'integrate', lim: 'limit', sumseq: 'sum', prodseq: 'product', root: 'surd', nsolve: 'fsolve', desolve: 'desolve', arcsin: 'asin', arccos: 'acos', arctan: 'atan', arcsinh: 'asinh', arccosh: 'acosh', arctanh: 'atanh', arcsec: 'asec', arccsc: 'acsc', arccot: 'acot', arcsech: 'asech', arccsch: 'acsch', arccoth: 'acoth' }[lower] || call[1];
+      if (lower === 'system') result += '[' + args.join(',') + ']';
+      else if (lower === 'piecewise') { const swapped = []; for (let a = 0; a + 1 < args.length; a += 2) swapped.push(args[a + 1], args[a]); if (args.length % 2) swapped.push(args.at(-1)); result += 'piecewise(' + swapped.join(',') + ')'; }
+      else if (lower === 'log' && args.length === 2) result += '(ln(' + args[0] + ')/ln(' + args[1] + '))';
+      else result += alias + '(' + args.join(',') + ')';
+      i = end + 1;
+    }
+    return result;
+  }
   function translateTiToGiac(expression) {
-    let text = String(expression ?? "").trim();
-    if (!text) return "";
-    return text
-      .replace(/[−–]/g, "-")
-      .replace(/[×·]/g, "*")
-      .replace(/÷/g, "/")
-      .replace(/π/g, "pi")
-      .replace(/∞/g, "infinity")
-      .replace(/√\s*\(/g, "sqrt(")
-      .replace(/\bdeSolve\s*\(/gi, "desolve(")
-      .replace(/\bnSolve\s*\(/gi, "fsolve(")
-      .replace(/\b(?:derive|derivative|d)\s*\(/gi, "diff(")
-      .replace(/\bintegral\s*\(/gi, "integrate(")
-      .replace(/\blim\s*\(/gi, "limit(")
-      .replace(/∫\s*\(/g, "integrate(")
-      .replace(/Σ\s*\(/g, "sum(");
+    let text = String(expression ?? "").trim(); if (!text) return "";
+    text = outsideStrings(text, part => part
+      .replace(/\b(sin|cos|tan|sinh|cosh|tanh|sec|csc|cot|sech|csch|coth)⁻¹\s*\(/g, (_m, fn) => ({sin:'asin',cos:'acos',tan:'atan',sinh:'asinh',cosh:'acosh',tanh:'atanh',sec:'asec',csc:'acsc',cot:'acot',sech:'asech',csch:'acsch',coth:'acoth'})[fn] + '(')
+      .replace(/[−–]/g, "-").replace(/[×·]/g, "*").replace(/÷/g, "/")
+      .replace(/[\uf03fℯ]/g, "exp(1)").replace(/\uf008/g, "d").replace(/[∑Σ]/g, "sumSeq").replace(/[∏Π]/g, "prodSeq").replace(/∫/g, "integral")
+      .replace(/π/g, "pi").replace(/∞/g, "infinity").replace(/√\s*\(/g, "sqrt(")
+      .replace(/\{/g, '[').replace(/\}/g, ']'));
+    // TI separates rows with adjacent brackets; Giac requires a comma.
+    text = outsideStrings(text, part => part.replace(/\[\[[\s\S]*?\]\]/g, matrix => matrix.replace(/\]\s*\[/g, '],[')));
+    text = rewriteTiCalls(text);
+    text = text.replace(/^Define\s+(?:(?:LibPub|LibPriv)\s+)?([\p{L}_][\p{L}\p{N}_]*(?:\([^)]*\))?)\s*=\s*/iu, '$1:=');
+    const assignment = /^([\s\S]+)→\s*([\p{L}_][\p{L}\p{N}_]*)$/u.exec(text);
+    return assignment ? assignment[2] + ':=(' + assignment[1] + ')' : text;
   }
 
   function translateGiacToTi(result) {
     let text = String(result ?? "").trim();
     if (!text) return text;
     return text
+      .replace(/^list(?=\s*\[)/, "")
+      .replace(/^([+-]?\d+\/[+-]?\d+)\s*=\s*[+-]?\d+(?:\.\d+)?$/, "$1")
       .replace(/\binfinity\b/gi, "∞")
-      .replace(/\bpi\b/g, "π");
+      .replace(/\bpi\b/g, "π")
+      .replace(/^\[\[[\s\S]*\]\]$/, matrix => matrix.replace(/\],\s*\[/g, ']['));
   }
 
   function parseScalarResult(result) {
@@ -129,7 +160,7 @@
     const excluded = new Set(Array.from(excludedFunctions || [], (name) => String(name).toLowerCase()));
     if (root && (excluded.has(root.toLowerCase()) || LOCAL_PASSTHROUGH_FUNCTIONS.has(root.toLowerCase()))) return false;
     if (root && CAS_FUNCTIONS.has(normalizedRoot)) return true;
-    if (/^\s*[∫Σ]\s*\(/.test(source)) return true;
+    if (/^\s*[∫∑∏ΣΠ]\s*\(/.test(source)) return true;
     if (mode === "evalStr") return true;
 
     return /\b(?:deSolve|nSolve|solve|factor|expand|integrate|diff|limit|simplify|partfrac|taylor|series|sum|product)\s*\(/i.test(source);
@@ -261,6 +292,7 @@
       const perBackend = Math.min(BACKEND_TIMEOUT_MS, Math.max(8000, Math.floor(timeoutMs / 3)));
       const failures = [];
       const candidates = [
+        [GIAC_LOCAL_SCRIPT_URL, null, "Giac WASM local"],
         [GIAC_EMBEDDED_SCRIPT_URL, null, "Giac WASM CDN"],
         [GIAC_WASM_SCRIPT_URL, GIAC_WASM_URL, "Giac WASM upstream"],
         [GIAC_ASM_SCRIPT_URL, null, "Giac asm.js upstream"]
@@ -318,6 +350,14 @@
     } catch (error) {
       return { handled: false, value: null, error: String(error?.message || error) };
     }
+  }
+
+  function supportsFunction(name) {
+    if (!/^[\p{L}_][\p{L}\p{N}_]*$/u.test(String(name || '')) || state.status !== 'ready') return false;
+    const lower = String(name).toLowerCase();
+    if (lower === 'system') return true; // TI system() translates to an equation list.
+    const alias = { d: 'diff', derivative: 'diff', derive: 'diff', integral: 'integrate', lim: 'limit', sumseq: 'sum', prodseq: 'product', root: 'surd', nsolve: 'fsolve', desolve: 'desolve', arcsin: 'asin', arccos: 'acos', arctan: 'atan', arcsinh: 'asinh', arccosh: 'acosh', arctanh: 'atanh', arcsec: 'asec', arccsc: 'acsc', arccot: 'acot', arcsech: 'asech', arccsch: 'acsch', arccoth: 'acoth' }[lower] || String(name);
+    try { return String(state.caseval('type(' + alias + ')')).trim() === 'func'; } catch (_error) { return false; }
   }
 
   function luaPatternToRegExp(pattern) {
@@ -452,6 +492,7 @@ end
     translateTiToGiac,
     translateGiacToTi,
     shouldHandle,
+    supportsFunction,
     luaPatternToRegExp,
     getStatus() {
       return {

@@ -1,0 +1,6788 @@
+[
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "abs",
+    "codigo_o_equivalente": "abs(Expr)",
+    "descripcion": "Valor absoluto o módulo complejo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "amortTbl",
+    "codigo_o_equivalente": "amortTbl(NPgo,N,I,VP[,Pgo,VF,PpA,CpA,PgoAl,redondeo])",
+    "descripcion": "Tabla de amortización",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "and",
+    "codigo_o_equivalente": "Expr1 and Expr2",
+    "descripcion": "Conjunción lógica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "angle",
+    "codigo_o_equivalente": "angle(Expr)",
+    "descripcion": "Ángulo de un número complejo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "ANOVA",
+    "codigo_o_equivalente": "ANOVA Lista1,Lista2[,Lista3,...,Lista20][,Bandera]",
+    "descripcion": "ANOVA de un factor",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "ANOVA2way",
+    "codigo_o_equivalente": "ANOVA2way Lista1,Lista2[,Lista3,...,Lista10][,LevRow]",
+    "descripcion": "ANOVA de dos factores",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "Ans",
+    "codigo_o_equivalente": "Ans",
+    "descripcion": "Último resultado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "approx",
+    "codigo_o_equivalente": "approx(Expr)",
+    "descripcion": "Evaluación aproximada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "approxFraction",
+    "codigo_o_equivalente": "Expr▶approxFraction([Tol])",
+    "descripcion": "Convierte un valor decimal a fracción",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "approxRational",
+    "codigo_o_equivalente": "approxRational(Expr[,Tol])",
+    "descripcion": "Aproxima a una fracción racional",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arccos",
+    "codigo_o_equivalente": "arccos(Expr)",
+    "descripcion": "Arcocoseno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arccosh",
+    "codigo_o_equivalente": "arccosh(Expr)",
+    "descripcion": "Arcocoseno hiperbólico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arccot",
+    "codigo_o_equivalente": "arccot(Expr)",
+    "descripcion": "Arcocotangente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arccoth",
+    "codigo_o_equivalente": "arccoth(Expr)",
+    "descripcion": "Arcocotangente hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arccsc",
+    "codigo_o_equivalente": "arccsc(Expr)",
+    "descripcion": "Arcocosecante",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arccsch",
+    "codigo_o_equivalente": "arccsch(Expr)",
+    "descripcion": "Arcocosecante hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arcLen",
+    "codigo_o_equivalente": "arcLen(Expr,Var,Inicio,Fin)",
+    "descripcion": "Longitud de arco",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arcsec",
+    "codigo_o_equivalente": "arcsec(Expr)",
+    "descripcion": "Arcosecante",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arcsech",
+    "codigo_o_equivalente": "arcsech(Expr)",
+    "descripcion": "Arcosecante hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arcsin",
+    "codigo_o_equivalente": "arcsin(Expr)",
+    "descripcion": "Arcoseno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arcsinh",
+    "codigo_o_equivalente": "arcsinh(Expr)",
+    "descripcion": "Arcoseno hiperbólico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arctan",
+    "codigo_o_equivalente": "arctan(Expr)",
+    "descripcion": "Arcotangente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "arctanh",
+    "codigo_o_equivalente": "arctanh(Expr)",
+    "descripcion": "Arcotangente hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "augment",
+    "codigo_o_equivalente": "augment(Lista1,Lista2)",
+    "descripcion": "Concatenación de listas o matrices",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "A",
+    "nombre": "avgRC",
+    "codigo_o_equivalente": "avgRC(Expr,Var[=Valor][,Paso])",
+    "descripcion": "Tasa media de cambio",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "B",
+    "nombre": "bal",
+    "codigo_o_equivalente": "bal(NPgo,N,I,VP[,Pgo,VF,PpA,CpA,PgoAl,Redondeo])",
+    "descripcion": "Saldo financiero",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "B",
+    "nombre": "▶Base2",
+    "codigo_o_equivalente": "Entero▶Base2",
+    "descripcion": "Convierte a binario",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "B",
+    "nombre": "▶Base10",
+    "codigo_o_equivalente": "Entero▶Base10",
+    "descripcion": "Convierte a decimal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "B",
+    "nombre": "▶Base16",
+    "codigo_o_equivalente": "Entero▶Base16",
+    "descripcion": "Convierte a hexadecimal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "B",
+    "nombre": "binomCdf",
+    "codigo_o_equivalente": "binomCdf(n,p[,LímiteInferior,LímiteSuperior])",
+    "descripcion": "Probabilidad binomial acumulada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "B",
+    "nombre": "binomPdf",
+    "codigo_o_equivalente": "binomPdf(n,p,Valor)",
+    "descripcion": "Probabilidad binomial puntual",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "ceiling",
+    "codigo_o_equivalente": "ceiling(Expr)",
+    "descripcion": "Redondeo hacia arriba",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "centralDiff",
+    "codigo_o_equivalente": "centralDiff(Expr,Var[,Paso])",
+    "descripcion": "Derivada central aproximada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cFactor",
+    "codigo_o_equivalente": "cFactor(Expr[,Var])",
+    "descripcion": "Factorización sobre números complejos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "char",
+    "codigo_o_equivalente": "char(Entero)",
+    "descripcion": "Carácter desde su código",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "charPoly",
+    "codigo_o_equivalente": "charPoly(MatrizCuadrada,Var)",
+    "descripcion": "Polinomio característico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "chi22way",
+    "codigo_o_equivalente": "chi22way MatrizObservada",
+    "descripcion": "Prueba ji-cuadrado de independencia",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "χ²Cdf",
+    "codigo_o_equivalente": "χ²Cdf(LímiteInferior,LímiteSuperior,df)",
+    "descripcion": "Distribución ji-cuadrado acumulada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "chi2Cdf",
+    "codigo_o_equivalente": "chi2Cdf(LímiteInferior,LímiteSuperior,df)",
+    "descripcion": "Distribución ji-cuadrado acumulada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "χ²GOF",
+    "codigo_o_equivalente": "χ²GOF ListaObservada,ListaEsperada[,df]",
+    "descripcion": "Bondad de ajuste ji-cuadrado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "chi2GOF",
+    "codigo_o_equivalente": "chi2GOF ListaObservada,ListaEsperada[,df]",
+    "descripcion": "Bondad de ajuste ji-cuadrado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "χ²Pdf",
+    "codigo_o_equivalente": "χ²Pdf(XVal,df)",
+    "descripcion": "Densidad ji-cuadrado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "chi2Pdf",
+    "codigo_o_equivalente": "chi2Pdf(XVal,df)",
+    "descripcion": "Densidad ji-cuadrado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "Clear",
+    "codigo_o_equivalente": "Clear",
+    "descripcion": "Limpia la pantalla de un programa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "ClearAZ",
+    "codigo_o_equivalente": "ClearAZ",
+    "descripcion": "Borra variables de una letra",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "ClrErr",
+    "codigo_o_equivalente": "ClrErr",
+    "descripcion": "Borra el error en una estructura Try",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "colAugment",
+    "codigo_o_equivalente": "colAugment(Matriz1,Matriz2)",
+    "descripcion": "Anexa columnas de matrices",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "colDim",
+    "codigo_o_equivalente": "colDim(Matriz)",
+    "descripcion": "Cantidad de columnas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "colNorm",
+    "codigo_o_equivalente": "colNorm(Matriz)",
+    "descripcion": "Norma por columnas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "comDenom",
+    "codigo_o_equivalente": "comDenom(Expr[,Var])",
+    "descripcion": "Denominador común",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "completeSquare",
+    "codigo_o_equivalente": "completeSquare(Expr,Var)",
+    "descripcion": "Completar cuadrado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "conj",
+    "codigo_o_equivalente": "conj(Expr)",
+    "descripcion": "Conjugado complejo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "constructMat",
+    "codigo_o_equivalente": "constructMat(Expr,Var1,Var2,NFilas,NColumnas)",
+    "descripcion": "Construir matriz a partir de expresión",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "CopyVar",
+    "codigo_o_equivalente": "CopyVar Origen,Destino",
+    "descripcion": "Copiar variable",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "corrMat",
+    "codigo_o_equivalente": "corrMat(Lista1,Lista2[,Lista3,...])",
+    "descripcion": "Matriz de correlación",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cos",
+    "codigo_o_equivalente": "cos(Expr)",
+    "descripcion": "Coseno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cos⁻¹",
+    "codigo_o_equivalente": "cos⁻¹(Expr)",
+    "descripcion": "Arcocoseno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cosh",
+    "codigo_o_equivalente": "cosh(Expr)",
+    "descripcion": "Coseno hiperbólico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cosh⁻¹",
+    "codigo_o_equivalente": "cosh⁻¹(Expr)",
+    "descripcion": "Arcocoseno hiperbólico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cot",
+    "codigo_o_equivalente": "cot(Expr)",
+    "descripcion": "Cotangente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cot⁻¹",
+    "codigo_o_equivalente": "cot⁻¹(Expr)",
+    "descripcion": "Arcocotangente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "coth",
+    "codigo_o_equivalente": "coth(Expr)",
+    "descripcion": "Cotangente hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "coth⁻¹",
+    "codigo_o_equivalente": "coth⁻¹(Expr)",
+    "descripcion": "Arcocotangente hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "countIf",
+    "codigo_o_equivalente": "countIf(Lista,Criterio)",
+    "descripcion": "Conteo condicionado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cPolyRoots",
+    "codigo_o_equivalente": "cPolyRoots(Polinomio,Var)",
+    "descripcion": "Raíces complejas de un polinomio",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "crossP",
+    "codigo_o_equivalente": "crossP(Vector1,Vector2)",
+    "descripcion": "Producto vectorial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "csc",
+    "codigo_o_equivalente": "csc(Expr)",
+    "descripcion": "Cosecante",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "csc⁻¹",
+    "codigo_o_equivalente": "csc⁻¹(Expr)",
+    "descripcion": "Arcocosecante",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "csch",
+    "codigo_o_equivalente": "csch(Expr)",
+    "descripcion": "Cosecante hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "csch⁻¹",
+    "codigo_o_equivalente": "csch⁻¹(Expr)",
+    "descripcion": "Arcocosecante hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "Cylind",
+    "codigo_o_equivalente": "Vector▶Cylind",
+    "descripcion": "Conversión a coordenadas cilíndricas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cSolve",
+    "codigo_o_equivalente": "cSolve(Ecuación,Var)",
+    "descripcion": "Resuelve ecuaciones en el campo complejo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "CubicReg",
+    "codigo_o_equivalente": "CubicReg X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión cúbica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cumulativeSum",
+    "codigo_o_equivalente": "cumulativeSum(Lista)",
+    "descripcion": "Suma acumulativa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "Cycle",
+    "codigo_o_equivalente": "Cycle",
+    "descripcion": "Salta a siguiente iteración de un bucle",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "C",
+    "nombre": "cZeros",
+    "codigo_o_equivalente": "cZeros(Expr,Var)",
+    "descripcion": "Ceros complejos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "dbd",
+    "codigo_o_equivalente": "dbd(Fecha1,Fecha2)",
+    "descripcion": "Días entre fechas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "dbd_DMY",
+    "codigo_o_equivalente": "dbd_DMY(Día,Mes,Año)",
+    "descripcion": "Cálculo financiero de fechas (día-mes-año)",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "dbd_MDY",
+    "codigo_o_equivalente": "dbd_MDY(Mes,Día,Año)",
+    "descripcion": "Cálculo financiero de fechas (mes-día-año)",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "d",
+    "codigo_o_equivalente": "d(Expr,Var[,Orden])",
+    "descripcion": "Derivada simbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "▶DD",
+    "codigo_o_equivalente": "Número▶DD",
+    "descripcion": "Convierte formato angular a grados decimales",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "▶Decimal",
+    "codigo_o_equivalente": "Número▶Decimal",
+    "descripcion": "Expresión en forma decimal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "Define",
+    "codigo_o_equivalente": "Define Nombre(Args)=Expr",
+    "descripcion": "Define una función o programa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "Define LibPriv",
+    "codigo_o_equivalente": "Define LibPriv Nombre(Args)=Expr",
+    "descripcion": "Define un objeto privado en biblioteca",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "Define LibPub",
+    "codigo_o_equivalente": "Define LibPub Nombre(Args)=Expr",
+    "descripcion": "Define un objeto público en biblioteca",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "ΔList",
+    "codigo_o_equivalente": "ΔList(Lista)",
+    "descripcion": "Diferencias entre elementos sucesivos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "deltaTmpCnv",
+    "codigo_o_equivalente": "deltaTmpCnv(Expr,UnidadInicial,UnidadFinal)",
+    "descripcion": "Conversión de diferencias de temperatura",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "DelVar",
+    "codigo_o_equivalente": "DelVar Var1[,Var2,...]",
+    "descripcion": "Elimina variables",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "delVoid",
+    "codigo_o_equivalente": "delVoid(Lista)",
+    "descripcion": "Elimina elementos vacíos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "derivative",
+    "codigo_o_equivalente": "derivative(Expr,Var[,Orden])",
+    "descripcion": "Derivada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "deSolve",
+    "codigo_o_equivalente": "deSolve(EDO,VarInd,VarDep)",
+    "descripcion": "Resuelve ecuación diferencial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "det",
+    "codigo_o_equivalente": "det(Matriz)",
+    "descripcion": "Determinante",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "diag",
+    "codigo_o_equivalente": "diag(Lista)",
+    "descripcion": "Construye matriz diagonal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "dim",
+    "codigo_o_equivalente": "dim(Lista)",
+    "descripcion": "Número de elementos o dimensiones",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "Disp",
+    "codigo_o_equivalente": "Disp Expr1[,Expr2,...]",
+    "descripcion": "Muestra valores en programa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "DispAt",
+    "codigo_o_equivalente": "DispAt Fila,Expr",
+    "descripcion": "Muestra texto en posición",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "domain",
+    "codigo_o_equivalente": "domain(Expr,Var)",
+    "descripcion": "Dominio simbólico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "dominantTerm",
+    "codigo_o_equivalente": "dominantTerm(Expr,Var[,Punto])",
+    "descripcion": "Término dominante",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "▶DMS",
+    "codigo_o_equivalente": "Número▶DMS",
+    "descripcion": "Convierte grados decimales a G° M' S''",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "dotP",
+    "codigo_o_equivalente": "dotP(Vector1,Vector2)",
+    "descripcion": "Producto escalar",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "DrawArc",
+    "codigo_o_equivalente": "DrawArc x,y,ancho,alto,ánguloInicio,ánguloFinal",
+    "descripcion": "Dibuja arco",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "DrawCircle",
+    "codigo_o_equivalente": "DrawCircle x,y,radio",
+    "descripcion": "Dibuja círculo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "DrawLine",
+    "codigo_o_equivalente": "DrawLine x1,y1,x2,y2",
+    "descripcion": "Dibuja línea",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "DrawRect",
+    "codigo_o_equivalente": "DrawRect x,y,ancho,alto",
+    "descripcion": "Dibuja rectángulo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "D",
+    "nombre": "DrawText",
+    "codigo_o_equivalente": "DrawText x,y,texto",
+    "descripcion": "Dibuja texto",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "E",
+    "codigo_o_equivalente": "mantisa E exponente",
+    "descripcion": "Notación científica (multiplica por potencia de 10)",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "e^",
+    "codigo_o_equivalente": "e^(Expr)",
+    "descripcion": "Exponencial natural",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "eff",
+    "codigo_o_equivalente": "eff(TasaNominal,Períodos)",
+    "descripcion": "Tipo de interés efectivo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "eigVc",
+    "codigo_o_equivalente": "eigVc(MatrizCuadrada)",
+    "descripcion": "Vectores propios",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "eigVl",
+    "codigo_o_equivalente": "eigVl(MatrizCuadrada)",
+    "descripcion": "Valores propios",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "Else",
+    "codigo_o_equivalente": "Else",
+    "descripcion": "Alternativa de If",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "ElseIf",
+    "codigo_o_equivalente": "ElseIf Condición Then",
+    "descripcion": "Condición alternativa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "EndFor",
+    "codigo_o_equivalente": "EndFor",
+    "descripcion": "Termina bucle For",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "EndFunc",
+    "codigo_o_equivalente": "EndFunc",
+    "descripcion": "Termina función",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "EndIf",
+    "codigo_o_equivalente": "EndIf",
+    "descripcion": "Termina condicional If",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "EndLoop",
+    "codigo_o_equivalente": "EndLoop",
+    "descripcion": "Termina Loop",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "EndPrgm",
+    "codigo_o_equivalente": "EndPrgm",
+    "descripcion": "Termina programa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "EndTry",
+    "codigo_o_equivalente": "EndTry",
+    "descripcion": "Termina Try",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "EndWhile",
+    "codigo_o_equivalente": "EndWhile",
+    "descripcion": "Termina While",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "errCode",
+    "codigo_o_equivalente": "errCode",
+    "descripcion": "Código del último error",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "euler",
+    "codigo_o_equivalente": "euler(Expr,Var,VarDep,Var0,VarMax)",
+    "descripcion": "Método de Euler para EDO",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "exact",
+    "codigo_o_equivalente": "exact(Expr)",
+    "descripcion": "Expresión exacta",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "Exit",
+    "codigo_o_equivalente": "Exit",
+    "descripcion": "Salir de bucle",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "exp",
+    "codigo_o_equivalente": "exp(Expr)",
+    "descripcion": "Exponencial de base e",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "expand",
+    "codigo_o_equivalente": "expand(Expr[,Var])",
+    "descripcion": "Expansión algebraica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "exp▶list",
+    "codigo_o_equivalente": "Expr▶list",
+    "descripcion": "Convertir expresión en lista",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "expr",
+    "codigo_o_equivalente": "expr(String)",
+    "descripcion": "Convertir cadena en expresión",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "E",
+    "nombre": "ExpReg",
+    "codigo_o_equivalente": "ExpReg X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión exponencial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "factor",
+    "codigo_o_equivalente": "factor(Expr[,Var])",
+    "descripcion": "Factorización algebraica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "false",
+    "codigo_o_equivalente": "false",
+    "descripcion": "Constante booleana falsa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FCdf",
+    "codigo_o_equivalente": "FCdf(LimInferior,LimSuperior,dfNumer,dfDenom)",
+    "descripcion": "Probabilidad acumulada F",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FPdf",
+    "codigo_o_equivalente": "FPdf(XVal,dfNumer,dfDenom)",
+    "descripcion": "Densidad F",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "Fill",
+    "codigo_o_equivalente": "Fill Valor,ListaOmatriz",
+    "descripcion": "Rellena con un valor",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FillArc",
+    "codigo_o_equivalente": "FillArc x,y,ancho,alto,ánguloInicio,ánguloFinal",
+    "descripcion": "Arco relleno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FillCircle",
+    "codigo_o_equivalente": "FillCircle x,y,radio",
+    "descripcion": "Círculo relleno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FillPoly",
+    "codigo_o_equivalente": "FillPoly listaX,listaY",
+    "descripcion": "Polígono relleno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FillRect",
+    "codigo_o_equivalente": "FillRect x,y,ancho,alto",
+    "descripcion": "Rectángulo relleno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FiveNumSummary",
+    "codigo_o_equivalente": "FiveNumSummary X[,Freq,Category,Include]",
+    "descripcion": "Resumen de cinco números",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "floor",
+    "codigo_o_equivalente": "floor(Expr)",
+    "descripcion": "Redondeo al entero inferior",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "fMax",
+    "codigo_o_equivalente": "fMax(Expr,Var[,LímiteInferior,LímiteSuperior])",
+    "descripcion": "Localiza máximo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "fMin",
+    "codigo_o_equivalente": "fMin(Expr,Var[,LímiteInferior,LímiteSuperior])",
+    "descripcion": "Localiza mínimo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "For",
+    "codigo_o_equivalente": "For Var,Low,High[,Step]",
+    "descripcion": "Comienza ciclo For",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "format",
+    "codigo_o_equivalente": "format(Expr,Formato)",
+    "descripcion": "Formateo de número",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "fPart",
+    "codigo_o_equivalente": "fPart(Expr)",
+    "descripcion": "Parte fraccionaria",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "freqTable▶list",
+    "codigo_o_equivalente": "freqTable▶list(ListaValores,ListaFrecuencias)",
+    "descripcion": "Convierte tabla frecuencias en lista",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "frequency",
+    "codigo_o_equivalente": "frequency(ListaValores,ListaIntervalos)",
+    "descripcion": "Frecuencia de datos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FTest",
+    "codigo_o_equivalente": "FTest Lista1,Lista2[,Freq1,Freq2,Alternativa]",
+    "descripcion": "Prueba F",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "FTest_2Samp",
+    "codigo_o_equivalente": "FTest_2Samp Lista1,Lista2[,Freq1,Freq2,Alternativa]",
+    "descripcion": "Prueba F de dos muestras",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "F",
+    "nombre": "Func",
+    "codigo_o_equivalente": "Func ... EndFunc",
+    "descripcion": "Declaración de función multilínea",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "gcd",
+    "codigo_o_equivalente": "gcd(Entero1,Entero2)",
+    "descripcion": "Máximo común divisor",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "geomCdf",
+    "codigo_o_equivalente": "geomCdf(p,LímiteInferior,LímiteSuperior)",
+    "descripcion": "Probabilidad geométrica acumulada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "geomPdf",
+    "codigo_o_equivalente": "geomPdf(p,XVal)",
+    "descripcion": "Probabilidad geométrica puntual",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "Get",
+    "codigo_o_equivalente": "Get Var",
+    "descripcion": "Obtiene dato de dispositivo conectado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "getDenom",
+    "codigo_o_equivalente": "getDenom(Expr)",
+    "descripcion": "Denominador de una expresión",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "getMode",
+    "codigo_o_equivalente": "getMode(0 o CódigoModo)",
+    "descripcion": "Consulta configuración de modo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "getNum",
+    "codigo_o_equivalente": "getNum(Expr)",
+    "descripcion": "Numerador de una expresión",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "getPlatform",
+    "codigo_o_equivalente": "getPlatform()",
+    "descripcion": "Identifica plataforma",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "GetStr",
+    "codigo_o_equivalente": "GetStr Var",
+    "descripcion": "Obtiene cadena desde dispositivo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "getType",
+    "codigo_o_equivalente": "getType(Expr)",
+    "descripcion": "Tipo de dato de expresión",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "getVarInfo",
+    "codigo_o_equivalente": "getVarInfo()",
+    "descripcion": "Información sobre variables",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "Goto",
+    "codigo_o_equivalente": "Goto Etiqueta",
+    "descripcion": "Salto a etiqueta",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "G",
+    "nombre": "▶Grad",
+    "codigo_o_equivalente": "Ángulo▶Grad",
+    "descripcion": "Conversión a gradianes",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "identity",
+    "codigo_o_equivalente": "identity(Entero)",
+    "descripcion": "Matriz identidad",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "If",
+    "codigo_o_equivalente": "If Condición Then ... EndIf",
+    "descripcion": "Estructura condicional",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "ifFn",
+    "codigo_o_equivalente": "ifFn(Condición,ValorSiVerdadero[,ValorSiFalso,ValorIndefinido])",
+    "descripcion": "Función condicional",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "imag",
+    "codigo_o_equivalente": "imag(Expr)",
+    "descripcion": "Parte imaginaria",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "impDif",
+    "codigo_o_equivalente": "impDif(Ecuación,Var,VarDep[,Orden])",
+    "descripcion": "Derivación implícita",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "inString",
+    "codigo_o_equivalente": "inString(Texto,Subtexto[,Inicio])",
+    "descripcion": "Posición de subcadena",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "int",
+    "codigo_o_equivalente": "int(Expr)",
+    "descripcion": "Mayor entero menor o igual",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "intDiv",
+    "codigo_o_equivalente": "intDiv(Número1,Número2)",
+    "descripcion": "División entera",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "∫",
+    "codigo_o_equivalente": "∫(Expr,Var[,Inferior,Superior])",
+    "descripcion": "Integral simbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "integral",
+    "codigo_o_equivalente": "integral(Expr,Var[,Inferior,Superior])",
+    "descripcion": "Integral simbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "interpolate",
+    "codigo_o_equivalente": "interpolate(x,xLista,yLista,yDerivadaLista)",
+    "descripcion": "Interpolación cúbica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "invBinom",
+    "codigo_o_equivalente": "invBinom(ProbAcumulada,n,p[,FormatoSalida])",
+    "descripcion": "Inversa binomial en éxitos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "invBinomN",
+    "codigo_o_equivalente": "invBinomN(ProbAcumulada,p,NÉxitos[,FormatoSalida])",
+    "descripcion": "Inversa binomial en intentos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "invχ²",
+    "codigo_o_equivalente": "invχ²(Área,df)",
+    "descripcion": "Inversa chi-cuadrado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "invF",
+    "codigo_o_equivalente": "invF(Área,dfNumer,dfDenom)",
+    "descripcion": "Inversa distribución F",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "invNorm",
+    "codigo_o_equivalente": "invNorm(Área[,μ,σ])",
+    "descripcion": "Cuantil normal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "invt",
+    "codigo_o_equivalente": "invt(Área,df)",
+    "descripcion": "Cuantil t de Student",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "iPart",
+    "codigo_o_equivalente": "iPart(Expr)",
+    "descripcion": "Parte entera truncada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "irr",
+    "codigo_o_equivalente": "irr(FlujoInicial,ListaFlujos[,Frecuencias])",
+    "descripcion": "Tasa interna de retorno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "isPrime",
+    "codigo_o_equivalente": "isPrime(Número)",
+    "descripcion": "Comprueba primalidad",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "I",
+    "nombre": "isVoid",
+    "codigo_o_equivalente": "isVoid(Var)",
+    "descripcion": "Comprueba valor vacío",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "Lbl",
+    "codigo_o_equivalente": "Lbl Etiqueta",
+    "descripcion": "Define etiqueta de salto",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "lcm",
+    "codigo_o_equivalente": "lcm(Entero1,Entero2)",
+    "descripcion": "Mínimo común múltiplo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "left",
+    "codigo_o_equivalente": "left(Texto,n)",
+    "descripcion": "Parte izquierda de cadena",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LibPriv",
+    "codigo_o_equivalente": "Define LibPriv Nombre",
+    "descripcion": "Objeto privado biblioteca",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LibPub",
+    "codigo_o_equivalente": "Define LibPub Nombre",
+    "descripcion": "Objeto público biblioteca",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LibShortcut",
+    "codigo_o_equivalente": "LibShortcut(... )",
+    "descripcion": "Acceso directo de biblioteca",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "lim",
+    "codigo_o_equivalente": "lim(Expr,Var,Punto[,Dirección])",
+    "descripcion": "Límite de expresión",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "limit",
+    "codigo_o_equivalente": "limit(Expr,Var,Punto[,Dirección])",
+    "descripcion": "Límite simbólico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LinRegMx",
+    "codigo_o_equivalente": "LinRegMx X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión lineal MX",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LinRegBx",
+    "codigo_o_equivalente": "LinRegBx X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión lineal BX",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LinRegtIntervals",
+    "codigo_o_equivalente": "LinRegtIntervals X,Y[,Freq,CLvl]",
+    "descripcion": "Intervalos t de regresión lineal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LinRegtTest",
+    "codigo_o_equivalente": "LinRegtTest X,Y[,Freq,Alternativa]",
+    "descripcion": "Prueba t de regresión lineal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "linSolve",
+    "codigo_o_equivalente": "linSolve(SistemaEcuaciones,Var1,Var2,...)",
+    "descripcion": "Solución de sistema lineal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "ΔList",
+    "codigo_o_equivalente": "ΔList(Lista)",
+    "descripcion": "Diferencia entre términos de lista",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "list▶mat",
+    "codigo_o_equivalente": "list▶mat(Lista,NFilas)",
+    "descripcion": "Convierte lista en matriz",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "ln",
+    "codigo_o_equivalente": "ln(Expr)",
+    "descripcion": "Logaritmo natural",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "▶ln",
+    "codigo_o_equivalente": "Expr▶ln",
+    "descripcion": "Conversión a logaritmos naturales",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LnReg",
+    "codigo_o_equivalente": "LnReg X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión logarítmica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "Local",
+    "codigo_o_equivalente": "Local Var1[,Var2,...]",
+    "descripcion": "Variables locales",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "Lock",
+    "codigo_o_equivalente": "Lock Var1[,Var2,...]",
+    "descripcion": "Protege variables",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "log",
+    "codigo_o_equivalente": "log(Expr[,Base])",
+    "descripcion": "Logaritmo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "▶logbase",
+    "codigo_o_equivalente": "Expr▶logbase(Base)",
+    "descripcion": "Cambiar base del logaritmo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "Logistic",
+    "codigo_o_equivalente": "Logistic X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión logística",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LogisticD",
+    "codigo_o_equivalente": "LogisticD X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión logística D",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "Loop",
+    "codigo_o_equivalente": "Loop ... EndLoop",
+    "descripcion": "Bucle indefinido",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "L",
+    "nombre": "LU",
+    "codigo_o_equivalente": "LU Matriz,ListaPerm,MatL,MatU",
+    "descripcion": "Descomposición LU",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "mat▶list",
+    "codigo_o_equivalente": "mat▶list(Matriz)",
+    "descripcion": "Convierte matriz a lista",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "max",
+    "codigo_o_equivalente": "max(Expr1,Expr2)",
+    "descripcion": "Máximo de argumentos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "mean",
+    "codigo_o_equivalente": "mean(Lista[,Frecuencias])",
+    "descripcion": "Media aritmética",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "median",
+    "codigo_o_equivalente": "median(Lista[,Frecuencias])",
+    "descripcion": "Mediana",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "MedMed",
+    "codigo_o_equivalente": "MedMed X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión mediana-mediana",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "mid",
+    "codigo_o_equivalente": "mid(Texto,Inicio[,Cuenta])",
+    "descripcion": "Subcadena",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "min",
+    "codigo_o_equivalente": "min(Expr1,Expr2)",
+    "descripcion": "Mínimo de argumentos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "mirr",
+    "codigo_o_equivalente": "mirr(FlujoInicial,ListaFlujos,TasaFin,TasaReinv)",
+    "descripcion": "Tasa interna de retorno modificada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "mod",
+    "codigo_o_equivalente": "mod(Número1,Número2)",
+    "descripcion": "Residuo módulo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "mRow",
+    "codigo_o_equivalente": "mRow(Expr,Matriz,Índice)",
+    "descripcion": "Multiplica una fila",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "mRowAdd",
+    "codigo_o_equivalente": "mRowAdd(Expr,Matriz,Índice1,Índice2)",
+    "descripcion": "Suma múltiplo de fila a otra",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "MultReg",
+    "codigo_o_equivalente": "MultReg Y,X1[,X2,...,X10]",
+    "descripcion": "Regresión múltiple",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "MultRegIntervals",
+    "codigo_o_equivalente": "MultRegIntervals Y,X1[,X2,...,X10]",
+    "descripcion": "Intervalos de regresión múltiple",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "M",
+    "nombre": "MultRegTests",
+    "codigo_o_equivalente": "MultRegTests Y,X1[,X2,...,X10]",
+    "descripcion": "Pruebas de regresión múltiple",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nand",
+    "codigo_o_equivalente": "Expr1 nand Expr2",
+    "descripcion": "NAND lógico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nCr",
+    "codigo_o_equivalente": "nCr(n,r)",
+    "descripcion": "Número de combinaciones",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nDerivative",
+    "codigo_o_equivalente": "nDerivative(Expr,Var[,Valor])",
+    "descripcion": "Derivada numérica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "newList",
+    "codigo_o_equivalente": "newList(NElementos)",
+    "descripcion": "Crea lista vacía",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "newMat",
+    "codigo_o_equivalente": "newMat(Filas,Columnas)",
+    "descripcion": "Crea matriz",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nfMax",
+    "codigo_o_equivalente": "nfMax(Expr,Var)",
+    "descripcion": "Máximo numérico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nfMin",
+    "codigo_o_equivalente": "nfMin(Expr,Var)",
+    "descripcion": "Mínimo numérico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nInt",
+    "codigo_o_equivalente": "nInt(Expr,Var,Inferior,Superior)",
+    "descripcion": "Integral numérica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nom",
+    "codigo_o_equivalente": "nom(TasaEfectiva,Períodos)",
+    "descripcion": "Interés nominal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nor",
+    "codigo_o_equivalente": "Expr1 nor Expr2",
+    "descripcion": "NOR lógico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "norm",
+    "codigo_o_equivalente": "norm(Vector)",
+    "descripcion": "Norma vectorial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "normalLine",
+    "codigo_o_equivalente": "normalLine(Expr,Var,Valor)",
+    "descripcion": "Recta normal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "normCdf",
+    "codigo_o_equivalente": "normCdf(LimInferior,LimSuperior[,μ,σ])",
+    "descripcion": "Normal acumulada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "normPdf",
+    "codigo_o_equivalente": "normPdf(XVal[,μ,σ])",
+    "descripcion": "Densidad normal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "not",
+    "codigo_o_equivalente": "not Expr",
+    "descripcion": "Negación lógica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nPr",
+    "codigo_o_equivalente": "nPr(n,r)",
+    "descripcion": "Número de permutaciones",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "npv",
+    "codigo_o_equivalente": "npv(Tasa,FlujoInicial,ListaFlujos[,Frecuencias])",
+    "descripcion": "Valor actual neto",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "N",
+    "nombre": "nSolve",
+    "codigo_o_equivalente": "nSolve(Ecuación,Var[=Suposición])",
+    "descripcion": "Solución numérica de ecuación",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "O",
+    "nombre": "OneVar",
+    "codigo_o_equivalente": "OneVar X[,Freq,Category,Include]",
+    "descripcion": "Estadística de una variable",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "O",
+    "nombre": "or",
+    "codigo_o_equivalente": "Expr1 or Expr2",
+    "descripcion": "Disyunción lógica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "O",
+    "nombre": "ord",
+    "codigo_o_equivalente": "ord(Texto)",
+    "descripcion": "Código de carácter",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "P▶Rx",
+    "codigo_o_equivalente": "P▶Rx(r,θ)",
+    "descripcion": "Coordenada x de polar a rectangular",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "P▶Ry",
+    "codigo_o_equivalente": "P▶Ry(r,θ)",
+    "descripcion": "Coordenada y de polar a rectangular",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "PaintBuffer",
+    "codigo_o_equivalente": "PaintBuffer",
+    "descripcion": "Presenta buffer gráfico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "PassErr",
+    "codigo_o_equivalente": "PassErr",
+    "descripcion": "Propaga error capturado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "piecewise",
+    "codigo_o_equivalente": "piecewise(Expr1,Cond1[,Expr2,Cond2,...,ExprOtro])",
+    "descripcion": "Función por partes",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "PlotXY",
+    "codigo_o_equivalente": "PlotXY ListaX,ListaY",
+    "descripcion": "Dibuja pares de puntos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "poissCdf",
+    "codigo_o_equivalente": "poissCdf(μ,LímiteInferior,LímiteSuperior)",
+    "descripcion": "Poisson acumulada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "poissPdf",
+    "codigo_o_equivalente": "poissPdf(μ,XVal)",
+    "descripcion": "Poisson puntual",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "▶Polar",
+    "codigo_o_equivalente": "Vector▶Polar",
+    "descripcion": "Conversión a polar",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "polyCoeffs",
+    "codigo_o_equivalente": "polyCoeffs(Polinomio[,Var])",
+    "descripcion": "Coeficientes de polinomio",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "polyDegree",
+    "codigo_o_equivalente": "polyDegree(Polinomio,Var)",
+    "descripcion": "Grado de polinomio",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "polyEval",
+    "codigo_o_equivalente": "polyEval(ListaCoef,Valor)",
+    "descripcion": "Evalúa polinomio",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "polyGcd",
+    "codigo_o_equivalente": "polyGcd(Expr1,Expr2)",
+    "descripcion": "Máximo común divisor polinomial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "polyQuotient",
+    "codigo_o_equivalente": "polyQuotient(Expr1,Expr2,Var)",
+    "descripcion": "Cociente polinomial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "polyRemainder",
+    "codigo_o_equivalente": "polyRemainder(Expr1,Expr2,Var)",
+    "descripcion": "Resto polinomial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "polyRoots",
+    "codigo_o_equivalente": "polyRoots(Polinomio,Var)",
+    "descripcion": "Raíces polinomiales",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "PowerReg",
+    "codigo_o_equivalente": "PowerReg X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión de potencia",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "Prgm",
+    "codigo_o_equivalente": "Prgm ... EndPrgm",
+    "descripcion": "Declaración de programa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "Π",
+    "codigo_o_equivalente": "Π(Expr,Var,Inferior,Superior)",
+    "descripcion": "Productoria matemática",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "prodSeq",
+    "codigo_o_equivalente": "prodSeq(Expr,Var,Inferior,Superior)",
+    "descripcion": "Producto de secuencia",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "product",
+    "codigo_o_equivalente": "product(Lista[,Inicio,Fin])",
+    "descripcion": "Producto de lista",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "P",
+    "nombre": "propFrac",
+    "codigo_o_equivalente": "propFrac(Expr)",
+    "descripcion": "Convierte a fracción propia",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Q",
+    "nombre": "QR",
+    "codigo_o_equivalente": "QR Matriz,Q,R",
+    "descripcion": "Descomposición QR",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Q",
+    "nombre": "QuadReg",
+    "codigo_o_equivalente": "QuadReg X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión cuadrática",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Q",
+    "nombre": "QuartReg",
+    "codigo_o_equivalente": "QuartReg X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión cuártica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "R▶Pθ",
+    "codigo_o_equivalente": "R▶Pθ(x,y)",
+    "descripcion": "Ángulo polar desde rectangular",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "R▶Pr",
+    "codigo_o_equivalente": "R▶Pr(x,y)",
+    "descripcion": "Radio polar desde rectangular",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "▶Rad",
+    "codigo_o_equivalente": "Ángulo▶Rad",
+    "descripcion": "Conversión a radianes",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "rand",
+    "codigo_o_equivalente": "rand([#Intentos])",
+    "descripcion": "Número aleatorio uniforme",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "randBin",
+    "codigo_o_equivalente": "randBin(n,p[,#Intentos])",
+    "descripcion": "Número aleatorio binomial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "randInt",
+    "codigo_o_equivalente": "randInt(Inferior,Superior[,#Intentos])",
+    "descripcion": "Enteros aleatorios",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "randMat",
+    "codigo_o_equivalente": "randMat(Filas,Columnas)",
+    "descripcion": "Matriz aleatoria",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "randNorm",
+    "codigo_o_equivalente": "randNorm(μ,σ[,#Intentos])",
+    "descripcion": "Aleatorio normal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "randPoly",
+    "codigo_o_equivalente": "randPoly(Var,Grado)",
+    "descripcion": "Polinomio aleatorio",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "randSamp",
+    "codigo_o_equivalente": "randSamp(Lista,n[,SinReemplazo])",
+    "descripcion": "Muestra aleatoria",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "RandSeed",
+    "codigo_o_equivalente": "RandSeed Valor",
+    "descripcion": "Configura semilla aleatoria",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "real",
+    "codigo_o_equivalente": "real(Expr)",
+    "descripcion": "Parte real",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "▶Rect",
+    "codigo_o_equivalente": "Vector▶Rect",
+    "descripcion": "Conversión a coordenadas rectangulares",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "ref",
+    "codigo_o_equivalente": "ref(Matriz)",
+    "descripcion": "Forma escalonada por filas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "remain",
+    "codigo_o_equivalente": "remain(Expr1,Expr2)",
+    "descripcion": "Residuo de división",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "Request",
+    "codigo_o_equivalente": "Request Texto,Variable[,Indicador]",
+    "descripcion": "Solicita entrada de usuario",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "RequestStr",
+    "codigo_o_equivalente": "RequestStr Texto,Variable[,Indicador]",
+    "descripcion": "Solicita texto",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "Return",
+    "codigo_o_equivalente": "Return [Expr]",
+    "descripcion": "Termina función y devuelve valor",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "right",
+    "codigo_o_equivalente": "right(Texto,n)",
+    "descripcion": "Parte derecha de cadena",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "rk23",
+    "codigo_o_equivalente": "rk23(EDO,Var,VarDep,ValorInicial,ValorFinal)",
+    "descripcion": "Solución numérica EDO Runge-Kutta",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "root",
+    "codigo_o_equivalente": "root(Expr,n)",
+    "descripcion": "Raíz n-ésima",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "rotate",
+    "codigo_o_equivalente": "rotate(Expr,#Posiciones)",
+    "descripcion": "Rotación bits o elementos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "round",
+    "codigo_o_equivalente": "round(Expr[,Decimales])",
+    "descripcion": "Redondea número",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "rowAdd",
+    "codigo_o_equivalente": "rowAdd(Matriz,Índice1,Índice2)",
+    "descripcion": "Suma filas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "rowDim",
+    "codigo_o_equivalente": "rowDim(Matriz)",
+    "descripcion": "Número de filas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "rowNorm",
+    "codigo_o_equivalente": "rowNorm(Matriz)",
+    "descripcion": "Norma por filas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "rowSwap",
+    "codigo_o_equivalente": "rowSwap(Matriz,Índice1,Índice2)",
+    "descripcion": "Intercambia filas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "R",
+    "nombre": "rref",
+    "codigo_o_equivalente": "rref(Matriz)",
+    "descripcion": "Forma escalonada reducida",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sec",
+    "codigo_o_equivalente": "sec(Expr)",
+    "descripcion": "Secante",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sec⁻¹",
+    "codigo_o_equivalente": "sec⁻¹(Expr)",
+    "descripcion": "Arcosecante",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sech",
+    "codigo_o_equivalente": "sech(Expr)",
+    "descripcion": "Secante hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sech⁻¹",
+    "codigo_o_equivalente": "sech⁻¹(Expr)",
+    "descripcion": "Arcosecante hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "Send",
+    "codigo_o_equivalente": "Send Expr1[,Expr2,...]",
+    "descripcion": "Envía comando a TI-Innovator Hub",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "seq",
+    "codigo_o_equivalente": "seq(Expr,Var,Inferior,Superior[,Paso])",
+    "descripcion": "Genera sucesión",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "seqn",
+    "codigo_o_equivalente": "seqn(Expr(n)[,nMax[,ValorMax]])",
+    "descripcion": "Sucesión con valores de inicio",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "seqGen",
+    "codigo_o_equivalente": "seqGen(Expr,Var,VarDep,{Var0,VarMax}[,Inicial,Paso])",
+    "descripcion": "Genera sucesión recursiva",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "series",
+    "codigo_o_equivalente": "series(Expr,Var,Orden[,Punto])",
+    "descripcion": "Expansión en series",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "SetColor",
+    "codigo_o_equivalente": "SetColor R,G,B",
+    "descripcion": "Selecciona color de dibujo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "setMode",
+    "codigo_o_equivalente": "setMode(CódigoModo,CódigoConfig)",
+    "descripcion": "Configura modo temporal de programa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "SetPen",
+    "codigo_o_equivalente": "SetPen grosor,estilo",
+    "descripcion": "Configura lápiz de dibujo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "SetWindow",
+    "codigo_o_equivalente": "SetWindow xMin,xMax,yMin,yMax",
+    "descripcion": "Configura ventana de dibujo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "shift",
+    "codigo_o_equivalente": "shift(Entero[,#Cambios])",
+    "descripcion": "Desplazamiento de bits",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sign",
+    "codigo_o_equivalente": "sign(Expr)",
+    "descripcion": "Signo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "simult",
+    "codigo_o_equivalente": "simult(MatrizCoeficientes,VectorConstantes)",
+    "descripcion": "Resuelve sistema lineal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sin",
+    "codigo_o_equivalente": "sin(Expr)",
+    "descripcion": "Seno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sin⁻¹",
+    "codigo_o_equivalente": "sin⁻¹(Expr)",
+    "descripcion": "Arcoseno",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sinh",
+    "codigo_o_equivalente": "sinh(Expr)",
+    "descripcion": "Seno hiperbólico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sinh⁻¹",
+    "codigo_o_equivalente": "sinh⁻¹(Expr)",
+    "descripcion": "Arcoseno hiperbólico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "SinReg",
+    "codigo_o_equivalente": "SinReg X,Y[,Freq,Category,Include]",
+    "descripcion": "Regresión sinusoidal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "solve",
+    "codigo_o_equivalente": "solve(Ecuación,Var)",
+    "descripcion": "Resuelve ecuación simbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "solucionar(sistema)",
+    "codigo_o_equivalente": "solve(Sistema,Var1,Var2,...)",
+    "descripcion": "Resuelve sistema de ecuaciones",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "SortA",
+    "codigo_o_equivalente": "SortA Lista1[,Lista2,...]",
+    "descripcion": "Ordena ascendente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "SortD",
+    "codigo_o_equivalente": "SortD Lista1[,Lista2,...]",
+    "descripcion": "Ordena descendente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "▶Sphere",
+    "codigo_o_equivalente": "Vector▶Sphere",
+    "descripcion": "Conversión a esféricas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sqrt",
+    "codigo_o_equivalente": "sqrt(Expr)",
+    "descripcion": "Raíz cuadrada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "stat.results",
+    "codigo_o_equivalente": "stat.results",
+    "descripcion": "Registro con resultado estadístico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "stDevPop",
+    "codigo_o_equivalente": "stDevPop(Lista[,Freq])",
+    "descripcion": "Desviación estándar poblacional",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "stDevSamp",
+    "codigo_o_equivalente": "stDevSamp(Lista[,Freq])",
+    "descripcion": "Desviación estándar muestral",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "Stop",
+    "codigo_o_equivalente": "Stop",
+    "descripcion": "Detiene programa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "string",
+    "codigo_o_equivalente": "string(Expr)",
+    "descripcion": "Convierte expresión a texto",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "subMat",
+    "codigo_o_equivalente": "subMat(Matriz[,FilaInicial,ColInicial,FilaFinal,ColFinal])",
+    "descripcion": "Submatriz",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "Σ",
+    "codigo_o_equivalente": "Σ(Expr,Var,Inferior,Superior)",
+    "descripcion": "Sumatoria",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sum",
+    "codigo_o_equivalente": "sum(Lista[,Inicio,Fin])",
+    "descripcion": "Suma de elementos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sumIf",
+    "codigo_o_equivalente": "sumIf(Lista,Criterios[,ListaSuma])",
+    "descripcion": "Suma condicionada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "ΣInt",
+    "codigo_o_equivalente": "ΣInt(PrimerPago,ÚltimoPago,N,I,VP[,Pgo,VF,PpA,CpA,PgoAl,Redondeo])",
+    "descripcion": "Suma interés de préstamo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "ΣPrn",
+    "codigo_o_equivalente": "ΣPrn(PrimerPago,ÚltimoPago,N,I,VP[,Pgo,VF,PpA,CpA,PgoAl,Redondeo])",
+    "descripcion": "Suma capital de préstamo",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "sumSeq",
+    "codigo_o_equivalente": "sumSeq(Expr,Var,Inferior,Superior)",
+    "descripcion": "Suma de secuencia",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "S",
+    "nombre": "system",
+    "codigo_o_equivalente": "system(Ecuación1,Ecuación2,...)",
+    "descripcion": "Sistema de ecuaciones",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "T",
+    "codigo_o_equivalente": "Matrizᵀ",
+    "descripcion": "Transposición de matriz",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tan",
+    "codigo_o_equivalente": "tan(Expr)",
+    "descripcion": "Tangente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tan⁻¹",
+    "codigo_o_equivalente": "tan⁻¹(Expr)",
+    "descripcion": "Arcotangente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tanh",
+    "codigo_o_equivalente": "tanh(Expr)",
+    "descripcion": "Tangente hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tanh⁻¹",
+    "codigo_o_equivalente": "tanh⁻¹(Expr)",
+    "descripcion": "Arcotangente hiperbólica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tangentLine",
+    "codigo_o_equivalente": "tangentLine(Expr,Var,Valor)",
+    "descripcion": "Recta tangente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "taylor",
+    "codigo_o_equivalente": "taylor(Expr,Var,Orden[,Punto])",
+    "descripcion": "Polinomio Taylor",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tCdf",
+    "codigo_o_equivalente": "tCdf(LimInferior,LimSuperior,df)",
+    "descripcion": "Probabilidad acumulada t",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tCollect",
+    "codigo_o_equivalente": "tCollect(Expr)",
+    "descripcion": "Recoge términos trigonométricos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tExpand",
+    "codigo_o_equivalente": "tExpand(Expr)",
+    "descripcion": "Expande identidades trigonométricas",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "Text",
+    "codigo_o_equivalente": "Text Texto",
+    "descripcion": "Instrucción de programa para mostrar texto",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "Then",
+    "codigo_o_equivalente": "Then",
+    "descripcion": "Inicio de bloque condicional",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tInterval",
+    "codigo_o_equivalente": "tInterval Lista[,Freq,CLvl]",
+    "descripcion": "Intervalo confianza t una muestra",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tInterval_2Samp",
+    "codigo_o_equivalente": "tInterval_2Samp Lista1,Lista2[,Freq1,Freq2,CLvl]",
+    "descripcion": "Intervalo t dos muestras",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tmpCnv",
+    "codigo_o_equivalente": "tmpCnv(Expr,UnidadInicial,UnidadFinal)",
+    "descripcion": "Conversión de temperatura",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "ΔtmpCnv",
+    "codigo_o_equivalente": "ΔtmpCnv(Expr,UnidadInicial,UnidadFinal)",
+    "descripcion": "Conversión diferencia de temperatura",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "trace",
+    "codigo_o_equivalente": "trace(Matriz)",
+    "descripcion": "Traza de matriz",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "true",
+    "codigo_o_equivalente": "true",
+    "descripcion": "Constante booleana verdadera",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "Try",
+    "codigo_o_equivalente": "Try ... Else ... EndTry",
+    "descripcion": "Control de excepciones",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tPdf",
+    "codigo_o_equivalente": "tPdf(XVal,df)",
+    "descripcion": "Densidad t de Student",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tTest",
+    "codigo_o_equivalente": "tTest Lista,μ0[,Freq,Alternativa]",
+    "descripcion": "Prueba t de una muestra",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tTest_2Samp",
+    "codigo_o_equivalente": "tTest_2Samp Lista1,Lista2[,Freq1,Freq2,Alternativa]",
+    "descripcion": "Prueba t de dos muestras",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tvmFV",
+    "codigo_o_equivalente": "tvmFV(N,I,VP,Pgo[,PpA,CpA,PgoAl])",
+    "descripcion": "Valor futuro",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tvmI",
+    "codigo_o_equivalente": "tvmI(N,VP,Pgo,VF[,PpA,CpA,PgoAl])",
+    "descripcion": "Tasa de interés",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tvmN",
+    "codigo_o_equivalente": "tvmN(I,VP,Pgo,VF[,PpA,CpA,PgoAl])",
+    "descripcion": "Número de periodos",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tvmPmt",
+    "codigo_o_equivalente": "tvmPmt(N,I,VP,VF[,PpA,CpA,PgoAl])",
+    "descripcion": "Pago financiero",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "tvmPV",
+    "codigo_o_equivalente": "tvmPV(N,I,Pgo,VF[,PpA,CpA,PgoAl])",
+    "descripcion": "Valor presente",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "T",
+    "nombre": "TwoVar",
+    "codigo_o_equivalente": "TwoVar X,Y[,Freq,Category,Include]",
+    "descripcion": "Estadística de dos variables",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "U",
+    "nombre": "undef",
+    "codigo_o_equivalente": "undef",
+    "descripcion": "Indefinido",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "U",
+    "nombre": "unitV",
+    "codigo_o_equivalente": "unitV(Vector)",
+    "descripcion": "Vector unitario",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "U",
+    "nombre": "Unlock",
+    "codigo_o_equivalente": "Unlock Var1[,Var2,...]",
+    "descripcion": "Desbloquea variables",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "U",
+    "nombre": "UseBuffer",
+    "codigo_o_equivalente": "UseBuffer",
+    "descripcion": "Selecciona buffer gráfico",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "V",
+    "nombre": "varPop",
+    "codigo_o_equivalente": "varPop(Lista[,Freq])",
+    "descripcion": "Varianza poblacional",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "V",
+    "nombre": "varSamp",
+    "codigo_o_equivalente": "varSamp(Lista[,Freq])",
+    "descripcion": "Varianza muestral",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "W",
+    "nombre": "Wait",
+    "codigo_o_equivalente": "Wait [Segundos]",
+    "descripcion": "Pausa un programa",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "W",
+    "nombre": "warnCodes",
+    "codigo_o_equivalente": "warnCodes(Expr,VarEstado)",
+    "descripcion": "Obtiene avisos de evaluación",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "W",
+    "nombre": "when",
+    "codigo_o_equivalente": "when(Condición,ValorSiVerdadero[,ValorSiFalso,ValorIndef])",
+    "descripcion": "Función condicional",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "W",
+    "nombre": "While",
+    "codigo_o_equivalente": "While Condición ... EndWhile",
+    "descripcion": "Bucle mientras",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "X",
+    "nombre": "xor",
+    "codigo_o_equivalente": "Expr1 xor Expr2",
+    "descripcion": "OR exclusiva",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zeros",
+    "codigo_o_equivalente": "zeros(Expr,Var)",
+    "descripcion": "Raíces de expresión",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zInterval",
+    "codigo_o_equivalente": "zInterval Lista,σ[,Freq,CLvl]",
+    "descripcion": "Intervalo de confianza z",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zInterval_1Prop",
+    "codigo_o_equivalente": "zInterval_1Prop Éxitos,N[,CLvl]",
+    "descripcion": "Intervalo z para una proporción",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zInterval_2Prop",
+    "codigo_o_equivalente": "zInterval_2Prop Éxitos1,N1,Éxitos2,N2[,CLvl]",
+    "descripcion": "Intervalo z para diferencia de proporciones",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zInterval_2Samp",
+    "codigo_o_equivalente": "zInterval_2Samp Lista1,Lista2,σ1,σ2[,Freq1,Freq2,CLvl]",
+    "descripcion": "Intervalo z de dos muestras",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zTest",
+    "codigo_o_equivalente": "zTest Lista,μ0,σ[,Freq,Alternativa]",
+    "descripcion": "Prueba z de una muestra",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zTest_1Prop",
+    "codigo_o_equivalente": "zTest_1Prop Éxitos,N,p0[,Alternativa]",
+    "descripcion": "Prueba z una proporción",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zTest_2Prop",
+    "codigo_o_equivalente": "zTest_2Prop Éxitos1,N1,Éxitos2,N2[,Alternativa]",
+    "descripcion": "Prueba z de dos proporciones",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "Z",
+    "nombre": "zTest_2Samp",
+    "codigo_o_equivalente": "zTest_2Samp Lista1,Lista2,σ1,σ2[,Freq1,Freq2,Alternativa]",
+    "descripcion": "Prueba z dos muestras",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "+",
+    "codigo_o_equivalente": "Expr1 + Expr2",
+    "descripcion": "Suma",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "−",
+    "codigo_o_equivalente": "Expr1 − Expr2",
+    "descripcion": "Resta",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "×",
+    "codigo_o_equivalente": "Expr1 × Expr2",
+    "descripcion": "Multiplicación",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "/",
+    "codigo_o_equivalente": "Expr1 / Expr2",
+    "descripcion": "División",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "^",
+    "codigo_o_equivalente": "Expr1 ^ Expr2",
+    "descripcion": "Potencia",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "²",
+    "codigo_o_equivalente": "Expr²",
+    "descripcion": "Cuadrado",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": ".+",
+    "codigo_o_equivalente": "Matriz1 .+ Matriz2",
+    "descripcion": "Suma elemento a elemento",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": ".−",
+    "codigo_o_equivalente": "Matriz1 .− Matriz2",
+    "descripcion": "Resta elemento a elemento",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": ".*",
+    "codigo_o_equivalente": "Matriz1 .* Matriz2",
+    "descripcion": "Multiplicación elemento a elemento",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "./",
+    "codigo_o_equivalente": "Matriz1 ./ Matriz2",
+    "descripcion": "División elemento a elemento",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": ".^",
+    "codigo_o_equivalente": "Matriz1 .^ Matriz2",
+    "descripcion": "Potencias elemento a elemento",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "%",
+    "codigo_o_equivalente": "Expr %",
+    "descripcion": "Porcentaje",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "!",
+    "codigo_o_equivalente": "n!",
+    "descripcion": "Factorial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "=",
+    "codigo_o_equivalente": "Expr1 = Expr2",
+    "descripcion": "Igualdad",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "≠",
+    "codigo_o_equivalente": "Expr1 ≠ Expr2",
+    "descripcion": "Desigualdad",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "<",
+    "codigo_o_equivalente": "Expr1 < Expr2",
+    "descripcion": "Menor que",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "≤",
+    "codigo_o_equivalente": "Expr1 ≤ Expr2",
+    "descripcion": "Menor o igual",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": ">",
+    "codigo_o_equivalente": "Expr1 > Expr2",
+    "descripcion": "Mayor que",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "≥",
+    "codigo_o_equivalente": "Expr1 ≥ Expr2",
+    "descripcion": "Mayor o igual",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "⇒",
+    "codigo_o_equivalente": "Booleano1 ⇒ Booleano2",
+    "descripcion": "Implicación lógica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "⇔",
+    "codigo_o_equivalente": "Booleano1 ⇔ Booleano2",
+    "descripcion": "Equivalencia lógica",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "&",
+    "codigo_o_equivalente": "Cadena1 & Cadena2",
+    "descripcion": "Concatenación de texto",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "#",
+    "codigo_o_equivalente": "#NombreVariable",
+    "descripcion": "Referencia indirecta a variable",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "→",
+    "codigo_o_equivalente": "Expr → Var",
+    "descripcion": "Almacena un valor en variable",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": ":=",
+    "codigo_o_equivalente": "Var := Expr",
+    "descripcion": "Asigna variable o define función",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "e^",
+    "codigo_o_equivalente": "e^(Expr)",
+    "descripcion": "Exponencial",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "10^",
+    "codigo_o_equivalente": "10^(Expr)",
+    "descripcion": "Potencia de 10",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "^-1",
+    "codigo_o_equivalente": "Expr^-1",
+    "descripcion": "Recíproco o inversa de matriz",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "√",
+    "codigo_o_equivalente": "√(Expr)",
+    "descripcion": "Raíz cuadrada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "Π",
+    "codigo_o_equivalente": "Π(Expr,Var,Inferior,Superior)",
+    "descripcion": "Productoria",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "∑",
+    "codigo_o_equivalente": "∑(Expr,Var,Inferior,Superior)",
+    "descripcion": "Sumatoria",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "∫",
+    "codigo_o_equivalente": "∫(Expr,Var[,Inferior,Superior])",
+    "descripcion": "Integral",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "d",
+    "codigo_o_equivalente": "d(Expr,Var[,Orden])",
+    "descripcion": "Derivada",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "°",
+    "codigo_o_equivalente": "Expr°",
+    "descripcion": "Unidad angular en grados",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "ᵍ",
+    "codigo_o_equivalente": "Exprᵍ",
+    "descripcion": "Unidad angular en gradianes",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "ʳ",
+    "codigo_o_equivalente": "Exprʳ",
+    "descripcion": "Unidad angular en radianes",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "∠",
+    "codigo_o_equivalente": "(Magnitud∠Ángulo)",
+    "descripcion": "Ángulo en coordenadas polares",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "|",
+    "codigo_o_equivalente": "Expr | Condición",
+    "descripcion": "Operador de restricción o sustitución",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "©",
+    "codigo_o_equivalente": "© Texto",
+    "descripcion": "Comentario en una línea de TI-Basic",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "_",
+    "codigo_o_equivalente": "Expr_Unidad",
+    "descripcion": "Designador de unidades",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "0b",
+    "codigo_o_equivalente": "0b1010",
+    "descripcion": "Literal binario",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "1",
+    "header": "SÍMBOLOS Y OPERADORES",
+    "nombre": "0h",
+    "codigo_o_equivalente": "0hFF",
+    "descripcion": "Literal hexadecimal",
+    "verificacion": "archivo usuario",
+    "tipo": "comando"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "abs",
+    "codigo_o_equivalente": "abs(Expr)",
+    "descripcion": "Valor absoluto o módulo complejo",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "sign",
+    "codigo_o_equivalente": "sign(Expr)",
+    "descripcion": "Signo",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "round",
+    "codigo_o_equivalente": "round(Expr[,Decimales])",
+    "descripcion": "Redondea número",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "floor",
+    "codigo_o_equivalente": "floor(Expr)",
+    "descripcion": "Redondeo al entero inferior",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "ceiling",
+    "codigo_o_equivalente": "ceiling(Expr)",
+    "descripcion": "Redondeo hacia arriba",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "iPart",
+    "codigo_o_equivalente": "iPart(Expr)",
+    "descripcion": "Parte entera truncada",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "fPart",
+    "codigo_o_equivalente": "fPart(Expr)",
+    "descripcion": "Parte fraccionaria",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "int",
+    "codigo_o_equivalente": "int(Expr)",
+    "descripcion": "Mayor entero menor o igual",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "mod",
+    "codigo_o_equivalente": "mod(Número1,Número2)",
+    "descripcion": "Residuo módulo",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "remain",
+    "codigo_o_equivalente": "remain(Expr1,Expr2)",
+    "descripcion": "Residuo de división",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "gcd",
+    "codigo_o_equivalente": "gcd(Entero1,Entero2)",
+    "descripcion": "Máximo común divisor",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "lcm",
+    "codigo_o_equivalente": "lcm(Entero1,Entero2)",
+    "descripcion": "Mínimo común múltiplo",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "isPrime",
+    "codigo_o_equivalente": "isPrime(Número)",
+    "descripcion": "Comprueba primalidad",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "factor",
+    "codigo_o_equivalente": "factor(Expr[,Var])",
+    "descripcion": "Factorización algebraica",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "propFrac",
+    "codigo_o_equivalente": "propFrac(Expr)",
+    "descripcion": "Convierte a fracción propia",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "approx",
+    "codigo_o_equivalente": "approx(Expr)",
+    "descripcion": "Evaluación aproximada",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "approxRational",
+    "codigo_o_equivalente": "approxRational(Expr[,Tol])",
+    "descripcion": "Aproxima a una fracción racional",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "getNum",
+    "codigo_o_equivalente": "getNum(Expr)",
+    "descripcion": "Numerador de una expresión",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "getDenom",
+    "codigo_o_equivalente": "getDenom(Expr)",
+    "descripcion": "Denominador de una expresión",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "max",
+    "codigo_o_equivalente": "max(Expr1,Expr2)",
+    "descripcion": "Máximo de argumentos",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Number",
+    "nombre": "min",
+    "codigo_o_equivalente": "min(Expr1,Expr2)",
+    "descripcion": "Mínimo de argumentos",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "sin",
+    "codigo_o_equivalente": "sin(Expr)",
+    "descripcion": "Seno",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "cos",
+    "codigo_o_equivalente": "cos(Expr)",
+    "descripcion": "Coseno",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "tan",
+    "codigo_o_equivalente": "tan(Expr)",
+    "descripcion": "Tangente",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "cot",
+    "codigo_o_equivalente": "cot(Expr)",
+    "descripcion": "Cotangente",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "sec",
+    "codigo_o_equivalente": "sec(Expr)",
+    "descripcion": "Secante",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "csc",
+    "codigo_o_equivalente": "csc(Expr)",
+    "descripcion": "Cosecante",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "sinh",
+    "codigo_o_equivalente": "sinh(Expr)",
+    "descripcion": "Seno hiperbólico",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "cosh",
+    "codigo_o_equivalente": "cosh(Expr)",
+    "descripcion": "Coseno hiperbólico",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "tanh",
+    "codigo_o_equivalente": "tanh(Expr)",
+    "descripcion": "Tangente hiperbólica",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "coth",
+    "codigo_o_equivalente": "coth(Expr)",
+    "descripcion": "Cotangente hiperbólica",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "sech",
+    "codigo_o_equivalente": "sech(Expr)",
+    "descripcion": "Secante hiperbólica",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "csch",
+    "codigo_o_equivalente": "csch(Expr)",
+    "descripcion": "Cosecante hiperbólica",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "angle",
+    "codigo_o_equivalente": "angle(Expr)",
+    "descripcion": "Ángulo de un número complejo",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "sin⁻¹",
+    "codigo_o_equivalente": "sin⁻¹(Expr)",
+    "descripcion": "Arcoseno",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "cos⁻¹",
+    "codigo_o_equivalente": "cos⁻¹(Expr)",
+    "descripcion": "Arcocoseno",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "tan⁻¹",
+    "codigo_o_equivalente": "tan⁻¹(Expr)",
+    "descripcion": "Arcotangente",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "cot⁻¹",
+    "codigo_o_equivalente": "cot⁻¹(Expr)",
+    "descripcion": "Arcocotangente",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "sec⁻¹",
+    "codigo_o_equivalente": "sec⁻¹(Expr)",
+    "descripcion": "Arcosecante",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "csc⁻¹",
+    "codigo_o_equivalente": "csc⁻¹(Expr)",
+    "descripcion": "Arcocosecante",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "▶Rad",
+    "codigo_o_equivalente": "Ángulo▶Rad",
+    "descripcion": "Conversión a radianes",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "▶Grad",
+    "codigo_o_equivalente": "Ángulo▶Grad",
+    "descripcion": "Conversión a gradianes",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "▶DD",
+    "codigo_o_equivalente": "Número▶DD",
+    "descripcion": "Convierte formato angular a grados decimales",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Angle",
+    "nombre": "▶DMS",
+    "codigo_o_equivalente": "Número▶DMS",
+    "descripcion": "Convierte grados decimales a G° M' S''",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "newList",
+    "codigo_o_equivalente": "newList(NElementos)",
+    "descripcion": "Crea lista vacía",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "dim",
+    "codigo_o_equivalente": "dim(Lista)",
+    "descripcion": "Número de elementos o dimensiones",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "augment",
+    "codigo_o_equivalente": "augment(Lista1,Lista2)",
+    "descripcion": "Concatenación de listas o matrices",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "countIf",
+    "codigo_o_equivalente": "countIf(Lista,Criterio)",
+    "descripcion": "Conteo condicionado",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "sum",
+    "codigo_o_equivalente": "sum(Lista[,Inicio,Fin])",
+    "descripcion": "Suma de elementos",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "sumIf",
+    "codigo_o_equivalente": "sumIf(Lista,Criterios[,ListaSuma])",
+    "descripcion": "Suma condicionada",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "product",
+    "codigo_o_equivalente": "product(Lista[,Inicio,Fin])",
+    "descripcion": "Producto de lista",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "cumulativeSum",
+    "codigo_o_equivalente": "cumulativeSum(Lista)",
+    "descripcion": "Suma acumulativa",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "seq",
+    "codigo_o_equivalente": "seq(Expr,Var,Inferior,Superior[,Paso])",
+    "descripcion": "Genera sucesión",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "ΔList",
+    "codigo_o_equivalente": "ΔList(Lista)",
+    "descripcion": "Diferencia entre términos de lista",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "SortA",
+    "codigo_o_equivalente": "SortA Lista1[,Lista2,...]",
+    "descripcion": "Ordena ascendente",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "SortA",
+    "codigo_o_equivalente": "SortA Lista1[,Lista2,...]",
+    "descripcion": "Ordena ascendente",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "SortD",
+    "codigo_o_equivalente": "SortD Lista1[,Lista2,...]",
+    "descripcion": "Ordena descendente",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "mean",
+    "codigo_o_equivalente": "mean(Lista[,Frecuencias])",
+    "descripcion": "Media aritmética",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "median",
+    "codigo_o_equivalente": "median(Lista[,Frecuencias])",
+    "descripcion": "Mediana",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "stDevSamp",
+    "codigo_o_equivalente": "stDevSamp(Lista[,Freq])",
+    "descripcion": "Desviación estándar muestral",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "stDevPop",
+    "codigo_o_equivalente": "stDevPop(Lista[,Freq])",
+    "descripcion": "Desviación estándar poblacional",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "list▶mat",
+    "codigo_o_equivalente": "list▶mat(Lista,NFilas)",
+    "descripcion": "Convierte lista en matriz",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "List",
+    "nombre": "mat▶list",
+    "codigo_o_equivalente": "mat▶list(Matriz)",
+    "descripcion": "Convierte matriz a lista",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "newMat",
+    "codigo_o_equivalente": "newMat(Filas,Columnas)",
+    "descripcion": "Crea matriz",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "identity",
+    "codigo_o_equivalente": "identity(Entero)",
+    "descripcion": "Matriz identidad",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "det",
+    "codigo_o_equivalente": "det(Matriz)",
+    "descripcion": "Determinante",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "diag",
+    "codigo_o_equivalente": "diag(Lista)",
+    "descripcion": "Construye matriz diagonal",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "rref",
+    "codigo_o_equivalente": "rref(Matriz)",
+    "descripcion": "Forma escalonada reducida",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "ref",
+    "codigo_o_equivalente": "ref(Matriz)",
+    "descripcion": "Forma escalonada por filas",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "rowAdd",
+    "codigo_o_equivalente": "rowAdd(Matriz,Índice1,Índice2)",
+    "descripcion": "Suma filas",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "rowSwap",
+    "codigo_o_equivalente": "rowSwap(Matriz,Índice1,Índice2)",
+    "descripcion": "Intercambia filas",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "rowDim",
+    "codigo_o_equivalente": "rowDim(Matriz)",
+    "descripcion": "Número de filas",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "colDim",
+    "codigo_o_equivalente": "colDim(Matriz)",
+    "descripcion": "Cantidad de columnas",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "colNorm",
+    "codigo_o_equivalente": "colNorm(Matriz)",
+    "descripcion": "Norma por columnas",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "rowNorm",
+    "codigo_o_equivalente": "rowNorm(Matriz)",
+    "descripcion": "Norma por filas",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "colAugment",
+    "codigo_o_equivalente": "colAugment(Matriz1,Matriz2)",
+    "descripcion": "Anexa columnas de matrices",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "constructMat",
+    "codigo_o_equivalente": "constructMat(Expr,Var1,Var2,NFilas,NColumnas)",
+    "descripcion": "Construir matriz a partir de expresión",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "mRow",
+    "codigo_o_equivalente": "mRow(Expr,Matriz,Índice)",
+    "descripcion": "Multiplica una fila",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "mRowAdd",
+    "codigo_o_equivalente": "mRowAdd(Expr,Matriz,Índice1,Índice2)",
+    "descripcion": "Suma múltiplo de fila a otra",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "eigVc",
+    "codigo_o_equivalente": "eigVc(MatrizCuadrada)",
+    "descripcion": "Vectores propios",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "eigVl",
+    "codigo_o_equivalente": "eigVl(MatrizCuadrada)",
+    "descripcion": "Valores propios",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "dotP",
+    "codigo_o_equivalente": "dotP(Vector1,Vector2)",
+    "descripcion": "Producto escalar",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "crossP",
+    "codigo_o_equivalente": "crossP(Vector1,Vector2)",
+    "descripcion": "Producto vectorial",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "trace",
+    "codigo_o_equivalente": "trace(Matriz)",
+    "descripcion": "Traza de matriz",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "LU",
+    "codigo_o_equivalente": "LU Matriz,ListaPerm,MatL,MatU",
+    "descripcion": "Descomposición LU",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "2",
+    "header": "Matrix",
+    "nombre": "QR",
+    "codigo_o_equivalente": "QR Matriz,Q,R",
+    "descripcion": "Descomposición QR",
+    "verificacion": "agrupacion tematica no verificada",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "3",
+    "header": "Conversión",
+    "nombre": "►",
+    "codigo_o_equivalente": "►",
+    "descripcion": "Conversión entre unidades",
+    "verificacion": "guia oficial",
+    "tipo": "operador"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "c",
+    "codigo_o_equivalente": "_c",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Cc",
+    "codigo_o_equivalente": "_Cc",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "g",
+    "codigo_o_equivalente": "_g",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Gc",
+    "codigo_o_equivalente": "_Gc",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "h",
+    "codigo_o_equivalente": "_h",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "k",
+    "codigo_o_equivalente": "_k",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "μ0",
+    "codigo_o_equivalente": "_μ0",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "μb",
+    "codigo_o_equivalente": "_μb",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Me",
+    "codigo_o_equivalente": "_Me",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Mn",
+    "codigo_o_equivalente": "_Mn",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Mp",
+    "codigo_o_equivalente": "_Mp",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Na",
+    "codigo_o_equivalente": "_Na",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "q",
+    "codigo_o_equivalente": "_q",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Rb",
+    "codigo_o_equivalente": "_Rb",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Rc",
+    "codigo_o_equivalente": "_Rc",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Rdb",
+    "codigo_o_equivalente": "_Rdb",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "Vm",
+    "codigo_o_equivalente": "_Vm",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "ε0",
+    "codigo_o_equivalente": "_ε0",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "σ",
+    "codigo_o_equivalente": "_σ",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Constants",
+    "nombre": "φ0",
+    "codigo_o_equivalente": "_φ0",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "ang",
+    "codigo_o_equivalente": "_ang",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "au",
+    "codigo_o_equivalente": "_au",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "cm",
+    "codigo_o_equivalente": "_cm",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "fath",
+    "codigo_o_equivalente": "_fath",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "fm",
+    "codigo_o_equivalente": "_fm",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "ft",
+    "codigo_o_equivalente": "_ft",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "in",
+    "codigo_o_equivalente": "_in",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "km",
+    "codigo_o_equivalente": "_km",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "ltyr",
+    "codigo_o_equivalente": "_ltyr",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "m",
+    "codigo_o_equivalente": "_m",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "μ",
+    "codigo_o_equivalente": "_μ",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "mi",
+    "codigo_o_equivalente": "_mi",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "mil",
+    "codigo_o_equivalente": "_mil",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "mm",
+    "codigo_o_equivalente": "_mm",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "Nmi",
+    "codigo_o_equivalente": "_Nmi",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "pc",
+    "codigo_o_equivalente": "_pc",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "rod",
+    "codigo_o_equivalente": "_rod",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "yd",
+    "codigo_o_equivalente": "_yd",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Length",
+    "nombre": "Å",
+    "codigo_o_equivalente": "_Å",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Area",
+    "nombre": "acre",
+    "codigo_o_equivalente": "_acre",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Area",
+    "nombre": "ha",
+    "codigo_o_equivalente": "_ha",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "cup",
+    "codigo_o_equivalente": "_cup",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "floz",
+    "codigo_o_equivalente": "_floz",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "flozUK",
+    "codigo_o_equivalente": "_flozUK",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "gal",
+    "codigo_o_equivalente": "_gal",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "galUK",
+    "codigo_o_equivalente": "_galUK",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "l",
+    "codigo_o_equivalente": "_l",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "ml",
+    "codigo_o_equivalente": "_ml",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "pt",
+    "codigo_o_equivalente": "_pt",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "qt",
+    "codigo_o_equivalente": "_qt",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "tbsp",
+    "codigo_o_equivalente": "_tbsp",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Volume",
+    "nombre": "tsp",
+    "codigo_o_equivalente": "_tsp",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "day",
+    "codigo_o_equivalente": "_day",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "hr",
+    "codigo_o_equivalente": "_hr",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "μs",
+    "codigo_o_equivalente": "_μs",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "min",
+    "codigo_o_equivalente": "_min",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "ms",
+    "codigo_o_equivalente": "_ms",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "ns",
+    "codigo_o_equivalente": "_ns",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "s",
+    "codigo_o_equivalente": "_s",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "week",
+    "codigo_o_equivalente": "_week",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Time",
+    "nombre": "yr",
+    "codigo_o_equivalente": "_yr",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Velocity",
+    "nombre": "knot",
+    "codigo_o_equivalente": "_knot",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Velocity",
+    "nombre": "kph",
+    "codigo_o_equivalente": "_kph",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Velocity",
+    "nombre": "mph",
+    "codigo_o_equivalente": "_mph",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Temperature",
+    "nombre": "K",
+    "codigo_o_equivalente": "_K",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Temperature",
+    "nombre": "C",
+    "codigo_o_equivalente": "_C",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Temperature",
+    "nombre": "F",
+    "codigo_o_equivalente": "_F",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Temperature",
+    "nombre": "R",
+    "codigo_o_equivalente": "_R",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Luminous intensity",
+    "nombre": "cd",
+    "codigo_o_equivalente": "_cd",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Amount of substance",
+    "nombre": "mol",
+    "codigo_o_equivalente": "_mol",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "amu",
+    "codigo_o_equivalente": "_amu",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "gm",
+    "codigo_o_equivalente": "_gm",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "kg",
+    "codigo_o_equivalente": "_kg",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "lb",
+    "codigo_o_equivalente": "_lb",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "mg",
+    "codigo_o_equivalente": "_mg",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "mton",
+    "codigo_o_equivalente": "_mton",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "oz",
+    "codigo_o_equivalente": "_oz",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "slug",
+    "codigo_o_equivalente": "_slug",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "ton",
+    "codigo_o_equivalente": "_ton",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "tonne",
+    "codigo_o_equivalente": "_tonne",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Mass",
+    "nombre": "tonUK",
+    "codigo_o_equivalente": "_tonUK",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Force",
+    "nombre": "dyne",
+    "codigo_o_equivalente": "_dyne",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Force",
+    "nombre": "kgf",
+    "codigo_o_equivalente": "_kgf",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Force",
+    "nombre": "lbf",
+    "codigo_o_equivalente": "_lbf",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Force",
+    "nombre": "N",
+    "codigo_o_equivalente": "_N",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Force",
+    "nombre": "tonf",
+    "codigo_o_equivalente": "_tonf",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "Btu",
+    "codigo_o_equivalente": "_Btu",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "cal",
+    "codigo_o_equivalente": "_cal",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "erg",
+    "codigo_o_equivalente": "_erg",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "eV",
+    "codigo_o_equivalente": "_eV",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "ftlb",
+    "codigo_o_equivalente": "_ftlb",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "J",
+    "codigo_o_equivalente": "_J",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "kcal",
+    "codigo_o_equivalente": "_kcal",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "kWh",
+    "codigo_o_equivalente": "_kWh",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Energy",
+    "nombre": "latm",
+    "codigo_o_equivalente": "_latm",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Power",
+    "nombre": "W",
+    "codigo_o_equivalente": "_W",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Power",
+    "nombre": "kW",
+    "codigo_o_equivalente": "_kW",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Power",
+    "nombre": "hp",
+    "codigo_o_equivalente": "_hp",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "atm",
+    "codigo_o_equivalente": "_atm",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "bar",
+    "codigo_o_equivalente": "_bar",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "inH2O",
+    "codigo_o_equivalente": "_inH2O",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "inHg",
+    "codigo_o_equivalente": "_inHg",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "mmH2O",
+    "codigo_o_equivalente": "_mmH2O",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "mmHg",
+    "codigo_o_equivalente": "_mmHg",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "Pa",
+    "codigo_o_equivalente": "_Pa",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "psi",
+    "codigo_o_equivalente": "_psi",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Pressure",
+    "nombre": "torr",
+    "codigo_o_equivalente": "_torr",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Viscosity, kinematic",
+    "nombre": "St",
+    "codigo_o_equivalente": "_St",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Viscosity, dynamic",
+    "nombre": "P",
+    "codigo_o_equivalente": "_P",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Frequency",
+    "nombre": "GHz",
+    "codigo_o_equivalente": "_GHz",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Frequency",
+    "nombre": "Hz",
+    "codigo_o_equivalente": "_Hz",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Frequency",
+    "nombre": "kHz",
+    "codigo_o_equivalente": "_kHz",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Frequency",
+    "nombre": "MHz",
+    "codigo_o_equivalente": "_MHz",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Current",
+    "nombre": "A",
+    "codigo_o_equivalente": "_A",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Current",
+    "nombre": "mA",
+    "codigo_o_equivalente": "_mA",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Current",
+    "nombre": "μA",
+    "codigo_o_equivalente": "_μA",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Current",
+    "nombre": "kA",
+    "codigo_o_equivalente": "_kA",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Charge",
+    "nombre": "coul",
+    "codigo_o_equivalente": "_coul",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Potential",
+    "nombre": "V",
+    "codigo_o_equivalente": "_V",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Potential",
+    "nombre": "volt",
+    "codigo_o_equivalente": "_volt",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Potential",
+    "nombre": "mV",
+    "codigo_o_equivalente": "_mV",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Potential",
+    "nombre": "kV",
+    "codigo_o_equivalente": "_kV",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Resistance",
+    "nombre": "kΩ",
+    "codigo_o_equivalente": "_kΩ",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Resistance",
+    "nombre": "MΩ",
+    "codigo_o_equivalente": "_MΩ",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Resistance",
+    "nombre": "ohm",
+    "codigo_o_equivalente": "_ohm",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Resistance",
+    "nombre": "Ω",
+    "codigo_o_equivalente": "_Ω",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Conductance",
+    "nombre": "mho",
+    "codigo_o_equivalente": "_mho",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Conductance",
+    "nombre": "mmho",
+    "codigo_o_equivalente": "_mmho",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Conductance",
+    "nombre": "siemens",
+    "codigo_o_equivalente": "_siemens",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Conductance",
+    "nombre": "μmho",
+    "codigo_o_equivalente": "_μmho",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Capacitance",
+    "nombre": "F",
+    "codigo_o_equivalente": "_F",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Capacitance",
+    "nombre": "nF",
+    "codigo_o_equivalente": "_nF",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Capacitance",
+    "nombre": "pF",
+    "codigo_o_equivalente": "_pF",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Capacitance",
+    "nombre": "μF",
+    "codigo_o_equivalente": "_μF",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Magnetic field strength",
+    "nombre": "Oe",
+    "codigo_o_equivalente": "_Oe",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Magnetic flux",
+    "nombre": "Wb",
+    "codigo_o_equivalente": "_Wb",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Magnetic flux density",
+    "nombre": "Gs",
+    "codigo_o_equivalente": "_Gs",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Magnetic flux density",
+    "nombre": "T",
+    "codigo_o_equivalente": "_T",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Inductance",
+    "nombre": "henry",
+    "codigo_o_equivalente": "_henry",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Inductance",
+    "nombre": "mH",
+    "codigo_o_equivalente": "_mH",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Inductance",
+    "nombre": "nH",
+    "codigo_o_equivalente": "_nH",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "3",
+    "header": "Inductance",
+    "nombre": "μH",
+    "codigo_o_equivalente": "_μH",
+    "descripcion": "",
+    "verificacion": "lista comunitaria histórica, verificar",
+    "tipo": "unidad"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "π",
+    "codigo_o_equivalente": "π",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "e",
+    "codigo_o_equivalente": "e",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "i",
+    "codigo_o_equivalente": "i",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∞",
+    "codigo_o_equivalente": "∞",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "θ",
+    "codigo_o_equivalente": "θ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∈",
+    "codigo_o_equivalente": "∈",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∉",
+    "codigo_o_equivalente": "∉",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∅",
+    "codigo_o_equivalente": "∅",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∪",
+    "codigo_o_equivalente": "∪",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∩",
+    "codigo_o_equivalente": "∩",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "⊂",
+    "codigo_o_equivalente": "⊂",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "⊆",
+    "codigo_o_equivalente": "⊆",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "→",
+    "codigo_o_equivalente": "→",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "←",
+    "codigo_o_equivalente": "←",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "↔",
+    "codigo_o_equivalente": "↔",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "⇒",
+    "codigo_o_equivalente": "⇒",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "⇔",
+    "codigo_o_equivalente": "⇔",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "≠",
+    "codigo_o_equivalente": "≠",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "≤",
+    "codigo_o_equivalente": "≤",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "≥",
+    "codigo_o_equivalente": "≥",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "≈",
+    "codigo_o_equivalente": "≈",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "±",
+    "codigo_o_equivalente": "±",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "×",
+    "codigo_o_equivalente": "×",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "÷",
+    "codigo_o_equivalente": "÷",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "√",
+    "codigo_o_equivalente": "√",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∑",
+    "codigo_o_equivalente": "∑",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∏",
+    "codigo_o_equivalente": "∏",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∫",
+    "codigo_o_equivalente": "∫",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "∠",
+    "codigo_o_equivalente": "∠",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "°",
+    "codigo_o_equivalente": "°",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "′",
+    "codigo_o_equivalente": "′",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "″",
+    "codigo_o_equivalente": "″",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "α",
+    "codigo_o_equivalente": "α",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "β",
+    "codigo_o_equivalente": "β",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "γ",
+    "codigo_o_equivalente": "γ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "δ",
+    "codigo_o_equivalente": "δ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ε",
+    "codigo_o_equivalente": "ε",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ζ",
+    "codigo_o_equivalente": "ζ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "η",
+    "codigo_o_equivalente": "η",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ι",
+    "codigo_o_equivalente": "ι",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "κ",
+    "codigo_o_equivalente": "κ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "λ",
+    "codigo_o_equivalente": "λ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "μ",
+    "codigo_o_equivalente": "μ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ν",
+    "codigo_o_equivalente": "ν",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ξ",
+    "codigo_o_equivalente": "ξ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ο",
+    "codigo_o_equivalente": "ο",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ρ",
+    "codigo_o_equivalente": "ρ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "σ",
+    "codigo_o_equivalente": "σ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "τ",
+    "codigo_o_equivalente": "τ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "υ",
+    "codigo_o_equivalente": "υ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "φ",
+    "codigo_o_equivalente": "φ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "χ",
+    "codigo_o_equivalente": "χ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ψ",
+    "codigo_o_equivalente": "ψ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "ω",
+    "codigo_o_equivalente": "ω",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Γ",
+    "codigo_o_equivalente": "Γ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Δ",
+    "codigo_o_equivalente": "Δ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Θ",
+    "codigo_o_equivalente": "Θ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Λ",
+    "codigo_o_equivalente": "Λ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Ξ",
+    "codigo_o_equivalente": "Ξ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Π",
+    "codigo_o_equivalente": "Π",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Σ",
+    "codigo_o_equivalente": "Σ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Φ",
+    "codigo_o_equivalente": "Φ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Ψ",
+    "codigo_o_equivalente": "Ψ",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "Ω",
+    "codigo_o_equivalente": "Ω",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "©",
+    "codigo_o_equivalente": "©",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "&",
+    "codigo_o_equivalente": "&",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "%",
+    "codigo_o_equivalente": "%",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "$",
+    "codigo_o_equivalente": "$",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "@",
+    "codigo_o_equivalente": "@",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "#",
+    "codigo_o_equivalente": "#",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "{",
+    "codigo_o_equivalente": "{",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "}",
+    "codigo_o_equivalente": "}",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "[",
+    "codigo_o_equivalente": "[",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "4",
+    "header": "Paleta de símbolos",
+    "nombre": "]",
+    "codigo_o_equivalente": "]",
+    "descripcion": "",
+    "verificacion": "selección ejemplar, no exhaustiva",
+    "tipo": "simbolo"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Fracción",
+    "codigo_o_equivalente": "a/b",
+    "descripcion": "operador /; representación 2D distinta del texto",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Exponente",
+    "codigo_o_equivalente": "a^b",
+    "descripcion": "^",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Raíz cuadrada",
+    "codigo_o_equivalente": "sqrt(x)",
+    "descripcion": "sqrt(x) o √(x)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Raíz enésima",
+    "codigo_o_equivalente": "root(x,n)",
+    "descripcion": "root(x,n)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Exponencial e",
+    "codigo_o_equivalente": "e^(x)",
+    "descripcion": "e^(x)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Logaritmo con base",
+    "codigo_o_equivalente": "log(x,b)",
+    "descripcion": "log(x[,b])",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Función por partes (2)",
+    "codigo_o_equivalente": "piecewise(expr1,cond1,expr2,cond2)",
+    "descripcion": "piecewise(...)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Función por partes (N)",
+    "codigo_o_equivalente": "piecewise(...)",
+    "descripcion": "piecewise(...)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Sistema de 2 ecuaciones",
+    "codigo_o_equivalente": "system(eq1,eq2)",
+    "descripcion": "system(...)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Sistema de N ecuaciones",
+    "codigo_o_equivalente": "system(eq1,eq2,...)",
+    "descripcion": "system(...)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Valor absoluto",
+    "codigo_o_equivalente": "abs(x)",
+    "descripcion": "abs(x)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Grados minutos segundos",
+    "codigo_o_equivalente": "12°34′56″",
+    "descripcion": "formato angular (no función)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Matriz 2x2",
+    "codigo_o_equivalente": "[[a,b][c,d]]",
+    "descripcion": "estructura de matriz; ejemplo conceptual",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Matriz 1x2",
+    "codigo_o_equivalente": "[[a,b]]",
+    "descripcion": "estructura de matriz; ejemplo conceptual",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Matriz 2x1",
+    "codigo_o_equivalente": "[[a][b]]",
+    "descripcion": "estructura de matriz; ejemplo conceptual",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Matriz m×n",
+    "codigo_o_equivalente": "newMat(m,n)",
+    "descripcion": "comando distinto que crea matriz",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Sumatoria",
+    "codigo_o_equivalente": "sumSeq(expr,var,inicio,fin)",
+    "descripcion": "sumSeq(...) o Σ(...), según contexto",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Productoria",
+    "codigo_o_equivalente": "prodSeq(expr,var,inicio,fin)",
+    "descripcion": "prodSeq(...) o Π(...), según contexto",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Primera derivada",
+    "codigo_o_equivalente": "d(expr,var)",
+    "descripcion": "d(...)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Segunda derivada",
+    "codigo_o_equivalente": "d(expr,var,2)",
+    "descripcion": "d(...,2)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Derivada enésima",
+    "codigo_o_equivalente": "d(expr,var,n)",
+    "descripcion": "d(...,n)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Integral definida",
+    "codigo_o_equivalente": "integral(expr,var,a,b)",
+    "descripcion": "integral(...), según entrada CAS",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Integral indefinida",
+    "codigo_o_equivalente": "integral(expr,var)",
+    "descripcion": "integral(...)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  },
+  {
+    "pestana": "5",
+    "header": "Plantillas",
+    "nombre": "Límite",
+    "codigo_o_equivalente": "limit(expr,var,punto)",
+    "descripcion": "limit(...)",
+    "verificacion": "tipo oficial, inserción textual no idéntica",
+    "tipo": "plantilla_2d"
+  }
+]

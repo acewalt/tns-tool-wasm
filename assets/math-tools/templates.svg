@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1231 1231" width="1231" height="1231" role="img" aria-label="Icono de estructura con barras, recuadros y llave">
+  <title>Icono vectorial</title>
+  <g fill="currentColor">
+    <rect x="125" y="318" width="39" height="602" rx="19"/>
+    <path fill-rule="evenodd" d="M255 463 H535 Q545 463 545 473 V761 Q545 771 535 771 H255 Q245 771 245 761 V473 Q245 463 255 463 Z M282 502 H507 V733 H282 Z"/>
+    <rect x="635" y="318" width="38" height="602" rx="19"/>
+    <path d="M952 228 C878 227 819 272 819 331 V503 C819 550 790 582 731 587 C720 588 720 606 731 607 C787 611 819 645 819 692 V878 C819 935 869 974 956 974 C968 974 969 956 958 955 C897 951 865 916 865 874 V681 C865 642 836 614 786 597 C837 576 865 545 865 507 V332 C865 283 898 253 955 247 C969 246 970 228 952 228 Z"/>
+    <path fill-rule="evenodd" d="M967 344 H1114 Q1125 344 1125 355 V503 Q1125 514 1114 514 H967 Q956 514 956 503 V355 Q956 344 967 344 Z M992 381 H1088 V477 H992 Z"/>
+    <path fill-rule="evenodd" d="M967 708 H1114 Q1125 708 1125 719 V866 Q1125 877 1114 877 H967 Q956 877 956 866 V719 Q956 708 967 708 Z M992 745 H1088 V840 H992 Z"/>
+  </g>
+</svg>

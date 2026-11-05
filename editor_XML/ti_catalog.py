@@ -81,7 +81,7 @@ TI_CATALOG = {
     "derivative": ("derivative", "derivative(Expr,Var[,Orden])", "Derivada"),
     "desolve": ("deSolve", "deSolve(EDO,VarInd,VarDep)", "Resuelve ecuación diferencial"),
     "det": ("det", "det(Matriz)", "Determinante"),
-    "diag": ("diag", "diag(Lista)", "Construye matriz diagonal"),
+    "diag": ("diag", "diag(ListaOMatrizCuadrada)", "Construye una matriz diagonal o extrae una diagonal como matriz fila"),
     "dim": ("dim", "dim(Lista)", "Número de elementos o dimensiones"),
     "disp": ("Disp", "Disp Expr1[,Expr2,...]", "Muestra valores en programa"),
     "dispat": ("DispAt", "DispAt Fila,Expr", "Muestra texto en posición"),
@@ -258,7 +258,7 @@ TI_CATALOG = {
     "return": ("Return", "Return [Expr]", "Termina función y devuelve valor"),
     "right": ("right", "right(Texto,n)", "Parte derecha de cadena"),
     "rk23": ("rk23", "rk23(EDO,Var,VarDep,ValorInicial,ValorFinal)", "Solución numérica EDO Runge-Kutta"),
-    "root": ("root", "root(Expr,n)", "Raíz n-ésima"),
+    "root": ("root", "root(Expr[,n])", "Raíz cuadrada o n-ésima"),
     "rotate": ("rotate", "rotate(Expr,#Posiciones)", "Rotación bits o elementos"),
     "round": ("round", "round(Expr[,Decimales])", "Redondea número"),
     "rowadd": ("rowAdd", "rowAdd(Matriz,Índice1,Índice2)", "Suma filas"),
@@ -346,3 +346,36 @@ TI_CATALOG = {
 TI_CATALOG_FUNCTIONS = frozenset(["abs","amorttbl","angle","approx","approxrational","arccos","arccosh","arccot","arccoth","arccsc","arccsch","arclen","arcsec","arcsech","arcsin","arcsinh","arctan","arctanh","augment","avgrc","bal","binomcdf","binompdf","ceiling","centraldiff","cfactor","char","charpoly","chi2cdf","chi2pdf","colaugment","coldim","colnorm","comdenom","completesquare","conj","constructmat","corrmat","cos","cosh","cot","coth","countif","cpolyroots","crossp","csc","csch","csolve","cumulativesum","czeros","d","dbd","dbd_dmy","dbd_mdy","deltatmpcnv","delvoid","derivative","desolve","det","diag","dim","domain","dominantterm","dotp","eff","eigvc","eigvl","euler","exact","exp","expand","expr","factor","fcdf","floor","fmax","fmin","format","fpart","fpdf","frequency","gcd","geomcdf","geompdf","getdenom","getmode","getnum","getplatform","gettype","getvarinfo","identity","iffn","imag","impdif","instring","int","intdiv","integral","interpolate","invbinom","invbinomn","invf","invnorm","invt","ipart","irr","isprime","isvoid","lcm","left","libshortcut","lim","limit","linsolve","ln","log","max","mean","median","mid","min","mirr","mod","mrow","mrowadd","ncr","nderivative","newlist","newmat","nfmax","nfmin","nint","nom","norm","normalline","normcdf","normpdf","npr","npv","nsolve","ord","piecewise","poisscdf","poisspdf","polycoeffs","polydegree","polyeval","polygcd","polyquotient","polyremainder","polyroots","prodseq","product","propfrac","rand","randbin","randint","randmat","randnorm","randpoly","randsamp","real","ref","remain","right","rk23","root","rotate","round","rowadd","rowdim","rownorm","rowswap","rref","sec","sech","seq","seqgen","seqn","series","setmode","shift","sign","simult","sin","sinh","solve","sqrt","stdevpop","stdevsamp","string","submat","sum","sumif","sumseq","system","tan","tangentline","tanh","taylor","tcdf","tcollect","texpand","tmpcnv","tpdf","trace","tvmfv","tvmi","tvmn","tvmpmt","tvmpv","unitv","varpop","varsamp","warncodes","when","zeros"])
 TI_CATALOG_STATEMENTS = frozenset(["anova","anova2way","chi22way","chi2gof","clear","clearaz","clrerr","copyvar","cubicreg","cycle","define","delvar","disp","dispat","drawarc","drawcircle","drawline","drawrect","drawtext","else","elseif","endfor","endfunc","endif","endloop","endprgm","endtry","endwhile","exit","expreg","fill","fillarc","fillcircle","fillpoly","fillrect","fivenumsummary","for","ftest","ftest_2samp","func","get","getstr","goto","if","lbl","linregbx","linregmx","linregtintervals","linregttest","lnreg","local","lock","logistic","logisticd","loop","lu","medmed","multreg","multregintervals","multregtests","onevar","paintbuffer","passerr","plotxy","powerreg","prgm","qr","quadreg","quartreg","randseed","request","requeststr","return","send","setcolor","setpen","setwindow","sinreg","sorta","sortd","stop","text","then","tinterval","tinterval_2samp","try","ttest","ttest_2samp","twovar","unlock","usebuffer","wait","while","zinterval","zinterval_1prop","zinterval_2prop","zinterval_2samp","ztest","ztest_1prop","ztest_2prop","ztest_2samp"])
 TI_CATALOG_NAMES = frozenset(TI_CATALOG)
+
+# Glyph spellings from the supplied seven-tab catalog. These aliases are used
+# only for recognition; they do not claim that the numerical Preview implements
+# the corresponding CAS, statistics, unit or hardware operation.
+TI_GLYPH_ALIASES = {
+    "χ²Cdf": "chi2Cdf", "χ²GOF": "chi2GOF", "χ²Pdf": "chi2Pdf", "invχ²": "invChi2",
+    "ΔList": "deltaList", "ΔtmpCnv": "deltaTmpCnv",
+    "cos⁻¹": "arccos", "cosh⁻¹": "arccosh", "cot⁻¹": "arccot", "coth⁻¹": "arccoth",
+    "csc⁻¹": "arccsc", "csch⁻¹": "arccsch", "sec⁻¹": "arcsec", "sech⁻¹": "arcsech",
+    "sin⁻¹": "arcsin", "sinh⁻¹": "arcsinh", "tan⁻¹": "arctan", "tanh⁻¹": "arctanh",
+    "exp▶list": "exp2list", "freqTable▶list": "freqTable2list", "list▶mat": "list2mat", "mat▶list": "mat2list",
+    "P▶Rx": "p4Rx", "P▶Ry": "p4Ry", "R▶Pθ": "r4Ptheta", "R▶Pr": "r4Pr",
+    "ΣInt": "sigmaInt", "ΣPrn": "sigmaPrn",
+}
+_GLYPH_FUNCTIONS = {
+    "invchi2": ("invχ²", "invχ²(Probabilidad,df)", "Inversa de ji-cuadrado"),
+    "deltalist": ("ΔList", "ΔList(Lista)", "Diferencias entre elementos sucesivos"),
+    "exp2list": ("exp▶list", "Expr▶list", "Conversión de expresión a lista"),
+    "freqtable2list": ("freqTable▶list", "freqTable▶list(Valores,Frecuencias)", "Expande una tabla de frecuencias"),
+    "list2mat": ("list▶mat", "list▶mat(Lista[,NColumnas])", "Conversión de lista a matriz"),
+    "mat2list": ("mat▶list", "mat▶list(Matriz)", "Conversión de matriz a lista"),
+    "p4rx": ("P▶Rx", "P▶Rx(Radio,Ángulo)", "Coordenada rectangular x"),
+    "p4ry": ("P▶Ry", "P▶Ry(Radio,Ángulo)", "Coordenada rectangular y"),
+    "r4ptheta": ("R▶Pθ", "R▶Pθ(x,y)", "Ángulo polar"),
+    "r4pr": ("R▶Pr", "R▶Pr(x,y)", "Radio polar"),
+    "sigmaint": ("ΣInt", "ΣInt(PagoInicial,PagoFinal,...)", "Interés acumulado"),
+    "sigmaprn": ("ΣPrn", "ΣPrn(PagoInicial,PagoFinal,...)", "Principal acumulado"),
+}
+TI_CATALOG.update(_GLYPH_FUNCTIONS)
+TI_CATALOG_FUNCTIONS = TI_CATALOG_FUNCTIONS | frozenset(_GLYPH_FUNCTIONS)
+TI_CATALOG_NAMES = frozenset(TI_CATALOG) | {
+    "base2", "base10", "base16", "dd", "decimal", "dms", "grad", "rad", "rect", "polar", "sphere", "list", "logbase",
+}

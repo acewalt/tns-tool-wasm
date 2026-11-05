@@ -37,8 +37,8 @@
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
   const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
-  const LOVE_PREVIEW_SIDE_V="20261104-preview-layout-v29";
-  const LOVE_PREVIEW_MATH_V="20260903-live-math-v1";
+  const LOVE_PREVIEW_SIDE_V="20261104-preview-tools-v30";
+  const LOVE_PREVIEW_MATH_V="20261104-preview-tools-v30";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./runtime-loading-overlay.css?v=${RUNTIME_V}`, "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
   ensureStyle('link[data-tns-type-progress-style="true"]', `./tns-type-detection-progress.css?v=${TNS_PROGRESS_V}`, "tnsTypeProgressStyle");
@@ -93,7 +93,7 @@
     .then(() => loadScript('script[data-ndless-framebuffer-preview="true"]', `./ndless-framebuffer-preview.js?v=${V}`, "ndlessFramebufferPreview"))
     .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
     .then(() => loadScript('script[data-ndless-live-session="true"]', `./ndless-live-session.js?v=${V}`, "ndlessLiveSession"))
-    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=20261104-native-build-v29`, "ndlessProjectWorkspace"))
+    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./ndless-project-workspace.js?v=20261104-native-build-v30`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-arm-runtime-v2="true"]', `./ndless-arm-runtime-v2.js?v=${V}`, "ndlessArmRuntimeV2"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
     .then(() => loadScript('script[data-ndless-project-file-tree="true"]', `./ndless-project-file-tree.js?v=${V}`, "ndlessProjectFileTree"))
@@ -109,7 +109,7 @@
     .then(() => loadScript('script[data-rom-gb-preview="true"]', `./rom-gb-preview.js?v=20261029-usb-rom-v21`, "romGbPreview"))
     .then(() => loadScript('script[data-rom-web-converter="true"]', `./rom-web-converter.js?v=${V}`, "romWebConverter"))
     .then(() => loadScript('script[data-rom-converter-view="true"]', `./rom-converter-view.js?v=20261029-usb-rom-v21`, "romConverterView"))
-    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=20261104-native-v29`, "romConverter"));
+    .then(() => loadScript('script[data-rom-converter="true"]', `./rom-converter.js?v=20261104-native-v30`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));
