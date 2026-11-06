@@ -60,6 +60,143 @@ class XMLUpdater:
         return written
 
     @staticmethod
+    def remove_document_element(xml_file: Path, element_path: str, expected_xml: str,
+                                calculator_auth: str = "") -> dict:
+        """Remove one inspected app/page/symbol from a staging XML file.
+
+        The exact inspected subtree is checked again before writing. Editor app
+        removal keeps its stored program; stored program removal also removes
+        editor pages referring to it. Last/split app slots remain valid.
+        """
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        parents = {child: owner for owner in root.iter() for child in owner}
+        matches = [node for node in root.iter()
+                   if XMLScanner._element_path(node, parents) == element_path]
+        if len(matches) != 1 or matches[0] is root:
+            raise ValueError("The selected element no longer exists. Reopen Document Inspector.")
+        element = matches[0]
+        if not expected_xml:
+            raise ValueError("An inspected element snapshot is required.")
+        expected = ET.fromstring(expected_xml.replace('\r', '&#13;'))
+        def signature(node):
+            return (node.tag, tuple(sorted(node.attrib.items())), node.text or '',
+                    tuple(signature(child) for child in node))
+        if signature(element) != signature(expected):
+            raise ValueError("The selected element changed. Reopen Document Inspector before deleting it.")
+        name, owner = local_name(element.tag), parents[element]
+        if name not in {"card", "wdgt", "script", "e"}:
+            raise ValueError("This document structure cannot be removed independently.")
+        if name == "e" and local_name(owner.tag) != "sym":
+            raise ValueError("Only complete stored symbols can be removed.")
+        pns = namespace_uri(root.tag)
+        q = lambda ns, tag: f"{{{ns}}}{tag}" if ns else tag
+        replacements = 0
+        def blank_widget():
+            nonlocal replacements
+            if not calculator_auth:
+                raise ValueError("A blank Calculator template is required to keep the last page valid.")
+            replacements += 1
+            scratch = ET.Element(q(pns, "wdgt"), {"type": "TI.Scratchpad", "ver": "1.0"})
+            for tag, value in [("mFlags", "0"), ("value", "0"), ("auth", calculator_auth)]:
+                ET.SubElement(scratch, q("urn:TI.Scratchpad", tag)).text = value
+            return scratch
+        def remove_widget(widget):
+            current_parents = {child: parent for parent in root.iter() for child in parent}
+            parent = current_parents.get(widget)
+            if parent is None:
+                return
+            card = parent
+            while card is not None and local_name(card.tag) != "card":
+                card = current_parents.get(card)
+            if card is None:
+                raise ValueError("The selected app is not inside a document page.")
+            other = [node for node in card.iter() if local_name(node.tag) == "wdgt"
+                     and node is not widget and node not in set(widget.iter())]
+            cards = [node for node in root if local_name(node.tag) == "card"]
+            if not other and len(cards) > 1 and current_parents.get(card) is root:
+                root.remove(card)
+            else:
+                index = list(parent).index(widget)
+                parent.remove(widget)
+                parent.insert(index, blank_widget())
+        related_editors = []
+        removed_symbol = next((node.text or '' for node in element
+                               if local_name(node.tag) == "n"), '').strip() if name == "e" else ""
+        removed_program = ""
+        if name == "e" and element.attrib.get("t") in {"6", "7"}:
+            removed_program = next((node.text or '' for node in element
+                                    if local_name(node.tag) == "n"), '').strip()
+            related_editors = [node for node in root.iter()
+                               if local_name(node.tag) == "wdgt"
+                               and node.attrib.get("type") == "TI.ProgramEditor"
+                               and any(child.tag == f"{{{TI_PROGRAM_EDITOR_NS}}}name"
+                                       and (child.text or '').strip() == removed_program
+                                       for child in node.iter())]
+        if name == "card":
+            cards = [node for node in root if local_name(node.tag) == "card"]
+            if owner is not root:
+                raise ValueError("Only a complete document page can be removed.")
+            if len(cards) > 1:
+                root.remove(element)
+            else:
+                # Keep a valid document with one blank Calculator page.
+                blank = ET.Element(element.tag, dict(element.attrib))
+                blank.attrib.update({"clay": "0", "h1": "10000", "h2": "10000", "w1": "10000", "w2": "10000"})
+                for tag, value in [("isDummyCard", "0"), ("flag", "0")]:
+                    ET.SubElement(blank, q(pns, tag)).text = value
+                blank.append(blank_widget())
+                index = list(root).index(element)
+                root.remove(element)
+                root.insert(index, blank)
+        elif name in {"wdgt", "script"}:
+            widget = element
+            while local_name(widget.tag) != "wdgt":
+                widget = parents.get(widget)
+                if widget is None:
+                    raise ValueError("The Lua script does not belong to an application page.")
+            remove_widget(widget)
+        else:
+            owner.remove(element)
+            for widget in related_editors:
+                remove_widget(widget)
+        body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False).replace(b'\r', b'&#13;')
+        xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+        return {"removed": element_path, "removed_program": removed_program, "removed_symbol": removed_symbol,
+                "related_editors": len(related_editors), "blank_calculators": replacements}
+
+    @staticmethod
+    def remove_document_resource(stage_root: Path, relative_path: str, expected_size: int | None = None) -> dict:
+        """Remove an unreferenced resource inside a staging directory only."""
+        relative = Path(relative_path)
+        if relative.is_absolute() or ".." in relative.parts or relative.suffix.lower() == ".xml":
+            raise ValueError("The resource must be a relative non-XML file inside the staged document.")
+        target = (stage_root / relative).resolve()
+        target.relative_to(stage_root.resolve())
+        if not target.is_file():
+            raise ValueError("The selected resource no longer exists.")
+        if expected_size is not None and target.stat().st_size != expected_size:
+            raise ValueError("The selected resource changed. Reopen Document Inspector.")
+        # A live image/Python/ScriptApp reference must be removed with its page
+        # first. Never leave a document with a missing referenced payload.
+        for xml_file in stage_root.rglob("*.xml"):
+            if XMLScanner._is_artifact(xml_file):
+                continue
+            if target.name.casefold() in xml_file.read_text(encoding="utf8").casefold():
+                raise ValueError("This resource is used by a document app. Delete that app/page first, then delete the resource.")
+            if target.suffix.lower() in {".py", ".pyt"}:
+                # Python pages can store the script name without its suffix.
+                for widget in ET.parse(xml_file).getroot().iter():
+                    if widget.attrib.get("type") not in {"TI.PythonEditor", "TI.PythonShell"}:
+                        continue
+                    for child in widget.iter():
+                        value = (child.text or '').strip().replace('\\', '/')
+                        if local_name(child.tag) == "name" and Path(value).stem.casefold() == target.stem.casefold():
+                            raise ValueError("This resource is used by a document app. Delete that app/page first, then delete the resource.")
+        target.unlink()
+        return {"removed_resource": relative.as_posix()}
+
+    @staticmethod
     def set_program_editor_visible(xml_file: Path, program_name: str, visible: bool,
                                    template_xml: str = "", calculator_auth: str = "") -> dict:
         """Toggle the app page only; the executable symbol is never removed."""

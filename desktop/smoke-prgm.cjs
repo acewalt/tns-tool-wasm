@@ -115,6 +115,25 @@ async function checkPrgm(win,report){
     if(!document.querySelector('#xml-prgm-preview-btn').hidden)throw Error('Prgm entry shown for Func');
     document.querySelector('#xml-code').value=old;
   })()`);
+  result.programEditor = await win.webContents.executeJavaScript(`(async()=>{
+    if(!window.TnsProgramEditorPreview)throw Error('TI.ProgramEditor preview was not packaged');
+    const source='Prgm\\nLocal x\\nx:=-15\\nDisp abs(x)\\nDisp "hola"\\nEndPrgm';
+    const input={source,name:'editorcheck',parameters:'',library_access:'LibPub',documentName:'Editor check'};
+    const handle=window.TnsProgramEditorPreview.open(input,{onSyntax:async()=>({errors:0,warnings:0,diagnostics:[]}),onRun:data=>window.TnsPrgmPreview.open(data)});
+    await new Promise(r=>setTimeout(r,50));
+    const modal=document.querySelector('.ti-program-editor-preview-modal'),screen=modal.querySelector('.widget-preview-calculator');
+    if(Math.round(screen.getBoundingClientRect().width)!==320||Math.round(screen.getBoundingClientRect().height)!==240)throw Error('Editor viewport changed');
+    if(!handle.getSnapshot().mathView||!modal.querySelector('math'))throw Error('Mathematical Program Editor source unavailable');
+    const declaration=modal.querySelector('[data-ti-pe-declaration]'),field=modal.querySelector('[data-ti-pe-source]');
+    if(declaration.textContent!=='Define LibPub editorcheck()='||field.value.includes('Define'))throw Error('Program definition is not protected');
+    handle.setMathView(false);field.setSelectionRange(0,field.value.length);handle.setMathView(true);
+    if(handle.getSource()!==source)throw Error('Switching mathematical view erased selected source');
+    await handle.checkSyntax();if(handle.getSnapshot().report.errors)throw Error('Editor syntax callback failed');
+    await handle.run();if(window.TnsPrgmPreview.getSnapshot().executed!==0)throw Error('Editor Run must wait for Enter');
+    document.querySelector('.prgm-preview-overlay [data-enter]').click();await new Promise(r=>setTimeout(r,80));
+    if(window.TnsPrgmPreview.getSnapshot().text!=='15\\nhola')throw Error('Program Editor did not execute its source in Calculator');
+    window.TnsPrgmPreview.close();return{ok:true,protectedDefinition:true,mathematicalSource:true,selectionPreserved:true,explicitCalculatorRun:true};
+  })()`);
   return result;
 }
 module.exports={checkPrgm};

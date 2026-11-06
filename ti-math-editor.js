@@ -126,6 +126,14 @@
       const insert = String(value); apply(insert, range.start, range.end);
       const caret = range.start + insert.length; syncSelection(caret); render(); editAt(caret); onChange(); return true;
     }
+    function focusSelection() {
+      if (!active || !isEnabled() || disposed) return false;
+      const range = captureSelection();
+      // Focusing a structured line is not an insertion. In particular, a
+      // diagnostic's selected range and Ctrl+A must never erase source here.
+      editAt(range.start, range.end);
+      return true;
+    }
     function resetSelection() {
       editing = null; knownSource = editor.value;
       syncSelection(editor.selectionStart || 0, editor.selectionEnd || 0); render();
@@ -152,7 +160,7 @@
     document.addEventListener('pointerdown', rememberBeforeBlur, true);
     editor.addEventListener('input', refresh);
     return {
-      get active() { return active; }, setActive, refresh, captureSelection, replaceSelection, flush, resetSelection,
+      get active() { return active; }, setActive, refresh, captureSelection, replaceSelection, focusSelection, flush, resetSelection,
       dispose() { disposed = true; editing = null; editor.removeEventListener('input', refresh); document.removeEventListener('pointerdown', rememberBeforeBlur, true); surface.remove(); host.classList.remove('ti-math-source-active'); }
     };
   }
