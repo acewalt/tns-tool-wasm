@@ -163,7 +163,7 @@ jobs:
           python -m unittest discover -s tests -p 'test_ti_catalog_units.py'
           python -m unittest discover -s tests -p 'test_ti_internal_programs.py'
           python -m unittest discover -s tests -p 'test_prgm_drawing_syntax.py'
-          node --test tests/prgm-subroutines.test.js tests/prgm-sonar-math.test.js tests/prgm-graphics-checkpoint.test.js tests/program-symbol-tools.test.js tests/prgm-calculator-session.test.js tests/editor-commands-v33.test.js tests/catalog-variables-v33.test.js
+          node --test tests/prgm-subroutines.test.js tests/prgm-sonar-math.test.js tests/prgm-graphics-checkpoint.test.js tests/program-symbol-tools.test.js tests/prgm-calculator-session.test.js tests/editor-commands-v33.test.js tests/catalog-variables-v33.test.js tests/math-toolbar-v34.test.js
           python -m unittest discover -s tests -p 'test_program_editor_visibility.py'
       - name: CLI e2e tests
         run: node tests/e2e.test.js

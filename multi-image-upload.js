@@ -63,7 +63,7 @@
   ensureStyle('link[data-love-preview-live-math-style="true"]', `./love-preview-live-math.css?v=${LOVE_PREVIEW_MATH_V}`, "lovePreviewLiveMathStyle");
 
   loadScript('script[data-runtime-loading-overlay="true"]', `./runtime-loading-overlay.js?v=${RUNTIME_V}`, "runtimeLoadingOverlay").catch(console.error);
-  loadScript('script[data-monaco-ti-reference-theme="true"]', "./monaco-ti-reference-theme.js?v=20260827-ti-reference-theme-v3", "monacoTiReferenceTheme").catch(console.error);
+  loadScript('script[data-monaco-ti-reference-theme="true"]', "./monaco-ti-reference-theme.js?v=20261106-ti-reference-theme-v34", "monacoTiReferenceTheme").catch(console.error);
 
   const tnsChain = loadScript('script[data-tns-container-registry="true"]', `./tns-container-registry.js?v=${V}`, "tnsContainerRegistry")
     .then(() => loadScript('script[data-nzp-content-format="true"]', `./nzp-content-format.js?v=${V}`, "nzpContentFormat"))

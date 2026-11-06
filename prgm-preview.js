@@ -1,6 +1,6 @@
 import {createPrgmPreview,formatPrgmValue} from './src/prgm/runtime.js?v=20261105-sonar-runtime-v32';
 import {renderPrgmGraphics} from './src/prgm/drawing.js?v=20261105-sonar-runtime-v32';
-import {createCalculatorSession} from './src/prgm/calculator-session.js?v=20261105-scratchpad-v33';
+import {createCalculatorSession} from './src/prgm/calculator-session.js?v=20261106-calculator-layout-v34';
 
 const COPY={
   es:{title:'Preview Prgm',note:'Simulación TI-BASIC · entradas, texto y dibujos CX II.',run:'Ejecutar',pause:'Pausar',step:'Paso',stop:'Detener',restart:'Reiniciar / actualizar',expand:'Vista ampliada',normal:'Tamaño calculadora',close:'Cerrar',variables:'Variables',empty:'Todavía no hay valores.',copy:'Copiar salida',copied:'Salida copiada.',ok:'OK',cancel:'Cancelar',done:'Hecho',line:'Línea',ready:'Listo',waiting:'Esperando entrada',paused:'Pausado',running:'Ejecutando',stopped:'Detenido',error:'Error',support:'Cobertura del preview',help:'Calcula o llama a los programas del problema con Enter. Se simulan entradas, texto y dibujos CX II. Las operaciones no soportadas muestran su error y línea; no es un emulador completo de la calculadora.',keys:'Enter: aceptar · Esc: cancelar entrada · ↑/↓: desplazar salida',angle:'Ángulos (reinicia)',request:'Entrada del programa',viewLine:'Ver línea en editor'},
@@ -52,7 +52,7 @@ function open(initial,options={}) {
   }});
   const expression=$('[data-expression]'),entryForm=$('[data-calculator-entry]');
   const tools=document.createElement('div');tools.className='prgm-calculator-tools';
-  const putText=text=>{const start=expression.selectionStart,end=expression.selectionEnd;expression.setRangeText(String(text),start,end,'end');expression.focus({preventScroll:true});refreshExpression();saveDraft();};
+  const putText=text=>{const start=expression.selectionStart,end=expression.selectionEnd;expression.setRangeText(String(text),start,end,'end');expression.hidden=false;expression.focus({preventScroll:true});refreshExpression();saveDraft();};
   for(const type of ['templates','catalog','variables']){const button=window.TnsMathTools?.iconButton(type);if(!button)continue;button.dataset.calculatorTool=type;button.onclick=()=>{const settings={anchor:button,insert:putText,getVariables:()=>[...(options.getVariables?.()||[]),...calc.getVariables()]};if(type==='templates')window.TnsMathTools.openTemplates(settings);else if(type==='catalog')window.TnsMathTools.openCatalog(settings);else window.TnsMathTools.openVariables(settings);};tools.append(button);}
   $('.prgm-preview-controls').append(tools);
   if(options.onSave){const button=document.createElement('button');button.dataset.saveCalculator='';button.textContent=({es:'Guardar',en:'Save',fr:'Enregistrer'})[language]||'Save';button.className='green-tool-button';button.onclick=async()=>{button.disabled=true;try{await options.onSave(calc.getRows());$('[data-status]').textContent=({es:'Guardado',en:'Saved',fr:'Enregistré'})[language]||'Saved';}catch(error){showEntryError(error);}finally{button.disabled=false;}};$('.prgm-preview-controls').append(button);}
@@ -68,8 +68,58 @@ function open(initial,options={}) {
   }
   const history=$('.prgm-preview-history'), output=$('[data-output]'), shell=$('.prgm-preview-screen-shell'), previousRuns=$('[data-previous-runs]'), currentEntry=$('[data-current-entry]');
   function saveDraft(){options.setDraft?.({rows:calc.getRows(),input:expression.value});}
-  function refreshExpression(){const target=$('[data-expression-math]');target.replaceChildren();if(/(?:\/|\^|√|∫|∑|∏|\[|piecewise\(|system\(|root\(|log\()/i.test(expression.value)&&window.TnsMathTypeset){target.innerHTML=window.TnsMathTypeset.render(expression.value);target.hidden=false;}else target.hidden=true;expression.style.height='auto';expression.style.height=Math.max(25,expression.scrollHeight)+'px';}
-  function renderRows(){previousRuns.replaceChildren();const rows=calc.getRows(),shown=showingProgram&&snapshot&&['done','error','stopped'].includes(snapshot.status)?rows.slice(0,-1):rows;for(const row of shown){const entry=document.createElement('div');entry.className='prgm-preview-entry prgm-preview-previous-entry';const call=document.createElement('div');call.className='prgm-preview-call';if(row.kind!=='program'&&window.TnsMathTypeset)call.innerHTML=window.TnsMathTypeset.render(row.entry||'');else call.textContent=row.entry;entry.append(call);for(const result of row.output||[{text:row.display||row.full||''}]){const line=document.createElement('div');line.className='prgm-preview-output-row';if(row.kind==='calculation'&&window.TnsMathTypeset)line.innerHTML=window.TnsMathTypeset.render(result.text);else line.textContent=result.text||'\u00a0';entry.append(line);}if(row.kind==='program'){const finish=document.createElement('div');finish.className='prgm-preview-finish';finish.textContent=row.error?.message||(row.status==='done'?t.done:t.stopped);entry.append(finish);}previousRuns.append(entry);}$('[data-clear-history]').disabled=!rows.length;}
+  function refreshExpression(){
+    const target=$('[data-expression-math]');target.replaceChildren();
+    const mathematical=/(?:\/|\^|√|∫|∑|∏|\[|piecewise\(|system\(|sqrt\(|root\(|log\()/i.test(expression.value)&&window.TnsMathTypeset;
+    if(mathematical)target.innerHTML=window.TnsMathTypeset.render(expression.value);
+    // Edit the original text at its real caret. A blurred expression may show
+    // its typeset form, but never display a second copy above the editor.
+    const formatted=Boolean(mathematical&&document.activeElement!==expression);
+    target.hidden=!formatted;expression.hidden=formatted;
+    if(!formatted){expression.style.height='auto';expression.style.height=Math.max(25,expression.scrollHeight)+'px';}
+  }
+  const expressionMath=$('[data-expression-math]');
+  const focusExpression=()=>{expression.hidden=false;expression.focus({preventScroll:true});refreshExpression();};
+  expressionMath.tabIndex=0;expressionMath.onclick=focusExpression;expressionMath.onfocus=focusExpression;
+  expression.onfocus=refreshExpression;expression.onblur=refreshExpression;
+  function renderRows(){
+    previousRuns.replaceChildren();
+    const rows=calc.getRows(),shown=showingProgram&&snapshot&&['done','error','stopped'].includes(snapshot.status)?rows.slice(0,-1):rows;
+    shown.forEach((row,index)=>{
+      const entry=document.createElement('div');
+      // Older Calculator XML stores only entry/display. It is still a math
+      // cell; a program transcript is identified by its explicit metadata.
+      const isProgram=row.kind==='program'||row.kind==='output'||(Array.isArray(row.output)&&row.kind!=='calculation');
+      if(!isProgram){
+        entry.className='prgm-preview-entry prgm-calculator-row';
+        entry.dataset.calculatorRow=String(index);
+        entry.classList.toggle('prgm-calculator-row-shaded',index%2===0);
+        const expressionCell=document.createElement('div'),answerCell=document.createElement('div');
+        expressionCell.className='prgm-calculator-expression';
+        answerCell.className='prgm-calculator-answer';
+        const input=String(row.entry??row.exact??''),answer=String(row.display??row.full??'');
+        if(window.TnsMathTypeset){
+          expressionCell.innerHTML=window.TnsMathTypeset.render(input);
+          if(row.status!=='error')answerCell.innerHTML=window.TnsMathTypeset.render(answer);
+          else answerCell.textContent=answer;
+        }else{expressionCell.textContent=input;answerCell.textContent=answer;}
+        if(row.status==='error')answerCell.classList.add('prgm-calculator-answer-error');
+        entry.append(expressionCell,answerCell);
+      }else{
+        // Keep Disp/Request and completed program output in their established
+        // transcript layout. Mathematical cells must not restyle these lines.
+        entry.className='prgm-preview-entry prgm-preview-previous-entry';
+        const call=document.createElement('div');call.className='prgm-preview-call';call.textContent=row.entry;
+        entry.append(call);
+        for(const result of row.output||[{text:row.display||row.full||''}]){
+          const line=document.createElement('div');line.className='prgm-preview-output-row';line.textContent=result.text||'\u00a0';entry.append(line);
+        }
+        const finish=document.createElement('div');finish.className='prgm-preview-finish';finish.textContent=row.error?.message||(row.status==='done'?t.done:t.stopped);entry.append(finish);
+      }
+      previousRuns.append(entry);
+    });
+    $('[data-clear-history]').disabled=!rows.length;
+  }
   function idleState(){return {success:true,status:'ready',name:data.name||'',line:0,executed:0,output:[],text:'',variables:calc.math.snapshot().variables,warnings:[],graphics:null,pending:null,error:null};}
   function showEntryError(error){$('[data-error]').hidden=false;$('[data-error]').textContent=error.message||String(error);}
   async function submitInput(value=expression.value){if(submitting||closed||runtime&&!['done','error','stopped'].includes(snapshot?.status))return false;submitting=true;currentCall=String(value);expression.disabled=true;try{const result=await calc.submit(value);if(closed)return false;if(result.kind==='empty')return false;expression.value='';refreshExpression();requestToken='';inputResolved=false;graphicsDismissed=false;graphicsRevision=-1;renderedText='\0';if(result.kind==='program'){runtime=result.runtime;showingProgram=true;render(runtime.snapshot());run();}else{runtime=null;showingProgram=false;render(idleState());expression.focus({preventScroll:true});}saveDraft();return true;}catch(error){runtime=null;showingProgram=false;render(idleState());showEntryError(error);return false;}finally{submitting=false;expression.disabled=false;}}
