@@ -4179,7 +4179,7 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
   display: none !important;
 }
 #xml-doctor-panel #xml-output-filename-display,
-#xml-doctor-panel #xml-output-filename {
+#xml-doctor-panel #xml-output-filename-editor {
   width: 100%;
   min-width: 0;
   margin: 0;
@@ -4205,19 +4205,41 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
   background: color-mix(in srgb, var(--text) 6%, transparent);
 }
 #xml-doctor-panel #xml-output-filename-display:focus-visible,
-#xml-doctor-panel #xml-output-filename:focus-visible {
+#xml-doctor-panel #xml-output-filename-editor:focus-within {
   outline: 2px solid var(--lime2);
   outline-offset: 2px;
 }
-#xml-doctor-panel #xml-output-filename {
+#xml-doctor-panel #xml-output-filename-editor {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
   border-color: var(--line);
   background: var(--panel);
-  outline: none;
   font-weight: 600;
 }
-#xml-doctor-panel #xml-output-filename:focus {
+#xml-doctor-panel #xml-output-filename-editor:focus-within {
   border-color: var(--lime2);
   box-shadow: 0 0 0 2px rgb(141 230 42 / 15%);
+}
+#xml-doctor-panel #xml-output-filename {
+  field-sizing: content;
+  width: auto;
+  min-width: 1ch;
+  max-width: calc(100% - 4ch);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: right;
+}
+#xml-doctor-panel #xml-output-filename-suffix {
+  flex: 0 0 auto;
+  user-select: none;
+  pointer-events: none;
 }
 #xml-doctor-panel #xml-output-filename-display:disabled {
   opacity: 0.6;

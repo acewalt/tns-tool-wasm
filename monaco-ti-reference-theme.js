@@ -107,7 +107,7 @@
         // Commands / control words: pure blue and bold.
         { token: "keyword.ti", foreground: "0000FF", fontStyle: "bold" },
         // Quoted display/request text: TI green.
-        { token: "string.ti", foreground: "20801C" },
+        { token: "string.ti", foreground: "008000" },
         // Broken / unterminated strings are genuinely invalid, so show pure red.
         { token: "string.invalid.ti", foreground: "FF0000" },
         // Comments stay in the same TI green family.

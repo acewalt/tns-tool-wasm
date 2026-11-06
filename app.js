@@ -10624,7 +10624,7 @@ function normalizeTnsOutputFileName(rawName) {
     .trim()
     .replace(/[\/\\<>:"|?*\x00-\x1f]/g, "_")
     .replace(/[. ]+$/g, "")
-    .replace(/\.tns$/i, "")
+    .replace(/(?:\.tns)+$/i, "")
     .replace(/[. ]+$/g, "")
     .slice(0, 170);
   const safe = base || "documento";
@@ -10638,7 +10638,8 @@ function setXmlTnsOutputFileName(rawName) {
   const normalized = normalizeTnsOutputFileName(baseName);
   xmlDoctor.outputFileName = normalized;
   const input = document.querySelector("#xml-output-filename");
-  if (input && input.value !== normalized) input.value = normalized;
+  const editableName = normalized.slice(0, -4);
+  if (input && input.value !== editableName) input.value = editableName;
   const display = document.querySelector("#xml-output-filename-display");
   if (display) display.textContent = normalized;
   const wrapper = document.querySelector("#xml-doctor-panel .xml-output-file-name");
@@ -10648,6 +10649,52 @@ function setXmlTnsOutputFileName(rawName) {
 
 function xmlDoctorTnsOutputName() {
   return setXmlTnsOutputFileName(xmlDoctor.outputFileName);
+}
+
+function wireXmlTnsOutputFileName() {
+  const input = document.querySelector("#xml-output-filename");
+  const display = document.querySelector("#xml-output-filename-display");
+  const editor = document.querySelector("#xml-output-filename-editor");
+  if (!input || !display || !editor) return;
+  let nameBeforeEditing = "";
+  const updateName = () => { xmlDoctor.outputFileName = normalizeTnsOutputFileName(input.value); };
+  display.addEventListener("click", () => {
+    if (display.disabled) return;
+    nameBeforeEditing = xmlDoctorTnsOutputName();
+    display.hidden = true;
+    editor.hidden = false;
+    input.hidden = false;
+    input.focus();
+    input.select();
+  });
+  input.addEventListener("input", updateName);
+  input.addEventListener("paste", event => {
+    const pasted = event.clipboardData?.getData("text/plain");
+    if (typeof pasted !== "string") return;
+    // A pasted filename can include its extension; the fixed suffix stays outside the input.
+    const basename = pasted.replace(/(?:\.tns)+\s*$/i, "");
+    if (basename === pasted) return;
+    event.preventDefault();
+    input.setRangeText(basename, input.selectionStart, input.selectionEnd, "end");
+    updateName();
+  });
+  input.addEventListener("keydown", event => {
+    if (event.isComposing) return;
+    if (event.key === "Enter") {
+      event.preventDefault();
+      input.blur();
+    } else if (event.key === "Escape") {
+      event.preventDefault();
+      setXmlTnsOutputFileName(nameBeforeEditing);
+      input.blur();
+    }
+  });
+  input.addEventListener("blur", () => {
+    setXmlTnsOutputFileName(normalizeTnsOutputFileName(input.value));
+    input.hidden = true;
+    editor.hidden = true;
+    display.hidden = false;
+  });
 }
 function tiDocumentNameError(name) {
   if (!name) return "Nombre de documento vacio.";
@@ -18957,35 +19004,7 @@ function wireEvents() {
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-folder").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "folder").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-new-btn").addEventListener("click", () => createNewXmlProject().catch((err) => xmlLog(`ERROR: ${err.message}`)));
-  const xmlOutputNameInput = document.querySelector("#xml-output-filename");
-  const xmlOutputNameDisplay = document.querySelector("#xml-output-filename-display");
-  let xmlNameBeforeEditing = "";
-  xmlOutputNameDisplay.addEventListener("click", () => {
-    if (xmlOutputNameDisplay.disabled) return;
-    xmlNameBeforeEditing = xmlDoctorTnsOutputName();
-    xmlOutputNameDisplay.hidden = true;
-    xmlOutputNameInput.hidden = false;
-    xmlOutputNameInput.focus();
-    // Select just the basename so users can rename without losing .tns.
-    xmlOutputNameInput.setSelectionRange(0, Math.max(0, xmlOutputNameInput.value.length - 4));
-  });
-  xmlOutputNameInput.addEventListener("input", () => { xmlDoctor.outputFileName = xmlOutputNameInput.value; });
-  xmlOutputNameInput.addEventListener("keydown", (event) => {
-    if (event.key === "Enter") {
-      event.preventDefault();
-      xmlOutputNameInput.blur();
-    } else if (event.key === "Escape") {
-      event.preventDefault();
-      xmlDoctor.outputFileName = xmlNameBeforeEditing;
-      xmlOutputNameInput.value = xmlNameBeforeEditing;
-      xmlOutputNameInput.blur();
-    }
-  });
-  xmlOutputNameInput.addEventListener("blur", () => {
-    setXmlTnsOutputFileName(xmlOutputNameInput.value);
-    xmlOutputNameInput.hidden = true;
-    xmlOutputNameDisplay.hidden = false;
-  });
+  wireXmlTnsOutputFileName();
   document.querySelector("#file-page-add-program-editor").addEventListener("click", () => addPageFromFileMenu("program-editor").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-image").addEventListener("click", () => addPageFromFileMenu("image").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#file-page-add-python").addEventListener("click", () => addPageFromFileMenu("python").catch((err) => xmlLog(`ERROR: ${err.message}`)));
