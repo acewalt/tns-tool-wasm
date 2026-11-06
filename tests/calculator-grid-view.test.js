@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 
-const source=fs.readFileSync(new URL("../ti-calculator-transfer.js",import.meta.url),"utf8")
+const source=fs.readFileSync(new URL("../web/ti-calculator-transfer.js",import.meta.url),"utf8")
   .replace("window.TnsCalculatorTransfer=Object.freeze({open,close});",
   "window.TnsCalculatorTransfer=Object.freeze({open,close,controls,rows,setView,enterGridFolder,selected});window.__gridTestState=state;");
 assert.match(source,/window.__gridTestState=state/);
@@ -114,7 +114,7 @@ assert.equal(controls["[data-ti-connect]"].hidden,false,
   "Connect returns when the calculator disconnects");
 assert.equal(controls["[data-ti-disconnect]"].hidden,true);
 assert.equal(controls[".ti-manager-dialog"].attributes["data-connection-state"],"disconnected");
-const css=fs.readFileSync(new URL("../ti-calculator-transfer.css",import.meta.url),"utf8");
+const css=fs.readFileSync(new URL("../web/ti-calculator-transfer.css",import.meta.url),"utf8");
 assert.match(css,/\.ti-grid-gallery/);
 assert.match(css,/\.ti-grid-tile:hover \.ti-row-actions/);
 assert.match(css,/\.ti-manager-table\[data-view="grid"\] \.ti-manager-cols/);

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-await import('../ndless-live-session.js');
+await import('../web/ndless-live-session.js');
 const {create,snapshot}=globalThis.NdlessLiveSession;
 const project=(source='old')=>({name:'test',language:'c',target:'zehn-modern',files:{'main.c':source,'colors.h':'#define COLOR 1'}});
 const deferred=()=>{let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return{promise,resolve,reject};};

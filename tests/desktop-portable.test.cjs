@@ -53,10 +53,15 @@ test('desktop path resolver prevents traversal and hidden source files',()=>{
   assert.equal(resolveRequest(root,vendor,'/%2e%2e/secret'),null);
   assert.equal(resolveRequest(root,vendor,'/.git/config'),null);
   assert.equal(resolveRequest(root,vendor,'/__desktop/other/untrusted.js'),null);
+  assert.equal(resolveRequest(root,vendor,'/__desktop/fonts/FiraCode-variable.ttf'),path.join(vendor,'fonts','FiraCode-variable.ttf'));
 });
 test('the web app is served unchanged except for local runtime URLs',async()=>{
   const root=await fsp.mkdtemp(path.join(os.tmpdir(),'tns-server-test-'));
   const vendor=path.join(root,'vendor');
+  await fsp.mkdir(path.join(vendor,'fonts'),{recursive:true});
+  await fsp.mkdir(path.join(root,'web'));
+  await fsp.writeFile(path.join(vendor,'fonts/FiraCode-variable.ttf'),'font-fixture');
+  await fsp.writeFile(path.join(root,'web/terminal-log-theme.css'),'@import url("https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&display=swap");\n.terminal{font-family:"Fira Code"}');
   await fsp.writeFile(path.join(root,'index.html'),
     '<script src="https://cdn.jsdelivr.net/pyodide/v0.29.0/full/pyodide.js"></script>'+
     '<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>');
@@ -67,6 +72,9 @@ test('the web app is served unchanged except for local runtime URLs',async()=>{
     const html=await response.text();
     assert.match(html,/__desktop\/pyodide\/pyodide.js/);
     assert.match(html,/__desktop\/jszip\/jszip.min.js/);
+    const css=await(await fetch(origin+'web/terminal-log-theme.css')).text();
+    assert.match(css,/@font-face/);assert.match(css,/__desktop\/fonts\/FiraCode-variable.ttf/);assert.doesNotMatch(css,/fonts\.googleapis\.com/);
+    const font=await fetch(origin+'__desktop/fonts/FiraCode-variable.ttf');assert.equal(font.status,200);assert.equal(font.headers.get('content-type'),'font/ttf');assert.equal(await font.text(),'font-fixture');
     const hidden=await fetch(origin+'.github/workflows/test.yml');
     assert.equal(hidden.status,403);
   } finally {

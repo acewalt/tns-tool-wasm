@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 
-await import('../ndless-arm-runtime-v2.js');
+await import('../web/ndless-arm-runtime-v2.js');
 const runtime = globalThis.NdlessArmRuntime;
 assert.ok(runtime, 'NdlessArmRuntime should be exposed globally');
 assert.equal(runtime.version, 2);

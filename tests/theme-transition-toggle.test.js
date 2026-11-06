@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 
-const source = fs.readFileSync(new URL("../theme-transition-toggle.js", import.meta.url), "utf8");
+const source = fs.readFileSync(new URL("../web/theme-transition-toggle.js", import.meta.url), "utf8");
 new vm.Script(source);
 
 async function exercise(useNative) {

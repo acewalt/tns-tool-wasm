@@ -8,6 +8,11 @@ Conserva el ejecutable junto con las carpetas resources y locales y los demas
 archivos. Puedes mover la carpeta completa. No abras la app desde dentro del ZIP.
 No necesita instalar Node, Python, Rust ni el SDK de Ndless por separado.
 
+La aplicacion funciona sin conexion: editores, analisis, archivos TNS, previews
+Lua y TI-BASIC, CAS, PDF, imagenes, proyectos Ndless y ROM compatibles usan los
+recursos incluidos. Las estadisticas y los enlaces de descarga son servicios
+externos opcionales; su ausencia no bloquea el trabajo local.
+
 Este formato abre directamente desde la carpeta. El SDK viaja comprimido para
 evitar el error 0x80010135 del extractor de Windows por rutas demasiado largas.
 Al usar Ndless por primera vez, prepara el SDK en una ruta corta dentro de

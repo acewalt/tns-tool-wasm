@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
-const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
 const start=app.indexOf('async function deleteDocumentInspectorElement('),end=app.indexOf('\nasync function openDocumentInspector(',start);
 assert(start>=0&&end>start);
 function setup({failure=false,removedSymbol='',storedPrograms=null}={}){
@@ -49,7 +49,7 @@ test('resource removal carries its inspected file length and never falls back to
 });
 
 test('Inspector remains available while an unfinished draft has syntax errors',async()=>{
-  const fix=fs.readFileSync(new URL('../xml-program-editor-fix.js',import.meta.url),'utf8');
+  const fix=fs.readFileSync(new URL('../web/xml-program-editor-fix.js',import.meta.url),'utf8');
   const begin=fix.indexOf('  openDocumentInspector = async function () {'),stop=fix.indexOf('\n  selectXmlProgram = function',begin);
   const draft='Prgm\nDisp "unfinished',state={current:{program_name:'demo',document_type:'Prgm',file:'/source/Problem1.xml',code:draft},lastReport:{errors:1},candidates:[],embedded:false};let opened=0,synced=0;
   const context={xmlDoctor:state,persistCurrentProgram:async()=>{throw Error('Fix syntax');},scanXmlPrograms:async()=>{throw Error('Invalid draft must not be rescanned away');},syncCode:()=>{synced++;},oldInspector:async()=>{opened++;return 'opened';},patchInspectorIfEmpty(){},requestAnimationFrame:fn=>fn()};

@@ -3,11 +3,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 globalThis.window = globalThis;
-await import("../ndless-zehn.js");
-await import("../ndless-bflt.js");
-await import("../ndless-prg.js");
-await import("../ndless-format-detector.js");
-await import("../ndless-arm-decoder.js");
+await import("../web/ndless-zehn.js");
+await import("../web/ndless-bflt.js");
+await import("../web/ndless-prg.js");
+await import("../web/ndless-format-detector.js");
+await import("../web/ndless-arm-decoder.js");
 
 const root = process.env.NDLESS_SDK_ROOT;
 if (!root) {

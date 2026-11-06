@@ -29,7 +29,7 @@ function resolveRequest(root, vendor, urlPath) {
   if (parts.some(p => p === '..' || p.startsWith('.'))) return null;
   if (parts[1] === '__desktop') {
     const sub = parts.slice(2);
-    if (!['pyodide','jszip','pdfjs','unicorn','rom'].includes(sub[0])) return null;
+    if (!['pyodide','jszip','pdfjs','unicorn','rom','fonts'].includes(sub[0])) return null;
     return within(vendor, sub.join('/'));
   }
   return within(root, parts.slice(1).join('/') || 'index.html');
@@ -59,6 +59,16 @@ function makeServer(root, vendor) {
             .replace(WEB_JSZIP,'./__desktop/jszip/jszip.min.js');
           res.writeHead(200,headers);
           res.end(req.method === 'HEAD' ? undefined : localized);
+        });
+        return;
+      }
+      if (file.startsWith(appRoot + path.sep) && path.basename(file)==='terminal-log-theme.css') {
+        fs.readFile(file,'utf8',(readError,css)=>{
+          if(readError){res.writeHead(500);res.end();return;}
+          const fontUrl=originForRequest(req)+'/__desktop/fonts/FiraCode-variable.ttf';
+          const localFont='@font-face{font-family:"Fira Code";font-style:normal;font-weight:300 700;font-display:swap;src:url("'+fontUrl+'") format("truetype");}';
+          const updated=css.replace(/@import\s+url\(["']https:\/\/fonts\.googleapis\.com\/[^;]+;/,localFont);
+          res.writeHead(200,headers);res.end(req.method==='HEAD'?undefined:updated);
         });
         return;
       }

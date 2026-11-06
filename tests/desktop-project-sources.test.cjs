@@ -31,6 +31,14 @@ test('source expressions cannot run shell commands or silently include unrelated
  assert.throws(()=>makeSources('SOURCES = $(wildcard absent/*.c)',['main.c']),/empty source list/);
 });
 
+test('generated recursive project source lists resolve C, C++ and ARM from the archive without a shell',()=>{
+ const files=['main.c','src/helper.c','src/extra.cpp','asm/helper.S','assets/data.bin'];
+ const make="C_SRCS = $(shell find . -type f -name '*.c')\nCPP_SRCS = $(shell find . -type f -name '*.cpp')\nASM_SRCS = $(shell find . -type f -name '*.S')\n";
+ assert.deepEqual(makeSources(make,files).sources,['main.c','src/helper.c','src/extra.cpp','asm/helper.S']);
+ for(const value of ["find . -type f -name '*.c'; echo unsafe", "find ../ -type f -name '*.c'", "find . -type f -name '*.c' -exec echo unsafe", "curl https://example.com"])
+  assert.throws(()=>makeSources('SOURCES = $(shell '+value+')',files),/Unsupported Makefile source function: shell/);
+});
+
 test('default selection excludes test directories without deleting test files',()=>{
  const files=['src/main.c','src/engine.cpp','tests/unit/main.c','__tests__/a.c','contest/main.c'];
  assert.deepEqual(defaultSources(files).sources,['src/main.c','src/engine.cpp','contest/main.c']);
@@ -42,7 +50,7 @@ test('default selection excludes test directories without deleting test files',(
 test('real ARM build honors application Makefile instead of linking test mains',
  {skip:process.platform!=='win32'||!process.env.TNS_DESKTOP_COMPILER},async()=>{
   if(process.env.TNS_DESKTOP_RESOURCES)process.resourcesPath=process.env.TNS_DESKTOP_RESOURCES;
-  const window={};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../ti-calculator-zip.js'),'utf8'),{window,TextEncoder,Uint8Array,Uint32Array,DataView,Date,Array,Error});
+  const window={};vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../web/ti-calculator-zip.js'),'utf8'),{window,TextEncoder,Uint8Array,Uint32Array,DataView,Date,Array,Error});
   const entries={
    '.tnsproject.json':JSON.stringify({type:'tns-tool-ndless-project',version:1,name:'source-selection',settings:{}}),
    'Makefile':'C_OBJS = $(patsubst %.c,%.o,$(wildcard *.c))\nOBJS = $(C_OBJS)\n',

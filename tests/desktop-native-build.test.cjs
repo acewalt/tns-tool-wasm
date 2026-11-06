@@ -10,9 +10,9 @@ const exe=process.env.TNS_DESKTOP_COMPILER;
 test('bundled Ndless SDK compiles allocation and visible SDL starters with official PRG loader',
   {skip:process.platform!=='win32'||!exe},async()=>{
     const window={};
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../ti-calculator-zip.js'),'utf8'),
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../web/ti-calculator-zip.js'),'utf8'),
       {window,TextEncoder,Uint8Array,Uint32Array,DataView,Date,Array,Error});
-    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../ndless-project-core.js'),'utf8'),{window});
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../web/ndless-project-core.js'),'utf8'),{window});
     const status=await compiler.status(exe);
     assert.equal(status.toolchainReady,true);
     assert.ok(status.sdk?.sdkSha256,'Official SDK provenance must be available');

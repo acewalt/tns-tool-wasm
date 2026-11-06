@@ -9,8 +9,8 @@ function fixture(directories,{accept=true,protectedPath=null}={}){
   const document={documentElement:{lang:'en'},addEventListener(){},createElement:node};
   const window={},reads=[],writes=[],confirmations=[];
   const context=vm.createContext({window,document,console,Uint8Array,DataView,ArrayBuffer,TextEncoder,TextDecoder,Date,Error,setTimeout,clearTimeout,confirm:message=>{confirmations.push({message,reads:[...reads],writes:[...writes]});return typeof accept==='function'?accept(message):accept;}});
-  vm.runInContext(read('ti-nspire-webusb.js'),context);
-  const source=read('ti-calculator-transfer.js').replace('window.TnsCalculatorTransfer=Object.freeze({open,close});','window.TnsCalculatorTransfer=Object.freeze({open,close,deleteOne,deleteTargets,planDeletion});window.testState=state;');
+  vm.runInContext(read('web/ti-nspire-webusb.js'),context);
+  const source=read('web/ti-calculator-transfer.js').replace('window.TnsCalculatorTransfer=Object.freeze({open,close});','window.TnsCalculatorTransfer=Object.freeze({open,close,deleteOne,deleteTargets,planDeletion});window.testState=state;');
   vm.runInContext(source,context);
   const state=window.testState;state.root=root;
   state.link={connected:true,broken:false,

@@ -68,13 +68,13 @@ globalThis.MutationObserver = class {
 if (typeof URL.createObjectURL !== "function") URL.createObjectURL = () => "blob:mock";
 if (typeof URL.revokeObjectURL !== "function") URL.revokeObjectURL = () => {};
 
-await import("../ndless-bflt.js");
-await import("../ndless-prg.js");
-await import("../ndless-zehn.js");
-await import("../ndless-format-detector.js");
-await import("../ndless-elf32.js");
-await import("../ndless-zehn-builder.js");
-await import("../tns-file-save-experimental-core.js");
+await import("../web/ndless-bflt.js");
+await import("../web/ndless-prg.js");
+await import("../web/ndless-zehn.js");
+await import("../web/ndless-format-detector.js");
+await import("../web/ndless-elf32.js");
+await import("../web/ndless-zehn-builder.js");
+await import("../web/tns-file-save-experimental-core.js");
 
 function align(n, a = 4) {
   return (n + a - 1) & ~(a - 1);
@@ -194,7 +194,7 @@ globalThis.NdlessLocalBridge = {
   },
 };
 
-await import("../ndless-build-manager.js");
+await import("../web/ndless-build-manager.js");
 
 let currentProject = null;
 globalThis.NdlessProjectWorkspace = {
@@ -203,7 +203,7 @@ globalThis.NdlessProjectWorkspace = {
   },
 };
 
-await import("../tns-file-save-experimental.js");
+await import("../web/tns-file-save-experimental.js");
 
 function projectWith(source) {
   return {

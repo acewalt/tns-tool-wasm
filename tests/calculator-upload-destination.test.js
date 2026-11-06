@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 
-const script=fs.readFileSync(new URL("../ti-calculator-transfer.js",import.meta.url),"utf8")
+const script=fs.readFileSync(new URL("../web/ti-calculator-transfer.js",import.meta.url),"utf8")
   .replace("window.TnsCalculatorTransfer=Object.freeze({open,close});",
   "window.TnsCalculatorTransfer=Object.freeze({open,close,upload,current,controls,chooseDestination});window.__destinationState=state;");
 assert.match(script,/window.__destinationState=state/);

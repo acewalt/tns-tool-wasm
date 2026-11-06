@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
-const source = fs.readFileSync(new URL('../document-preview-navigation.js', import.meta.url), 'utf8');
+const source = fs.readFileSync(new URL('../web/document-preview-navigation.js', import.meta.url), 'utf8');
 
 function fixture() {
   class Element {

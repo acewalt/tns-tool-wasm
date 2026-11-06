@@ -11,7 +11,7 @@ const {persistentVisitorId}=require('../desktop/stats-identity.cjs');
 const exec=promisify(execFile);
 
 async function renderer({bridge,storage=new Map(),fetch}){
-  const app=await fs.readFile(path.join(__dirname,'../app.js'),'utf8');
+  const app=await fs.readFile(path.join(__dirname,'../web/app.js'),'utf8');
   const from=app.indexOf('const STATS_API_BASE_URL ='),to=app.indexOf('const PYTHON_FILES =',from);
   assert.ok(from>0&&to>from);
   const context=vm.createContext({

@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 globalThis.window=globalThis;
-await import("../tns-container-registry.js");
-await import("../nzp-content-format.js");
-await import("../nvp-video-format.js");
+await import("../web/tns-container-registry.js");
+await import("../web/nzp-content-format.js");
+await import("../web/nvp-video-format.js");
 
 function u16(v,o,n){new DataView(v.buffer).setUint16(o,n,true)}
 function i16(v,o,n){new DataView(v.buffer).setInt16(o,n,true)}

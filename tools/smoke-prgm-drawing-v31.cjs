@@ -6,7 +6,7 @@ const output=path.join(root,'release/qa/prgm-drawing-v31.json');let server,win;c
 app.commandLine.appendSwitch('disable-gpu');
 app.whenReady().then(async()=>{
  fs.mkdirSync(path.dirname(output),{recursive:true});
- const fixture='<!doctype html><html lang="en"><head><base href="/"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="preview-window.css"><link rel="stylesheet" href="prgm-preview.css"><script defer src="document-preview-navigation.js"></script><script defer src="preview-window.js"></script><script type="module" src="prgm-preview.js"></script></head><body></body></html>';
+ const fixture='<!doctype html><html lang="en"><head><base href="/"><link rel="stylesheet" href="web/styles.css"><link rel="stylesheet" href="web/preview-window.css"><link rel="stylesheet" href="web/prgm-preview.css"><script defer src="web/document-preview-navigation.js"></script><script defer src="web/preview-window.js"></script><script type="module" src="web/prgm-preview.js"></script></head><body></body></html>';
  fs.writeFileSync(path.join(root,'release/qa/prgm-drawing-fixture-v31.html'),fixture);
  server=makeServer(root,path.join(desktop,'vendor'));const origin=await listen(server);
  session.defaultSession.webRequest.onBeforeRequest({urls:['*://*/*']},(info,done)=>{const blocked=!info.url.startsWith(origin);if(blocked)report.blocked.push(info.url);done({cancel:blocked});});

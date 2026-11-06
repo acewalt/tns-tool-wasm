@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
-const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
 const slice=(start,end)=>source.slice(source.indexOf(start),source.indexOf(end,source.indexOf(start)));
 test('Ctrl+B and Ctrl+R dispatch once and only in the enabled editor scope',async()=>{
   const context={};vm.runInNewContext(slice('function installEditorCommandShortcuts(','function isTiBasicProgramCandidate(')+'\nglobalThis.install=installEditorCommandShortcuts;',context);

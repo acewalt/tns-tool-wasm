@@ -9,8 +9,8 @@ app.commandLine.appendSwitch('disable-gpu');
 app.whenReady().then(async () => {
   win = new BrowserWindow({ show: false, width: 1000, height: 800, webPreferences: { sandbox: true, contextIsolation: true } });
   await win.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<html lang="en"><head><style>#host{position:relative;width:900px;height:700px}</style></head><body><button id="palette">Catalog</button><div id="host"><textarea id="source"></textarea></div></body></html>'));
-  await win.webContents.insertCSS(fs.readFileSync(path.join(root,'ti-math-editor.css'),'utf8'));
-  for (const name of ['ti-math-typeset.js','ti-math-editor.js']) await win.webContents.executeJavaScript(fs.readFileSync(path.join(root,name),'utf8'));
+  await win.webContents.insertCSS(fs.readFileSync(path.join(root,'web/ti-math-editor.css'),'utf8'));
+  for (const name of ['web/ti-math-typeset.js','web/ti-math-editor.js']) await win.webContents.executeJavaScript(fs.readFileSync(path.join(root,name),'utf8'));
   const report = await win.webContents.executeJavaScript(`(${run.toString()})()`);
   fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath,JSON.stringify(report,null,2));
   fs.writeFileSync(reportPath+'.png',(await win.webContents.capturePage()).toPNG());

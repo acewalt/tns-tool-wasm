@@ -2,6 +2,8 @@
 import sys
 import tempfile
 import unittest
+import contextlib
+import io
 from pathlib import Path
 import xml.etree.ElementTree as ET
 
@@ -51,12 +53,13 @@ class DocumentElementDeleteTests(unittest.TestCase):
         self.assertEqual(next(node.text for node in self.root().iter() if local_name(node.tag)=='v'),stored)
         self.assertEqual(other.read_bytes(),other_bytes)
 
-    def test_delete_last_editor_page_keeps_executable_and_blank_calculator(self):
+    def test_delete_last_editor_page_keeps_executable_and_empty_page(self):
         root=self.root();before=next(node.text for node in root.iter() if local_name(node.tag)=='v')
         widget=next(node for node in root.iter() if node.attrib.get('type')=='TI.ProgramEditor')
         result=self.remove(widget,root)
-        self.assertEqual(self.types(),['TI.Scratchpad'])
-        self.assertEqual(result['blank_calculators'],1)
+        self.assertEqual(self.types(),[])
+        self.assertEqual(result['blank_calculators'],0)
+        self.assertEqual(result['empty_pages'],1)
         self.assertEqual(next(node.text for node in self.root().iter() if local_name(node.tag)=='v'),before)
         self.assertIn('\r',before,'Fixture must include real serialized statement separators')
 
@@ -69,10 +72,10 @@ class DocumentElementDeleteTests(unittest.TestCase):
         self.assertEqual(self.types(),['TI.Notepad'])
         self.assertFalse(any(local_name(node.tag)=='e' for node in self.root().iter()))
 
-    def test_delete_last_page_leaves_valid_empty_calculator_page(self):
+    def test_delete_last_page_leaves_empty_page_without_recreating_an_app(self):
         root=self.root();card=next(node for node in root if local_name(node.tag)=='card');card.set('clay','1');self.write(root)
         self.remove(card,root)
-        self.assertEqual(self.types(),['TI.Scratchpad'])
+        self.assertEqual(self.types(),[])
         self.assertEqual(len([node for node in self.root() if local_name(node.tag)=='card']),1)
         self.assertEqual(next(node for node in self.root() if local_name(node.tag)=='card').attrib['clay'],'0')
         self.assertTrue(any(local_name(node.tag)=='e' for node in self.root().iter()),'Page deletion must retain separately stored symbols')
@@ -84,8 +87,8 @@ class DocumentElementDeleteTests(unittest.TestCase):
         self.write(root);root=self.root()
         widget=next(node for node in root.iter() if node.attrib.get('type')=='TI.ProgramEditor')
         self.remove(widget,root)
-        self.assertEqual(self.types(),['TI.Scratchpad','TI.Notepad'])
-        self.assertEqual(next(node for node in self.root() if local_name(node.tag)=='card').attrib['clay'],'1')
+        self.assertEqual(self.types(),['TI.Notepad'])
+        self.assertEqual(next(node for node in self.root() if local_name(node.tag)=='card').attrib['clay'],'0')
         self.assertIn('unchanged',self.file.read_text())
 
     def test_duplicate_names_are_selected_by_exact_indexed_path(self):
@@ -111,14 +114,71 @@ class DocumentElementDeleteTests(unittest.TestCase):
         with self.assertRaises(ValueError): XMLUpdater.remove_document_element(self.file,'/prob/card[99]/wdgt',raw,AUTH)
         self.assertEqual(self.file.read_bytes(),before)
 
-    def test_root_internal_fields_and_missing_auth_cannot_damage_document(self):
+    def test_root_and_internal_fields_cannot_damage_document(self):
         root=self.root();before=self.file.read_bytes();path,raw=self.snapshot(root,root)
         with self.assertRaises(ValueError): XMLUpdater.remove_document_element(self.file,path,raw,AUTH)
         field=next(node for node in root.iter() if local_name(node.tag)=='name');path,raw=self.snapshot(field,root)
         with self.assertRaises(ValueError): XMLUpdater.remove_document_element(self.file,path,raw,AUTH)
-        widget=next(node for node in root.iter() if node.attrib.get('type')=='TI.ProgramEditor');path,raw=self.snapshot(widget,root)
-        with self.assertRaises(ValueError): XMLUpdater.remove_document_element(self.file,path,raw,'')
         self.assertEqual(self.file.read_bytes(),before)
+
+    def test_last_calculator_is_really_deleted_and_stays_deleted_after_rescan(self):
+        root=self.root();card=next(node for node in root if local_name(node.tag)=='card')
+        widget=next(node for node in card if local_name(node.tag)=='wdgt')
+        widget.clear();widget.attrib.update({'type':'TI.Scratchpad','ver':'1.0'})
+        ET.SubElement(widget,'{urn:TI.Scratchpad}auth').text=AUTH
+        card.set('w1','7200');card.set('custom','preserve');self.write(root)
+        before_symbols=ET.tostring(next(node for node in root if local_name(node.tag)=='sym'))
+        path,raw=self.snapshot(widget,root)
+        result=XMLUpdater.remove_document_element(self.file,path,raw)
+        self.assertEqual(result['blank_calculators'],0)
+        self.assertEqual(result['empty_pages'],1)
+        self.assertEqual(self.types(),[])
+        reread=self.root();kept_card=next(node for node in reread if local_name(node.tag)=='card')
+        self.assertEqual(kept_card.attrib,card.attrib)
+        self.assertEqual(ET.tostring(next(node for node in reread if local_name(node.tag)=='sym')),before_symbols)
+        XMLScanner(self.directory).scan()
+        self.assertEqual(self.types(),[],'Rescanning must not create a replacement Calculator')
+
+    def test_last_app_removal_never_substitutes_a_calculator_for_other_app_types(self):
+        for kind in ['TI.Notepad','TI.ScriptApp','tabulator','TI.PythonEditor','TI.Graphs']:
+            with self.subTest(kind=kind):
+                self.file.write_text(self.template,encoding='utf8');root=self.root()
+                widget=next(node for node in root.iter() if local_name(node.tag)=='wdgt')
+                widget.clear();widget.attrib.update({'type':kind,'ver':'1.0'});self.write(root)
+                self.remove(widget,root)
+                self.assertEqual(self.types(),[])
+                self.assertEqual(len([node for node in self.root() if local_name(node.tag)=='card']),1)
+
+    def test_four_slot_page_collapses_to_supported_layouts_while_preserving_app_contents(self):
+        root=self.root();card=next(node for node in root if local_name(node.tag)=='card');card.set('clay','7')
+        for text in ['one','two','three']:
+            widget=ET.SubElement(card,f'{{{P}}}wdgt',{'type':'TI.Notepad','ver':'2.0'})
+            ET.SubElement(widget,'{urn:TI.Notepad}fmtxt').text=text
+        self.write(root)
+        for remaining,layout,texts in [(3,'3',['one','two','three']),(2,'1',['two','three']),(1,'0',['three']),(0,'0',[])]:
+            root=self.root();widget=next(node for node in root.iter() if local_name(node.tag)=='wdgt')
+            self.remove(widget,root)
+            self.assertEqual(len(self.types()),remaining)
+            self.assertNotIn('TI.Scratchpad',self.types())
+            self.assertEqual(next(node for node in self.root() if local_name(node.tag)=='card').attrib['clay'],layout)
+            self.assertEqual([node.text for node in self.root().iter() if local_name(node.tag)=='fmtxt'],texts)
+        self.assertTrue(any(local_name(node.tag)=='e' for node in self.root().iter()))
+
+    def test_empty_final_page_survives_tns_export_and_decode(self):
+        sys.path.insert(0,str(ROOT))
+        from tnstools import build_tns_from_xml,decode_tns_file
+        root=self.root();widget=next(node for node in root.iter() if local_name(node.tag)=='wdgt')
+        widget.clear();widget.attrib.update({'type':'TI.Scratchpad','ver':'1.0'});self.write(root)
+        self.remove(widget,root)
+        (self.directory/'Document.xml').write_bytes((ROOT/'templates/blank_tns_xml/Document.xml').read_bytes())
+        output=self.directory/'deleted-calculator.tns';decoded=self.directory/'decoded'
+        with contextlib.redirect_stdout(io.StringIO()):
+            build_tns_from_xml(self.directory,output)
+            decode_tns_file(output,decoded,artifacts=False)
+        exported=ET.parse(decoded/'Problem1.xml').getroot()
+        self.assertFalse(any(local_name(node.tag)=='wdgt' for node in exported.iter()))
+        self.assertEqual(len([node for node in exported if local_name(node.tag)=='card']),1)
+        self.assertTrue(any(local_name(node.tag)=='e' for node in exported.iter()))
 
     def test_resource_scope_and_live_references_are_guarded(self):
         resource=self.directory/'image.bmp';resource.write_bytes(b'bitmap')

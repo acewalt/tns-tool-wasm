@@ -54,7 +54,7 @@ function registerNativeBridge(){
   });
   ipcMain.handle('tns:stats-identity',async event=>{
     onlyLocal(event);
-    return {visitorId:await visitorId(),enabled:!process.env.TNS_DESKTOP_SMOKE_REPORT};
+    return {visitorId:await visitorId(),enabled:!process.env.TNS_DESKTOP_SMOKE_REPORT&&!process.env.TNS_DESKTOP_OFFLINE_REPORT};
   });
   ipcMain.handle('tns:ndless-build',async(event,payload)=>{
     onlyLocal(event);return compiler.build(exe,payload);
@@ -81,7 +81,9 @@ if(primaryInstance) app.whenReady().then(async()=>{
   const vendor=app.isPackaged?path.join(process.resourcesPath,'vendor'):path.join(root,'desktop','vendor');
   server=makeServer(root,vendor);
   origin=await listen(server);
-  if(process.env.TNS_DESKTOP_SMOKE_REPORT)session.defaultSession.webRequest.onBeforeRequest(
+  const offlineReport=process.env.TNS_DESKTOP_OFFLINE_REPORT;
+  const offlineRequests=offlineReport?require('./offline-check.cjs').blockExternalRequests(session.defaultSession):null;
+  if(process.env.TNS_DESKTOP_SMOKE_REPORT&&!offlineReport)session.defaultSession.webRequest.onBeforeRequest(
     {urls:['https://tns-tool-stats.guard-mauricio-save.workers.dev/api/*']},
     (details,callback)=>callback({cancel:details.method!=='GET'})
   );
@@ -91,11 +93,11 @@ if(primaryInstance) app.whenReady().then(async()=>{
     title:'TNS Tool Portable '+app.getVersion(),show:false,icon:path.join(__dirname,'assets','icon.png'),
     webPreferences:{preload:path.join(__dirname,'preload.cjs'),
       nodeIntegration:false,contextIsolation:true,sandbox:true,webSecurity:true,
-      backgroundThrottling:!Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT),
-      offscreen:Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT)}});
+      backgroundThrottling:!Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT||offlineReport),
+      offscreen:Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT||offlineReport)}});
   win.on('page-title-updated',event=>event.preventDefault());
   require('./editor-shortcuts.cjs').installEditorShortcutMenuGuard(win.webContents);
-  const smokeReport=process.env.TNS_DESKTOP_SMOKE_REPORT;
+  const smokeReport=process.env.TNS_DESKTOP_SMOKE_REPORT||offlineReport;
   if(smokeReport)win.webContents.on('console-message',(_event,level,message)=>console.log(level,message));
   if(!smokeReport)win.once('ready-to-show',()=>win.show());
   win.webContents.setWindowOpenHandler(({url})=>{
@@ -104,6 +106,10 @@ if(primaryInstance) app.whenReady().then(async()=>{
   });
   win.webContents.on('will-navigate',(event,url)=>{if(!trusted(url))event.preventDefault();});
   await loadLocalApp(win,origin);
+  if(offlineReport){
+    await require('./offline-check.cjs').check(win,offlineReport,offlineRequests);
+    app.quit();return;
+  }
   if(smokeReport){
     const report=await require('./smoke.cjs').checkWorkspace(win,smokeReport,{pageLoadedMs:performance.now()-bootStarted,origin});
     report.version=app.getVersion();report.windowTitle=win.getTitle();
@@ -147,9 +153,12 @@ if(primaryInstance) app.whenReady().then(async()=>{
     app.quit();
   }
 }).catch(async error=>{
-  if(process.env.TNS_DESKTOP_SMOKE_REPORT){
-    try{if(win&&!win.isDestroyed())await require('node:fs/promises').writeFile(process.env.TNS_DESKTOP_SMOKE_REPORT+'.error.png',(await win.webContents.capturePage()).toPNG());}catch(_){}
-    require('node:fs').writeFileSync(process.env.TNS_DESKTOP_SMOKE_REPORT,JSON.stringify({ok:false,error:error.stack}));
+  const smokeReport=process.env.TNS_DESKTOP_SMOKE_REPORT||process.env.TNS_DESKTOP_OFFLINE_REPORT;
+  if(smokeReport){
+    try{if(win&&!win.isDestroyed())await require('node:fs/promises').writeFile(smokeReport+'.error.png',(await win.webContents.capturePage()).toPNG());}catch(_){}
+    const fs=require('node:fs');let previous={};
+    if(process.env.TNS_DESKTOP_OFFLINE_REPORT){try{previous=JSON.parse(fs.readFileSync(smokeReport,'utf8'));}catch(_){}}
+    fs.writeFileSync(smokeReport,JSON.stringify({...previous,ok:false,error:error.stack}));
     app.exit(1);return;
   }
   dialog.showErrorBox('TNS Tool Portable',error.message);

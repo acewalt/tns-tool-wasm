@@ -8,8 +8,8 @@ const sandbox=vm.createContext({
   window:win,navigator:{},Uint8Array,ArrayBuffer,DataView,Date,TextEncoder,TextDecoder,Error,console,
   setTimeout,clearTimeout
 });
-vm.runInContext(load("../ti-nspire-nnse.js"),sandbox);
-vm.runInContext(load("../ti-nspire-webusb.js"),sandbox);
+vm.runInContext(load("../web/ti-nspire-nnse.js"),sandbox);
+vm.runInContext(load("../web/ti-nspire-webusb.js"),sandbox);
 const nnse=win.TnsNspireNNSE,proto=win.TnsNspireUSB;
 
 const acknowledgements=[];

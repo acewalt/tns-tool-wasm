@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 
-const source = fs.readFileSync(new URL("../ti-cas-preview-bridge-v3.js", import.meta.url), "utf8");
+const source = fs.readFileSync(new URL("../web/ti-cas-preview-bridge-v3.js", import.meta.url), "utf8");
 let captured = null;
 const windowObject = {
   createLuaJsPreviewRuntime: async (code, ctx, canvas, logEl, symbols) => {
@@ -21,7 +21,7 @@ const context = {
   Infinity,
 };
 vm.createContext(context);
-vm.runInContext(source, context, { filename: "ti-cas-preview-bridge-v3.js" });
+vm.runInContext(source, context, { filename: "web/ti-cas-preview-bridge-v3.js" });
 
 const bridge = windowObject.TnsCasBridge;
 assert.ok(bridge, "TnsCasBridge should be installed");

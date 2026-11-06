@@ -123,7 +123,8 @@ async function checkPrgm(win,report){
     await new Promise(r=>setTimeout(r,50));
     const modal=document.querySelector('.ti-program-editor-preview-modal'),screen=modal.querySelector('.widget-preview-calculator');
     if(Math.round(screen.getBoundingClientRect().width)!==320||Math.round(screen.getBoundingClientRect().height)!==240)throw Error('Editor viewport changed');
-    if(!handle.getSnapshot().mathView||!modal.querySelector('math'))throw Error('Mathematical Program Editor source unavailable');
+    if(handle.getSnapshot().mathView||modal.querySelector('[data-ti-pe-math-view]'))throw Error('Program Editor must open in source view without its old Math view control');
+    handle.setMathView(true);if(!modal.querySelector('math'))throw Error('Mathematical Program Editor API unavailable');
     const declaration=modal.querySelector('[data-ti-pe-declaration]'),field=modal.querySelector('[data-ti-pe-source]');
     if(declaration.textContent!=='Define LibPub editorcheck()='||field.value.includes('Define'))throw Error('Program definition is not protected');
     handle.setMathView(false);field.setSelectionRange(0,field.value.length);handle.setMathView(true);

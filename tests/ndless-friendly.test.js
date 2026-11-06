@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 globalThis.window=globalThis;
-await import("../ndless-arm-decoder.js");
-await import("../ndless-friendly-core.js");
+await import("../web/ndless-arm-decoder.js");
+await import("../web/ndless-friendly-core.js");
 
 const core=globalThis.NdlessFriendlyCore;
 assert.ok(core,"friendly core should load");
