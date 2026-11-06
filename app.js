@@ -1229,7 +1229,9 @@ const xmlDoctor = {
   lastReport: null,
   issueLines: new Map(),
   variableCatalog: [],
+  previewItems: [],
 };
+const documentCalculatorSessions = new Map();
 // Normal XML/TNS documents and Ndless projects are separate editor sessions.
 // This flag is set only after a normal document is successfully opened,
 // created or staged; the default (empty) editor leaves Ndless choices visible.
@@ -1742,6 +1744,12 @@ async function ensureCryptoPackage() {
 }
 
 function clearDir(path) {
+  if (path === xmlDoctor.sourcePath) {
+    window.TnsPrgmPreview?.close();
+    documentCalculatorSessions.clear();
+    xmlDoctor.previewItems = [];
+    xmlDoctor.previewFile = '';
+  }
   try {
     for (const name of pyodide.FS.readdir(path)) {
       if (name === "." || name === "..") continue;
@@ -2035,10 +2043,43 @@ function syncPrgmPreviewButton() {
   const isPrgm = programEditor || (xmlDoctor.current?.is_program_editor == null && !source.disabled && /^\s*Prgm\b/im.test(source.value));
   button.hidden = !isPrgm;
   button.disabled = !isPrgm;
-  for (const id of ['xml-math-templates-btn','xml-math-catalog-btn','xml-math-view-btn']) {
+  for (const id of ['xml-math-templates-btn','xml-math-catalog-btn','xml-variables-btn','xml-math-view-btn']) {
     const tool=document.getElementById(id);if(tool){tool.hidden=!programEditor;tool.disabled=!programEditor;}
   }
+  syncProgramEditorDeclaration();
   tiProgramTools?.refresh();tiMathEditor?.refresh();
+}
+
+function programEditorDeclaration(current) {
+  if (!isTiBasicProgramCandidate(current)) return '';
+  const access=String(current.library_access||'').trim();
+  const prefix=/^Lib(?:Pub|Priv)$/i.test(access)?`${/^LibPub$/i.test(access)?'LibPub':'LibPriv'} `:'';
+  return `Define ${prefix}${String(current.program_name||'programa')}(${String(current.parameters||'').trim()})=`;
+}
+
+function syncProgramEditorDeclaration() {
+  const header=document.querySelector('#xml-program-declaration');
+  if(!header)return;
+  const declaration=isTiProgramEditorSelected()?programEditorDeclaration(xmlDoctor.current):'';
+  header.textContent=declaration;
+  header.hidden=!declaration;
+  header.closest('.code-shell')?.classList.toggle('has-program-declaration',Boolean(declaration));
+}
+
+// Capture before the source editor/browser shortcuts. The declaration above the
+// editor is intentionally outside its model, selection and undo history.
+function installEditorCommandShortcuts(scope, options={}) {
+  const handler=event=>{
+    if(!(event.ctrlKey||event.metaKey)||event.altKey||event.shiftKey||event.isComposing)return;
+    const key=String(event.key||'').toLowerCase();
+    const action=key==='b'?options.syntax:key==='r'?options.preview:null;
+    if(!action||options.enabled?.()===false)return;
+    event.preventDefault();event.stopImmediatePropagation();
+    if(event.repeat)return;
+    Promise.resolve().then(()=>action()).catch(error=>options.onError?.(error));
+  };
+  scope.addEventListener('keydown',handler,{capture:true});
+  return()=>scope.removeEventListener('keydown',handler,{capture:true});
 }
 
 function isTiBasicProgramCandidate(current) {
@@ -2101,6 +2142,7 @@ function initializeTiProgramTools() {
 }
 
 async function openXmlPrgmPreview() {
+  tiMathEditor?.flush();
   if (!window.TnsPrgmPreview) { xmlLog('El preview Prgm todavía está cargando.'); return; }
   const data = await inspectXmlDocument();
   const groups = window.TnsDocumentPreviewNavigation.groups(data.items);
@@ -2110,8 +2152,9 @@ async function openXmlPrgmPreview() {
     if (selected >= 0) return openDocumentAppPreview(groups, 'basic', selected);
   }
   const readSource = () => ({source: document.querySelector('#xml-code').value,
-    name: xmlDoctor.current?.program_name || 'programa', parameters: xmlDoctor.current?.parameters || '', documentName: xmlDoctor.outputFileName});
-  window.TnsPrgmPreview.open(readSource(), {readSource, revealLine: line => {
+    name: xmlDoctor.current?.program_name || 'programa', parameters: xmlDoctor.current?.parameters || '', documentType:xmlDoctor.current?.document_type, file:xmlDoctor.current?.file, documentName: xmlDoctor.outputFileName});
+  xmlDoctor.previewFile=xmlDoctor.current?.file;
+  window.TnsPrgmPreview.open(readSource(), {...documentCalculatorContext(xmlDoctor.current?.file),readSource, revealLine: line => {
     window.TnsPrgmPreview.close();
     goToXmlLine(line);
   }});
@@ -2523,7 +2566,9 @@ for resource in sorted(root_path.rglob("*")):
 
 json.dumps({"summary": summary, "items": items})
 `);
-  return JSON.parse(payload);
+  const inspected = JSON.parse(payload);
+  xmlDoctor.previewItems = inspected.items || [];
+  return inspected;
 }
 
 async function ensureXmlStageCopy() {
@@ -8996,7 +9041,16 @@ function showLuaEditor(item) {
     updateHighlight();
     updateLabel();
   };
+  const disposeLuaShortcuts=installEditorCommandShortcuts(backdrop,{
+    enabled:()=>backdrop.isConnected&&Array.from(document.querySelectorAll('.modal-backdrop')).at(-1)===backdrop,
+    syntax:analyze,
+    preview:()=>backdrop.querySelector('#lua-love-preview').click(),
+    onError:error=>appendLogElement(luaLogEl,'Lua',`ERROR: ${error.message}`),
+  });
+  backdrop.querySelector('#lua-syntax').setAttribute('aria-keyshortcuts','Control+B Meta+B');
+  backdrop.querySelector('#lua-love-preview').setAttribute('aria-keyshortcuts','Control+R Meta+R');
   const closeLuaEditor = (afterClose = null) => {
+    disposeLuaShortcuts();
     editor.dispose?.();
     closeModal(backdrop, afterClose);
   };
@@ -10165,7 +10219,74 @@ for row in rows:
     e=ET.SubElement(w,f"{{{sns}}}erow");ET.SubElement(e,f"{{{sns}}}entr").text=str(row.get("entry",''));ET.SubElement(e,f"{{{sns}}}exct").text=str(row.get("exact") or row.get("entry",''));r=ET.SubElement(e,f"{{{sns}}}rslt");ET.SubElement(r,f"{{{sns}}}warn2").text="{}";d=str(row.get("display") or row.get("full") or row.get("entry",''));ET.SubElement(r,f"{{{sns}}}disp").text=d;ET.SubElement(r,f"{{{sns}}}full").text=str(row.get("full") or d);ET.SubElement(e,f"{{{sns}}}ctxt",{"ang":"1","cplx":"1","comp":"1"})
 xf.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+ET.tostring(root,encoding="UTF-8",short_empty_elements=False));json.dumps({"file":str(xf),"saved_rows":len(rows),"raw_xml":ET.tostring(w,encoding="unicode",short_empty_elements=False)})
 `);xmlDoctor.embedded=true;xmlDoctor.stagePrepared=true;return JSON.parse(payload);}
-function openCalculatorInLovePreview(item, options = {}){const a=extractCalculatorRowsFromRawXml(item?.raw_xml||""),b=Array.isArray(item?.detail?.rows)?item.detail.rows:[];return showLovePreview("",null,null,{...options,calculatorEditor:{item,...options.draft,rows:(options.draft?.rows||(a.length?a:b)).map(r=>({...r}))}});}
+function documentCalculatorFile(file = '') {
+  return documentPreviewFileKey(file || xmlDoctor.previewFile || xmlDoctor.current?.file || xmlDoctor.candidates[0]?.file || 'Problem1.xml');
+}
+function documentCalculatorPrograms(file = '') {
+  const problem = documentCalculatorFile(file), editor = document.querySelector('#xml-code');
+  return xmlDoctor.candidates.filter(item => ['Prgm','Func'].includes(item.document_type) && documentCalculatorFile(item.file) === problem).map(item => ({
+    name:item.program_name, source:item === xmlDoctor.current ? editor.value : item.code,
+    parameters:item.parameters || '', documentType:item.document_type, file:item.file, path:item.path,
+  }));
+}
+function documentStoredVariables(file = '') {
+  const problem=documentCalculatorFile(file), entries=new Map();
+  for(const item of xmlDoctor.previewItems || []) {
+    if(item.content_label!=='Value' || documentCalculatorFile(item.file)!==problem || !item.name || item.name==='(sin nombre)')continue;
+    if(['Prgm','Func'].includes(item.type))continue;
+    entries.set(item.name.toLowerCase(),{name:item.name,value:item.content,type:'variable',insertion:item.name,stored:true});
+  }
+  for(const item of documentCalculatorPrograms(file))entries.set(item.name.toLowerCase(),{name:item.name,type:item.documentType,parameters:item.parameters,insertion:item.name+'()',stored:true});
+  return [...entries.values()];
+}
+function documentCalculatorContext(file = '') {
+  const problem=documentCalculatorFile(file);
+  let context=documentCalculatorSessions.get(problem);
+  if(!context){
+    if(!window.TnsTiBasicMath)throw Error('The mathematical runtime is still loading.');
+    const mathSession=window.TnsTiBasicMath.createSession({language:document.documentElement.lang,angleMode:'RAD'});
+    for(const item of documentStoredVariables(file))if(item.type==='variable'){
+      try{mathSession.evaluate(`${item.name}:=(${item.value})`);}catch(_){/* Keep unsupported stored values visible in Var without executing source. */}
+    }
+    context={mathSession};documentCalculatorSessions.set(problem,context);
+  }
+  return {mathSession:context.mathSession,getPrograms:()=>documentCalculatorPrograms(file),getVariables:()=>documentStoredVariables(file)};
+}
+window.TnsDocumentVariables = (file = '') => {
+  const scope=file||(window.TnsPrgmPreview?.getSnapshot?.()?xmlDoctor.previewFile:xmlDoctor.current?.file)||'';
+  const entries=new Map(documentStoredVariables(scope).map(item=>[item.name.toLowerCase(),item]));
+  const problem=documentCalculatorFile(scope),context=documentCalculatorSessions.get(problem);
+  for(const [name,value]of Object.entries(context?.mathSession.snapshot().variables||{}))entries.set(name.toLowerCase(),{name,value,type:'variable',insertion:name});
+  for(const item of context?.mathSession.getDefinitions?.()||[])entries.set(item.name.toLowerCase(),item);
+  if(!file || problem===documentCalculatorFile(xmlDoctor.previewFile))for(const item of window.TnsPrgmPreview?.getVariables?.()||[])entries.set(item.name.toLowerCase(),item);
+  return [...entries.values()];
+};
+window.TnsOpenDocumentLibrary = async file => {
+  tiMathEditor?.flush();
+  window.TnsPrgmPreview?.close();
+  document.querySelector('#love-preview-close')?.click();
+  await openTnsInXmlDoctor(file);
+  await inspectXmlDocument();
+  xmlLog(`TNS: ${file.name}`);
+};
+async function openCalculatorInLovePreview(item, options = {}) {
+  if(!window.TnsPrgmPreview)throw Error('Calculator preview is still loading.');
+  tiMathEditor?.flush();
+  await inspectXmlDocument();
+  xmlDoctor.previewFile=item.file;
+  const a=extractCalculatorRowsFromRawXml(item?.raw_xml||''),b=Array.isArray(item?.detail?.rows)?item.detail.rows:[];
+  const draft=options.draft||{},initialRows=(draft.rows||(a.length?a:b)).map(row=>({...row}));
+  return window.TnsPrgmPreview.open({name:'',source:'',documentName:documentPreviewDocumentName(),file:item.file,path:item.path},{
+    ...options,...documentCalculatorContext(item.file),calculatorMode:true,initialInput:draft.input||'',initialRows,
+    onRowsChange:rows=>options.setDraft?.({rows,input:window.TnsPrgmPreview.getInput?.()||''}),
+    onSave:async rows=>{
+      const result=await saveCalculatorWidgetToStage(item,rows);
+      item.raw_xml=result.raw_xml||item.raw_xml;item.file=result.file||item.file;
+      item.detail={...(item.detail||{}),rows:rows.map(row=>({...row})),rowCount:rows.length};
+      xmlLog(`${t('calculatorSave')}: ${result.saved_rows} entradas guardadas en TI.Scratchpad`);
+    },
+  });
+}
 function openGraphInLovePreview(item, options = {}) {
   const state = extractGraphStateFromRawXml(item?.raw_xml || "");
   const functionName = item?.detail?.function || state.name || "f1";
@@ -17290,7 +17411,7 @@ function documentProgramPreviewSource(item) {
   let source = candidate ? (candidate.index === xmlDoctor.current?.index ? document.querySelector('#xml-code').value : candidate.code) : item.content || '';
   source = source.replace(/^Define\s+[^=]*=\s*/i, '');
   if (!source.trim()) source = item.detail?.type === 'Func' ? 'Func\nReturn 0\nEndFunc' : 'Prgm\n\nEndPrgm';
-  return { source, name, parameters: candidate?.parameters || '', documentName: xmlDoctor.outputFileName, candidate };
+  return { source, name, parameters: candidate?.parameters || '', documentType:candidate?.document_type||item.detail?.type, file:item.file,path:item.path, documentName: xmlDoctor.outputFileName, candidate };
 }
 
 async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) {
@@ -17335,7 +17456,8 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   if (appKind === 'basic') {
     if (!window.TnsPrgmPreview) throw new Error('Prgm Preview is still loading.');
     const readSource = () => documentProgramPreviewSource(item);
-    return window.TnsPrgmPreview.open(readSource(), { ...options, readSource, revealLine: line => {
+    xmlDoctor.previewFile=item.file;
+    return window.TnsPrgmPreview.open(readSource(), { ...options,...documentCalculatorContext(item.file),readSource,initialRows:options.draft?.rows,initialInput:options.draft?.input,revealLine: line => {
       window.TnsPrgmPreview.close();
       const candidate = readSource().candidate;
       if (candidate) { document.querySelector('#xml-programs').value = candidate.index; selectXmlProgram(candidate.index); }
@@ -17761,6 +17883,7 @@ function goToXmlLine(line) {
 }
 
 async function runXmlSyntax() {
+  tiMathEditor?.flush();
   const code = document.querySelector("#xml-code").value;
   pyodide.globals.set("wasm_xml_code", code);
   pyodide.globals.set("wasm_xml_document_type", xmlDoctor.current?.document_type || "");
@@ -18819,8 +18942,17 @@ function wireEvents() {
   document.querySelector('#xml-prgm-preview-btn').addEventListener('click', () => openXmlPrgmPreview().catch(error => xmlLog(`ERROR Preview Prgm: ${error.message}`)));
   document.querySelector('#xml-math-templates-btn').addEventListener('click', event => window.TnsMathTools.openTemplates({anchor:event.currentTarget,insert:text=>{insertXmlToolText(text);tiMathEditor?.setActive(true);},getMathView:()=>tiMathEditor?.active||false,setMathView:value=>tiMathEditor?.setActive(value)}));
   document.querySelector('#xml-math-catalog-btn').addEventListener('click', event => window.TnsMathTools.openCatalog({anchor:event.currentTarget,insert:insertXmlToolText}));
+  document.querySelector('#xml-variables-btn').addEventListener('click',event=>window.TnsMathTools.openVariables({anchor:event.currentTarget,insert:insertXmlToolText,getVariables:()=>window.TnsDocumentVariables?.()||[]}));
   document.querySelector('#xml-math-view-btn').addEventListener('click',()=>tiMathEditor?.setActive(!tiMathEditor.active));
   document.querySelector('#xml-code').addEventListener('input', syncPrgmPreviewButton);
+  installEditorCommandShortcuts(document,{
+    enabled:()=>!document.querySelector('#xml-code').disabled&&!document.querySelector('#xml-doctor-panel').classList.contains('collapsed')&&!document.querySelector('.modal-backdrop,.prgm-preview-overlay,.ti-math-tool-popup'),
+    syntax:runXmlSyntax,
+    preview:()=>{if(isTiProgramEditorSelected())return openXmlPrgmPreview();},
+    onError:error=>xmlLog(`ERROR: ${error.message}`),
+  });
+  document.querySelector('#xml-syntax-btn').setAttribute('aria-keyshortcuts','Control+B Meta+B');
+  document.querySelector('#xml-prgm-preview-btn').setAttribute('aria-keyshortcuts','Control+R Meta+R');
   document.querySelector("#xml-tns-file").addEventListener("change", (event) => openTnsInXmlDoctor(event.target.files[0]).catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-file").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "file").catch((err) => xmlLog(`ERROR: ${err.message}`)));
   document.querySelector("#xml-folder").addEventListener("change", (event) => loadXmlDoctorFiles([...event.target.files], "folder").catch((err) => xmlLog(`ERROR: ${err.message}`)));

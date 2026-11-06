@@ -1,0 +1,63 @@
+const {app,BrowserWindow,session}=require('electron');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(process.env.TNS_SMOKE_WEB_ROOT||path.join(__dirname,'..')),desktop=path.resolve(root,'../portable-0.1.27/desktop');
+const {makeServer,listen}=require(path.join(desktop,'server.cjs'));
+const reportPath=path.join(root,'release/qa/calculator-session-v33.json');let win,server;
+app.commandLine.appendSwitch('disable-gpu');
+app.whenReady().then(async()=>{
+  server=makeServer(root,path.join(desktop,'vendor'));const origin=await listen(server);
+  session.defaultSession.webRequest.onBeforeRequest({urls:['*://*/*']},(details,done)=>done({cancel:!details.url.startsWith(origin)}));
+  win=new BrowserWindow({show:false,width:1440,height:1000,webPreferences:{sandbox:true,contextIsolation:true,backgroundThrottling:false,offscreen:true}});
+  await win.loadURL(origin);const report=await win.webContents.executeJavaScript(`(${check.toString()})()`);
+  fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath+'.png',(await win.webContents.capturePage()).toPNG());report.lua=await win.webContents.executeJavaScript(`(${checkLua.toString()})()`);fs.writeFileSync(reportPath+'.lua.png',(await win.webContents.capturePage()).toPNG());
+  fs.writeFileSync(reportPath,JSON.stringify(report,null,2));console.log(JSON.stringify(report));win.destroy();server.close();app.exit(0);
+}).catch(async error=>{console.error(error.stack||error);if(win&&!win.isDestroyed()){console.error(await win.webContents.executeJavaScript('JSON.stringify({status:document.querySelector("[data-status]")?.textContent,error:document.querySelector("[data-error]")?.textContent,log:document.querySelector("#xml-log")?.textContent.slice(-800)})').catch(()=>''));fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath+'.failure.png',(await win.webContents.capturePage()).toPNG());win.destroy();}server?.close();app.exit(1);});
+async function check(){
+  const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms)),must=(value,message)=>{if(!value)throw Error(message);};
+  const wait=async(fn,label)=>{const end=Date.now()+45000;while(!fn()){if(Date.now()>end)throw Error('Timeout '+label);await pause(25);}};
+  await wait(()=>typeof pyodide!=='undefined'&&pyodide&&window.TnsMathTools&&window.TnsPrgmPreview&&!document.querySelector('#startup-loader')&&!document.querySelector('#xml-toggle-btn').disabled,'runtime');
+  applyLanguage('en');if(document.querySelector('#xml-doctor-panel').classList.contains('collapsed'))document.querySelector('#xml-toggle-btn').click();
+  const creating=addPageFromFileMenu('program-editor');await wait(()=>document.querySelector('#xpe-apply'),'Program settings');document.querySelector('#xpe-apply').click();await creating;
+  const source=document.querySelector('#xml-code'),name=xmlDoctor.current.program_name;
+  codeEditorAdapters.get('#xml-code').replaceRange('Prgm\nLocal x\nx:=-15\nDisp abs(x)\n42→shared\nEndPrgm',0,source.value.length);await embedXmlCode();
+  must(document.querySelector('#xml-program-declaration').textContent===`Define LibPub ${name}()=`,'Protected declaration missing');
+  const declaration=document.querySelector('#xml-program-declaration');must(!source.contains(declaration)&&declaration.contentEditable==='false','Declaration is editable source');
+  const original=source.value,caret=original.indexOf('Disp');source.focus();source.setSelectionRange(caret,caret);document.querySelector('#xml-variables-btn').click();await wait(()=>document.querySelector(`[data-variable-name="${name}"]`),'Source Var');document.querySelector(`[data-variable-name="${name}"]`).click();must(source.value.slice(caret).startsWith(name+'()Disp'),'Source Var ignored cursor');must(declaration.textContent===`Define LibPub ${name}()=`,'Var changed declaration');codeEditorAdapters.get('#xml-code').replaceRange(original,0,source.value.length);
+  const menu=[...document.querySelector('#xml-edit-menu .menu-panel').children].filter(node=>node.tagName==='BUTTON'&&!node.hidden).map(node=>node.id||node.textContent.trim());
+  must(menu[0]==='xml-inspector-btn'&&menu[1]==='xml-document-btn'&&/program.editor/i.test(menu[2]),'Edit order '+JSON.stringify(menu));
+  xmlDoctor.lastReport=null;document.dispatchEvent(new KeyboardEvent('keydown',{key:'b',ctrlKey:true,bubbles:true,cancelable:true}));await wait(()=>xmlDoctor.lastReport,'Ctrl+B syntax');
+  document.dispatchEvent(new KeyboardEvent('keydown',{key:'r',ctrlKey:true,bubbles:true,cancelable:true}));await wait(()=>document.querySelector('.prgm-preview-modal'),'Ctrl+R preview');
+  await pause(180);must(window.TnsPrgmPreview.getSnapshot().executed===0,'Program executed automatically');must(window.TnsPrgmPreview.getInput()===name+'()','Call not prefilled');
+  let field=document.querySelector('[data-expression]');const enter=()=>field.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
+  field.value='2+3';field.dispatchEvent(new Event('input'));enter();await wait(()=>window.TnsPrgmPreview.getRows().at(-1)?.display==='5','arithmetic');
+  must(window.TnsPrgmPreview.getSnapshot().executed===0,'Arithmetic ran the program');field.value=name+'()';enter();await wait(()=>window.TnsPrgmPreview.getSnapshot().status==='done','explicit program run');
+  must(window.TnsPrgmPreview.getSnapshot().text==='15','Wrong program output');must(!window.TnsPrgmPreview.getVariables().some(v=>v.name==='x'),'Local leaked into Var');
+  field.value='shared+1';enter();await wait(()=>window.TnsPrgmPreview.getRows().at(-1)?.display==='43','global variable math');
+  const shell=document.querySelector('.prgm-preview-screen-shell').getBoundingClientRect();
+  window.TnsPrgmPreview.close();const item=await addCalculatorWidgetToStage();await openCalculatorInLovePreview(item);await pause(100);
+  field=document.querySelector('[data-expression]');must(field&&field.value==='','Independent calculator not using shared UI');
+  const otherShell=document.querySelector('.prgm-preview-screen-shell').getBoundingClientRect();must(['left','top','width','height'].every(key=>Math.abs(otherShell[key]-shell[key])<1),'Preview location changed');
+  must(window.TnsDocumentVariables(item.file).some(v=>v.name==='shared'&&v.value===42),'Calculator lost shared problem variables');
+  document.querySelector('[data-calculator-tool="variables"]').click();await wait(()=>document.querySelector(`[data-variable-name="${name}"]`),'Var program');document.querySelector(`[data-variable-name="${name}"]`).click();must(field.value===name+'()','Var did not insert call');
+  enter();await wait(()=>window.TnsPrgmPreview.getSnapshot().status==='done','Calculator program');must(window.TnsPrgmPreview.getSnapshot().text==='15','Calculator cannot call document program');
+  field.value='';field.setSelectionRange(0,0);document.querySelector('[data-calculator-tool="templates"]').click();await wait(()=>document.querySelector('[data-template-id="fraction"]'),'Templates');document.querySelector('[data-template-id="fraction"]').click();must(field.value==='((1)/(1))','Template not inserted');must(document.querySelector('[data-expression-math] mfrac'),'Template math layout');
+  document.querySelector('[data-calculator-tool="catalog"]').click();await wait(()=>document.querySelector('[data-catalog-tab="2"]'),'Catalog');document.querySelector('[data-catalog-tab="2"]').click();await pause(50);
+  const list=document.querySelector('.ti-math-catalog-list');list.scrollTop=list.scrollHeight;await pause(30);const last=list.querySelector('button:last-child');must(last&&last.getBoundingClientRect().bottom<=list.getBoundingClientRect().bottom+1,'Last catalog button clipped');
+  document.querySelector('[data-catalog-tab="6"]').click();await pause(30);must(document.querySelector('[data-library-folder]'),'Library folder chooser missing');
+  let picked=false;window.showDirectoryPicker=async()=>{picked=true;return{name:'Downloads',async *entries(){yield ['one.tns',{kind:'file',getFile:async()=>new File(['one'],'one.tns')}];yield ['ignore.txt',{kind:'file'}];yield ['two.TNS',{kind:'file',getFile:async()=>new File(['two'],'two.TNS')}];}};};
+  must(!picked,'Folder read without user choice');document.querySelector('[data-library-folder]').click();await wait(()=>document.querySelectorAll('[data-library-path]').length===2,'TNS directory filter');must(picked,'Folder chooser not called');window.TnsMathTools.close();
+  document.querySelector('[data-save-calculator]').click();await wait(()=>document.querySelector('[data-status]')?.textContent==='Saved','Save calculator rows');
+  const data=await inspectXmlDocument(),calculator=data.items.find(x=>x.content_label==='Scratchpad');must(calculator.detail.rows.some(row=>row.entry===name+'()'),'Calculator history not saved');
+  field.value='shared+1';enter();await wait(()=>window.TnsPrgmPreview.getRows().at(-1)?.display==='43','final math');await pause(180);
+  return{ok:true,noAutostart:true,explicitEnter:true,arithmetic:true,programFromCalculator:true,sharedVariables:true,privateLocals:true,varInsertion:true,templateMath:true,previewLocationStable:true,catalogLastButtonVisible:true,folderPermissionAndTnsFilter:true,calculatorHistorySaved:true,protectedDeclaration:declaration.textContent,editOrder:menu.slice(0,3),syntaxShortcut:true,previewShortcut:true};
+}
+async function checkLua(){
+  const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms)),wait=async(fn,label)=>{const end=Date.now()+20000;while(!fn()){if(Date.now()>end)throw Error('Timeout '+label);await pause(25);}};
+  window.TnsPrgmPreview.close();const settings=openXmlDocumentSettings();await wait(()=>document.querySelector('#xpe-apply'),'rename settings');document.querySelector('#xpe-name').value='renamed';document.querySelector('#xpe-access').value='LibPriv';document.querySelector('#xpe-apply').click();await settings;
+  if(document.querySelector('#xml-program-declaration').textContent!=='Define LibPriv renamed()=')throw Error('Readonly declaration did not follow settings');
+  if(document.querySelector('#xml-code').value.includes('Define LibPriv'))throw Error('Declaration leaked into editable source');
+  const item=await addLuaScriptAppToStage();showLuaEditor(item);await wait(()=>document.querySelector('#lua-editor'),'Lua editor');
+  const field=document.querySelector('#lua-editor');document.querySelector('#lua-log').textContent='';field.dispatchEvent(new KeyboardEvent('keydown',{key:'b',ctrlKey:true,bubbles:true,cancelable:true}));await wait(()=>document.querySelector('#lua-log').textContent.includes(t('luaSyntaxOk')),'Lua Ctrl+B');
+  field.dispatchEvent(new KeyboardEvent('keydown',{key:'r',ctrlKey:true,bubbles:true,cancelable:true}));await wait(()=>document.querySelector('.love-preview-modal')?.dataset.previewReady==='true','Lua Ctrl+R');await pause(150);
+  return{syntaxShortcut:true,previewShortcut:true,readonlyHeaderTracksSettings:true};
+}
