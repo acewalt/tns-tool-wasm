@@ -24,13 +24,15 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.34/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.34)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.35/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.35)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
 **Ndless C/C++ projects currently compile on Windows only. Linux desktop support is planned; no Linux download is published yet.**
 
 ## What's new
+
+**0.1.35:** Document Inspector now previews the actual TI.ProgramEditor page, with a protected definition, editable source and the same syntax checks. Run opens Calculator and waits for Enter. Inspector elements have a contextual delete action with confirmation.
 
 **0.1.34:** Calculator history uses alternating rows with expressions and results aligned like the handheld. The TNS filename extension is protected; Math view is inside Edit, and the Catalog and TI strings have corrected light-theme colors.
 

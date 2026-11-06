@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-05-preview-fixes-v31";
+const SOURCE_VERSION = "2026-11-06-program-editor-v35";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -1746,6 +1746,7 @@ async function ensureCryptoPackage() {
 function clearDir(path) {
   if (path === xmlDoctor.sourcePath) {
     window.TnsPrgmPreview?.close();
+    window.TnsProgramEditorPreview?.close();
     documentCalculatorSessions.clear();
     xmlDoctor.previewItems = [];
     xmlDoctor.previewFile = '';
@@ -2149,7 +2150,7 @@ async function openXmlPrgmPreview() {
   if (groups.basic.length) {
     const selected = groups.basic.findIndex(item => item.detail?.name === xmlDoctor.current?.program_name
       && documentPreviewFileKey(item.file) === documentPreviewFileKey(xmlDoctor.current?.file));
-    if (selected >= 0) return openDocumentAppPreview(groups, 'basic', selected);
+    if (selected >= 0) return openDocumentAppPreview(groups, 'basic', selected, { programRun: true });
   }
   const readSource = () => ({source: document.querySelector('#xml-code').value,
     name: xmlDoctor.current?.program_name || 'programa', parameters: xmlDoctor.current?.parameters || '', documentType:xmlDoctor.current?.document_type, file:xmlDoctor.current?.file, documentName: xmlDoctor.outputFileName});
@@ -10264,6 +10265,7 @@ window.TnsDocumentVariables = (file = '') => {
 window.TnsOpenDocumentLibrary = async file => {
   tiMathEditor?.flush();
   window.TnsPrgmPreview?.close();
+  window.TnsProgramEditorPreview?.close();
   document.querySelector('#love-preview-close')?.click();
   await openTnsInXmlDoctor(file);
   await inspectXmlDocument();
@@ -17458,7 +17460,25 @@ function documentProgramPreviewSource(item) {
   let source = candidate ? (candidate.index === xmlDoctor.current?.index ? document.querySelector('#xml-code').value : candidate.code) : item.content || '';
   source = source.replace(/^Define\s+[^=]*=\s*/i, '');
   if (!source.trim()) source = item.detail?.type === 'Func' ? 'Func\nReturn 0\nEndFunc' : 'Prgm\n\nEndPrgm';
-  return { source, name, parameters: candidate?.parameters || '', documentType:candidate?.document_type||item.detail?.type, file:item.file,path:item.path, documentName: xmlDoctor.outputFileName, candidate };
+  return { source, name, parameters: candidate?.parameters || '', library_access:candidate?.library_access||item.detail?.visibility||'None', documentType:candidate?.document_type||item.detail?.type, file:item.file,path:item.path, documentName: xmlDoctor.outputFileName, candidate };
+}
+
+function setDocumentProgramPreviewSource(item, source) {
+  tiMathEditor?.flush();
+  const box = document.querySelector('#xml-code');
+  if (xmlDoctor.current && !box.disabled) xmlDoctor.current.code = box.value;
+  const candidate = documentProgramPreviewSource(item).candidate;
+  if (!candidate) throw new Error('Program Editor source is no longer present in this document.');
+  if (xmlDoctor.current !== candidate) selectXmlProgram(candidate.index);
+  source = String(source ?? candidate.code ?? '');
+  if (box.value !== source) {
+    const adapter = codeEditorAdapters.get('#xml-code');
+    if (adapter) adapter.replaceRange(source, 0, box.value.length);
+    else { box.value = source; box.dispatchEvent(new Event('input', { bubbles: true })); }
+    xmlDoctor.embedded = false;
+  }
+  candidate.code = source;
+  return candidate;
 }
 
 async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) {
@@ -17470,12 +17490,13 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
     ? items.map(image => groups.widgets.find(widget => widget.previewKind === 'images' && widget.previewItem === image) || image)
     : items;
   session.drafts ||= new Map();
+  const draftKey = `${selected}:${session.programRun ? 'run' : 'editor'}`;
   const options = {
     item, documentName: documentPreviewDocumentName(),
     expanded: session.expanded || false,
     setExpanded: value => { session.expanded = value; },
-    draft: session.drafts.get(selected),
-    setDraft: draft => session.drafts.set(selected, draft),
+    draft: session.drafts.get(draftKey),
+    setDraft: draft => session.drafts.set(draftKey, draft),
     createBackdrop: className => {
       const reused = Boolean(session.backdrop?.isConnected);
       const backdrop = session.backdrop || document.createElement('div');
@@ -17501,8 +17522,20 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
     } },
   };
   if (appKind === 'basic') {
-    if (!window.TnsPrgmPreview) throw new Error('Prgm Preview is still loading.');
     const readSource = () => documentProgramPreviewSource(item);
+    if (!session.programRun) {
+      if (!window.TnsProgramEditorPreview) throw new Error('Program Editor preview is still loading.');
+      setDocumentProgramPreviewSource(item, readSource().source);
+      return window.TnsProgramEditorPreview.open(readSource(), {
+        ...options, draft: options.draft ? { ...options.draft, source: readSource().source } : undefined,
+        readSource, getVariables: () => window.TnsDocumentVariables?.(item.file) || [],
+        onChange: source => setDocumentProgramPreviewSource(item, source),
+        onSyntax: source => { setDocumentProgramPreviewSource(item, source); return runXmlSyntax(); },
+        onSave: async source => { setDocumentProgramPreviewSource(item, source); await embedXmlCode(); },
+        onRun: (_data, state = {}) => openDocumentAppPreview(groups, kind, selected, { ...session, ...state, programRun: true }),
+      });
+    }
+    if (!window.TnsPrgmPreview) throw new Error('Prgm Preview is still loading.');
     xmlDoctor.previewFile=item.file;
     return window.TnsPrgmPreview.open(readSource(), { ...options,...documentCalculatorContext(item.file),readSource,initialRows:options.draft?.rows,initialInput:options.draft?.input,revealLine: line => {
       window.TnsPrgmPreview.close();
@@ -17566,6 +17599,71 @@ json.dumps(XMLUpdater.set_program_editor_visible(target,change['name'],change['v
   xmlDoctor.embedded=true;xmlDoctor.stagePrepared=true;
   return result;
 }
+function inspectorElementDeleteWords(item = {}) {
+  const lang=document.documentElement.lang?.slice(0,2),programPage=item.content_label==='ProgramEditor',programSymbol=['Prgm','Func'].includes(item.type),page=item.type==='Card',lua=item.type==='Lua Script';
+  const scope=programPage?'editor':programSymbol?'program':page?'page':lua?'lua':'element';
+  const copy={
+    en:{title:'Delete element',remove:'Delete',cancel:'Cancel',button:'Delete element',question:'Delete this element from the document?',notes:{editor:'Only its editor page is removed. The stored program remains callable from Calculator.',program:'The stored program and its editor pages are removed. Other code that calls this program will need updating.',page:'This page and its apps are removed. Stored program symbols are separate and remain available.',lua:'The Lua application containing this script is removed.',element:'This element and its children are removed.'},last:'The last page or a split-page slot is kept as a blank Calculator so the document remains valid.',original:'The original imported TNS is unchanged until you export a new document.'},
+    es:{title:'Eliminar elemento',remove:'Eliminar',cancel:'Cancelar',button:'Eliminar elemento',question:'¿Eliminar este elemento del documento?',notes:{editor:'Solo se elimina su página de editor. El programa guardado sigue disponible desde Calculadora.',program:'Se elimina el programa guardado y sus páginas de editor. Deberás actualizar otro código que llame a este programa.',page:'Se elimina esta página y sus aplicaciones. Los símbolos de programas guardados son independientes y se conservan.',lua:'Se elimina la aplicación Lua que contiene este script.',element:'Se elimina este elemento y sus hijos.'},last:'La última página o una sección de página dividida queda como una Calculadora vacía para conservar un documento válido.',original:'El TNS original importado no cambia; los cambios se aplican al exportar un documento nuevo.'},
+    fr:{title:'Supprimer l’élément',remove:'Supprimer',cancel:'Annuler',button:'Supprimer l’élément',question:'Supprimer cet élément du document ?',notes:{editor:'Seule sa page d’éditeur est supprimée. Le programme enregistré reste accessible depuis Calculs.',program:'Le programme enregistré et ses pages d’éditeur sont supprimés. Les autres appels à ce programme devront être modifiés.',page:'Cette page et ses applications sont supprimées. Les symboles de programmes enregistrés sont conservés séparément.',lua:'L’application Lua contenant ce script est supprimée.',element:'Cet élément et ses enfants sont supprimés.'},last:'La dernière page ou un volet de page partagée est remplacé par Calculs vide pour conserver un document valide.',original:'Le TNS importé d’origine reste inchangé ; exportez un nouveau document pour enregistrer ces modifications.'}
+  };
+  const words=copy[lang]||copy.en;return {...words,note:words.notes[scope]};
+}
+
+function confirmInspectorElementRemoval(item) {
+  const words=inspectorElementDeleteWords(item),backdrop=document.createElement('div');backdrop.className='modal-backdrop inspector-delete-confirmation';
+  backdrop.innerHTML=`<section class="modal inspector-delete-dialog" role="alertdialog" aria-modal="true" aria-labelledby="inspector-delete-title" aria-describedby="inspector-delete-description"><h2 id="inspector-delete-title">${escapeHtml(words.title)}</h2><p>${escapeHtml(words.question)}</p><strong>${escapeHtml(item.detail?.name||item.name)}</strong><code>${escapeHtml(documentXmlFileIdentity(item.file))} · ${escapeHtml(item.path)}</code><p id="inspector-delete-description" data-inspector-delete-description>${escapeHtml(words.note)} ${escapeHtml(['Card','Widget','Lua Script','Prgm','Func'].includes(item.type)?words.last:'')}</p><p class="muted-text">${escapeHtml(words.original)}</p><div class="modal-actions"><button type="button" data-inspector-delete-cancel>${escapeHtml(words.cancel)}</button><button type="button" class="danger-action" data-inspector-delete-confirm>${escapeHtml(words.remove)}</button></div></section>`;
+  document.body.append(backdrop);
+  return new Promise(resolve=>{let settled=false;const finish=value=>{if(settled)return;settled=true;closeModal(backdrop);resolve(value);};backdrop.querySelector('[data-inspector-delete-cancel]').onclick=()=>finish(false);backdrop.querySelector('[data-inspector-delete-confirm]').onclick=()=>finish(true);backdrop.addEventListener('keydown',event=>{if(event.key==='Escape'){event.preventDefault();event.stopPropagation();finish(false);}});backdrop.querySelector('[data-inspector-delete-cancel]').focus();});
+}
+
+async function deleteDocumentInspectorElement(item) {
+  if(!item?.file||!item.path)throw Error('The selected document element is unavailable.');
+  tiMathEditor?.flush();
+  // Keep invalid and unsaved editor drafts in memory; deleting an unrelated
+  // document page must neither validate nor silently replace those drafts.
+  const current=xmlDoctor.current,currentKey=current?JSON.stringify([documentXmlFileIdentity(current.file),current.program_name,current.document_type]):null;
+  const drafts=new Map(xmlDoctor.candidates.map(candidate=>[JSON.stringify([documentXmlFileIdentity(candidate.file),candidate.program_name,candidate.document_type]),candidate===current?document.querySelector('#xml-code').value:candidate.code]));
+  await ensureXmlStageCopy();
+  pyodide.globals.set('wasm_inspector_remove',JSON.stringify({file:item.file,path:item.path,xml:item.raw_xml||'',resource:item.type==='Resource',size:item.detail?.length??null}));
+  pyodide.globals.set('wasm_inspector_remove_auth',TI_CALCULATOR_AUTH_B64);
+  const result=JSON.parse(await pyodide.runPythonAsync(`
+import json,base64
+from pathlib import Path
+from xml_updater import XMLUpdater
+change=json.loads(wasm_inspector_remove)
+source_file=Path(change['file'])
+source_root=Path("${xmlDoctor.sourcePath}")
+stage_root=Path("${xmlDoctor.stagePath}")
+try: relative=source_file.relative_to(stage_root)
+except ValueError: relative=source_file.relative_to(source_root)
+target=(stage_root/relative).resolve()
+target.relative_to(stage_root.resolve())
+if change['resource']:
+    removed=XMLUpdater.remove_document_resource(stage_root,relative.as_posix(),change['size'])
+else:
+    removed=XMLUpdater.remove_document_element(target,change['path'],change['xml'],base64.b64decode(wasm_inspector_remove_auth).decode())
+json.dumps(removed)
+`));
+  window.TnsPrgmPreview?.close();window.TnsProgramEditorPreview?.close();
+  const removedSymbol=result.removed_symbol;
+  if(removedSymbol&&/^[\p{L}_][\p{L}\p{N}_]*$/u.test(removedSymbol)){const math=documentCalculatorSessions.get(documentCalculatorFile(item.file))?.mathSession;if(math){math.evaluate(`Unlock ${removedSymbol}`);math.evaluate(`DelVar ${removedSymbol}`);}}
+  xmlDoctor.previewItems=[];xmlDoctor.previewFile='';
+  await scanXmlPrograms();
+  for(const candidate of xmlDoctor.candidates){const key=JSON.stringify([documentXmlFileIdentity(candidate.file),candidate.program_name,candidate.document_type]);if(drafts.has(key))candidate.code=drafts.get(key);}
+  const selected=xmlDoctor.candidates.find(candidate=>JSON.stringify([documentXmlFileIdentity(candidate.file),candidate.program_name,candidate.document_type])===currentKey)||xmlDoctor.candidates[0];
+  // The selection wrapper synchronizes the outgoing textarea into its current
+  // candidate. It currently contains the just-scanned stored body; do not let
+  // that overwrite the unsaved draft restored above.
+  xmlDoctor.current=null;
+  if(selected)selectXmlProgram(selected.index);
+  collectLoadedTnsVariables();
+  xmlDoctor.embedded=!selected;xmlDoctor.stagePrepared=true;
+  await inspectXmlDocument();
+  xmlLog(`${inspectorElementDeleteWords(item).remove}: ${item.detail?.name||item.name}`);
+  return result;
+}
+
 async function openDocumentInspector() {
   const data = await inspectXmlDocument();
   const backdrop = document.createElement("div");
@@ -17584,7 +17682,7 @@ async function openDocumentInspector() {
   ].filter(([, count]) => Number(count) > 0).map(([label, count, kind]) => kind
     ? `<button type="button" class="inspector-preview-action${kind === 'images' ? ' tns-image-gallery-chip' : ''}" data-preview-kind="${kind}" title="${escapeHtml(label)} preview">${label}: ${count}</button>`
     : `<span>${label}: ${count}</span>`).join('');
-  const previewItem = (kind, item) => openDocumentAppPreview(previewGroups, kind, Math.max(0, previewGroups[kind].indexOf(item))).catch(error => xmlLog(`ERROR Preview: ${error.message}`));
+  const previewItem = (kind, item, session = {}) => openDocumentAppPreview(previewGroups, kind, Math.max(0, previewGroups[kind].indexOf(item)), session).catch(error => xmlLog(`ERROR Preview: ${error.message}`));
   const sortedItems = [...(data.items || [])].sort((a, b) => {
     const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.content_label === "Spreadsheet" ? 2 : item.content_label === "Notepad" ? 3 : item.content_label === "Graph" ? 4 : item.content_label === "Image" ? 5 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 6 : item.type === "Card" ? 7 : 8;
     return rank(a) - rank(b) || String(a.file).localeCompare(String(b.file)) || String(a.path).localeCompare(String(b.path));
@@ -17593,7 +17691,8 @@ async function openDocumentInspector() {
     const detail = item.detail ? Object.entries(item.detail).map(([key, value]) => `${key}: ${value}`).join(", ") : "";
     let contentAction = "";
     if (item.content_label === 'ProgramEditor') {
-      contentAction = `<button type="button" class="mini-action program-preview-action green-mini-action" data-index="${index}">${escapeHtml(t('previewPrgm'))}</button>`;
+      const openEditor = ({es:'Abrir editor',en:'Open editor',fr:'Ouvrir l’éditeur'})[document.documentElement.lang?.slice(0,2)] || 'Open editor';
+      contentAction = `<button type="button" class="mini-action program-editor-action green-mini-action" data-index="${index}">${escapeHtml(openEditor)}</button><button type="button" class="mini-action program-preview-action green-mini-action" data-index="${index}">${escapeHtml(t('previewPrgm'))}</button>`;
     } else if (item.type === "Lua Script") {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action green-mini-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`;
     } else if (item.content_label === "Python") {
@@ -17617,8 +17716,10 @@ async function openDocumentInspector() {
     const editorVisible=(data.items||[]).some(w=>w.content_label==='ProgramEditor'&&w.file===item.file&&w.detail?.name===programName);
     const canToggle=item.content_label==='ProgramEditor'||candidate&&!editorVisible&&['Prgm','Func'].includes(item.type);
     const visibilityAction=canToggle?`<button type="button" class="mini-action program-editor-visibility" data-index="${index}" data-visible="${editorVisible}" aria-pressed="${editorVisible}" aria-label="${escapeHtml(editorVisible?visibilityWords.hide:visibilityWords.show)}" title="${escapeHtml(editorVisible?visibilityWords.hide:visibilityWords.show)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>${editorVisible?'':'<path d="M3 3l18 18"/>'}</svg></button>`:'';
-    const action = `${contentAction}${visibilityAction}${xmlAction}`;
-    return `<tr><td>${escapeHtml(item.name)}</td><td>${action}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td></tr>`;
+    const deleteWords=inspectorElementDeleteWords(item);
+    const deleteAction=`<button type="button" class="mini-action inspector-delete-action" data-delete-element="${index}" title="${escapeHtml(deleteWords.button)}" aria-label="${escapeHtml(deleteWords.button+': '+(item.detail?.name||item.name))}">×</button>`;
+    const action = `${contentAction}${visibilityAction}${xmlAction}${deleteAction}`;
+    return `<tr data-inspector-element="${index}"><td>${escapeHtml(item.name)}</td><td>${action}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td></tr>`;
   }).join("");
   backdrop.innerHTML = `
     <div class="modal inspector-modal">
@@ -17653,11 +17754,15 @@ async function openDocumentInspector() {
       </div>
     </div>`;
   document.body.append(backdrop);
+  for(const button of backdrop.querySelectorAll('.inspector-delete-action'))button.addEventListener('click',async()=>{const item=sortedItems[Number(button.dataset.deleteElement)];if(!await confirmInspectorElementRemoval(item))return;button.disabled=true;try{await deleteDocumentInspectorElement(item);closeModal(backdrop,()=>openDocumentInspector());}catch(error){button.disabled=false;xmlLog(`ERROR: ${error.message}`);showTextModal(inspectorElementDeleteWords(item).title,error.message);}});
   for(const button of backdrop.querySelectorAll('.program-editor-visibility'))button.addEventListener('click',async()=>{button.disabled=true;try{await setProgramEditorPageVisible(sortedItems[Number(button.dataset.index)],button.dataset.visible!=='true');closeModal(backdrop,()=>openDocumentInspector());}catch(error){xmlLog(`ERROR: ${error.message}`);button.disabled=false;showTextModal(t('documentInspector'),error.message);}});
   for (const button of backdrop.querySelectorAll('[data-preview-kind]')) {
     button.addEventListener('click', () => openDocumentAppPreview(previewGroups, button.dataset.previewKind).catch(error => xmlLog(`ERROR Preview: ${error.message}`)));
   }
   for (const button of backdrop.querySelectorAll('.program-preview-action')) {
+    button.addEventListener('click', () => previewItem('basic', sortedItems[Number(button.dataset.index)], { programRun: true }));
+  }
+  for (const button of backdrop.querySelectorAll('.program-editor-action')) {
     button.addEventListener('click', () => previewItem('basic', sortedItems[Number(button.dataset.index)]));
   }
   backdrop.querySelector("#inspector-close").addEventListener("click", () => closeModal(backdrop));

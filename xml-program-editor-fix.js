@@ -532,12 +532,50 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions, "sources"
 
   openDocumentInspector = async function () {
     const previous = xmlDoctor.current ? {name:xmlDoctor.current.program_name,type:xmlDoctor.current.document_type,file:xmlDoctor.current.file} : null;
-    if (xmlDoctor.current && !xmlDoctor.embedded) await persistCurrentProgram();
-    await scanXmlPrograms();
-    if(previous){
+    // A rescan replaces every candidate with the version currently on disk.
+    // Keep every modified ProgramEditor in memory while the active one is
+    // saved and the Inspector rebuilds its element list.
+    if (xmlDoctor.current) syncCode();
+    const draftKey = (item) => JSON.stringify([
+      documentXmlFileIdentity(item.file), item.program_name, item.document_type,
+    ]);
+    const fingerprint = (item) => JSON.stringify([
+      item.program_name, item.document_type, item.library_access, item.parameters, item.code,
+    ]);
+    const pendingDrafts = new Map();
+    for (const item of xmlDoctor.candidates || []) {
+      if (item.storedFingerprint !== fingerprint(item)) {
+        pendingDrafts.set(draftKey(item), item.code);
+      }
+    }
+    let canRescan=true;
+    if (xmlDoctor.current && !xmlDoctor.embedded) {
+      try { await persistCurrentProgram(); }
+      catch(error) {
+        // An unfinished draft is still editable. Inspector can show the last
+        // staged structure without requiring that draft to pass syntax first.
+        if(Number(xmlDoctor.lastReport?.errors)>0){canRescan=false;}
+        else throw error;
+      }
+    }
+    if(canRescan) {
+      await scanXmlPrograms();
+      for (const item of xmlDoctor.candidates || []) {
+        const key = draftKey(item);
+        if (pendingDrafts.has(key)) item.code = pendingDrafts.get(key);
+      }
+      if (pendingDrafts.size) collectLoadedTnsVariables();
+    }
+    if(previous&&canRescan){
       const sameFile=(file)=>documentXmlFileIdentity(file)===documentXmlFileIdentity(previous.file);
       const selected=xmlDoctor.candidates.find(item=>item.program_name===previous.name&&item.document_type===previous.type&&sameFile(item.file));
-      if(selected)selectXmlProgram(selected.index);
+      if(selected) {
+        // scanXmlPrograms selects its first result. Clear that transient
+        // selection before selecting the previous one, or the selection
+        // wrapper would sync the stale textarea over a restored draft.
+        xmlDoctor.current = null;
+        selectXmlProgram(selected.index);
+      }
     }
     const result = await oldInspector();
     patchInspectorIfEmpty();

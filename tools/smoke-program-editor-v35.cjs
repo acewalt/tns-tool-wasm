@@ -1,0 +1,139 @@
+/* Real offline application regression: source editing, widget navigation and
+   staged element deletion. Creates only virtual documents in Pyodide /work. */
+const {app,BrowserWindow,session}=require('electron');
+const fs=require('node:fs'),path=require('node:path');
+const root=path.resolve(process.env.TNS_SMOKE_WEB_ROOT||path.join(__dirname,'..'));
+const desktop=path.resolve(process.env.TNS_SMOKE_DESKTOP_ROOT||path.join(root,'../portable-0.1.27/desktop'));
+const {makeServer,listen}=require(path.join(desktop,'server.cjs'));
+const reportPath=path.resolve(process.env.TNS_SMOKE_REPORT||path.join(root,'release/qa/program-editor-v35.json'));
+let win,server;
+app.commandLine.appendSwitch('disable-gpu');
+app.whenReady().then(async()=>{
+ server=makeServer(root,path.join(desktop,'vendor'));const origin=await listen(server);
+ session.defaultSession.webRequest.onBeforeRequest({urls:['*://*/*']},(details,done)=>done({cancel:!details.url.startsWith(origin)}));
+ win=new BrowserWindow({show:false,width:1440,height:1000,webPreferences:{sandbox:true,contextIsolation:true,backgroundThrottling:false,offscreen:true}});
+ await win.loadURL(origin);win.webContents.debugger.attach('1.3');await win.webContents.debugger.sendCommand('Emulation.setFocusEmulationEnabled',{enabled:true});
+ const report=await win.webContents.executeJavaScript(`(${checkEditor.toString()})()`);
+ await new Promise(resolve=>setTimeout(resolve,500));
+ fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath+'.math.png',(await win.webContents.capturePage()).toPNG());
+ await win.webContents.executeJavaScript('document.querySelector("[data-ti-pe-math-view]").click();new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');fs.writeFileSync(reportPath+'.editor.png',(await win.webContents.capturePage()).toPNG());await win.webContents.executeJavaScript('document.querySelector("[data-ti-pe-math-view]").click();new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)))');
+ report.run=await win.webContents.executeJavaScript(`(${checkRun.toString()})()`);fs.writeFileSync(reportPath+'.run.png',(await win.webContents.capturePage()).toPNG());
+ report.deletion=await win.webContents.executeJavaScript(`(${checkDeletion.toString()})()`);fs.writeFileSync(reportPath+'.inspector.png',(await win.webContents.capturePage()).toPNG());
+ fs.writeFileSync(reportPath,JSON.stringify(report,null,2));console.log(JSON.stringify(report));win.destroy();server.close();app.exit(0);
+}).catch(async error=>{
+ console.error(error.stack||error);fs.mkdirSync(path.dirname(reportPath),{recursive:true});
+ if(win&&!win.isDestroyed()){
+  const state=await win.webContents.executeJavaScript('({steps:window.__v35SmokeResults,log:document.querySelector("#xml-log")?.textContent.slice(-2000),editor:window.TnsProgramEditorPreview?.getSnapshot?.(),body:document.body.className})').catch(()=>null);
+  fs.writeFileSync(reportPath,JSON.stringify({ok:false,error:String(error),state},null,2));fs.writeFileSync(reportPath+'.failure.png',(await win.webContents.capturePage()).toPNG());win.destroy();
+ }server?.close();app.exit(1);
+});
+
+async function checkEditor(){
+ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms)),must=(value,message)=>{if(!value)throw Error(message);};
+ const wait=async(fn,label)=>{const end=Date.now()+45000;while(!fn()){if(Date.now()>end)throw Error('Timeout '+label);await pause(30);}};
+ const steps=window.__v35SmokeResults=[];const done=name=>steps.push(name);
+ const current=selector=>[...document.querySelectorAll(selector)].find(node=>!node.closest('.closing'));
+ await wait(()=>typeof pyodide!=='undefined'&&pyodide&&window.TnsProgramEditorPreview&&window.TnsPrgmPreview&&!document.querySelector('#startup-loader')&&!document.querySelector('#xml-toggle-btn').disabled,'offline runtime');
+ applyLanguage('en');if(document.querySelector('#xml-doctor-panel').classList.contains('collapsed'))document.querySelector('#xml-toggle-btn').click();await pause(300);
+ const addProgram=async()=>{const task=addPageFromFileMenu('program-editor');await wait(()=>current('#xpe-apply'),'Program settings');current('#xpe-apply').click();await task;await pause(100);return xmlDoctor.current.program_name;};
+ const first=await addProgram(),source=document.querySelector('#xml-code');
+ const original='Prgm\nLocal x\nx:=-15\nDisp abs(x)\nDisp "hola"\nEndPrgm';codeEditorAdapters.get('#xml-code').replaceRange(original,0,source.value.length);await embedXmlCode();
+ const second=await addProgram();await addNotepadWidgetToStage();await addNotepadWidgetToStage();await addCalculatorWidgetToStage();
+ await openDocumentInspector();const inspector=current('.inspector-modal');must(inspector.querySelector('[data-preview-kind="basic"]'),'Basic missing');
+ const rows=[...inspector.querySelectorAll('tbody tr')],programRows=rows.filter(row=>row.cells[0]?.textContent==='TI.ProgramEditor');must(programRows.length===2,'Expected two ProgramEditor elements');
+ for(const row of programRows){must(row.querySelector('.program-editor-action'),'Element has no Open editor');must(row.querySelector('.program-preview-action'),'Element has no Prgm Preview');}
+ inspector.querySelector('[data-preview-kind="basic"]').click();await wait(()=>current('.ti-program-editor-preview-modal'),'Basic editor');
+ let modal=current('.ti-program-editor-preview-modal'),field=modal.querySelector('[data-ti-pe-source]'),declaration=modal.querySelector('[data-ti-pe-declaration]');
+ const stage=modal.querySelector('.ti-program-editor-calculator'),rect=stage.getBoundingClientRect();must(Math.abs(rect.width-320)<1&&Math.abs(rect.height-240)<1,'Editor is not 320x240');
+ must(!document.querySelector('.prgm-preview-modal'),'Basic incorrectly opened Calculator');must(field.value===original,'First editor source incorrect');must(!field.contains(declaration)&&!field.value.includes('Define'),'Define is editable source');must(!declaration.isContentEditable&&declaration.textContent===`Define LibPub ${first}()=`,'Readonly Define metadata incorrect');
+ must(window.TnsProgramEditorPreview.getSnapshot().mathView===true&&[...modal.querySelectorAll('[data-math-line="4"] mo')].some(node=>node.textContent==='|'),'Default ProgramEditor did not show abs as mathematical bars');const mathString=modal.querySelector('[data-math-line="5"] .ti-pe-math-string');must(mathString&&mathString.textContent.includes('"hola"')&&getComputedStyle(mathString).color==='rgb(0, 128, 0)','Math view lost quoted green strings');modal.querySelector('[data-ti-pe-math-view]').click();must(!window.TnsProgramEditorPreview.getSnapshot().mathView,'Cannot switch to source editing');field.setSelectionRange(0,field.value.length);modal.querySelector('[data-ti-pe-math-view]').click();must(window.TnsProgramEditorPreview.getSource()===original,'Select all then Math view deleted source');modal.querySelector('[data-ti-pe-math-view]').click();
+ const colors={};for(const [kind,color]of [['keyword','rgb(0, 0, 255)'],['string','rgb(0, 128, 0)'],['operator','rgb(255, 0, 0)']]){const token=modal.querySelector('.ti-pe-'+kind);must(token,'Missing syntax token '+kind);colors[kind]=getComputedStyle(token).color;must(colors[kind]===color,'Wrong TI '+kind+' palette '+colors[kind]);}
+ done('editorPresentation');
+ const write=value=>{field.value=value;field.setSelectionRange(value.length,value.length);field.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText'}));};
+ const invalid='Prgm\nIf 1 Then\nDisp "broken"\nEndPrgm';write(invalid);field.dispatchEvent(new KeyboardEvent('keydown',{key:'b',ctrlKey:true,bubbles:true,cancelable:true}));await wait(()=>window.TnsProgramEditorPreview.getSnapshot()?.report?.errors>0,'Ctrl+B invalid report');
+ const moduleReport=window.TnsProgramEditorPreview.getSnapshot().report,mainReport=await runXmlSyntax();must(mainReport.errors===moduleReport.errors,'Preview editor uses different syntax validation');modal.querySelector('[data-ti-pe-math-view]').click();const diagnostic=modal.querySelector('[data-ti-pe-diagnostics] button:not(:disabled)');must(diagnostic,'No selectable error diagnostic');diagnostic.click();must(window.TnsProgramEditorPreview.getSource()===invalid,'Selecting a diagnostic erased its source line');modal.querySelector('[data-ti-pe-math-view]').click();
+ const edited='Prgm\nLocal x\nx:=-16\nDisp abs(x)\nDisp "hola"\nEndPrgm';write(edited);field.dispatchEvent(new KeyboardEvent('keydown',{key:'b',ctrlKey:true,bubbles:true,cancelable:true}));await wait(()=>window.TnsProgramEditorPreview.getSnapshot()?.report?.errors===0,'Ctrl+B valid report');
+ must(document.querySelector('#xml-code').value===edited,'Preview changes did not reach Syntax Doctor');must(xmlDoctor.candidates.find(item=>item.program_name===first).code===edited,'Preview candidate draft stale');
+ field.setSelectionRange(0,field.value.length);field.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,cancelable:true,clipboardData:(()=>{const data=new DataTransfer();data.setData('text/plain',edited);return data;})()}));must(declaration.textContent===`Define LibPub ${first}()=`,'Select all + paste changed Define');write(edited);
+ modal.querySelector('[data-ti-pe-save]').click();await wait(()=>window.TnsProgramEditorPreview.getSnapshot()?.dirty===false,'Save source');
+ const roundtrip=JSON.parse(await pyodide.runPythonAsync(`
+import json,xml.etree.ElementTree as ET
+from pathlib import Path
+from tnstools import build_tns_from_xml,decode_tns_file
+from xml_scanner import XMLScanner,local_name
+stage=Path("${xmlDoctor.stagePath}")
+build_tns_from_xml(stage,Path('/work/program-editor-v35.tns'))
+decode_tns_file(Path('/work/program-editor-v35.tns'),Path('/work/program-editor-v35-roundtrip'))
+programs=XMLScanner(Path('/work/program-editor-v35-roundtrip')).scan()
+selected=[p for p in programs if p.program_name==${JSON.stringify(first)} and p.code_text and '-16' in p.code_text]
+assert selected,'Saved source did not survive TNS build/decode'
+json.dumps({'ok':True,'updatedSourceRetained':True})
+`));must(roundtrip.ok,'Editor source export failed');done('validationAndSave');
+ const selectedStart=field.value.indexOf('Disp abs(x)');field.setSelectionRange(selectedStart,selectedStart+'Disp abs(x)'.length);modal.querySelector('[data-ti-pe-math-view]').click();must(window.TnsProgramEditorPreview.getSource()===edited,'Focusing selected line mutated source');
+ const backdrop=modal.closest('.modal-backdrop');let tabs=[...modal.querySelectorAll('.document-preview-tabs')].find(node=>node.getClientRects().length);must(tabs.querySelectorAll('.document-preview-tab').length===2,'Basic tabs missing');tabs.querySelectorAll('.document-preview-tab')[1].click();
+ await wait(()=>current('.ti-program-editor-preview-modal')!==modal,'Second editor');modal=current('.ti-program-editor-preview-modal');must(modal.closest('.modal-backdrop')===backdrop,'Editor navigation replaced backdrop');must(window.TnsProgramEditorPreview.getSnapshot().source!==edited,'Second editor incorrectly shares source');
+ tabs=[...modal.querySelectorAll('.document-preview-tabs')].find(node=>node.getClientRects().length);tabs.querySelectorAll('.document-preview-tab')[0].click();await wait(()=>window.TnsProgramEditorPreview.getSnapshot()?.source===edited,'Restored first source');await pause(150);modal=current('.ti-program-editor-preview-modal');field=modal.querySelector('[data-ti-pe-source]');must(window.TnsProgramEditorPreview.getSnapshot().name===first&&modal.querySelector('[data-ti-pe-declaration]').textContent===`Define LibPub ${first}()=`,'Navigation retained stale program metadata');
+ const after=modal.querySelector('.ti-program-editor-calculator').getBoundingClientRect();must(['x','y','width','height'].every(key=>Math.abs(after[key]-rect[key])<1),'Editor page movement changed preview position');
+ const expand=modal.querySelector('[data-preview-window-expand]'),font=getComputedStyle(field).fontSize;must(expand,'Shared expanded view missing');expand.click();await pause(120);must(modal.querySelector('.ti-program-editor-calculator').getBoundingClientRect().width>320,'Expanded editor did not expand');must(getComputedStyle(field).fontSize===font,'Expanded editor scaled its source font');expand.click();await pause(120);const restored=modal.querySelector('.ti-program-editor-calculator').getBoundingClientRect();must(['x','y','width','height'].every(key=>Math.abs(restored[key]-rect[key])<1),'Collapsed editor did not restore location');
+ if(!window.TnsProgramEditorPreview.getSnapshot().mathView)modal.querySelector('[data-ti-pe-math-view]').click();must(window.TnsProgramEditorPreview.getSnapshot().mathView,'Math source toggle did not enable');let mathRow=modal.querySelector('[data-math-line="4"]');mathRow.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}));const mathInput=modal.querySelector('.ti-math-source-input');must(mathInput,'Mathematical line cannot be edited');mathInput.value='Disp abs(x)+1';mathInput.setSelectionRange(mathInput.value.length,mathInput.value.length);mathInput.dispatchEvent(new InputEvent('input',{bubbles:true,inputType:'insertText'}));mathInput.dispatchEvent(new KeyboardEvent('keydown',{key:'b',ctrlKey:true,bubbles:true,cancelable:true}));await wait(()=>window.TnsProgramEditorPreview.getSnapshot()?.report?.errors===0&&!window.TnsProgramEditorPreview.getSnapshot()?.busy,'Math-line Ctrl+B');const finalSource=edited.replace('Disp abs(x)','Disp abs(x)+1');must(window.TnsProgramEditorPreview.getSource()===finalSource&&document.querySelector('#xml-code').value===finalSource,'Checking an active mathematical line did not flush its edit');
+ done('editorNavigation');
+ // Editing A then closing from B must not lose A when Inspector rescans stage.
+ tabs=[...modal.querySelectorAll('.document-preview-tabs')].find(node=>node.getClientRects().length);tabs.querySelectorAll('.document-preview-tab')[1].click();await wait(()=>window.TnsProgramEditorPreview.getSnapshot()?.name===second,'Navigate from unsaved A to B');window.TnsProgramEditorPreview.close();
+ current('.inspector-modal').querySelector('#inspector-close').click();await wait(()=>!current('.inspector-modal'),'Close Inspector');await openDocumentInspector();current('.inspector-modal').querySelector('[data-preview-kind="basic"]').click();await wait(()=>current('.ti-program-editor-preview-modal'),'Reopen first editor after rescan');modal=current('.ti-program-editor-preview-modal');must(window.TnsProgramEditorPreview.getSource()===finalSource,'Unsaved editor A was discarded after navigating to B, closing, and reopening Inspector');
+ done('multipleDraftsSurviveReinspection');window.__v35EditorState={first,second,edited:finalSource,rect:rect.toJSON(),colors};await pause(150);
+ return{ok:true,basicOpensEditor:true,twoElementActions:true,protectedDeclaration:true,tiPalette:colors,sameSyntax:true,saveRoundtrip:roundtrip,stableEditorNavigation:true,expandedWithoutFontScaling:true,defaultMathNotation:true,activeMathEditSyntax:true,selectAllMathTogglePreservesSource:true,diagnosticSelectionPreservesSource:true,selectedDraftReopenPreservesSource:true,multipleDraftsSurviveReinspection:true};
+}
+
+async function checkRun(){
+ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms)),must=(value,message)=>{if(!value)throw Error(message);};
+ const wait=async(fn,label)=>{const end=Date.now()+30000;while(!fn()){if(Date.now()>end)throw Error('Timeout '+label);await pause(25);}};
+ const state=window.__v35EditorState,editor=document.querySelector('.ti-program-editor-preview-modal'),backdrop=editor.closest('.modal-backdrop');
+ const mathRow=editor.querySelector('[data-math-line="4"]');mathRow.dispatchEvent(new PointerEvent('pointerdown',{bubbles:true,cancelable:true}));const runField=editor.querySelector('.ti-math-source-input')||editor.querySelector('[data-ti-pe-source]');runField.dispatchEvent(new KeyboardEvent('keydown',{key:'r',ctrlKey:true,bubbles:true,cancelable:true}));await wait(()=>document.querySelector('.prgm-preview-modal'),'Ctrl+R calculator');
+ must(window.TnsPrgmPreview.getSnapshot().executed===0,'Editor Run executed without Calculator Enter');must(window.TnsPrgmPreview.getInput()===state.first+'()','Calculator did not prefill selected program');
+ const modal=document.querySelector('.prgm-preview-modal'),rect=modal.querySelector('.prgm-preview-screen-shell').getBoundingClientRect();must(modal.closest('.modal-backdrop,.prgm-preview-overlay')===backdrop,'Run recreated outer preview backdrop');must(['x','y','width','height'].every(key=>Math.abs(rect[key]-state.rect[key])<1),'Editor and Calculator screens moved');
+ const field=modal.querySelector('[data-expression]');field.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));await wait(()=>window.TnsPrgmPreview.getSnapshot().status==='done','Run updated program');must(window.TnsPrgmPreview.getSnapshot().text==='17\nhola','Calculator did not execute preview editor source');
+ window.__v35SmokeResults.push('explicitRunFromEditor');return{ctrlRCalculator:true,waitsForEnter:true,updatedCodeExecuted:true,sharedLocation:true,persistentBackdrop:true};
+}
+
+async function checkDeletion(){
+ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms)),must=(value,message)=>{if(!value)throw Error(message);};
+ const wait=async(fn,label)=>{const end=Date.now()+30000;while(!fn()){if(Date.now()>end)throw Error('Timeout '+label);await pause(30);}};
+ const current=selector=>[...document.querySelectorAll(selector)].find(node=>!node.closest('.closing'));
+ window.TnsPrgmPreview.close();await wait(()=>!document.querySelector('.prgm-preview-modal'),'close Calculator');
+ const state=window.__v35EditorState;
+ const widgets=current('.inspector-modal')?.querySelector('[data-preview-kind="widgets"]');must(widgets,'Widgets summary missing');widgets.click();await wait(()=>current('.ti-program-editor-preview-modal'),'Widgets opens editor');let widgetEditor=current('.ti-program-editor-preview-modal'),widgetBackdrop=widgetEditor.closest('.modal-backdrop');must(!document.querySelector('.prgm-preview-modal'),'Widgets opened program execution instead of editor');
+ let widgetTabs=[...widgetEditor.querySelectorAll('.document-preview-tabs')].find(node=>node.getClientRects().length);widgetTabs.querySelectorAll('.document-preview-tab')[2].click();await wait(()=>current('.note-page-modal'),'Widgets note page');const note=current('.note-page-modal'),noteRect=note.querySelector('.note-calculator-shell').getBoundingClientRect();must(note.closest('.modal-backdrop')===widgetBackdrop,'Cross-widget navigation detached backdrop');must(['x','y','width','height'].every(key=>Math.abs(noteRect[key]-state.rect[key])<1),'Cross-widget preview location changed');
+ widgetTabs=[...note.querySelectorAll('.document-preview-tabs')].find(node=>node.getClientRects().length);widgetTabs.querySelector('[aria-label="Previous pages"]')?.click();widgetTabs.querySelectorAll('.document-preview-tab')[0].click();await wait(()=>current('.ti-program-editor-preview-modal'),'Widgets return editor');await pause(120);must(window.TnsProgramEditorPreview.getSnapshot().name===state.first&&window.TnsProgramEditorPreview.getSource()===state.edited,'Widgets return lost editor source or name');window.TnsProgramEditorPreview.close();await wait(()=>!document.querySelector('.ti-program-editor-preview-modal'),'close Widgets editor');window.__v35SmokeResults.push('widgetsEditorAndNotes');
+ for(const inspector of [...document.querySelectorAll('.inspector-modal')]){const close=inspector.querySelector('#inspector-close');close?.click();}await wait(()=>!document.querySelector('.inspector-modal'),'close old Inspector');
+ const source=document.querySelector('#xml-code');selectXmlProgram(xmlDoctor.candidates.find(item=>item.program_name===state.first).index);const invalid='Prgm\nIf 1 Then\nDisp "UNSAVED DRAFT"\nEndPrgm';codeEditorAdapters.get('#xml-code').replaceRange(invalid,0,source.value.length);
+ await openDocumentInspector();must(current('.inspector-modal'),'Invalid draft blocked Inspector');const data=await inspectXmlDocument(),notes=data.items.filter(item=>item.content_label==='Notepad');must(notes.length===2,'Fixture note count incorrect');
+ const rowFor=item=>[...current('.inspector-modal').querySelectorAll('tbody tr')].find(row=>row.cells[0]?.textContent===item.name&&row.cells[4]?.textContent===item.path&&row.cells[3]?.textContent===item.file.split('/').pop());
+ const openDelete=async item=>{await wait(()=>current('.inspector-modal'),'Inspector ready');const row=rowFor(item);must(row,'Missing row for '+item.path);const button=row.querySelector('.inspector-delete-action');must(button,'Missing Delete button');button.focus();await pause(180);must(parseFloat(getComputedStyle(button).opacity)>0,'Delete action not visible on keyboard focus');button.click();await wait(()=>current('.inspector-delete-confirmation'),'Delete confirmation');return current('.inspector-delete-confirmation');};
+ const initialXml=await pyodide.runPythonAsync(`from pathlib import Path\nPath("${xmlDoctor.stagePath}/Problem1.xml").read_text()`);
+ (await openDelete(notes[0])).querySelector('[data-inspector-delete-cancel]').click();await wait(()=>!current('.inspector-delete-confirmation'),'cancel delete');
+ const afterCancel=await pyodide.runPythonAsync(`from pathlib import Path\nPath("${xmlDoctor.stagePath}/Problem1.xml").read_text()`);must(initialXml===afterCancel,'Cancel changed document');
+ (await openDelete(notes[0])).querySelector('[data-inspector-delete-confirm]').click();await wait(()=>!current('.inspector-delete-confirmation'),'confirm note delete');await pause(300);
+ let next=await inspectXmlDocument();must(next.items.filter(item=>item.content_label==='Notepad').length===1,'Note deletion did not remove exactly one note');must(source.value===invalid,'Deleting unrelated note discarded invalid draft');
+ const remainingNote=next.items.find(item=>item.content_label==='Notepad'),noteCard=next.items.find(item=>item.type==='Card'&&remainingNote.path.startsWith(item.path+'/'));
+ must(noteCard,'Note card unavailable');const cardsBefore=next.summary.cards;(await openDelete(noteCard)).querySelector('[data-inspector-delete-confirm]').click();await wait(()=>!current('.inspector-delete-confirmation'),'confirm card delete');await pause(300);next=await inspectXmlDocument();must(next.summary.cards===cardsBefore-1&&!next.items.some(item=>item.content_label==='Notepad'),'Card deletion did not remove its child app');must(source.value===invalid,'Card deletion discarded current draft');
+ const firstEditor=next.items.find(item=>item.content_label==='ProgramEditor'&&item.detail.name===state.first);const symbolBefore=next.items.find(item=>item.type==='Prgm'&&item.name===state.first);must(firstEditor&&symbolBefore,'Program fixture missing');
+ const dialog=await openDelete(firstEditor);must(/symbol|callable|program/i.test(dialog.textContent),'Editor deletion does not explain preserved program');dialog.querySelector('[data-inspector-delete-confirm]').click();await wait(()=>!current('.inspector-delete-confirmation'),'confirm editor deletion');await pause(300);next=await inspectXmlDocument();must(!next.items.some(item=>item.content_label==='ProgramEditor'&&item.detail.name===state.first),'Editor page remained');must(next.items.some(item=>item.type==='Prgm'&&item.name===state.first),'Deleting editor also deleted stored program');
+ const secondSymbol=next.items.find(item=>item.type==='Prgm'&&item.name===state.second);must(secondSymbol,'Second symbol missing');(await openDelete(secondSymbol)).querySelector('[data-inspector-delete-confirm]').click();await wait(()=>!current('.inspector-delete-confirmation'),'confirm symbol deletion');await pause(300);next=await inspectXmlDocument();must(!next.items.some(item=>item.name===state.second||item.content_label==='ProgramEditor'&&item.detail.name===state.second),'Deleting stored program left its editor page');
+ must(next.summary.widgets>=1,'Deletion left invalid empty document');selectXmlProgram(xmlDoctor.candidates.find(item=>item.program_name===state.first).index);codeEditorAdapters.get('#xml-code').replaceRange(state.edited,0,source.value.length);await embedXmlCode();
+ const roundtrip=JSON.parse(await pyodide.runPythonAsync(`
+import json,xml.etree.ElementTree as ET
+from pathlib import Path
+from tnstools import build_tns_from_xml,decode_tns_file
+from xml_scanner import XMLScanner,local_name
+build_tns_from_xml(Path("${xmlDoctor.stagePath}"),Path('/work/program-editor-v35-deleted.tns'))
+decode_tns_file(Path('/work/program-editor-v35-deleted.tns'),Path('/work/program-editor-v35-deleted-roundtrip'))
+root=ET.parse(Path('/work/program-editor-v35-deleted-roundtrip/Problem1.xml')).getroot()
+widgets=[e.attrib.get('type') for e in root.iter() if local_name(e.tag)=='wdgt']
+symbols=[(n.text or '').strip() for sym in root if local_name(sym.tag)=='sym' for e in sym if local_name(e.tag)=='e' for n in e if local_name(n.tag)=='n']
+assert 'TI.Notepad' not in widgets and 'TI.ProgramEditor' not in widgets,widgets
+assert ${JSON.stringify(state.first)} in symbols and ${JSON.stringify(state.second)} not in symbols,symbols
+assert any(c.program_name==${JSON.stringify(state.first)} and 'abs(x)+1' in (c.code_text or '') for c in XMLScanner(Path('/work/program-editor-v35-deleted-roundtrip')).scan()),'Remaining callable code changed'
+json.dumps({'ok':True,'widgets':widgets,'keptProgram':${JSON.stringify(state.first)},'deletedProgram':${JSON.stringify(state.second)}})
+`));must(roundtrip.ok,'Deleted document did not build/decode');window.__v35SmokeResults.push('stagedDeletion');
+ return{widgetsOpensEditor:true,crossWidgetNoteLocation:true,widgetsDraftRetained:true,confirmationCancelUnchanged:true,hoverAndKeyboardDelete:true,noteScoped:true,cardChildrenRemoved:true,invalidDraftPreserved:true,editorPageKeepsCallableSymbol:true,storedProgramRemovesEditor:true,remainingWidgets:next.summary.widgets,exportRoundtrip:roundtrip};
+}

@@ -4288,6 +4288,14 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 .code-shell.has-program-declaration{grid-template-rows:34px minmax(0,1fr)}
 .program-declaration{grid-column:1/-1;min-width:0;padding:7px 14px 7px 64px;border-bottom:1px solid var(--line);font:600 13px/19px Consolas,monospace;white-space:pre;overflow-x:auto;overflow-y:hidden;color:var(--text);background:var(--panel);user-select:text;cursor:default}
 .program-declaration[hidden]{display:none}
+.inspector-table .inspector-delete-action{opacity:0;pointer-events:none;color:#ff8c9c;border:1px solid #8b3449;min-width:27px;height:27px;padding:0 6px;font:700 21px/23px Arial,sans-serif;vertical-align:middle;background:#421d2b;transition:opacity .12s ease}
+.inspector-table tr:hover .inspector-delete-action,.inspector-table tr:focus-within .inspector-delete-action,.inspector-table .inspector-delete-action:focus-visible{visibility:visible;opacity:1;pointer-events:auto}
+.inspector-table .inspector-delete-action:disabled{opacity:.4;cursor:wait}
+.inspector-delete-dialog{width:min(520px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;border:1px solid #405675;border-radius:16px;padding:24px;background:var(--panel);color:var(--text)}
+.inspector-delete-dialog strong,.inspector-delete-dialog code{display:block;overflow-wrap:anywhere;margin:10px 0}.inspector-delete-dialog code{font:12px/1.5 Consolas,monospace;color:var(--muted)}
+.inspector-delete-dialog p{font:14px/1.55 Arial,sans-serif}.inspector-delete-dialog .danger-action{background:#b42342;color:#fff;border:1px solid #de516d}.inspector-delete-dialog .danger-action:hover{background:#cc2c4f}
+[data-theme=light] .inspector-table .inspector-delete-action{background:#fff0f2;color:#aa1636;border-color:#e5aab7}
+@media(hover:none){.inspector-table .inspector-delete-action{visibility:visible;opacity:1;pointer-events:auto}}
 .code-shell.has-program-declaration>.editor-wrap{height:100%;min-height:0}
 .code-shell.has-program-declaration.monaco-enabled .program-declaration{padding-left:64px}
 [data-theme="dark"] .program-declaration{color:#dce8f8;background:#101b2d}
