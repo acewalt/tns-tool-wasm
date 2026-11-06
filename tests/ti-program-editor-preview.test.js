@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 const context = { window: {} };
-vm.runInNewContext(fs.readFileSync(new URL('../ti-program-editor-preview.js', import.meta.url), 'utf8'), context);
+vm.runInNewContext(fs.readFileSync(new URL('../web/ti-program-editor-preview.js', import.meta.url), 'utf8'), context);
 const editor = context.window.TnsProgramEditorPreview;
 
 test('Program Editor declarations come from metadata, independent of editable source', () => {

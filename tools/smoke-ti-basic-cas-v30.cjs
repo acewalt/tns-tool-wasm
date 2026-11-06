@@ -14,7 +14,7 @@ app.whenReady().then(async () => {
   win.webContents.on('console-message', (_event, level, message) => fs.appendFileSync(output + '.console.log', level + ': ' + message + '\n'));
   await win.loadURL(origin + 'release/qa/love-controls-fixture-v30.html');
   report.result = await win.webContents.executeJavaScript(String.raw`(async () => {
-    const script = document.createElement('script'); script.src = '/ti-cas-preview-bridge-v3.js';
+    const script = document.createElement('script'); script.src = '/web/ti-cas-preview-bridge-v3.js';
     await new Promise((resolve, reject) => { script.onload = resolve; script.onerror = reject; document.head.append(script); });
     const {createMathSession} = await import('/src/prgm/math-api.js');
     const cases = [], bridge = window.TnsCasBridge;

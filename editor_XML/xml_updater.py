@@ -66,7 +66,8 @@ class XMLUpdater:
 
         The exact inspected subtree is checked again before writing. Editor app
         removal keeps its stored program; stored program removal also removes
-        editor pages referring to it. Last/split app slots remain valid.
+        editor pages referring to it. A document's final page can remain empty;
+        deleting an app never silently creates a different app in its place.
         """
         tree = ET.parse(xml_file)
         root = tree.getroot()
@@ -91,16 +92,16 @@ class XMLUpdater:
             raise ValueError("Only complete stored symbols can be removed.")
         pns = namespace_uri(root.tag)
         q = lambda ns, tag: f"{{{ns}}}{tag}" if ns else tag
-        replacements = 0
-        def blank_widget():
-            nonlocal replacements
-            if not calculator_auth:
-                raise ValueError("A blank Calculator template is required to keep the last page valid.")
-            replacements += 1
-            scratch = ET.Element(q(pns, "wdgt"), {"type": "TI.Scratchpad", "ver": "1.0"})
-            for tag, value in [("mFlags", "0"), ("value", "0"), ("auth", calculator_auth)]:
-                ET.SubElement(scratch, q("urn:TI.Scratchpad", tag)).text = value
-            return scratch
+        def normalize_layout(card):
+            # clay is a layout code, not an app count. Use a supported layout
+            # for the surviving ordered slots, retaining the page's other
+            # attributes. An empty final card is the structural placeholder,
+            # so it must not be counted or reopened as a Calculator.
+            slots = sum(local_name(node.tag) == "wdgt" for node in card.iter())
+            layouts = {0: "0", 1: "0", 2: "1", 3: "3", 4: "7"}
+            if slots not in layouts:
+                raise ValueError("The page contains an unsupported number of app slots.")
+            card.set("clay", layouts[slots])
         def remove_widget(widget):
             current_parents = {child: parent for parent in root.iter() for child in parent}
             parent = current_parents.get(widget)
@@ -117,9 +118,8 @@ class XMLUpdater:
             if not other and len(cards) > 1 and current_parents.get(card) is root:
                 root.remove(card)
             else:
-                index = list(parent).index(widget)
                 parent.remove(widget)
-                parent.insert(index, blank_widget())
+                normalize_layout(card)
         related_editors = []
         removed_symbol = next((node.text or '' for node in element
                                if local_name(node.tag) == "n"), '').strip() if name == "e" else ""
@@ -140,12 +140,17 @@ class XMLUpdater:
             if len(cards) > 1:
                 root.remove(element)
             else:
-                # Keep a valid document with one blank Calculator page.
+                # Retain a page container without inventing a new app. In
+                # particular, deleting the final Calculator must leave zero
+                # Calculator widgets after an Inspector rescan or export.
                 blank = ET.Element(element.tag, dict(element.attrib))
-                blank.attrib.update({"clay": "0", "h1": "10000", "h2": "10000", "w1": "10000", "w2": "10000"})
-                for tag, value in [("isDummyCard", "0"), ("flag", "0")]:
-                    ET.SubElement(blank, q(pns, tag)).text = value
-                blank.append(blank_widget())
+                for tag in ("isDummyCard", "flag"):
+                    field = next((child for child in element if local_name(child.tag) == tag), None)
+                    if field is not None:
+                        blank.append(copy.deepcopy(field))
+                    else:
+                        ET.SubElement(blank, q(pns, tag)).text = "0"
+                normalize_layout(blank)
                 index = list(root).index(element)
                 root.remove(element)
                 root.insert(index, blank)
@@ -163,7 +168,9 @@ class XMLUpdater:
         body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False).replace(b'\r', b'&#13;')
         xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
         return {"removed": element_path, "removed_program": removed_program, "removed_symbol": removed_symbol,
-                "related_editors": len(related_editors), "blank_calculators": replacements}
+                "related_editors": len(related_editors), "blank_calculators": 0,
+                "empty_pages": sum(local_name(card.tag) == "card" and not any(local_name(node.tag) == "wdgt"
+                                    for node in card.iter()) for card in root)}
 
     @staticmethod
     def remove_document_resource(stage_root: Path, relative_path: str, expected_size: int | None = None) -> dict:

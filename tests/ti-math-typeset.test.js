@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 const context={window:{}};
-vm.runInNewContext(fs.readFileSync(new URL('../ti-math-typeset.js',import.meta.url),'utf8'),context);
+vm.runInNewContext(fs.readFileSync(new URL('../web/ti-math-typeset.js',import.meta.url),'utf8'),context);
 const math=context.window.TnsMathTypeset;
 test('all supplied calculator templates produce real two-dimensional MathML',()=>{
   const cases=[['((1)/(1))','mfrac'],['1^(1)','msup'],['√(1)','msqrt'],['root(1,1)','mroot'],['\uF03F^(1)','msup'],['log(1,1)','msub'],['piecewise(1,1,1,1)','mtable'],['piecewise(1,1,1,1,1,1)','mtable'],['system(1,1)','mtable'],['abs(1)','mo'],["1°1'1''",'″'],['[[1,1][1,1]]','mtable'],['[1,1]','mtable'],['[[1][1]]','mtable'],['[[1,1,1][1,1,1][1,1,1]]','mtable'],['∑(1,1,1,1)','munderover'],['∏(1,1,1,1)','munderover'],['\uF008(1,1)','mfrac'],['\uF008(1,1,2)','msup'],['\uF008(1,1,1)','mfrac'],['∫(1,1,1,1)','msubsup'],['∫(1,1)','∫'],['lim(1,1,1,1)','munder'],['1₁','msub']];

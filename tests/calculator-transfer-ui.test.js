@@ -3,12 +3,12 @@ import fs from "node:fs";
 import vm from "node:vm";
 
 const load = relative => fs.readFileSync(new URL(relative, import.meta.url), "utf8");
-const controller = load("../ti-nspire-webusb.js");
-const ui = load("../ti-calculator-transfer.js");
+const controller = load("../web/ti-nspire-webusb.js");
+const ui = load("../web/ti-calculator-transfer.js");
 const markup = load("../index.html");
-const style = load("../ti-calculator-transfer.css");
-const lang = load("../app.js");
-const ndless = load("../ndless-project-workspace.js");
+const style = load("../web/ti-calculator-transfer.css");
+const lang = load("../web/app.js");
+const ndless = load("../web/ndless-project-workspace.js");
 
 assert.match(markup, /ti-nspire-webusb\.js/);
 assert.match(markup, /ti-calculator-transfer\.js/);

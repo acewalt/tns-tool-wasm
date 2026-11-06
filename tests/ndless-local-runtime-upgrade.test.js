@@ -6,7 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const source = fs.readFileSync(path.join(__dirname, '..', 'ndless-local-runtime-upgrade.js'), 'utf8');
+const source = fs.readFileSync(path.join(__dirname, '..', 'web/ndless-local-runtime-upgrade.js'), 'utf8');
 
 let bridgeVersion = '0.2.0';
 let toolchainReady = false;
@@ -78,7 +78,7 @@ const context = vm.createContext({
   Math,
 });
 
-vm.runInContext(source, context, { filename: 'ndless-local-runtime-upgrade.js' });
+vm.runInContext(source, context, { filename: 'web/ndless-local-runtime-upgrade.js' });
 
 const options = {
   openLocal: false,

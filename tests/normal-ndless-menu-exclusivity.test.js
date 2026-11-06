@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 
-const app=fs.readFileSync(new URL("../app.js",import.meta.url),"utf8");
-const workspace=fs.readFileSync(new URL("../ndless-project-workspace.js",import.meta.url),"utf8");
+const app=fs.readFileSync(new URL("../web/app.js",import.meta.url),"utf8");
+const workspace=fs.readFileSync(new URL("../web/ndless-project-workspace.js",import.meta.url),"utf8");
 
 class Node{
   constructor(tag="div"){

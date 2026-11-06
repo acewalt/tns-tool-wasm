@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 
-const source = fs.readFileSync(new URL("../ti-cas-hybrid-fallback-v1.js", import.meta.url), "utf8").replace(/\r\n/g, '\n');
+const source = fs.readFileSync(new URL("../web/ti-cas-hybrid-fallback-v1.js", import.meta.url), "utf8").replace(/\r\n/g, '\n');
 let captured = null;
 const windowObject = {
   createLuaJsPreviewRuntime: async (code, ctx, canvas, logEl, symbols) => {
@@ -13,7 +13,7 @@ const windowObject = {
 };
 const context = { window: windowObject, console, setTimeout, clearTimeout };
 vm.createContext(context);
-vm.runInContext(source, context, { filename: "ti-cas-hybrid-fallback-v1.js" });
+vm.runInContext(source, context, { filename: "web/ti-cas-hybrid-fallback-v1.js" });
 
 const hybrid = windowObject.TnsCasHybrid;
 assert.ok(hybrid, "TnsCasHybrid should be installed");

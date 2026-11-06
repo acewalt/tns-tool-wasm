@@ -6,7 +6,7 @@ import crypto from 'node:crypto';
 
 const root=new URL('../',import.meta.url);
 const data=JSON.parse(fs.readFileSync(new URL('assets/program-editor/menu.json',root),'utf8'));
-const source=fs.readFileSync(new URL('program-editor-tools.js',root),'utf8');
+const source=fs.readFileSync(new URL('web/program-editor-tools.js',root),'utf8');
 const all=data.categories.flatMap(function flatten(node){return [node,...(node.children?.flatMap(flatten)||[])];});
 const leaves=all.filter(node=>!node.children?.length);
 function api(){

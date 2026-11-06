@@ -2,9 +2,9 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import vm from "node:vm";
 
-const app = readFileSync(new URL("../app.js", import.meta.url), "utf8");
+const app = readFileSync(new URL("../web/app.js", import.meta.url), "utf8");
 const html = readFileSync(new URL("../index.html", import.meta.url), "utf8");
-const css = readFileSync(new URL("../styles.css", import.meta.url), "utf8");
+const css = readFileSync(new URL("../web/styles.css", import.meta.url), "utf8");
 const start = app.indexOf("function normalizeTnsOutputFileName(");
 const end = app.indexOf("function tiDocumentNameError(", start);
 assert.ok(start >= 0 && end > start, "Filename helpers must exist");

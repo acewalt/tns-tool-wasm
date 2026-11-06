@@ -4,10 +4,10 @@ on:
   push:
     branches: [main]
     paths:
-      - 'ndless-build-confirm-flow.js'
-      - 'ndless-web-bridge.js'
-      - 'container-editor-bindings.js'
-      - 'multi-image-upload.js'
+      - 'web/ndless-build-confirm-flow.js'
+      - 'web/ndless-web-bridge.js'
+      - 'web/container-editor-bindings.js'
+      - 'web/multi-image-upload.js'
       - '.github/workflows/ndless-official-build-flow.yml'
   workflow_dispatch:
 
@@ -21,27 +21,27 @@ jobs:
       - uses: actions/checkout@v4
       - name: JavaScript syntax
         run: |
-          node --check ndless-build-confirm-flow.js
-          node --check ndless-web-bridge.js
-          node --check container-editor-bindings.js
-          node --check multi-image-upload.js
+          node --check web/ndless-build-confirm-flow.js
+          node --check web/ndless-web-bridge.js
+          node --check web/container-editor-bindings.js
+          node --check web/multi-image-upload.js
       - name: Verify dedicated web bridge routing
         run: |
-          grep -F '127.0.0.1:34983' ndless-web-bridge.js
-          grep -F 'ndlessweb://start' ndless-web-bridge.js
-          grep -F 'ndless-web-compiler-v1' ndless-web-bridge.js
-          grep -F 'Ndless-Web-Compiler-Windows-x64.exe' ndless-web-bridge.js
-          grep -F 'ndless-web-bridge.js' container-editor-bindings.js
-          grep -F 'ndless-build-confirm-flow.js' container-editor-bindings.js
+          grep -F '127.0.0.1:34983' web/ndless-web-bridge.js
+          grep -F 'ndlessweb://start' web/ndless-web-bridge.js
+          grep -F 'ndless-web-compiler-v1' web/ndless-web-bridge.js
+          grep -F 'Ndless-Web-Compiler-Windows-x64.exe' web/ndless-web-bridge.js
+          grep -F 'web/ndless-web-bridge.js' web/container-editor-bindings.js
+          grep -F 'web/ndless-build-confirm-flow.js' web/container-editor-bindings.js
       - name: Verify first-run confirmation is inside compiler step
         run: |
-          grep -F 'data-build-step1-prompt' ndless-build-confirm-flow.js
-          grep -F '¿Ya se descargó Ndless-Web-Compiler-Windows-x64.exe?' ndless-build-confirm-flow.js
-          grep -F 'Ahora abre el EXE desde Descargas' ndless-build-confirm-flow.js
-          grep -F 'Ya lo abrí' ndless-build-confirm-flow.js
-          grep -F 'project.zip' ndless-build-confirm-flow.js
-          grep -F 'NdlessLocalBridge.build(project' ndless-build-confirm-flow.js
+          grep -F 'data-build-step1-prompt' web/ndless-build-confirm-flow.js
+          grep -F '¿Ya se descargó Ndless-Web-Compiler-Windows-x64.exe?' web/ndless-build-confirm-flow.js
+          grep -F 'Ahora abre el EXE desde Descargas' web/ndless-build-confirm-flow.js
+          grep -F 'Ya lo abrí' web/ndless-build-confirm-flow.js
+          grep -F 'project.zip' web/ndless-build-confirm-flow.js
+          grep -F 'NdlessLocalBridge.build(project' web/ndless-build-confirm-flow.js
       - name: Verify experimental Ndless button is retired
         run: |
-          grep -F 'ndless-save-experimental-button' ndless-build-confirm-flow.js
-          grep -F 'dataset.experimentalSaveDirect="1"' ndless-build-confirm-flow.js
+          grep -F 'ndless-save-experimental-button' web/ndless-build-confirm-flow.js
+          grep -F 'dataset.experimentalSaveDirect="1"' web/ndless-build-confirm-flow.js

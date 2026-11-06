@@ -6,8 +6,8 @@ globalThis.window = globalThis;
 globalThis.addEventListener ||= () => {};
 globalThis.setTimeout = () => 0;
 
-await import("../ndless-zehn.js");
-await import("../ndless-zehn-stream-fix.js");
+await import("../web/ndless-zehn.js");
+await import("../web/ndless-zehn-stream-fix.js");
 
 function putU32LE(bytes, offset, value) {
   new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).setUint32(offset, value >>> 0, true);

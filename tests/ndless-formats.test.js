@@ -4,13 +4,13 @@ import assert from "node:assert/strict";
 // same global so the parsers/analysis can be regression-tested without a DOM.
 globalThis.window = globalThis;
 
-await import("../ndless-zehn.js");
-await import("../ndless-bflt.js");
-await import("../ndless-prg.js");
-await import("../ndless-format-detector.js");
-await import("../ndless-arm-decoder.js");
-await import("../ndless-analysis.js");
-await import("../ndless-rebuilder.js");
+await import("../web/ndless-zehn.js");
+await import("../web/ndless-bflt.js");
+await import("../web/ndless-prg.js");
+await import("../web/ndless-format-detector.js");
+await import("../web/ndless-arm-decoder.js");
+await import("../web/ndless-analysis.js");
+await import("../web/ndless-rebuilder.js");
 
 function putU32LE(bytes, offset, value) {
   new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).setUint32(offset, value >>> 0, true);

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
-await import('../ndless-project-core.js');
-await import('../ndless-project-core-enhancements.js');
-await import('../ndless-framebuffer-preview.js');
+await import('../web/ndless-project-core.js');
+await import('../web/ndless-project-core-enhancements.js');
+await import('../web/ndless-framebuffer-preview.js');
 const core = globalThis.NdlessProjectCore;
 
 assert.ok(core, 'NdlessProjectCore should be exposed globally');

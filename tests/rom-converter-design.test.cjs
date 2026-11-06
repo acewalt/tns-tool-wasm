@@ -1,5 +1,5 @@
 const test=require('node:test'),assert=require('node:assert/strict'),vm=require('node:vm'),fs=require('node:fs'),path=require('node:path');
-const root=path.resolve(__dirname,'..'),window={};vm.runInNewContext(fs.readFileSync(path.join(root,'rom-converter-view.js'),'utf8'),{window});
+const root=path.resolve(__dirname,'..'),window={};vm.runInNewContext(fs.readFileSync(path.join(root,'web/rom-converter-view.js'),'utf8'),{window});
 test('console thumbnails follow detected hardware including GB versus GBC',()=>{
  const {consoleId}=window.TnsRomConverterView;
  for(const id of ['nes','snes','gba','nds','n64'])assert.equal(consoleId({id,system:id.toUpperCase()}),id);

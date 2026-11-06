@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 
 globalThis.window = globalThis;
-await import("../ndless-arm-decoder.js");
-await import("../ndless-analysis.js");
+await import("../web/ndless-arm-decoder.js");
+await import("../web/ndless-analysis.js");
 
 const image = new Uint8Array(32);
 const view = new DataView(image.buffer);

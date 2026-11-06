@@ -3,13 +3,13 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
-const appSource=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const appSource=fs.readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
 const dictionaryStart=appSource.indexOf('const I18N = ');
 const dictionaryEnd=appSource.indexOf('\n};',dictionaryStart)+4;
 const dictionaryContext={};
 vm.runInNewContext(appSource.slice(dictionaryStart,dictionaryEnd)+'\nglobalThis.copy=I18N;',dictionaryContext);
 const copy=dictionaryContext.copy;
-const toolsSource=fs.readFileSync(new URL('../monaco-search-tools.js',import.meta.url),'utf8');
+const toolsSource=fs.readFileSync(new URL('../web/monaco-search-tools.js',import.meta.url),'utf8');
 
 function fixture(initialLanguage){
   let language=initialLanguage,confirmClear=true;

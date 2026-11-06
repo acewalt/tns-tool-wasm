@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-await import("../tns-file-save-experimental-core.js");
+await import("../web/tns-file-save-experimental-core.js");
 const core = globalThis.TnsFileSaveExperimentalCore;
 
 function writableHandle(log) {

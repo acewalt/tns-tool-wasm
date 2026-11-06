@@ -1,0 +1,5154 @@
+{
+  "version": 1,
+  "languages": [
+    "en",
+    "es",
+    "fr"
+  ],
+  "translations": {
+    "Valor absoluto o módulo complejo": {
+      "es": "Valor absoluto o módulo complejo",
+      "en": "Absolute value or complex modulus",
+      "fr": "Valeur absolue ou module complexe"
+    },
+    "Tabla de amortización": {
+      "es": "Tabla de amortización",
+      "en": "Amortization table",
+      "fr": "Tableau d’amortissement"
+    },
+    "Conjunción lógica": {
+      "es": "Conjunción lógica",
+      "en": "Logical conjunction",
+      "fr": "Conjonction logique"
+    },
+    "Ángulo de un número complejo": {
+      "es": "Ángulo de un número complejo",
+      "en": "Argument of a complex number",
+      "fr": "Argument d’un nombre complexe"
+    },
+    "ANOVA de un factor": {
+      "es": "ANOVA de un factor",
+      "en": "One-way ANOVA",
+      "fr": "ANOVA à un facteur"
+    },
+    "ANOVA de dos factores": {
+      "es": "ANOVA de dos factores",
+      "en": "Two-way ANOVA",
+      "fr": "ANOVA à deux facteurs"
+    },
+    "Último resultado": {
+      "es": "Último resultado",
+      "en": "Last result",
+      "fr": "Dernier résultat"
+    },
+    "Evaluación aproximada": {
+      "es": "Evaluación aproximada",
+      "en": "Approximate evaluation",
+      "fr": "Évaluation approchée"
+    },
+    "Convierte un valor decimal a fracción": {
+      "es": "Convierte un valor decimal a fracción",
+      "en": "Convert a decimal value to a fraction",
+      "fr": "Convertir une valeur décimale en fraction"
+    },
+    "Aproxima a una fracción racional": {
+      "es": "Aproxima a una fracción racional",
+      "en": "Approximate as a rational fraction",
+      "fr": "Approcher par une fraction rationnelle"
+    },
+    "Arcocoseno": {
+      "es": "Arcocoseno",
+      "en": "Inverse cosine",
+      "fr": "Arccosinus"
+    },
+    "Arcocoseno hiperbólico": {
+      "es": "Arcocoseno hiperbólico",
+      "en": "Inverse hyperbolic cosine",
+      "fr": "Cosinus hyperbolique inverse"
+    },
+    "Arcocotangente": {
+      "es": "Arcocotangente",
+      "en": "Inverse cotangent",
+      "fr": "Arc cotangente"
+    },
+    "Arcocotangente hiperbólica": {
+      "es": "Arcocotangente hiperbólica",
+      "en": "Inverse hyperbolic cotangent",
+      "fr": "Cotangente hyperbolique inverse"
+    },
+    "Arcocosecante": {
+      "es": "Arcocosecante",
+      "en": "Inverse cosecant",
+      "fr": "Arc cosécante"
+    },
+    "Arcocosecante hiperbólica": {
+      "es": "Arcocosecante hiperbólica",
+      "en": "Inverse hyperbolic cosecant",
+      "fr": "Cosécante hyperbolique inverse"
+    },
+    "Longitud de arco": {
+      "es": "Longitud de arco",
+      "en": "Arc length",
+      "fr": "Longueur d’arc"
+    },
+    "Arcosecante": {
+      "es": "Arcosecante",
+      "en": "Inverse secant",
+      "fr": "Arc sécante"
+    },
+    "Arcosecante hiperbólica": {
+      "es": "Arcosecante hiperbólica",
+      "en": "Inverse hyperbolic secant",
+      "fr": "Sécante hyperbolique inverse"
+    },
+    "Arcoseno": {
+      "es": "Arcoseno",
+      "en": "Inverse sine",
+      "fr": "Arcsinus"
+    },
+    "Arcoseno hiperbólico": {
+      "es": "Arcoseno hiperbólico",
+      "en": "Inverse hyperbolic sine",
+      "fr": "Sinus hyperbolique inverse"
+    },
+    "Arcotangente": {
+      "es": "Arcotangente",
+      "en": "Inverse tangent",
+      "fr": "Arctangente"
+    },
+    "Arcotangente hiperbólica": {
+      "es": "Arcotangente hiperbólica",
+      "en": "Inverse hyperbolic tangent",
+      "fr": "Tangente hyperbolique inverse"
+    },
+    "Concatenación de listas o matrices": {
+      "es": "Concatenación de listas o matrices",
+      "en": "Concatenate lists or matrices",
+      "fr": "Concaténer des listes ou des matrices"
+    },
+    "Tasa media de cambio": {
+      "es": "Tasa media de cambio",
+      "en": "Average rate of change",
+      "fr": "Taux de variation moyen"
+    },
+    "Saldo financiero": {
+      "es": "Saldo financiero",
+      "en": "Financial balance",
+      "fr": "Solde financier"
+    },
+    "Convierte a binario": {
+      "es": "Convierte a binario",
+      "en": "Convert to binary",
+      "fr": "Convertir en binaire"
+    },
+    "Convierte a decimal": {
+      "es": "Convierte a decimal",
+      "en": "Convert to decimal",
+      "fr": "Convertir en décimal"
+    },
+    "Convierte a hexadecimal": {
+      "es": "Convierte a hexadecimal",
+      "en": "Convert to hexadecimal",
+      "fr": "Convertir en hexadécimal"
+    },
+    "Probabilidad binomial acumulada": {
+      "es": "Probabilidad binomial acumulada",
+      "en": "Binomial cumulative probability",
+      "fr": "Probabilité binomiale cumulée"
+    },
+    "Probabilidad binomial puntual": {
+      "es": "Probabilidad binomial puntual",
+      "en": "Binomial point probability",
+      "fr": "Probabilité binomiale ponctuelle"
+    },
+    "Redondeo hacia arriba": {
+      "es": "Redondeo hacia arriba",
+      "en": "Round up",
+      "fr": "Arrondir par excès"
+    },
+    "Derivada central aproximada": {
+      "es": "Derivada central aproximada",
+      "en": "Approximate central derivative",
+      "fr": "Dérivée centrée approchée"
+    },
+    "Factorización sobre números complejos": {
+      "es": "Factorización sobre números complejos",
+      "en": "Factorization over complex numbers",
+      "fr": "Factorisation sur les complexes"
+    },
+    "Carácter desde su código": {
+      "es": "Carácter desde su código",
+      "en": "Character from its code",
+      "fr": "Caractère à partir de son code"
+    },
+    "Polinomio característico": {
+      "es": "Polinomio característico",
+      "en": "Characteristic polynomial",
+      "fr": "Polynôme caractéristique"
+    },
+    "Prueba ji-cuadrado de independencia": {
+      "es": "Prueba ji-cuadrado de independencia",
+      "en": "Chi-square test of independence",
+      "fr": "Test d’indépendance du khi-deux"
+    },
+    "Distribución ji-cuadrado acumulada": {
+      "es": "Distribución ji-cuadrado acumulada",
+      "en": "Chi-square cumulative distribution",
+      "fr": "Distribution cumulée du khi-deux"
+    },
+    "Bondad de ajuste ji-cuadrado": {
+      "es": "Bondad de ajuste ji-cuadrado",
+      "en": "Chi-square goodness of fit",
+      "fr": "Test d’ajustement du khi-deux"
+    },
+    "Densidad ji-cuadrado": {
+      "es": "Densidad ji-cuadrado",
+      "en": "Chi-square density",
+      "fr": "Densité du khi-deux"
+    },
+    "Limpia la pantalla de un programa": {
+      "es": "Limpia la pantalla de un programa",
+      "en": "Clear the program screen",
+      "fr": "Effacer l’écran du programme"
+    },
+    "Borra variables de una letra": {
+      "es": "Borra variables de una letra",
+      "en": "Delete single-letter variables",
+      "fr": "Supprimer les variables à une lettre"
+    },
+    "Borra el error en una estructura Try": {
+      "es": "Borra el error en una estructura Try",
+      "en": "Clear the error in a Try structure",
+      "fr": "Effacer l’erreur dans une structure Try"
+    },
+    "Anexa columnas de matrices": {
+      "es": "Anexa columnas de matrices",
+      "en": "Append matrix columns",
+      "fr": "Ajouter des colonnes de matrices"
+    },
+    "Cantidad de columnas": {
+      "es": "Cantidad de columnas",
+      "en": "Number of columns",
+      "fr": "Nombre de colonnes"
+    },
+    "Norma por columnas": {
+      "es": "Norma por columnas",
+      "en": "Column norm",
+      "fr": "Norme par colonnes"
+    },
+    "Denominador común": {
+      "es": "Denominador común",
+      "en": "Common denominator",
+      "fr": "Dénominateur commun"
+    },
+    "Completar cuadrado": {
+      "es": "Completar cuadrado",
+      "en": "Complete the square",
+      "fr": "Compléter le carré"
+    },
+    "Conjugado complejo": {
+      "es": "Conjugado complejo",
+      "en": "Complex conjugate",
+      "fr": "Conjugué complexe"
+    },
+    "Construir matriz a partir de expresión": {
+      "es": "Construir matriz a partir de expresión",
+      "en": "Construct a matrix from an expression",
+      "fr": "Construire une matrice à partir d’une expression"
+    },
+    "Copiar variable": {
+      "es": "Copiar variable",
+      "en": "Copy a variable",
+      "fr": "Copier une variable"
+    },
+    "Matriz de correlación": {
+      "es": "Matriz de correlación",
+      "en": "Correlation matrix",
+      "fr": "Matrice de corrélation"
+    },
+    "Coseno": {
+      "es": "Coseno",
+      "en": "Cosine",
+      "fr": "Cosinus"
+    },
+    "Coseno hiperbólico": {
+      "es": "Coseno hiperbólico",
+      "en": "Hyperbolic cosine",
+      "fr": "Cosinus hyperbolique"
+    },
+    "Cotangente": {
+      "es": "Cotangente",
+      "en": "Cotangent",
+      "fr": "Cotangente"
+    },
+    "Cotangente hiperbólica": {
+      "es": "Cotangente hiperbólica",
+      "en": "Hyperbolic cotangent",
+      "fr": "Cotangente hyperbolique"
+    },
+    "Conteo condicionado": {
+      "es": "Conteo condicionado",
+      "en": "Conditional count",
+      "fr": "Comptage conditionnel"
+    },
+    "Raíces complejas de un polinomio": {
+      "es": "Raíces complejas de un polinomio",
+      "en": "Complex roots of a polynomial",
+      "fr": "Racines complexes d’un polynôme"
+    },
+    "Producto vectorial": {
+      "es": "Producto vectorial",
+      "en": "Cross product",
+      "fr": "Produit vectoriel"
+    },
+    "Cosecante": {
+      "es": "Cosecante",
+      "en": "Cosecant",
+      "fr": "Cosécante"
+    },
+    "Cosecante hiperbólica": {
+      "es": "Cosecante hiperbólica",
+      "en": "Hyperbolic cosecant",
+      "fr": "Cosécante hyperbolique"
+    },
+    "Conversión a coordenadas cilíndricas": {
+      "es": "Conversión a coordenadas cilíndricas",
+      "en": "Convert to cylindrical coordinates",
+      "fr": "Convertir en coordonnées cylindriques"
+    },
+    "Resuelve ecuaciones en el campo complejo": {
+      "es": "Resuelve ecuaciones en el campo complejo",
+      "en": "Solve equations over complex numbers",
+      "fr": "Résoudre des équations sur les complexes"
+    },
+    "Regresión cúbica": {
+      "es": "Regresión cúbica",
+      "en": "Cubic regression",
+      "fr": "Régression cubique"
+    },
+    "Suma acumulativa": {
+      "es": "Suma acumulativa",
+      "en": "Cumulative sum",
+      "fr": "Somme cumulée"
+    },
+    "Salta a siguiente iteración de un bucle": {
+      "es": "Salta a siguiente iteración de un bucle",
+      "en": "Skip to the next loop iteration",
+      "fr": "Passer à l’itération suivante de la boucle"
+    },
+    "Días entre fechas": {
+      "es": "Días entre fechas",
+      "en": "Days between dates",
+      "fr": "Jours entre deux dates"
+    },
+    "Cálculo financiero de fechas (día-mes-año)": {
+      "es": "Cálculo financiero de fechas (día-mes-año)",
+      "en": "Financial date calculation (day-month-year)",
+      "fr": "Calcul financier de dates (jour-mois-année)"
+    },
+    "Cálculo financiero de fechas (mes-día-año)": {
+      "es": "Cálculo financiero de fechas (mes-día-año)",
+      "en": "Financial date calculation (month-day-year)",
+      "fr": "Calcul financier de dates (mois-jour-année)"
+    },
+    "Derivada simbólica": {
+      "es": "Derivada simbólica",
+      "en": "Symbolic derivative",
+      "fr": "Dérivée symbolique"
+    },
+    "Convierte formato angular a grados decimales": {
+      "es": "Convierte formato angular a grados decimales",
+      "en": "Convert an angle to decimal degrees",
+      "fr": "Convertir un angle en degrés décimaux"
+    },
+    "Expresión en forma decimal": {
+      "es": "Expresión en forma decimal",
+      "en": "Expression in decimal form",
+      "fr": "Expression sous forme décimale"
+    },
+    "Define una función o programa": {
+      "es": "Define una función o programa",
+      "en": "Define a function or program",
+      "fr": "Définir une fonction ou un programme"
+    },
+    "Define un objeto privado en biblioteca": {
+      "es": "Define un objeto privado en biblioteca",
+      "en": "Define a private library object",
+      "fr": "Définir un objet privé de bibliothèque"
+    },
+    "Define un objeto público en biblioteca": {
+      "es": "Define un objeto público en biblioteca",
+      "en": "Define a public library object",
+      "fr": "Définir un objet public de bibliothèque"
+    },
+    "Diferencias entre elementos sucesivos": {
+      "es": "Diferencias entre elementos sucesivos",
+      "en": "Differences between successive elements",
+      "fr": "Différences entre éléments successifs"
+    },
+    "Conversión de diferencias de temperatura": {
+      "es": "Conversión de diferencias de temperatura",
+      "en": "Temperature-difference conversion",
+      "fr": "Conversion de différences de température"
+    },
+    "Elimina variables": {
+      "es": "Elimina variables",
+      "en": "Delete variables",
+      "fr": "Supprimer des variables"
+    },
+    "Elimina elementos vacíos": {
+      "es": "Elimina elementos vacíos",
+      "en": "Delete empty elements",
+      "fr": "Supprimer les éléments vides"
+    },
+    "Derivada": {
+      "es": "Derivada",
+      "en": "Derivative",
+      "fr": "Dérivée"
+    },
+    "Resuelve ecuación diferencial": {
+      "es": "Resuelve ecuación diferencial",
+      "en": "Solve a differential equation",
+      "fr": "Résoudre une équation différentielle"
+    },
+    "Determinante": {
+      "es": "Determinante",
+      "en": "Determinant",
+      "fr": "Déterminant"
+    },
+    "Construye matriz diagonal": {
+      "es": "Construye matriz diagonal",
+      "en": "Construct a diagonal matrix",
+      "fr": "Construire une matrice diagonale"
+    },
+    "Número de elementos o dimensiones": {
+      "es": "Número de elementos o dimensiones",
+      "en": "Number of elements or dimensions",
+      "fr": "Nombre d’éléments ou dimensions"
+    },
+    "Muestra valores en programa": {
+      "es": "Muestra valores en programa",
+      "en": "Display values in a program",
+      "fr": "Afficher des valeurs dans un programme"
+    },
+    "Muestra texto en posición": {
+      "es": "Muestra texto en posición",
+      "en": "Display text at a position",
+      "fr": "Afficher du texte à une position"
+    },
+    "Dominio simbólico": {
+      "es": "Dominio simbólico",
+      "en": "Symbolic domain",
+      "fr": "Domaine symbolique"
+    },
+    "Término dominante": {
+      "es": "Término dominante",
+      "en": "Dominant term",
+      "fr": "Terme dominant"
+    },
+    "Convierte grados decimales a G° M' S''": {
+      "es": "Convierte grados decimales a G° M' S''",
+      "en": "Convert decimal degrees to D° M′ S″",
+      "fr": "Convertir des degrés décimaux en D° M′ S″"
+    },
+    "Producto escalar": {
+      "es": "Producto escalar",
+      "en": "Dot product",
+      "fr": "Produit scalaire"
+    },
+    "Dibuja arco": {
+      "es": "Dibuja arco",
+      "en": "Draw an arc",
+      "fr": "Tracer un arc"
+    },
+    "Dibuja círculo": {
+      "es": "Dibuja círculo",
+      "en": "Draw a circle",
+      "fr": "Tracer un cercle"
+    },
+    "Dibuja línea": {
+      "es": "Dibuja línea",
+      "en": "Draw a line",
+      "fr": "Tracer une ligne"
+    },
+    "Dibuja rectángulo": {
+      "es": "Dibuja rectángulo",
+      "en": "Draw a rectangle",
+      "fr": "Tracer un rectangle"
+    },
+    "Dibuja texto": {
+      "es": "Dibuja texto",
+      "en": "Draw text",
+      "fr": "Dessiner du texte"
+    },
+    "Notación científica (multiplica por potencia de 10)": {
+      "es": "Notación científica (multiplica por potencia de 10)",
+      "en": "Scientific notation (multiply by a power of 10)",
+      "fr": "Notation scientifique (multiplier par une puissance de 10)"
+    },
+    "Exponencial natural": {
+      "es": "Exponencial natural",
+      "en": "Natural exponential",
+      "fr": "Exponentielle naturelle"
+    },
+    "Tipo de interés efectivo": {
+      "es": "Tipo de interés efectivo",
+      "en": "Effective interest rate",
+      "fr": "Taux d’intérêt effectif"
+    },
+    "Vectores propios": {
+      "es": "Vectores propios",
+      "en": "Eigenvectors",
+      "fr": "Vecteurs propres"
+    },
+    "Valores propios": {
+      "es": "Valores propios",
+      "en": "Eigenvalues",
+      "fr": "Valeurs propres"
+    },
+    "Alternativa de If": {
+      "es": "Alternativa de If",
+      "en": "If alternative",
+      "fr": "Alternative de If"
+    },
+    "Condición alternativa": {
+      "es": "Condición alternativa",
+      "en": "Alternative condition",
+      "fr": "Condition alternative"
+    },
+    "Termina bucle For": {
+      "es": "Termina bucle For",
+      "en": "End a For loop",
+      "fr": "Terminer une boucle For"
+    },
+    "Termina función": {
+      "es": "Termina función",
+      "en": "End a function",
+      "fr": "Terminer une fonction"
+    },
+    "Termina condicional If": {
+      "es": "Termina condicional If",
+      "en": "End an If conditional",
+      "fr": "Terminer une condition If"
+    },
+    "Termina Loop": {
+      "es": "Termina Loop",
+      "en": "End a Loop",
+      "fr": "Terminer une boucle Loop"
+    },
+    "Termina programa": {
+      "es": "Termina programa",
+      "en": "End a program",
+      "fr": "Terminer un programme"
+    },
+    "Termina Try": {
+      "es": "Termina Try",
+      "en": "End a Try structure",
+      "fr": "Terminer une structure Try"
+    },
+    "Termina While": {
+      "es": "Termina While",
+      "en": "End a While loop",
+      "fr": "Terminer une boucle While"
+    },
+    "Código del último error": {
+      "es": "Código del último error",
+      "en": "Last error code",
+      "fr": "Code de la dernière erreur"
+    },
+    "Método de Euler para EDO": {
+      "es": "Método de Euler para EDO",
+      "en": "Euler method for ODEs",
+      "fr": "Méthode d’Euler pour les EDO"
+    },
+    "Expresión exacta": {
+      "es": "Expresión exacta",
+      "en": "Exact expression",
+      "fr": "Expression exacte"
+    },
+    "Salir de bucle": {
+      "es": "Salir de bucle",
+      "en": "Exit a loop",
+      "fr": "Quitter une boucle"
+    },
+    "Exponencial de base e": {
+      "es": "Exponencial de base e",
+      "en": "Base-e exponential",
+      "fr": "Exponentielle de base e"
+    },
+    "Expansión algebraica": {
+      "es": "Expansión algebraica",
+      "en": "Algebraic expansion",
+      "fr": "Développement algébrique"
+    },
+    "Convertir expresión en lista": {
+      "es": "Convertir expresión en lista",
+      "en": "Convert an expression to a list",
+      "fr": "Convertir une expression en liste"
+    },
+    "Convertir cadena en expresión": {
+      "es": "Convertir cadena en expresión",
+      "en": "Convert a string to an expression",
+      "fr": "Convertir une chaîne en expression"
+    },
+    "Regresión exponencial": {
+      "es": "Regresión exponencial",
+      "en": "Exponential regression",
+      "fr": "Régression exponentielle"
+    },
+    "Factorización algebraica": {
+      "es": "Factorización algebraica",
+      "en": "Algebraic factorization",
+      "fr": "Factorisation algébrique"
+    },
+    "Constante booleana falsa": {
+      "es": "Constante booleana falsa",
+      "en": "False Boolean constant",
+      "fr": "Constante booléenne fausse"
+    },
+    "Probabilidad acumulada F": {
+      "es": "Probabilidad acumulada F",
+      "en": "F cumulative probability",
+      "fr": "Probabilité cumulée F"
+    },
+    "Densidad F": {
+      "es": "Densidad F",
+      "en": "F density",
+      "fr": "Densité F"
+    },
+    "Rellena con un valor": {
+      "es": "Rellena con un valor",
+      "en": "Fill with a value",
+      "fr": "Remplir avec une valeur"
+    },
+    "Arco relleno": {
+      "es": "Arco relleno",
+      "en": "Filled arc",
+      "fr": "Arc plein"
+    },
+    "Círculo relleno": {
+      "es": "Círculo relleno",
+      "en": "Filled circle",
+      "fr": "Cercle plein"
+    },
+    "Polígono relleno": {
+      "es": "Polígono relleno",
+      "en": "Filled polygon",
+      "fr": "Polygone plein"
+    },
+    "Rectángulo relleno": {
+      "es": "Rectángulo relleno",
+      "en": "Filled rectangle",
+      "fr": "Rectangle plein"
+    },
+    "Resumen de cinco números": {
+      "es": "Resumen de cinco números",
+      "en": "Five-number summary",
+      "fr": "Résumé à cinq valeurs"
+    },
+    "Redondeo al entero inferior": {
+      "es": "Redondeo al entero inferior",
+      "en": "Round down to an integer",
+      "fr": "Arrondir à l’entier inférieur"
+    },
+    "Localiza máximo": {
+      "es": "Localiza máximo",
+      "en": "Find a maximum",
+      "fr": "Trouver un maximum"
+    },
+    "Localiza mínimo": {
+      "es": "Localiza mínimo",
+      "en": "Find a minimum",
+      "fr": "Trouver un minimum"
+    },
+    "Comienza ciclo For": {
+      "es": "Comienza ciclo For",
+      "en": "Start a For loop",
+      "fr": "Commencer une boucle For"
+    },
+    "Formateo de número": {
+      "es": "Formateo de número",
+      "en": "Number formatting",
+      "fr": "Formatage d’un nombre"
+    },
+    "Parte fraccionaria": {
+      "es": "Parte fraccionaria",
+      "en": "Fractional part",
+      "fr": "Partie fractionnaire"
+    },
+    "Convierte tabla frecuencias en lista": {
+      "es": "Convierte tabla frecuencias en lista",
+      "en": "Convert a frequency table to a list",
+      "fr": "Convertir un tableau de fréquences en liste"
+    },
+    "Frecuencia de datos": {
+      "es": "Frecuencia de datos",
+      "en": "Data frequency",
+      "fr": "Fréquence des données"
+    },
+    "Prueba F": {
+      "es": "Prueba F",
+      "en": "F test",
+      "fr": "Test F"
+    },
+    "Prueba F de dos muestras": {
+      "es": "Prueba F de dos muestras",
+      "en": "Two-sample F test",
+      "fr": "Test F à deux échantillons"
+    },
+    "Declaración de función multilínea": {
+      "es": "Declaración de función multilínea",
+      "en": "Multiline function declaration",
+      "fr": "Déclaration de fonction multiligne"
+    },
+    "Máximo común divisor": {
+      "es": "Máximo común divisor",
+      "en": "Greatest common divisor",
+      "fr": "Plus grand commun diviseur"
+    },
+    "Probabilidad geométrica acumulada": {
+      "es": "Probabilidad geométrica acumulada",
+      "en": "Geometric cumulative probability",
+      "fr": "Probabilité géométrique cumulée"
+    },
+    "Probabilidad geométrica puntual": {
+      "es": "Probabilidad geométrica puntual",
+      "en": "Geometric point probability",
+      "fr": "Probabilité géométrique ponctuelle"
+    },
+    "Obtiene dato de dispositivo conectado": {
+      "es": "Obtiene dato de dispositivo conectado",
+      "en": "Get data from a connected device",
+      "fr": "Obtenir des données d’un appareil connecté"
+    },
+    "Denominador de una expresión": {
+      "es": "Denominador de una expresión",
+      "en": "Denominator of an expression",
+      "fr": "Dénominateur d’une expression"
+    },
+    "Consulta configuración de modo": {
+      "es": "Consulta configuración de modo",
+      "en": "Get the mode setting",
+      "fr": "Obtenir le réglage du mode"
+    },
+    "Numerador de una expresión": {
+      "es": "Numerador de una expresión",
+      "en": "Numerator of an expression",
+      "fr": "Numérateur d’une expression"
+    },
+    "Identifica plataforma": {
+      "es": "Identifica plataforma",
+      "en": "Identify the platform",
+      "fr": "Identifier la plateforme"
+    },
+    "Obtiene cadena desde dispositivo": {
+      "es": "Obtiene cadena desde dispositivo",
+      "en": "Get a string from a device",
+      "fr": "Obtenir une chaîne d’un appareil"
+    },
+    "Tipo de dato de expresión": {
+      "es": "Tipo de dato de expresión",
+      "en": "Expression data type",
+      "fr": "Type de données de l’expression"
+    },
+    "Información sobre variables": {
+      "es": "Información sobre variables",
+      "en": "Variable information",
+      "fr": "Informations sur les variables"
+    },
+    "Salto a etiqueta": {
+      "es": "Salto a etiqueta",
+      "en": "Jump to a label",
+      "fr": "Sauter à une étiquette"
+    },
+    "Conversión a gradianes": {
+      "es": "Conversión a gradianes",
+      "en": "Convert to gradians",
+      "fr": "Convertir en grades"
+    },
+    "Matriz identidad": {
+      "es": "Matriz identidad",
+      "en": "Identity matrix",
+      "fr": "Matrice identité"
+    },
+    "Estructura condicional": {
+      "es": "Estructura condicional",
+      "en": "Conditional structure",
+      "fr": "Structure conditionnelle"
+    },
+    "Función condicional": {
+      "es": "Función condicional",
+      "en": "Conditional function",
+      "fr": "Fonction conditionnelle"
+    },
+    "Parte imaginaria": {
+      "es": "Parte imaginaria",
+      "en": "Imaginary part",
+      "fr": "Partie imaginaire"
+    },
+    "Derivación implícita": {
+      "es": "Derivación implícita",
+      "en": "Implicit differentiation",
+      "fr": "Dérivation implicite"
+    },
+    "Posición de subcadena": {
+      "es": "Posición de subcadena",
+      "en": "Substring position",
+      "fr": "Position d’une sous-chaîne"
+    },
+    "Mayor entero menor o igual": {
+      "es": "Mayor entero menor o igual",
+      "en": "Greatest integer less than or equal",
+      "fr": "Plus grand entier inférieur ou égal"
+    },
+    "División entera": {
+      "es": "División entera",
+      "en": "Integer division",
+      "fr": "Division entière"
+    },
+    "Integral simbólica": {
+      "es": "Integral simbólica",
+      "en": "Symbolic integral",
+      "fr": "Intégrale symbolique"
+    },
+    "Interpolación cúbica": {
+      "es": "Interpolación cúbica",
+      "en": "Cubic interpolation",
+      "fr": "Interpolation cubique"
+    },
+    "Inversa binomial en éxitos": {
+      "es": "Inversa binomial en éxitos",
+      "en": "Inverse binomial for successes",
+      "fr": "Binomiale inverse pour les succès"
+    },
+    "Inversa binomial en intentos": {
+      "es": "Inversa binomial en intentos",
+      "en": "Inverse binomial for trials",
+      "fr": "Binomiale inverse pour les essais"
+    },
+    "Inversa chi-cuadrado": {
+      "es": "Inversa chi-cuadrado",
+      "en": "Inverse chi-square",
+      "fr": "Khi-deux inverse"
+    },
+    "Inversa distribución F": {
+      "es": "Inversa distribución F",
+      "en": "Inverse F distribution",
+      "fr": "Distribution F inverse"
+    },
+    "Cuantil normal": {
+      "es": "Cuantil normal",
+      "en": "Normal quantile",
+      "fr": "Quantile normal"
+    },
+    "Cuantil t de Student": {
+      "es": "Cuantil t de Student",
+      "en": "Student’s t quantile",
+      "fr": "Quantile de Student"
+    },
+    "Parte entera truncada": {
+      "es": "Parte entera truncada",
+      "en": "Truncated integer part",
+      "fr": "Partie entière tronquée"
+    },
+    "Tasa interna de retorno": {
+      "es": "Tasa interna de retorno",
+      "en": "Internal rate of return",
+      "fr": "Taux de rendement interne"
+    },
+    "Comprueba primalidad": {
+      "es": "Comprueba primalidad",
+      "en": "Test for primality",
+      "fr": "Tester la primalité"
+    },
+    "Comprueba valor vacío": {
+      "es": "Comprueba valor vacío",
+      "en": "Test for an empty value",
+      "fr": "Tester une valeur vide"
+    },
+    "Define etiqueta de salto": {
+      "es": "Define etiqueta de salto",
+      "en": "Define a jump label",
+      "fr": "Définir une étiquette de saut"
+    },
+    "Mínimo común múltiplo": {
+      "es": "Mínimo común múltiplo",
+      "en": "Least common multiple",
+      "fr": "Plus petit commun multiple"
+    },
+    "Parte izquierda de cadena": {
+      "es": "Parte izquierda de cadena",
+      "en": "Left part of a string",
+      "fr": "Partie gauche d’une chaîne"
+    },
+    "Objeto privado biblioteca": {
+      "es": "Objeto privado biblioteca",
+      "en": "Private library object",
+      "fr": "Objet privé de bibliothèque"
+    },
+    "Objeto público biblioteca": {
+      "es": "Objeto público biblioteca",
+      "en": "Public library object",
+      "fr": "Objet public de bibliothèque"
+    },
+    "Acceso directo de biblioteca": {
+      "es": "Acceso directo de biblioteca",
+      "en": "Library shortcut",
+      "fr": "Raccourci de bibliothèque"
+    },
+    "Límite de expresión": {
+      "es": "Límite de expresión",
+      "en": "Limit of an expression",
+      "fr": "Limite d’une expression"
+    },
+    "Límite simbólico": {
+      "es": "Límite simbólico",
+      "en": "Symbolic limit",
+      "fr": "Limite symbolique"
+    },
+    "Regresión lineal MX": {
+      "es": "Regresión lineal MX",
+      "en": "Linear regression MX",
+      "fr": "Régression linéaire MX"
+    },
+    "Regresión lineal BX": {
+      "es": "Regresión lineal BX",
+      "en": "Linear regression BX",
+      "fr": "Régression linéaire BX"
+    },
+    "Intervalos t de regresión lineal": {
+      "es": "Intervalos t de regresión lineal",
+      "en": "Linear-regression t intervals",
+      "fr": "Intervalles t de régression linéaire"
+    },
+    "Prueba t de regresión lineal": {
+      "es": "Prueba t de regresión lineal",
+      "en": "Linear-regression t test",
+      "fr": "Test t de régression linéaire"
+    },
+    "Solución de sistema lineal": {
+      "es": "Solución de sistema lineal",
+      "en": "Linear system solution",
+      "fr": "Solution d’un système linéaire"
+    },
+    "Diferencia entre términos de lista": {
+      "es": "Diferencia entre términos de lista",
+      "en": "Difference between list terms",
+      "fr": "Différence entre les termes d’une liste"
+    },
+    "Convierte lista en matriz": {
+      "es": "Convierte lista en matriz",
+      "en": "Convert a list to a matrix",
+      "fr": "Convertir une liste en matrice"
+    },
+    "Logaritmo natural": {
+      "es": "Logaritmo natural",
+      "en": "Natural logarithm",
+      "fr": "Logarithme népérien"
+    },
+    "Conversión a logaritmos naturales": {
+      "es": "Conversión a logaritmos naturales",
+      "en": "Convert to natural logarithms",
+      "fr": "Convertir en logarithmes népériens"
+    },
+    "Regresión logarítmica": {
+      "es": "Regresión logarítmica",
+      "en": "Logarithmic regression",
+      "fr": "Régression logarithmique"
+    },
+    "Variables locales": {
+      "es": "Variables locales",
+      "en": "Local variables",
+      "fr": "Variables locales"
+    },
+    "Protege variables": {
+      "es": "Protege variables",
+      "en": "Lock variables",
+      "fr": "Verrouiller des variables"
+    },
+    "Logaritmo": {
+      "es": "Logaritmo",
+      "en": "Logarithm",
+      "fr": "Logarithme"
+    },
+    "Cambiar base del logaritmo": {
+      "es": "Cambiar base del logaritmo",
+      "en": "Change logarithm base",
+      "fr": "Changer la base du logarithme"
+    },
+    "Regresión logística": {
+      "es": "Regresión logística",
+      "en": "Logistic regression",
+      "fr": "Régression logistique"
+    },
+    "Regresión logística D": {
+      "es": "Regresión logística D",
+      "en": "Logistic regression D",
+      "fr": "Régression logistique D"
+    },
+    "Bucle indefinido": {
+      "es": "Bucle indefinido",
+      "en": "Unbounded loop",
+      "fr": "Boucle indéfinie"
+    },
+    "Descomposición LU": {
+      "es": "Descomposición LU",
+      "en": "LU decomposition",
+      "fr": "Décomposition LU"
+    },
+    "Convierte matriz a lista": {
+      "es": "Convierte matriz a lista",
+      "en": "Convert a matrix to a list",
+      "fr": "Convertir une matrice en liste"
+    },
+    "Máximo de argumentos": {
+      "es": "Máximo de argumentos",
+      "en": "Maximum of the arguments",
+      "fr": "Maximum des arguments"
+    },
+    "Media aritmética": {
+      "es": "Media aritmética",
+      "en": "Arithmetic mean",
+      "fr": "Moyenne arithmétique"
+    },
+    "Mediana": {
+      "es": "Mediana",
+      "en": "Median",
+      "fr": "Médiane"
+    },
+    "Regresión mediana-mediana": {
+      "es": "Regresión mediana-mediana",
+      "en": "Median-median regression",
+      "fr": "Régression médiane-médiane"
+    },
+    "Subcadena": {
+      "es": "Subcadena",
+      "en": "Substring",
+      "fr": "Sous-chaîne"
+    },
+    "Mínimo de argumentos": {
+      "es": "Mínimo de argumentos",
+      "en": "Minimum of the arguments",
+      "fr": "Minimum des arguments"
+    },
+    "Tasa interna de retorno modificada": {
+      "es": "Tasa interna de retorno modificada",
+      "en": "Modified internal rate of return",
+      "fr": "Taux de rendement interne modifié"
+    },
+    "Residuo módulo": {
+      "es": "Residuo módulo",
+      "en": "Modulo remainder",
+      "fr": "Reste modulo"
+    },
+    "Multiplica una fila": {
+      "es": "Multiplica una fila",
+      "en": "Multiply a row",
+      "fr": "Multiplier une ligne"
+    },
+    "Suma múltiplo de fila a otra": {
+      "es": "Suma múltiplo de fila a otra",
+      "en": "Add a multiple of one row to another",
+      "fr": "Ajouter un multiple d’une ligne à une autre"
+    },
+    "Regresión múltiple": {
+      "es": "Regresión múltiple",
+      "en": "Multiple regression",
+      "fr": "Régression multiple"
+    },
+    "Intervalos de regresión múltiple": {
+      "es": "Intervalos de regresión múltiple",
+      "en": "Multiple-regression intervals",
+      "fr": "Intervalles de régression multiple"
+    },
+    "Pruebas de regresión múltiple": {
+      "es": "Pruebas de regresión múltiple",
+      "en": "Multiple-regression tests",
+      "fr": "Tests de régression multiple"
+    },
+    "NAND lógico": {
+      "es": "NAND lógico",
+      "en": "Logical NAND",
+      "fr": "NAND logique"
+    },
+    "Número de combinaciones": {
+      "es": "Número de combinaciones",
+      "en": "Number of combinations",
+      "fr": "Nombre de combinaisons"
+    },
+    "Derivada numérica": {
+      "es": "Derivada numérica",
+      "en": "Numerical derivative",
+      "fr": "Dérivée numérique"
+    },
+    "Crea lista vacía": {
+      "es": "Crea lista vacía",
+      "en": "Create an empty list",
+      "fr": "Créer une liste vide"
+    },
+    "Crea matriz": {
+      "es": "Crea matriz",
+      "en": "Create a matrix",
+      "fr": "Créer une matrice"
+    },
+    "Máximo numérico": {
+      "es": "Máximo numérico",
+      "en": "Numerical maximum",
+      "fr": "Maximum numérique"
+    },
+    "Mínimo numérico": {
+      "es": "Mínimo numérico",
+      "en": "Numerical minimum",
+      "fr": "Minimum numérique"
+    },
+    "Integral numérica": {
+      "es": "Integral numérica",
+      "en": "Numerical integral",
+      "fr": "Intégrale numérique"
+    },
+    "Interés nominal": {
+      "es": "Interés nominal",
+      "en": "Nominal interest",
+      "fr": "Intérêt nominal"
+    },
+    "NOR lógico": {
+      "es": "NOR lógico",
+      "en": "Logical NOR",
+      "fr": "NOR logique"
+    },
+    "Norma vectorial": {
+      "es": "Norma vectorial",
+      "en": "Vector norm",
+      "fr": "Norme vectorielle"
+    },
+    "Recta normal": {
+      "es": "Recta normal",
+      "en": "Normal line",
+      "fr": "Droite normale"
+    },
+    "Normal acumulada": {
+      "es": "Normal acumulada",
+      "en": "Normal cumulative distribution",
+      "fr": "Distribution normale cumulée"
+    },
+    "Densidad normal": {
+      "es": "Densidad normal",
+      "en": "Normal density",
+      "fr": "Densité normale"
+    },
+    "Negación lógica": {
+      "es": "Negación lógica",
+      "en": "Logical negation",
+      "fr": "Négation logique"
+    },
+    "Número de permutaciones": {
+      "es": "Número de permutaciones",
+      "en": "Number of permutations",
+      "fr": "Nombre de permutations"
+    },
+    "Valor actual neto": {
+      "es": "Valor actual neto",
+      "en": "Net present value",
+      "fr": "Valeur actuelle nette"
+    },
+    "Solución numérica de ecuación": {
+      "es": "Solución numérica de ecuación",
+      "en": "Numerical equation solution",
+      "fr": "Solution numérique d’une équation"
+    },
+    "Estadística de una variable": {
+      "es": "Estadística de una variable",
+      "en": "One-variable statistics",
+      "fr": "Statistiques à une variable"
+    },
+    "Disyunción lógica": {
+      "es": "Disyunción lógica",
+      "en": "Logical disjunction",
+      "fr": "Disjonction logique"
+    },
+    "Código de carácter": {
+      "es": "Código de carácter",
+      "en": "Character code",
+      "fr": "Code de caractère"
+    },
+    "Coordenada x de polar a rectangular": {
+      "es": "Coordenada x de polar a rectangular",
+      "en": "Polar-to-rectangular x coordinate",
+      "fr": "Coordonnée x polaire vers rectangulaire"
+    },
+    "Coordenada y de polar a rectangular": {
+      "es": "Coordenada y de polar a rectangular",
+      "en": "Polar-to-rectangular y coordinate",
+      "fr": "Coordonnée y polaire vers rectangulaire"
+    },
+    "Presenta buffer gráfico": {
+      "es": "Presenta buffer gráfico",
+      "en": "Display the graphics buffer",
+      "fr": "Afficher le tampon graphique"
+    },
+    "Propaga error capturado": {
+      "es": "Propaga error capturado",
+      "en": "Propagate a caught error",
+      "fr": "Propager une erreur interceptée"
+    },
+    "Función por partes": {
+      "es": "Función por partes",
+      "en": "Piecewise function",
+      "fr": "Fonction par morceaux"
+    },
+    "Dibuja pares de puntos": {
+      "es": "Dibuja pares de puntos",
+      "en": "Plot point pairs",
+      "fr": "Tracer des couples de points"
+    },
+    "Poisson acumulada": {
+      "es": "Poisson acumulada",
+      "en": "Poisson cumulative distribution",
+      "fr": "Distribution de Poisson cumulée"
+    },
+    "Poisson puntual": {
+      "es": "Poisson puntual",
+      "en": "Poisson point probability",
+      "fr": "Probabilité ponctuelle de Poisson"
+    },
+    "Conversión a polar": {
+      "es": "Conversión a polar",
+      "en": "Convert to polar",
+      "fr": "Convertir en polaire"
+    },
+    "Coeficientes de polinomio": {
+      "es": "Coeficientes de polinomio",
+      "en": "Polynomial coefficients",
+      "fr": "Coefficients d’un polynôme"
+    },
+    "Grado de polinomio": {
+      "es": "Grado de polinomio",
+      "en": "Polynomial degree",
+      "fr": "Degré d’un polynôme"
+    },
+    "Evalúa polinomio": {
+      "es": "Evalúa polinomio",
+      "en": "Evaluate a polynomial",
+      "fr": "Évaluer un polynôme"
+    },
+    "Máximo común divisor polinomial": {
+      "es": "Máximo común divisor polinomial",
+      "en": "Polynomial greatest common divisor",
+      "fr": "Plus grand commun diviseur de polynômes"
+    },
+    "Cociente polinomial": {
+      "es": "Cociente polinomial",
+      "en": "Polynomial quotient",
+      "fr": "Quotient de polynômes"
+    },
+    "Resto polinomial": {
+      "es": "Resto polinomial",
+      "en": "Polynomial remainder",
+      "fr": "Reste de polynômes"
+    },
+    "Raíces polinomiales": {
+      "es": "Raíces polinomiales",
+      "en": "Polynomial roots",
+      "fr": "Racines de polynôme"
+    },
+    "Regresión de potencia": {
+      "es": "Regresión de potencia",
+      "en": "Power regression",
+      "fr": "Régression puissance"
+    },
+    "Declaración de programa": {
+      "es": "Declaración de programa",
+      "en": "Program declaration",
+      "fr": "Déclaration de programme"
+    },
+    "Productoria matemática": {
+      "es": "Productoria matemática",
+      "en": "Mathematical product",
+      "fr": "Produit mathématique"
+    },
+    "Producto de secuencia": {
+      "es": "Producto de secuencia",
+      "en": "Product of a sequence",
+      "fr": "Produit d’une suite"
+    },
+    "Producto de lista": {
+      "es": "Producto de lista",
+      "en": "Product of a list",
+      "fr": "Produit d’une liste"
+    },
+    "Convierte a fracción propia": {
+      "es": "Convierte a fracción propia",
+      "en": "Convert to a proper fraction",
+      "fr": "Convertir en fraction propre"
+    },
+    "Descomposición QR": {
+      "es": "Descomposición QR",
+      "en": "QR decomposition",
+      "fr": "Décomposition QR"
+    },
+    "Regresión cuadrática": {
+      "es": "Regresión cuadrática",
+      "en": "Quadratic regression",
+      "fr": "Régression quadratique"
+    },
+    "Regresión cuártica": {
+      "es": "Regresión cuártica",
+      "en": "Quartic regression",
+      "fr": "Régression quartique"
+    },
+    "Ángulo polar desde rectangular": {
+      "es": "Ángulo polar desde rectangular",
+      "en": "Polar angle from rectangular coordinates",
+      "fr": "Angle polaire à partir de coordonnées rectangulaires"
+    },
+    "Radio polar desde rectangular": {
+      "es": "Radio polar desde rectangular",
+      "en": "Polar radius from rectangular coordinates",
+      "fr": "Rayon polaire à partir de coordonnées rectangulaires"
+    },
+    "Conversión a radianes": {
+      "es": "Conversión a radianes",
+      "en": "Convert to radians",
+      "fr": "Convertir en radians"
+    },
+    "Número aleatorio uniforme": {
+      "es": "Número aleatorio uniforme",
+      "en": "Uniform random number",
+      "fr": "Nombre aléatoire uniforme"
+    },
+    "Número aleatorio binomial": {
+      "es": "Número aleatorio binomial",
+      "en": "Binomial random number",
+      "fr": "Nombre aléatoire binomial"
+    },
+    "Enteros aleatorios": {
+      "es": "Enteros aleatorios",
+      "en": "Random integers",
+      "fr": "Entiers aléatoires"
+    },
+    "Matriz aleatoria": {
+      "es": "Matriz aleatoria",
+      "en": "Random matrix",
+      "fr": "Matrice aléatoire"
+    },
+    "Aleatorio normal": {
+      "es": "Aleatorio normal",
+      "en": "Normal random number",
+      "fr": "Nombre aléatoire normal"
+    },
+    "Polinomio aleatorio": {
+      "es": "Polinomio aleatorio",
+      "en": "Random polynomial",
+      "fr": "Polynôme aléatoire"
+    },
+    "Muestra aleatoria": {
+      "es": "Muestra aleatoria",
+      "en": "Random sample",
+      "fr": "Échantillon aléatoire"
+    },
+    "Configura semilla aleatoria": {
+      "es": "Configura semilla aleatoria",
+      "en": "Set the random seed",
+      "fr": "Définir la graine aléatoire"
+    },
+    "Parte real": {
+      "es": "Parte real",
+      "en": "Real part",
+      "fr": "Partie réelle"
+    },
+    "Conversión a coordenadas rectangulares": {
+      "es": "Conversión a coordenadas rectangulares",
+      "en": "Convert to rectangular coordinates",
+      "fr": "Convertir en coordonnées rectangulaires"
+    },
+    "Forma escalonada por filas": {
+      "es": "Forma escalonada por filas",
+      "en": "Row echelon form",
+      "fr": "Forme échelonnée par lignes"
+    },
+    "Residuo de división": {
+      "es": "Residuo de división",
+      "en": "Division remainder",
+      "fr": "Reste de division"
+    },
+    "Solicita entrada de usuario": {
+      "es": "Solicita entrada de usuario",
+      "en": "Request user input",
+      "fr": "Demander une saisie"
+    },
+    "Solicita texto": {
+      "es": "Solicita texto",
+      "en": "Request text",
+      "fr": "Demander du texte"
+    },
+    "Termina función y devuelve valor": {
+      "es": "Termina función y devuelve valor",
+      "en": "End the function and return a value",
+      "fr": "Terminer la fonction et renvoyer une valeur"
+    },
+    "Parte derecha de cadena": {
+      "es": "Parte derecha de cadena",
+      "en": "Right part of a string",
+      "fr": "Partie droite d’une chaîne"
+    },
+    "Solución numérica EDO Runge-Kutta": {
+      "es": "Solución numérica EDO Runge-Kutta",
+      "en": "Numerical ODE solution by Runge–Kutta",
+      "fr": "Solution numérique d’EDO par Runge–Kutta"
+    },
+    "Raíz n-ésima": {
+      "es": "Raíz n-ésima",
+      "en": "Nth root",
+      "fr": "Racine n-ième"
+    },
+    "Rotación bits o elementos": {
+      "es": "Rotación bits o elementos",
+      "en": "Rotate bits or elements",
+      "fr": "Rotation de bits ou d’éléments"
+    },
+    "Redondea número": {
+      "es": "Redondea número",
+      "en": "Round a number",
+      "fr": "Arrondir un nombre"
+    },
+    "Suma filas": {
+      "es": "Suma filas",
+      "en": "Add rows",
+      "fr": "Additionner des lignes"
+    },
+    "Número de filas": {
+      "es": "Número de filas",
+      "en": "Number of rows",
+      "fr": "Nombre de lignes"
+    },
+    "Norma por filas": {
+      "es": "Norma por filas",
+      "en": "Row norm",
+      "fr": "Norme par lignes"
+    },
+    "Intercambia filas": {
+      "es": "Intercambia filas",
+      "en": "Swap rows",
+      "fr": "Permuter des lignes"
+    },
+    "Forma escalonada reducida": {
+      "es": "Forma escalonada reducida",
+      "en": "Reduced row echelon form",
+      "fr": "Forme échelonnée réduite"
+    },
+    "Secante": {
+      "es": "Secante",
+      "en": "Secant",
+      "fr": "Sécante"
+    },
+    "Secante hiperbólica": {
+      "es": "Secante hiperbólica",
+      "en": "Hyperbolic secant",
+      "fr": "Sécante hyperbolique"
+    },
+    "Envía comando a TI-Innovator Hub": {
+      "es": "Envía comando a TI-Innovator Hub",
+      "en": "Send a command to TI-Innovator Hub",
+      "fr": "Envoyer une commande au TI-Innovator Hub"
+    },
+    "Genera sucesión": {
+      "es": "Genera sucesión",
+      "en": "Generate a sequence",
+      "fr": "Générer une suite"
+    },
+    "Sucesión con valores de inicio": {
+      "es": "Sucesión con valores de inicio",
+      "en": "Sequence with initial values",
+      "fr": "Suite avec valeurs initiales"
+    },
+    "Genera sucesión recursiva": {
+      "es": "Genera sucesión recursiva",
+      "en": "Generate a recursive sequence",
+      "fr": "Générer une suite récurrente"
+    },
+    "Expansión en series": {
+      "es": "Expansión en series",
+      "en": "Series expansion",
+      "fr": "Développement en série"
+    },
+    "Selecciona color de dibujo": {
+      "es": "Selecciona color de dibujo",
+      "en": "Set the drawing color",
+      "fr": "Définir la couleur de dessin"
+    },
+    "Configura modo temporal de programa": {
+      "es": "Configura modo temporal de programa",
+      "en": "Set a temporary program mode",
+      "fr": "Définir un mode temporaire du programme"
+    },
+    "Configura lápiz de dibujo": {
+      "es": "Configura lápiz de dibujo",
+      "en": "Set the drawing pen",
+      "fr": "Définir le crayon de dessin"
+    },
+    "Configura ventana de dibujo": {
+      "es": "Configura ventana de dibujo",
+      "en": "Set the drawing window",
+      "fr": "Définir la fenêtre de dessin"
+    },
+    "Desplazamiento de bits": {
+      "es": "Desplazamiento de bits",
+      "en": "Bit shift",
+      "fr": "Décalage de bits"
+    },
+    "Signo": {
+      "es": "Signo",
+      "en": "Sign",
+      "fr": "Signe"
+    },
+    "Resuelve sistema lineal": {
+      "es": "Resuelve sistema lineal",
+      "en": "Solve a linear system",
+      "fr": "Résoudre un système linéaire"
+    },
+    "Seno": {
+      "es": "Seno",
+      "en": "Sine",
+      "fr": "Sinus"
+    },
+    "Seno hiperbólico": {
+      "es": "Seno hiperbólico",
+      "en": "Hyperbolic sine",
+      "fr": "Sinus hyperbolique"
+    },
+    "Regresión sinusoidal": {
+      "es": "Regresión sinusoidal",
+      "en": "Sinusoidal regression",
+      "fr": "Régression sinusoïdale"
+    },
+    "Resuelve ecuación simbólica": {
+      "es": "Resuelve ecuación simbólica",
+      "en": "Solve a symbolic equation",
+      "fr": "Résoudre une équation symbolique"
+    },
+    "Resuelve sistema de ecuaciones": {
+      "es": "Resuelve sistema de ecuaciones",
+      "en": "Solve a system of equations",
+      "fr": "Résoudre un système d’équations"
+    },
+    "Ordena ascendente": {
+      "es": "Ordena ascendente",
+      "en": "Sort in ascending order",
+      "fr": "Trier par ordre croissant"
+    },
+    "Ordena descendente": {
+      "es": "Ordena descendente",
+      "en": "Sort in descending order",
+      "fr": "Trier par ordre décroissant"
+    },
+    "Conversión a esféricas": {
+      "es": "Conversión a esféricas",
+      "en": "Convert to spherical coordinates",
+      "fr": "Convertir en coordonnées sphériques"
+    },
+    "Raíz cuadrada": {
+      "es": "Raíz cuadrada",
+      "en": "Square root",
+      "fr": "Racine carrée"
+    },
+    "Registro con resultado estadístico": {
+      "es": "Registro con resultado estadístico",
+      "en": "Record containing statistical results",
+      "fr": "Enregistrement contenant les résultats statistiques"
+    },
+    "Desviación estándar poblacional": {
+      "es": "Desviación estándar poblacional",
+      "en": "Population standard deviation",
+      "fr": "Écart-type de population"
+    },
+    "Desviación estándar muestral": {
+      "es": "Desviación estándar muestral",
+      "en": "Sample standard deviation",
+      "fr": "Écart-type d’échantillon"
+    },
+    "Detiene programa": {
+      "es": "Detiene programa",
+      "en": "Stop a program",
+      "fr": "Arrêter un programme"
+    },
+    "Convierte expresión a texto": {
+      "es": "Convierte expresión a texto",
+      "en": "Convert an expression to text",
+      "fr": "Convertir une expression en texte"
+    },
+    "Submatriz": {
+      "es": "Submatriz",
+      "en": "Submatrix",
+      "fr": "Sous-matrice"
+    },
+    "Sumatoria": {
+      "es": "Sumatoria",
+      "en": "Sum",
+      "fr": "Somme"
+    },
+    "Suma de elementos": {
+      "es": "Suma de elementos",
+      "en": "Sum of elements",
+      "fr": "Somme des éléments"
+    },
+    "Suma condicionada": {
+      "es": "Suma condicionada",
+      "en": "Conditional sum",
+      "fr": "Somme conditionnelle"
+    },
+    "Suma interés de préstamo": {
+      "es": "Suma interés de préstamo",
+      "en": "Sum of loan interest",
+      "fr": "Somme des intérêts d’un prêt"
+    },
+    "Suma capital de préstamo": {
+      "es": "Suma capital de préstamo",
+      "en": "Sum of loan principal",
+      "fr": "Somme du capital remboursé d’un prêt"
+    },
+    "Suma de secuencia": {
+      "es": "Suma de secuencia",
+      "en": "Sum of a sequence",
+      "fr": "Somme d’une suite"
+    },
+    "Sistema de ecuaciones": {
+      "es": "Sistema de ecuaciones",
+      "en": "System of equations",
+      "fr": "Système d’équations"
+    },
+    "Transposición de matriz": {
+      "es": "Transposición de matriz",
+      "en": "Matrix transpose",
+      "fr": "Transposée de matrice"
+    },
+    "Tangente": {
+      "es": "Tangente",
+      "en": "Tangent",
+      "fr": "Tangente"
+    },
+    "Tangente hiperbólica": {
+      "es": "Tangente hiperbólica",
+      "en": "Hyperbolic tangent",
+      "fr": "Tangente hyperbolique"
+    },
+    "Recta tangente": {
+      "es": "Recta tangente",
+      "en": "Tangent line",
+      "fr": "Droite tangente"
+    },
+    "Polinomio Taylor": {
+      "es": "Polinomio Taylor",
+      "en": "Taylor polynomial",
+      "fr": "Polynôme de Taylor"
+    },
+    "Probabilidad acumulada t": {
+      "es": "Probabilidad acumulada t",
+      "en": "t cumulative probability",
+      "fr": "Probabilité cumulée t"
+    },
+    "Recoge términos trigonométricos": {
+      "es": "Recoge términos trigonométricos",
+      "en": "Collect trigonometric terms",
+      "fr": "Regrouper les termes trigonométriques"
+    },
+    "Expande identidades trigonométricas": {
+      "es": "Expande identidades trigonométricas",
+      "en": "Expand trigonometric identities",
+      "fr": "Développer les identités trigonométriques"
+    },
+    "Instrucción de programa para mostrar texto": {
+      "es": "Instrucción de programa para mostrar texto",
+      "en": "Program instruction for displaying text",
+      "fr": "Instruction de programme pour afficher du texte"
+    },
+    "Inicio de bloque condicional": {
+      "es": "Inicio de bloque condicional",
+      "en": "Start a conditional block",
+      "fr": "Début d’un bloc conditionnel"
+    },
+    "Intervalo confianza t una muestra": {
+      "es": "Intervalo confianza t una muestra",
+      "en": "One-sample t confidence interval",
+      "fr": "Intervalle de confiance t à un échantillon"
+    },
+    "Intervalo t dos muestras": {
+      "es": "Intervalo t dos muestras",
+      "en": "Two-sample t interval",
+      "fr": "Intervalle t à deux échantillons"
+    },
+    "Conversión de temperatura": {
+      "es": "Conversión de temperatura",
+      "en": "Temperature conversion",
+      "fr": "Conversion de température"
+    },
+    "Conversión diferencia de temperatura": {
+      "es": "Conversión diferencia de temperatura",
+      "en": "Temperature-difference conversion",
+      "fr": "Conversion de différences de température"
+    },
+    "Traza de matriz": {
+      "es": "Traza de matriz",
+      "en": "Matrix trace",
+      "fr": "Trace d’une matrice"
+    },
+    "Constante booleana verdadera": {
+      "es": "Constante booleana verdadera",
+      "en": "True Boolean constant",
+      "fr": "Constante booléenne vraie"
+    },
+    "Control de excepciones": {
+      "es": "Control de excepciones",
+      "en": "Exception handling",
+      "fr": "Gestion des exceptions"
+    },
+    "Densidad t de Student": {
+      "es": "Densidad t de Student",
+      "en": "Student’s t density",
+      "fr": "Densité de Student"
+    },
+    "Prueba t de una muestra": {
+      "es": "Prueba t de una muestra",
+      "en": "One-sample t test",
+      "fr": "Test t à un échantillon"
+    },
+    "Prueba t de dos muestras": {
+      "es": "Prueba t de dos muestras",
+      "en": "Two-sample t test",
+      "fr": "Test t à deux échantillons"
+    },
+    "Valor futuro": {
+      "es": "Valor futuro",
+      "en": "Future value",
+      "fr": "Valeur future"
+    },
+    "Tasa de interés": {
+      "es": "Tasa de interés",
+      "en": "Interest rate",
+      "fr": "Taux d’intérêt"
+    },
+    "Número de periodos": {
+      "es": "Número de periodos",
+      "en": "Number of periods",
+      "fr": "Nombre de périodes"
+    },
+    "Pago financiero": {
+      "es": "Pago financiero",
+      "en": "Financial payment",
+      "fr": "Paiement financier"
+    },
+    "Valor presente": {
+      "es": "Valor presente",
+      "en": "Present value",
+      "fr": "Valeur actuelle"
+    },
+    "Estadística de dos variables": {
+      "es": "Estadística de dos variables",
+      "en": "Two-variable statistics",
+      "fr": "Statistiques à deux variables"
+    },
+    "Indefinido": {
+      "es": "Indefinido",
+      "en": "Undefined",
+      "fr": "Indéfini"
+    },
+    "Vector unitario": {
+      "es": "Vector unitario",
+      "en": "Unit vector",
+      "fr": "Vecteur unitaire"
+    },
+    "Desbloquea variables": {
+      "es": "Desbloquea variables",
+      "en": "Unlock variables",
+      "fr": "Déverrouiller des variables"
+    },
+    "Selecciona buffer gráfico": {
+      "es": "Selecciona buffer gráfico",
+      "en": "Select the graphics buffer",
+      "fr": "Sélectionner le tampon graphique"
+    },
+    "Varianza poblacional": {
+      "es": "Varianza poblacional",
+      "en": "Population variance",
+      "fr": "Variance de population"
+    },
+    "Varianza muestral": {
+      "es": "Varianza muestral",
+      "en": "Sample variance",
+      "fr": "Variance d’échantillon"
+    },
+    "Pausa un programa": {
+      "es": "Pausa un programa",
+      "en": "Pause a program",
+      "fr": "Suspendre un programme"
+    },
+    "Obtiene avisos de evaluación": {
+      "es": "Obtiene avisos de evaluación",
+      "en": "Get evaluation warnings",
+      "fr": "Obtenir les avertissements d’évaluation"
+    },
+    "Bucle mientras": {
+      "es": "Bucle mientras",
+      "en": "While loop",
+      "fr": "Boucle While"
+    },
+    "OR exclusiva": {
+      "es": "OR exclusiva",
+      "en": "Exclusive OR",
+      "fr": "OU exclusif"
+    },
+    "Raíces de expresión": {
+      "es": "Raíces de expresión",
+      "en": "Roots of an expression",
+      "fr": "Racines d’une expression"
+    },
+    "Intervalo de confianza z": {
+      "es": "Intervalo de confianza z",
+      "en": "z confidence interval",
+      "fr": "Intervalle de confiance z"
+    },
+    "Intervalo z para una proporción": {
+      "es": "Intervalo z para una proporción",
+      "en": "One-proportion z interval",
+      "fr": "Intervalle z pour une proportion"
+    },
+    "Intervalo z para diferencia de proporciones": {
+      "es": "Intervalo z para diferencia de proporciones",
+      "en": "z interval for a difference of proportions",
+      "fr": "Intervalle z pour une différence de proportions"
+    },
+    "Intervalo z de dos muestras": {
+      "es": "Intervalo z de dos muestras",
+      "en": "Two-sample z interval",
+      "fr": "Intervalle z à deux échantillons"
+    },
+    "Prueba z de una muestra": {
+      "es": "Prueba z de una muestra",
+      "en": "One-sample z test",
+      "fr": "Test z à un échantillon"
+    },
+    "Prueba z una proporción": {
+      "es": "Prueba z una proporción",
+      "en": "One-proportion z test",
+      "fr": "Test z pour une proportion"
+    },
+    "Prueba z de dos proporciones": {
+      "es": "Prueba z de dos proporciones",
+      "en": "Two-proportion z test",
+      "fr": "Test z pour deux proportions"
+    },
+    "Prueba z dos muestras": {
+      "es": "Prueba z dos muestras",
+      "en": "Two-sample z test",
+      "fr": "Test z à deux échantillons"
+    },
+    "SÍMBOLOS Y OPERADORES": {
+      "es": "SÍMBOLOS Y OPERADORES",
+      "en": "SYMBOLS AND OPERATORS",
+      "fr": "SYMBOLES ET OPÉRATEURS"
+    },
+    "Suma": {
+      "es": "Suma",
+      "en": "Addition",
+      "fr": "Addition"
+    },
+    "Resta": {
+      "es": "Resta",
+      "en": "Subtraction",
+      "fr": "Soustraction"
+    },
+    "Multiplicación": {
+      "es": "Multiplicación",
+      "en": "Multiplication",
+      "fr": "Multiplication"
+    },
+    "División": {
+      "es": "División",
+      "en": "Division",
+      "fr": "Division"
+    },
+    "Potencia": {
+      "es": "Potencia",
+      "en": "Power",
+      "fr": "Puissance"
+    },
+    "Cuadrado": {
+      "es": "Cuadrado",
+      "en": "Square",
+      "fr": "Carré"
+    },
+    "Suma elemento a elemento": {
+      "es": "Suma elemento a elemento",
+      "en": "Element-wise addition",
+      "fr": "Addition terme à terme"
+    },
+    "Resta elemento a elemento": {
+      "es": "Resta elemento a elemento",
+      "en": "Element-wise subtraction",
+      "fr": "Soustraction terme à terme"
+    },
+    "Multiplicación elemento a elemento": {
+      "es": "Multiplicación elemento a elemento",
+      "en": "Element-wise multiplication",
+      "fr": "Multiplication terme à terme"
+    },
+    "División elemento a elemento": {
+      "es": "División elemento a elemento",
+      "en": "Element-wise division",
+      "fr": "Division terme à terme"
+    },
+    "Potencias elemento a elemento": {
+      "es": "Potencias elemento a elemento",
+      "en": "Element-wise powers",
+      "fr": "Puissances terme à terme"
+    },
+    "Porcentaje": {
+      "es": "Porcentaje",
+      "en": "Percentage",
+      "fr": "Pourcentage"
+    },
+    "Factorial": {
+      "es": "Factorial",
+      "en": "Factorial",
+      "fr": "Factorielle"
+    },
+    "Igualdad": {
+      "es": "Igualdad",
+      "en": "Equality",
+      "fr": "Égalité"
+    },
+    "Desigualdad": {
+      "es": "Desigualdad",
+      "en": "Inequality",
+      "fr": "Inégalité"
+    },
+    "Menor que": {
+      "es": "Menor que",
+      "en": "Less than",
+      "fr": "Inférieur à"
+    },
+    "Menor o igual": {
+      "es": "Menor o igual",
+      "en": "Less than or equal",
+      "fr": "Inférieur ou égal"
+    },
+    "Mayor que": {
+      "es": "Mayor que",
+      "en": "Greater than",
+      "fr": "Supérieur à"
+    },
+    "Mayor o igual": {
+      "es": "Mayor o igual",
+      "en": "Greater than or equal",
+      "fr": "Supérieur ou égal"
+    },
+    "Implicación lógica": {
+      "es": "Implicación lógica",
+      "en": "Logical implication",
+      "fr": "Implication logique"
+    },
+    "Equivalencia lógica": {
+      "es": "Equivalencia lógica",
+      "en": "Logical equivalence",
+      "fr": "Équivalence logique"
+    },
+    "Concatenación de texto": {
+      "es": "Concatenación de texto",
+      "en": "Text concatenation",
+      "fr": "Concaténation de texte"
+    },
+    "Referencia indirecta a variable": {
+      "es": "Referencia indirecta a variable",
+      "en": "Indirect variable reference",
+      "fr": "Référence indirecte à une variable"
+    },
+    "Almacena un valor en variable": {
+      "es": "Almacena un valor en variable",
+      "en": "Store a value in a variable",
+      "fr": "Stocker une valeur dans une variable"
+    },
+    "Asigna variable o define función": {
+      "es": "Asigna variable o define función",
+      "en": "Assign a variable or define a function",
+      "fr": "Affecter une variable ou définir une fonction"
+    },
+    "Exponencial": {
+      "es": "Exponencial",
+      "en": "Exponential",
+      "fr": "Exponentielle"
+    },
+    "Potencia de 10": {
+      "es": "Potencia de 10",
+      "en": "Power of 10",
+      "fr": "Puissance de 10"
+    },
+    "Recíproco o inversa de matriz": {
+      "es": "Recíproco o inversa de matriz",
+      "en": "Reciprocal or matrix inverse",
+      "fr": "Inverse d’un nombre ou d’une matrice"
+    },
+    "Productoria": {
+      "es": "Productoria",
+      "en": "Product",
+      "fr": "Produit"
+    },
+    "Integral": {
+      "es": "Integral",
+      "en": "Integral",
+      "fr": "Intégrale"
+    },
+    "Unidad angular en grados": {
+      "es": "Unidad angular en grados",
+      "en": "Angle unit in degrees",
+      "fr": "Unité angulaire en degrés"
+    },
+    "Unidad angular en gradianes": {
+      "es": "Unidad angular en gradianes",
+      "en": "Angle unit in gradians",
+      "fr": "Unité angulaire en grades"
+    },
+    "Unidad angular en radianes": {
+      "es": "Unidad angular en radianes",
+      "en": "Angle unit in radians",
+      "fr": "Unité angulaire en radians"
+    },
+    "Ángulo en coordenadas polares": {
+      "es": "Ángulo en coordenadas polares",
+      "en": "Angle in polar coordinates",
+      "fr": "Angle en coordonnées polaires"
+    },
+    "Operador de restricción o sustitución": {
+      "es": "Operador de restricción o sustitución",
+      "en": "Constraint or substitution operator",
+      "fr": "Opérateur de restriction ou de substitution"
+    },
+    "Comentario en una línea de TI-Basic": {
+      "es": "Comentario en una línea de TI-Basic",
+      "en": "Single-line TI-Basic comment",
+      "fr": "Commentaire TI-Basic sur une ligne"
+    },
+    "Designador de unidades": {
+      "es": "Designador de unidades",
+      "en": "Unit designator",
+      "fr": "Désignateur d’unité"
+    },
+    "Literal binario": {
+      "es": "Literal binario",
+      "en": "Binary literal",
+      "fr": "Littéral binaire"
+    },
+    "Literal hexadecimal": {
+      "es": "Literal hexadecimal",
+      "en": "Hexadecimal literal",
+      "fr": "Littéral hexadécimal"
+    },
+    "Conversión": {
+      "es": "Conversión",
+      "en": "Conversion",
+      "fr": "Conversion"
+    },
+    "Conversión entre unidades": {
+      "es": "Conversión entre unidades",
+      "en": "Conversion between units",
+      "fr": "Conversion entre unités"
+    },
+    "Paleta de símbolos": {
+      "es": "Paleta de símbolos",
+      "en": "Symbol palette",
+      "fr": "Palette de symboles"
+    },
+    "Plantillas": {
+      "es": "Plantillas",
+      "en": "Templates",
+      "fr": "Modèles"
+    },
+    "operador /; representación 2D distinta del texto": {
+      "es": "operador /; representación 2D distinta del texto",
+      "en": "/ operator; 2D display differs from source text",
+      "fr": "Opérateur / ; affichage 2D différent du texte source"
+    },
+    "sqrt(x) o √(x)": {
+      "es": "sqrt(x) o √(x)",
+      "en": "sqrt(x) or √(x)",
+      "fr": "sqrt(x) ou √(x)"
+    },
+    "formato angular (no función)": {
+      "es": "formato angular (no función)",
+      "en": "Angle format (not a function)",
+      "fr": "Format angulaire (pas une fonction)"
+    },
+    "estructura de matriz; ejemplo conceptual": {
+      "es": "estructura de matriz; ejemplo conceptual",
+      "en": "Matrix structure; conceptual example",
+      "fr": "Structure de matrice ; exemple conceptuel"
+    },
+    "comando distinto que crea matriz": {
+      "es": "comando distinto que crea matriz",
+      "en": "Separate command that creates a matrix",
+      "fr": "Commande distincte qui crée une matrice"
+    },
+    "sumSeq(...) o Σ(...), según contexto": {
+      "es": "sumSeq(...) o Σ(...), según contexto",
+      "en": "sumSeq(...) or Σ(...), depending on context",
+      "fr": "sumSeq(...) ou Σ(...), selon le contexte"
+    },
+    "prodSeq(...) o Π(...), según contexto": {
+      "es": "prodSeq(...) o Π(...), según contexto",
+      "en": "prodSeq(...) or Π(...), depending on context",
+      "fr": "prodSeq(...) ou Π(...), selon le contexte"
+    },
+    "integral(...), según entrada CAS": {
+      "es": "integral(...), según entrada CAS",
+      "en": "integral(...), depending on CAS input",
+      "fr": "integral(...), selon la saisie CAS"
+    },
+    "Número": {
+      "es": "Número",
+      "en": "Number",
+      "fr": "Nombre"
+    },
+    "Convertir a decimal": {
+      "es": "Convertir a decimal",
+      "en": "Convert to decimal",
+      "fr": "Convertir en décimal"
+    },
+    "Aproximar a una fracción": {
+      "es": "Aproximar a una fracción",
+      "en": "Approximate to a fraction",
+      "fr": "Approcher par une fraction"
+    },
+    "Factorizar": {
+      "es": "Factorizar",
+      "en": "Factor",
+      "fr": "Factoriser"
+    },
+    "Residuo": {
+      "es": "Residuo",
+      "en": "Remainder",
+      "fr": "Reste"
+    },
+    "Herramientas para fracciones": {
+      "es": "Herramientas para fracciones",
+      "en": "Fraction tools",
+      "fr": "Outils pour les fractions"
+    },
+    "Fracción propia": {
+      "es": "Fracción propia",
+      "en": "Proper fraction",
+      "fr": "Fraction propre"
+    },
+    "Obtener numerador": {
+      "es": "Obtener numerador",
+      "en": "Get numerator",
+      "fr": "Obtenir le numérateur"
+    },
+    "Obtener denominador": {
+      "es": "Obtener denominador",
+      "en": "Get denominator",
+      "fr": "Obtenir le dénominateur"
+    },
+    "Herramientas para números": {
+      "es": "Herramientas para números",
+      "en": "Number tools",
+      "fr": "Outils pour les nombres"
+    },
+    "Redondeo": {
+      "es": "Redondeo",
+      "en": "Rounding",
+      "fr": "Arrondi"
+    },
+    "Parte entera": {
+      "es": "Parte entera",
+      "en": "Integer part",
+      "fr": "Partie entière"
+    },
+    "Parte entera (suelo)": {
+      "es": "Parte entera (suelo)",
+      "en": "Integer part (floor)",
+      "fr": "Partie entière (plancher)"
+    },
+    "Entero siguiente": {
+      "es": "Entero siguiente",
+      "en": "Next integer",
+      "fr": "Entier suivant"
+    },
+    "Herramientas para números complejos": {
+      "es": "Herramientas para números complejos",
+      "en": "Complex number tools",
+      "fr": "Outils pour les nombres complexes"
+    },
+    "Complejo conjugado": {
+      "es": "Complejo conjugado",
+      "en": "Complex conjugate",
+      "fr": "Conjugué complexe"
+    },
+    "Ángulo polar": {
+      "es": "Ángulo polar",
+      "en": "Polar angle",
+      "fr": "Angle polaire"
+    },
+    "Magnitud": {
+      "es": "Magnitud",
+      "en": "Magnitude",
+      "fr": "Module"
+    },
+    "Convertir a polar": {
+      "es": "Convertir a polar",
+      "en": "Convert to polar",
+      "fr": "Convertir en polaire"
+    },
+    "Convertir a rectangular": {
+      "es": "Convertir a rectangular",
+      "en": "Convert to rectangular",
+      "fr": "Convertir en rectangulaire"
+    },
+    "Ángulos": {
+      "es": "Ángulos",
+      "en": "Angles",
+      "fr": "Angles"
+    },
+    "Grados": {
+      "es": "Grados",
+      "en": "Degrees",
+      "fr": "Degrés"
+    },
+    "Radianes": {
+      "es": "Radianes",
+      "en": "Radians",
+      "fr": "Radians"
+    },
+    "Gradianes": {
+      "es": "Gradianes",
+      "en": "Gradians",
+      "fr": "Grades"
+    },
+    "Minutos": {
+      "es": "Minutos",
+      "en": "Minutes",
+      "fr": "Minutes"
+    },
+    "Segundos": {
+      "es": "Segundos",
+      "en": "Seconds",
+      "fr": "Secondes"
+    },
+    "Grados Minutos Segundos": {
+      "es": "Grados Minutos Segundos",
+      "en": "Degrees Minutes Seconds",
+      "fr": "Degrés Minutes Secondes"
+    },
+    "Polar a rectangular, x": {
+      "es": "Polar a rectangular, x",
+      "en": "Polar to rectangular, x",
+      "fr": "Polaire vers rectangulaire, x"
+    },
+    "Polar a rectangular, y": {
+      "es": "Polar a rectangular, y",
+      "en": "Polar to rectangular, y",
+      "fr": "Polaire vers rectangulaire, y"
+    },
+    "Rectangular a polar, r": {
+      "es": "Rectangular a polar, r",
+      "en": "Rectangular to polar, r",
+      "fr": "Rectangulaire vers polaire, r"
+    },
+    "Rectangular a polar, θ": {
+      "es": "Rectangular a polar, θ",
+      "en": "Rectangular to polar, θ",
+      "fr": "Rectangulaire vers polaire, θ"
+    },
+    "Entrada de ángulo": {
+      "es": "Entrada de ángulo",
+      "en": "Angle input",
+      "fr": "Saisie d’angle"
+    },
+    "Convertir a GMS": {
+      "es": "Convertir a GMS",
+      "en": "Convert to DMS",
+      "fr": "Convertir en DMS"
+    },
+    "Convertir a grados decimales": {
+      "es": "Convertir a grados decimales",
+      "en": "Convert to decimal degrees",
+      "fr": "Convertir en degrés décimaux"
+    },
+    "Convertir a gradianes": {
+      "es": "Convertir a gradianes",
+      "en": "Convert to gradians",
+      "fr": "Convertir en grades"
+    },
+    "Convertir a radianes": {
+      "es": "Convertir a radianes",
+      "en": "Convert to radians",
+      "fr": "Convertir en radians"
+    },
+    "Lista": {
+      "es": "Lista",
+      "en": "List",
+      "fr": "Liste"
+    },
+    "Matemáticas": {
+      "es": "Matemáticas",
+      "en": "Math",
+      "fr": "Mathématiques"
+    },
+    "Mínimo": {
+      "es": "Mínimo",
+      "en": "Minimum",
+      "fr": "Minimum"
+    },
+    "Máximo": {
+      "es": "Máximo",
+      "en": "Maximum",
+      "fr": "Maximum"
+    },
+    "Media": {
+      "es": "Media",
+      "en": "Mean",
+      "fr": "Moyenne"
+    },
+    "Producto de elementos": {
+      "es": "Producto de elementos",
+      "en": "Product of elements",
+      "fr": "Produit des éléments"
+    },
+    "Evaluar polinomio": {
+      "es": "Evaluar polinomio",
+      "en": "Evaluate polynomial",
+      "fr": "Évaluer un polynôme"
+    },
+    "Operaciones": {
+      "es": "Operaciones",
+      "en": "Operations",
+      "fr": "Opérations"
+    },
+    "Orden ascendente": {
+      "es": "Orden ascendente",
+      "en": "Ascending order",
+      "fr": "Ordre croissant"
+    },
+    "Orden descendente": {
+      "es": "Orden descendente",
+      "en": "Descending order",
+      "fr": "Ordre décroissant"
+    },
+    "Lista de sumas acumuladas": {
+      "es": "Lista de sumas acumuladas",
+      "en": "Cumulative sum list",
+      "fr": "Liste des sommes cumulées"
+    },
+    "Llenar": {
+      "es": "Llenar",
+      "en": "Fill",
+      "fr": "Remplir"
+    },
+    "Secuencia": {
+      "es": "Secuencia",
+      "en": "Sequence",
+      "fr": "Suite"
+    },
+    "Lista de diferencias": {
+      "es": "Lista de diferencias",
+      "en": "Difference list",
+      "fr": "Liste des différences"
+    },
+    "Aumentar": {
+      "es": "Aumentar",
+      "en": "Augment",
+      "fr": "Augmenter"
+    },
+    "Convertir lista en matriz": {
+      "es": "Convertir lista en matriz",
+      "en": "Convert list to matrix",
+      "fr": "Convertir une liste en matrice"
+    },
+    "Convertir matriz en lista": {
+      "es": "Convertir matriz en lista",
+      "en": "Convert matrix to list",
+      "fr": "Convertir une matrice en liste"
+    },
+    "Izquierda": {
+      "es": "Izquierda",
+      "en": "Left",
+      "fr": "Gauche"
+    },
+    "Medio": {
+      "es": "Medio",
+      "en": "Middle",
+      "fr": "Milieu"
+    },
+    "Derecha": {
+      "es": "Derecha",
+      "en": "Right",
+      "fr": "Droite"
+    },
+    "Lógica": {
+      "es": "Lógica",
+      "en": "Logic",
+      "fr": "Logique"
+    },
+    "Si": {
+      "es": "Si",
+      "en": "If",
+      "fr": "Si"
+    },
+    "Contar": {
+      "es": "Contar",
+      "en": "Count",
+      "fr": "Compter"
+    },
+    "Contar Si": {
+      "es": "Contar Si",
+      "en": "Count If",
+      "fr": "Compter si"
+    },
+    "Sumar Si": {
+      "es": "Sumar Si",
+      "en": "Sum If",
+      "fr": "Sommer si"
+    },
+    "Frecuencia": {
+      "es": "Frecuencia",
+      "en": "Frequency",
+      "fr": "Fréquence"
+    },
+    "Matriz": {
+      "es": "Matriz",
+      "en": "Matrix",
+      "fr": "Matrice"
+    },
+    "Crear": {
+      "es": "Crear",
+      "en": "Create",
+      "fr": "Créer"
+    },
+    "Matriz de ceros": {
+      "es": "Matriz de ceros",
+      "en": "Zero matrix",
+      "fr": "Matrice nulle"
+    },
+    "Identidad": {
+      "es": "Identidad",
+      "en": "Identity",
+      "fr": "Identité"
+    },
+    "Diagonal": {
+      "es": "Diagonal",
+      "en": "Diagonal",
+      "fr": "Diagonale"
+    },
+    "Aumento de columna": {
+      "es": "Aumento de columna",
+      "en": "Column augmentation",
+      "fr": "Ajout de colonnes"
+    },
+    "Construir matriz": {
+      "es": "Construir matriz",
+      "en": "Construct matrix",
+      "fr": "Construire une matrice"
+    },
+    "Transponer": {
+      "es": "Transponer",
+      "en": "Transpose",
+      "fr": "Transposer"
+    },
+    "Forma escalonada y reducida por filas": {
+      "es": "Forma escalonada y reducida por filas",
+      "en": "Reduced row echelon form",
+      "fr": "Forme échelonnée réduite par lignes"
+    },
+    "Simultáneo": {
+      "es": "Simultáneo",
+      "en": "Simultaneous",
+      "fr": "Simultané"
+    },
+    "Normas": {
+      "es": "Normas",
+      "en": "Norms",
+      "fr": "Normes"
+    },
+    "Norma": {
+      "es": "Norma",
+      "en": "Norm",
+      "fr": "Norme"
+    },
+    "Fila": {
+      "es": "Fila",
+      "en": "Row",
+      "fr": "Ligne"
+    },
+    "Columna": {
+      "es": "Columna",
+      "en": "Column",
+      "fr": "Colonne"
+    },
+    "Dimensiones": {
+      "es": "Dimensiones",
+      "en": "Dimensions",
+      "fr": "Dimensions"
+    },
+    "Operaciones con filas": {
+      "es": "Operaciones con filas",
+      "en": "Row operations",
+      "fr": "Opérations sur les lignes"
+    },
+    "Cambiar filas": {
+      "es": "Cambiar filas",
+      "en": "Swap rows",
+      "fr": "Permuter des lignes"
+    },
+    "Sumar fila": {
+      "es": "Sumar fila",
+      "en": "Add row",
+      "fr": "Additionner une ligne"
+    },
+    "Multiplicar fila": {
+      "es": "Multiplicar fila",
+      "en": "Multiply row",
+      "fr": "Multiplier une ligne"
+    },
+    "Multiplicar fila y sumar": {
+      "es": "Multiplicar fila y sumar",
+      "en": "Multiply row and add",
+      "fr": "Multiplier une ligne et additionner"
+    },
+    "Operaciones con elementos": {
+      "es": "Operaciones con elementos",
+      "en": "Element operations",
+      "fr": "Opérations sur les éléments"
+    },
+    "Sumar con punto decimal": {
+      "es": "Sumar con punto decimal",
+      "en": "Element-wise addition",
+      "fr": "Addition terme à terme"
+    },
+    "Restar con punto decimal": {
+      "es": "Restar con punto decimal",
+      "en": "Element-wise subtraction",
+      "fr": "Soustraction terme à terme"
+    },
+    "Multiplicar con punto decimal": {
+      "es": "Multiplicar con punto decimal",
+      "en": "Element-wise multiplication",
+      "fr": "Multiplication terme à terme"
+    },
+    "Dividir con punto decimal": {
+      "es": "Dividir con punto decimal",
+      "en": "Element-wise division",
+      "fr": "Division terme à terme"
+    },
+    "Potenciar con punto decimal": {
+      "es": "Potenciar con punto decimal",
+      "en": "Element-wise power",
+      "fr": "Puissance terme à terme"
+    },
+    "Avanzado": {
+      "es": "Avanzado",
+      "en": "Advanced",
+      "fr": "Avancé"
+    },
+    "Traza": {
+      "es": "Traza",
+      "en": "Trace",
+      "fr": "Trace"
+    },
+    "Vector": {
+      "es": "Vector",
+      "en": "Vector",
+      "fr": "Vecteur"
+    },
+    "Producto punto": {
+      "es": "Producto punto",
+      "en": "Dot product",
+      "fr": "Produit scalaire"
+    },
+    "Convertir a cilíndrico": {
+      "es": "Convertir a cilíndrico",
+      "en": "Convert to cylindrical",
+      "fr": "Convertir en cylindrique"
+    },
+    "Convertir a esférico": {
+      "es": "Convertir a esférico",
+      "en": "Convert to spherical",
+      "fr": "Convertir en sphérique"
+    },
+    "Álgebra": {
+      "es": "Álgebra",
+      "en": "Algebra",
+      "fr": "Algèbre"
+    },
+    "Solucionar": {
+      "es": "Solucionar",
+      "en": "Solve",
+      "fr": "Résoudre"
+    },
+    "Expandir": {
+      "es": "Expandir",
+      "en": "Expand",
+      "fr": "Développer"
+    },
+    "Ceros": {
+      "es": "Ceros",
+      "en": "Zeros",
+      "fr": "Zéros"
+    },
+    "Completar el cuadrado": {
+      "es": "Completar el cuadrado",
+      "en": "Complete the square",
+      "fr": "Compléter le carré"
+    },
+    "Solución numérica": {
+      "es": "Solución numérica",
+      "en": "Numerical solution",
+      "fr": "Solution numérique"
+    },
+    "Resolver un sistema de ecuaciones": {
+      "es": "Resolver un sistema de ecuaciones",
+      "en": "Solve a system of equations",
+      "fr": "Résoudre un système d’équations"
+    },
+    "Resolver Sist. Ecuaciones Lineal": {
+      "es": "Resolver Sist. Ecuaciones Lineal",
+      "en": "Solve a linear system of equations",
+      "fr": "Résoudre un système d’équations linéaires"
+    },
+    "Herramientas para polinomios": {
+      "es": "Herramientas para polinomios",
+      "en": "Polynomial tools",
+      "fr": "Outils pour les polynômes"
+    },
+    "Encontrar raíces de polinomio": {
+      "es": "Encontrar raíces de polinomio",
+      "en": "Find polynomial roots",
+      "fr": "Trouver les racines d’un polynôme"
+    },
+    "Raíces reales de polinomio": {
+      "es": "Raíces reales de polinomio",
+      "en": "Real polynomial roots",
+      "fr": "Racines réelles d’un polynôme"
+    },
+    "Raíces complejas de polinomio": {
+      "es": "Raíces complejas de polinomio",
+      "en": "Complex polynomial roots",
+      "fr": "Racines complexes d’un polynôme"
+    },
+    "Residuo del polinomio": {
+      "es": "Residuo del polinomio",
+      "en": "Polynomial remainder",
+      "fr": "Reste de polynôme"
+    },
+    "Cociente del polinomio": {
+      "es": "Cociente del polinomio",
+      "en": "Polynomial quotient",
+      "fr": "Quotient de polynôme"
+    },
+    "Convertir expresión": {
+      "es": "Convertir expresión",
+      "en": "Convert expression",
+      "fr": "Convertir une expression"
+    },
+    "Convertir a logaritmo natural": {
+      "es": "Convertir a logaritmo natural",
+      "en": "Convert to natural logarithm",
+      "fr": "Convertir en logarithme népérien"
+    },
+    "Convertir a logaritmo base": {
+      "es": "Convertir a logaritmo base",
+      "en": "Convert to base logarithm",
+      "fr": "Convertir en logarithme de base donnée"
+    },
+    "Convertir a exp": {
+      "es": "Convertir a exp",
+      "en": "Convert to exp",
+      "fr": "Convertir en exp"
+    },
+    "Recopilar": {
+      "es": "Recopilar",
+      "en": "Collect",
+      "fr": "Regrouper"
+    },
+    "Complejo": {
+      "es": "Complejo",
+      "en": "Complex",
+      "fr": "Complexe"
+    },
+    "Extraer": {
+      "es": "Extraer",
+      "en": "Extract",
+      "fr": "Extraire"
+    },
+    "Trigonometría": {
+      "es": "Trigonometría",
+      "en": "Trigonometry",
+      "fr": "Trigonométrie"
+    },
+    "Trigonométrico": {
+      "es": "Trigonométrico",
+      "en": "Trigonometric",
+      "fr": "Trigonométrique"
+    },
+    "Seno inverso": {
+      "es": "Seno inverso",
+      "en": "Inverse sine",
+      "fr": "Arcsinus"
+    },
+    "Coseno inverso": {
+      "es": "Coseno inverso",
+      "en": "Inverse cosine",
+      "fr": "Arccosinus"
+    },
+    "Tangente inversa": {
+      "es": "Tangente inversa",
+      "en": "Inverse tangent",
+      "fr": "Arctangente"
+    },
+    "Cosecante inversa": {
+      "es": "Cosecante inversa",
+      "en": "Inverse cosecant",
+      "fr": "Cosécante inverse"
+    },
+    "Secante inversa": {
+      "es": "Secante inversa",
+      "en": "Inverse secant",
+      "fr": "Sécante inverse"
+    },
+    "Cotangente inversa": {
+      "es": "Cotangente inversa",
+      "en": "Inverse cotangent",
+      "fr": "Cotangente inverse"
+    },
+    "Hiperbólico": {
+      "es": "Hiperbólico",
+      "en": "Hyperbolic",
+      "fr": "Hyperbolique"
+    },
+    "Seno hiperbólico inverso": {
+      "es": "Seno hiperbólico inverso",
+      "en": "Inverse hyperbolic sine",
+      "fr": "Sinus hyperbolique inverse"
+    },
+    "Coseno hiperbólico inverso": {
+      "es": "Coseno hiperbólico inverso",
+      "en": "Inverse hyperbolic cosine",
+      "fr": "Cosinus hyperbolique inverse"
+    },
+    "Tangente hiperbólica inversa": {
+      "es": "Tangente hiperbólica inversa",
+      "en": "Inverse hyperbolic tangent",
+      "fr": "Tangente hyperbolique inverse"
+    },
+    "Cosecante hiperbólica inversa": {
+      "es": "Cosecante hiperbólica inversa",
+      "en": "Inverse hyperbolic cosecant",
+      "fr": "Cosécante hyperbolique inverse"
+    },
+    "Secante hiperbólica inversa": {
+      "es": "Secante hiperbólica inversa",
+      "en": "Inverse hyperbolic secant",
+      "fr": "Sécante hyperbolique inverse"
+    },
+    "Cotangente hiperbólica inversa": {
+      "es": "Cotangente hiperbólica inversa",
+      "en": "Inverse hyperbolic cotangent",
+      "fr": "Cotangente hyperbolique inverse"
+    },
+    "Cálculo": {
+      "es": "Cálculo",
+      "en": "Calculus",
+      "fr": "Calcul infinitésimal"
+    },
+    "Integral definida": {
+      "es": "Integral definida",
+      "en": "Definite integral",
+      "fr": "Intégrale définie"
+    },
+    "Límite": {
+      "es": "Límite",
+      "en": "Limit",
+      "fr": "Limite"
+    },
+    "Producto": {
+      "es": "Producto",
+      "en": "Product",
+      "fr": "Produit"
+    },
+    "Valor mínimo de una función": {
+      "es": "Valor mínimo de una función",
+      "en": "Minimum value of a function",
+      "fr": "Valeur minimale d’une fonction"
+    },
+    "Valor máximo de una función": {
+      "es": "Valor máximo de una función",
+      "en": "Maximum value of a function",
+      "fr": "Valeur maximale d’une fonction"
+    },
+    "Línea tangente": {
+      "es": "Línea tangente",
+      "en": "Tangent line",
+      "fr": "Droite tangente"
+    },
+    "Línea normal": {
+      "es": "Línea normal",
+      "en": "Normal line",
+      "fr": "Droite normale"
+    },
+    "Serie": {
+      "es": "Serie",
+      "en": "Series",
+      "fr": "Série"
+    },
+    "Polinomio de Taylor": {
+      "es": "Polinomio de Taylor",
+      "en": "Taylor polynomial",
+      "fr": "Polynôme de Taylor"
+    },
+    "Serie generalizada": {
+      "es": "Serie generalizada",
+      "en": "Generalized series",
+      "fr": "Série généralisée"
+    },
+    "Solucionar ec. Diferenciales": {
+      "es": "Solucionar ec. Diferenciales",
+      "en": "Solve differential equations",
+      "fr": "Résoudre des équations différentielles"
+    },
+    "Diferenciación implícita": {
+      "es": "Diferenciación implícita",
+      "en": "Implicit differentiation",
+      "fr": "Dérivation implicite"
+    },
+    "Cálculos numéricos": {
+      "es": "Cálculos numéricos",
+      "en": "Numerical calculations",
+      "fr": "Calculs numériques"
+    },
+    "Derivada numérica en un punto": {
+      "es": "Derivada numérica en un punto",
+      "en": "Numerical derivative at a point",
+      "fr": "Dérivée numérique en un point"
+    },
+    "Cociente diferencia central con paso": {
+      "es": "Cociente diferencia central con paso",
+      "en": "Central difference quotient with step",
+      "fr": "Quotient de différences centrées avec pas"
+    },
+    "Valor Mínimo de una función": {
+      "es": "Valor Mínimo de una función",
+      "en": "Minimum value of a function",
+      "fr": "Valeur minimale d’une fonction"
+    },
+    "Valor Máximo de una función": {
+      "es": "Valor Máximo de una función",
+      "en": "Maximum value of a function",
+      "fr": "Valeur maximale d’une fonction"
+    },
+    "Probabilidad": {
+      "es": "Probabilidad",
+      "en": "Probability",
+      "fr": "Probabilités"
+    },
+    "Factorial (!)": {
+      "es": "Factorial (!)",
+      "en": "Factorial (!)",
+      "fr": "Factorielle (!)"
+    },
+    "Aleatorio": {
+      "es": "Aleatorio",
+      "en": "Random",
+      "fr": "Aléatoire"
+    },
+    "Entero": {
+      "es": "Entero",
+      "en": "Integer",
+      "fr": "Entier"
+    },
+    "Binomial": {
+      "es": "Binomial",
+      "en": "Binomial",
+      "fr": "Binomiale"
+    },
+    "Normal": {
+      "es": "Normal",
+      "en": "Normal",
+      "fr": "Normale"
+    },
+    "Muestra": {
+      "es": "Muestra",
+      "en": "Sample",
+      "fr": "Échantillon"
+    },
+    "Semilla": {
+      "es": "Semilla",
+      "en": "Seed",
+      "fr": "Graine"
+    },
+    "Distribuciones": {
+      "es": "Distribuciones",
+      "en": "Distributions",
+      "fr": "Distributions"
+    },
+    "fdP normal": {
+      "es": "fdP normal",
+      "en": "Normal PDF",
+      "fr": "Densité normale"
+    },
+    "fdA normal": {
+      "es": "fdA normal",
+      "en": "Normal CDF",
+      "fr": "Répartition normale"
+    },
+    "Normal inversa": {
+      "es": "Normal inversa",
+      "en": "Inverse normal",
+      "fr": "Normale inverse"
+    },
+    "fdP t": {
+      "es": "fdP t",
+      "en": "t PDF",
+      "fr": "Densité t"
+    },
+    "fdA t": {
+      "es": "fdA t",
+      "en": "t CDF",
+      "fr": "Répartition t"
+    },
+    "t Inversa": {
+      "es": "t Inversa",
+      "en": "Inverse t",
+      "fr": "t inverse"
+    },
+    "χ² fdP": {
+      "es": "χ² fdP",
+      "en": "χ² PDF",
+      "fr": "Densité χ²"
+    },
+    "χ² fdA": {
+      "es": "χ² fdA",
+      "en": "χ² CDF",
+      "fr": "Répartition χ²"
+    },
+    "Inversa χ²": {
+      "es": "Inversa χ²",
+      "en": "Inverse χ²",
+      "fr": "χ² inverse"
+    },
+    "fdP binomial": {
+      "es": "fdP binomial",
+      "en": "Binomial PDF",
+      "fr": "Probabilité binomiale"
+    },
+    "fdA binomial": {
+      "es": "fdA binomial",
+      "en": "Binomial CDF",
+      "fr": "Répartition binomiale"
+    },
+    "Binomial Inversa": {
+      "es": "Binomial Inversa",
+      "en": "Inverse binomial",
+      "fr": "Binomiale inverse"
+    },
+    "Binomial Inversa N": {
+      "es": "Binomial Inversa N",
+      "en": "Inverse binomial N",
+      "fr": "Binomiale inverse N"
+    },
+    "F fdP": {
+      "es": "F fdP",
+      "en": "F PDF",
+      "fr": "Densité F"
+    },
+    "F fdA": {
+      "es": "F fdA",
+      "en": "F CDF",
+      "fr": "Répartition F"
+    },
+    "Inversa F": {
+      "es": "Inversa F",
+      "en": "Inverse F",
+      "fr": "F inverse"
+    },
+    "fdP geométrica": {
+      "es": "fdP geométrica",
+      "en": "Geometric PDF",
+      "fr": "Probabilité géométrique"
+    },
+    "fdA geométrica": {
+      "es": "fdA geométrica",
+      "en": "Geometric CDF",
+      "fr": "Répartition géométrique"
+    },
+    "fdP Poisson": {
+      "es": "fdP Poisson",
+      "en": "Poisson PDF",
+      "fr": "Probabilité de Poisson"
+    },
+    "fdA Poisson": {
+      "es": "fdA Poisson",
+      "en": "Poisson CDF",
+      "fr": "Répartition de Poisson"
+    },
+    "Estadística": {
+      "es": "Estadística",
+      "en": "Statistics",
+      "fr": "Statistiques"
+    },
+    "Cálculos estadísticos": {
+      "es": "Cálculos estadísticos",
+      "en": "Statistical calculations",
+      "fr": "Calculs statistiques"
+    },
+    "Estadísticas de una variable": {
+      "es": "Estadísticas de una variable",
+      "en": "One-variable statistics",
+      "fr": "Statistiques à une variable"
+    },
+    "Estadísticas de dos variables": {
+      "es": "Estadísticas de dos variables",
+      "en": "Two-variable statistics",
+      "fr": "Statistiques à deux variables"
+    },
+    "Regresión lineal (mx+b)": {
+      "es": "Regresión lineal (mx+b)",
+      "en": "Linear regression (mx+b)",
+      "fr": "Régression linéaire (mx+b)"
+    },
+    "Regresión lineal (a+bx)": {
+      "es": "Regresión lineal (a+bx)",
+      "en": "Linear regression (a+bx)",
+      "fr": "Régression linéaire (a+bx)"
+    },
+    "Línea mediana–mediana": {
+      "es": "Línea mediana–mediana",
+      "en": "Median–median line",
+      "fr": "Droite médiane–médiane"
+    },
+    "Regresión potencial": {
+      "es": "Regresión potencial",
+      "en": "Power regression",
+      "fr": "Régression puissance"
+    },
+    "Regresión logística (d=0)": {
+      "es": "Regresión logística (d=0)",
+      "en": "Logistic regression (d=0)",
+      "fr": "Régression logistique (d=0)"
+    },
+    "Regresión logística (d≠0)": {
+      "es": "Regresión logística (d≠0)",
+      "en": "Logistic regression (d≠0)",
+      "fr": "Régression logistique (d≠0)"
+    },
+    "Regresión lineal múltiple": {
+      "es": "Regresión lineal múltiple",
+      "en": "Multiple linear regression",
+      "fr": "Régression linéaire multiple"
+    },
+    "Matemáticas para listas": {
+      "es": "Matemáticas para listas",
+      "en": "List math",
+      "fr": "Calculs sur les listes"
+    },
+    "Operaciones sobre listas": {
+      "es": "Operaciones sobre listas",
+      "en": "List operations",
+      "fr": "Opérations sur les listes"
+    },
+    "Intervalos de confianza": {
+      "es": "Intervalos de confianza",
+      "en": "Confidence intervals",
+      "fr": "Intervalles de confiance"
+    },
+    "Intervalo z": {
+      "es": "Intervalo z",
+      "en": "z interval",
+      "fr": "Intervalle z"
+    },
+    "Intervalo t": {
+      "es": "Intervalo t",
+      "en": "t interval",
+      "fr": "Intervalle t"
+    },
+    "Intervalo z de 2 muestras": {
+      "es": "Intervalo z de 2 muestras",
+      "en": "Two-sample z interval",
+      "fr": "Intervalle z à deux échantillons"
+    },
+    "Intervalo t de 2 muestras": {
+      "es": "Intervalo t de 2 muestras",
+      "en": "Two-sample t interval",
+      "fr": "Intervalle t à deux échantillons"
+    },
+    "Intervalo z de 1 proporción": {
+      "es": "Intervalo z de 1 proporción",
+      "en": "One-proportion z interval",
+      "fr": "Intervalle z pour une proportion"
+    },
+    "Intervalo z de 2 proporciones": {
+      "es": "Intervalo z de 2 proporciones",
+      "en": "Two-proportion z interval",
+      "fr": "Intervalle z pour deux proportions"
+    },
+    "Intervalos t de reg lineal": {
+      "es": "Intervalos t de reg lineal",
+      "en": "Linear-regression t intervals",
+      "fr": "Intervalles t de régression linéaire"
+    },
+    "Intervalos de reg múltiple": {
+      "es": "Intervalos de reg múltiple",
+      "en": "Multiple-regression intervals",
+      "fr": "Intervalles de régression multiple"
+    },
+    "Pruebas estadísticas": {
+      "es": "Pruebas estadísticas",
+      "en": "Statistical tests",
+      "fr": "Tests statistiques"
+    },
+    "Prueba z": {
+      "es": "Prueba z",
+      "en": "z test",
+      "fr": "Test z"
+    },
+    "Prueba t": {
+      "es": "Prueba t",
+      "en": "t test",
+      "fr": "Test t"
+    },
+    "Prueba z de 2 muestras": {
+      "es": "Prueba z de 2 muestras",
+      "en": "Two-sample z test",
+      "fr": "Test z à deux échantillons"
+    },
+    "Prueba t de 2 muestras": {
+      "es": "Prueba t de 2 muestras",
+      "en": "Two-sample t test",
+      "fr": "Test t à deux échantillons"
+    },
+    "Prueba z de 1 proporción": {
+      "es": "Prueba z de 1 proporción",
+      "en": "One-proportion z test",
+      "fr": "Test z pour une proportion"
+    },
+    "Prueba z de 2 proporciones": {
+      "es": "Prueba z de 2 proporciones",
+      "en": "Two-proportion z test",
+      "fr": "Test z pour deux proportions"
+    },
+    "χ² PBA": {
+      "es": "χ² PBA",
+      "en": "χ² goodness-of-fit test",
+      "fr": "Test d’ajustement χ²"
+    },
+    "χ² Prueba bidireccional": {
+      "es": "χ² Prueba bidireccional",
+      "en": "χ² two-way test",
+      "fr": "Test χ² à double entrée"
+    },
+    "Prueba F de 2 muestras": {
+      "es": "Prueba F de 2 muestras",
+      "en": "Two-sample F test",
+      "fr": "Test F à deux échantillons"
+    },
+    "Prueba t de reg lineal": {
+      "es": "Prueba t de reg lineal",
+      "en": "Linear-regression t test",
+      "fr": "Test t de régression linéaire"
+    },
+    "Pruebas de reg múltiples": {
+      "es": "Pruebas de reg múltiples",
+      "en": "Multiple-regression tests",
+      "fr": "Tests de régression multiple"
+    },
+    "ANOVA bidireccional": {
+      "es": "ANOVA bidireccional",
+      "en": "Two-way ANOVA",
+      "fr": "ANOVA à deux facteurs"
+    },
+    "Finanzas": {
+      "es": "Finanzas",
+      "en": "Finance",
+      "fr": "Finances"
+    },
+    "Funciones VDAT": {
+      "es": "Funciones VDAT",
+      "en": "TVM functions",
+      "fr": "Fonctions de valeur temporelle de l’argent"
+    },
+    "Pago": {
+      "es": "Pago",
+      "en": "Payment",
+      "fr": "Paiement"
+    },
+    "Amortización": {
+      "es": "Amortización",
+      "en": "Amortization",
+      "fr": "Amortissement"
+    },
+    "Balance": {
+      "es": "Balance",
+      "en": "Balance",
+      "fr": "Solde"
+    },
+    "Interés pagado": {
+      "es": "Interés pagado",
+      "en": "Interest paid",
+      "fr": "Intérêts versés"
+    },
+    "Capital pagado": {
+      "es": "Capital pagado",
+      "en": "Principal paid",
+      "fr": "Capital remboursé"
+    },
+    "Flujos de efectivo": {
+      "es": "Flujos de efectivo",
+      "en": "Cash flows",
+      "fr": "Flux de trésorerie"
+    },
+    "Tasa interna de rendimiento": {
+      "es": "Tasa interna de rendimiento",
+      "en": "Internal rate of return",
+      "fr": "Taux de rendement interne"
+    },
+    "Tasa interna de rendimiento modificada": {
+      "es": "Tasa interna de rendimiento modificada",
+      "en": "Modified internal rate of return",
+      "fr": "Taux de rendement interne modifié"
+    },
+    "Conversión de interés": {
+      "es": "Conversión de interés",
+      "en": "Interest conversion",
+      "fr": "Conversion de taux d’intérêt"
+    },
+    "Tasa de interés nominal": {
+      "es": "Tasa de interés nominal",
+      "en": "Nominal interest rate",
+      "fr": "Taux d’intérêt nominal"
+    },
+    "Tasa de interés efectiva": {
+      "es": "Tasa de interés efectiva",
+      "en": "Effective interest rate",
+      "fr": "Taux d’intérêt effectif"
+    },
+    "Formato mes día": {
+      "es": "Formato mes día",
+      "en": "Month-day format",
+      "fr": "Format mois-jour"
+    },
+    "Formato día mes": {
+      "es": "Formato día mes",
+      "en": "Day-month format",
+      "fr": "Format jour-mois"
+    },
+    "Prueba": {
+      "es": "Prueba",
+      "en": "Test",
+      "fr": "Test"
+    },
+    "Igual a": {
+      "es": "Igual a",
+      "en": "Equal to",
+      "fr": "Égal à"
+    },
+    "No igual a": {
+      "es": "No igual a",
+      "en": "Not equal to",
+      "fr": "Différent de"
+    },
+    "Menor que o igual a": {
+      "es": "Menor que o igual a",
+      "en": "Less than or equal to",
+      "fr": "Inférieur ou égal à"
+    },
+    "Mayor que o igual a": {
+      "es": "Mayor que o igual a",
+      "en": "Greater than or equal to",
+      "fr": "Supérieur ou égal à"
+    },
+    "Implica": {
+      "es": "Implica",
+      "en": "Implies",
+      "fr": "Implique"
+    },
+    "Equivalente": {
+      "es": "Equivalente",
+      "en": "Equivalent",
+      "fr": "Équivalent"
+    },
+    "Es primo": {
+      "es": "Es primo",
+      "en": "Is prime",
+      "fr": "Est premier"
+    },
+    "Base": {
+      "es": "Base",
+      "en": "Base",
+      "fr": "Base"
+    },
+    "Convertir a Base 2": {
+      "es": "Convertir a Base 2",
+      "en": "Convert to base 2",
+      "fr": "Convertir en base 2"
+    },
+    "Convertir a Base 10": {
+      "es": "Convertir a Base 10",
+      "en": "Convert to base 10",
+      "fr": "Convertir en base 10"
+    },
+    "Convertir a Base 16": {
+      "es": "Convertir a Base 16",
+      "en": "Convert to base 16",
+      "fr": "Convertir en base 16"
+    },
+    "(−) complemento de 2": {
+      "es": "(−) complemento de 2",
+      "en": "(−) two’s complement",
+      "fr": "(−) complément à deux"
+    },
+    "Desplazar": {
+      "es": "Desplazar",
+      "en": "Shift",
+      "fr": "Décaler"
+    },
+    "Rotar": {
+      "es": "Rotar",
+      "en": "Rotate",
+      "fr": "Faire tourner"
+    },
+    "Funciones y Programas": {
+      "es": "Funciones y Programas",
+      "en": "Functions and Programs",
+      "fr": "Fonctions et programmes"
+    },
+    "Control": {
+      "es": "Control",
+      "en": "Control",
+      "fr": "Contrôle"
+    },
+    "Misceláneo": {
+      "es": "Misceláneo",
+      "en": "Miscellaneous",
+      "fr": "Divers"
+    },
+    "Transferencia": {
+      "es": "Transferencia",
+      "en": "Transfer",
+      "fr": "Transfert"
+    },
+    "Entrada/Salida": {
+      "es": "Entrada/Salida",
+      "en": "Input/Output",
+      "fr": "Entrée/Sortie"
+    },
+    "Modo": {
+      "es": "Modo",
+      "en": "Mode",
+      "fr": "Mode"
+    },
+    "Configurar modo": {
+      "es": "Configurar modo",
+      "en": "Set mode",
+      "fr": "Définir le mode"
+    },
+    "Obtener modo": {
+      "es": "Obtener modo",
+      "en": "Get mode",
+      "fr": "Obtenir le mode"
+    },
+    "Obtener información de idioma": {
+      "es": "Obtener información de idioma",
+      "en": "Get language information",
+      "fr": "Obtenir les informations de langue"
+    },
+    "Obtener información de la plataforma": {
+      "es": "Obtener información de la plataforma",
+      "en": "Get platform information",
+      "fr": "Obtenir les informations de plateforme"
+    },
+    "Dibujar": {
+      "es": "Dibujar",
+      "en": "Draw",
+      "fr": "Dessiner"
+    },
+    "Cadena": {
+      "es": "Cadena",
+      "en": "String",
+      "fr": "Chaîne"
+    },
+    "Convertir a cadena": {
+      "es": "Convertir a cadena",
+      "en": "Convert to string",
+      "fr": "Convertir en chaîne"
+    },
+    "Convertir a expresión": {
+      "es": "Convertir a expresión",
+      "en": "Convert to expression",
+      "fr": "Convertir en expression"
+    },
+    "Dimensión de cadena": {
+      "es": "Dimensión de cadena",
+      "en": "String length",
+      "fr": "Longueur de chaîne"
+    },
+    "Concatenar": {
+      "es": "Concatenar",
+      "en": "Concatenate",
+      "fr": "Concaténer"
+    },
+    "Operadores y caracteres": {
+      "es": "Operadores y caracteres",
+      "en": "Operators and characters",
+      "fr": "Opérateurs et caractères"
+    },
+    "Almacenar": {
+      "es": "Almacenar",
+      "en": "Store",
+      "fr": "Stocker"
+    },
+    "Asignar": {
+      "es": "Asignar",
+      "en": "Assign",
+      "fr": "Affecter"
+    },
+    "Negación": {
+      "es": "Negación",
+      "en": "Negation",
+      "fr": "Négation"
+    },
+    "Diferencial": {
+      "es": "Diferencial",
+      "en": "Differential",
+      "fr": "Différentielle"
+    },
+    "Producto elemento a elemento": {
+      "es": "Producto elemento a elemento",
+      "en": "Element-wise product",
+      "fr": "Produit terme à terme"
+    },
+    "Composición condicionada": {
+      "es": "Composición condicionada",
+      "en": "Conditional composition",
+      "fr": "Composition conditionnelle"
+    },
+    "Concatenación": {
+      "es": "Concatenación",
+      "en": "Concatenation",
+      "fr": "Concaténation"
+    },
+    "Asistente de conversión": {
+      "es": "Asistente de conversión",
+      "en": "Conversion assistant",
+      "fr": "Assistant de conversion"
+    },
+    "Símbolo de conversión": {
+      "es": "Símbolo de conversión",
+      "en": "Conversion symbol",
+      "fr": "Symbole de conversion"
+    },
+    "Constantes": {
+      "es": "Constantes",
+      "en": "Constants",
+      "fr": "Constantes"
+    },
+    "Velocidad de la luz": {
+      "es": "Velocidad de la luz",
+      "en": "Speed of light",
+      "fr": "Vitesse de la lumière"
+    },
+    "Constante de Coulomb": {
+      "es": "Constante de Coulomb",
+      "en": "Coulomb constant",
+      "fr": "Constante de Coulomb"
+    },
+    "Constante de Faraday": {
+      "es": "Constante de Faraday",
+      "en": "Faraday constant",
+      "fr": "Constante de Faraday"
+    },
+    "Aceleración de gravedad": {
+      "es": "Aceleración de gravedad",
+      "en": "Gravitational acceleration",
+      "fr": "Accélération de la pesanteur"
+    },
+    "Constante gravitacional": {
+      "es": "Constante gravitacional",
+      "en": "Gravitational constant",
+      "fr": "Constante gravitationnelle"
+    },
+    "Constante de Planck": {
+      "es": "Constante de Planck",
+      "en": "Planck constant",
+      "fr": "Constante de Planck"
+    },
+    "Constante de Boltzmann": {
+      "es": "Constante de Boltzmann",
+      "en": "Boltzmann constant",
+      "fr": "Constante de Boltzmann"
+    },
+    "Permeabilidad en el vacío": {
+      "es": "Permeabilidad en el vacío",
+      "en": "Vacuum permeability",
+      "fr": "Perméabilité du vide"
+    },
+    "Magnetón de Bohr": {
+      "es": "Magnetón de Bohr",
+      "en": "Bohr magneton",
+      "fr": "Magnéton de Bohr"
+    },
+    "Masa en reposo del electrón": {
+      "es": "Masa en reposo del electrón",
+      "en": "Electron rest mass",
+      "fr": "Masse au repos de l’électron"
+    },
+    "Masa del muón": {
+      "es": "Masa del muón",
+      "en": "Muon mass",
+      "fr": "Masse du muon"
+    },
+    "Masa en reposo del neutrón": {
+      "es": "Masa en reposo del neutrón",
+      "en": "Neutron rest mass",
+      "fr": "Masse au repos du neutron"
+    },
+    "Masa en reposo del protón": {
+      "es": "Masa en reposo del protón",
+      "en": "Proton rest mass",
+      "fr": "Masse au repos du proton"
+    },
+    "Número de Avogadro": {
+      "es": "Número de Avogadro",
+      "en": "Avogadro constant",
+      "fr": "Constante d’Avogadro"
+    },
+    "Carga del electrón": {
+      "es": "Carga del electrón",
+      "en": "Electron charge",
+      "fr": "Charge de l’électron"
+    },
+    "Radio de Bohr": {
+      "es": "Radio de Bohr",
+      "en": "Bohr radius",
+      "fr": "Rayon de Bohr"
+    },
+    "Constante molar de los gases": {
+      "es": "Constante molar de los gases",
+      "en": "Molar gas constant",
+      "fr": "Constante molaire des gaz"
+    },
+    "Constante de Rydberg": {
+      "es": "Constante de Rydberg",
+      "en": "Rydberg constant",
+      "fr": "Constante de Rydberg"
+    },
+    "Radio del electrón": {
+      "es": "Radio del electrón",
+      "en": "Electron radius",
+      "fr": "Rayon de l’électron"
+    },
+    "Masa atómica": {
+      "es": "Masa atómica",
+      "en": "Atomic mass",
+      "fr": "Masse atomique"
+    },
+    "Volumen molar": {
+      "es": "Volumen molar",
+      "en": "Molar volume",
+      "fr": "Volume molaire"
+    },
+    "Permitividad en el vacío": {
+      "es": "Permitividad en el vacío",
+      "en": "Vacuum permittivity",
+      "fr": "Permittivité du vide"
+    },
+    "Constante de Stefan-Boltzmann": {
+      "es": "Constante de Stefan-Boltzmann",
+      "en": "Stefan–Boltzmann constant",
+      "fr": "Constante de Stefan–Boltzmann"
+    },
+    "Cuanto de flujo magnético": {
+      "es": "Cuanto de flujo magnético",
+      "en": "Magnetic flux quantum",
+      "fr": "Quantum de flux magnétique"
+    },
+    "Longitud": {
+      "es": "Longitud",
+      "en": "Length",
+      "fr": "Longueur"
+    },
+    "Ángstrom": {
+      "es": "Ángstrom",
+      "en": "Ångström",
+      "fr": "Ångström"
+    },
+    "Unidad astronómica": {
+      "es": "Unidad astronómica",
+      "en": "Astronomical unit",
+      "fr": "Unité astronomique"
+    },
+    "Centímetro": {
+      "es": "Centímetro",
+      "en": "Centimeter",
+      "fr": "Centimètre"
+    },
+    "Decímetro": {
+      "es": "Decímetro",
+      "en": "Decimeter",
+      "fr": "Décimètre"
+    },
+    "Braza": {
+      "es": "Braza",
+      "en": "Fathom",
+      "fr": "Brasse"
+    },
+    "Fermi": {
+      "es": "Fermi",
+      "en": "Fermi",
+      "fr": "Fermi"
+    },
+    "Pie": {
+      "es": "Pie",
+      "en": "Foot",
+      "fr": "Pied"
+    },
+    "Pulgada": {
+      "es": "Pulgada",
+      "en": "Inch",
+      "fr": "Pouce"
+    },
+    "Kilómetro": {
+      "es": "Kilómetro",
+      "en": "Kilometer",
+      "fr": "Kilomètre"
+    },
+    "Año luz": {
+      "es": "Año luz",
+      "en": "Light-year",
+      "fr": "Année-lumière"
+    },
+    "Metro": {
+      "es": "Metro",
+      "en": "Meter",
+      "fr": "Mètre"
+    },
+    "Micrón / micrómetro": {
+      "es": "Micrón / micrómetro",
+      "en": "Micron / micrometer",
+      "fr": "Micron / micromètre"
+    },
+    "Milla": {
+      "es": "Milla",
+      "en": "Mile",
+      "fr": "Mille"
+    },
+    "Milésima de pulgada": {
+      "es": "Milésima de pulgada",
+      "en": "Thousandth of an inch",
+      "fr": "Millième de pouce"
+    },
+    "Milímetro": {
+      "es": "Milímetro",
+      "en": "Millimeter",
+      "fr": "Millimètre"
+    },
+    "Nanómetro": {
+      "es": "Nanómetro",
+      "en": "Nanometer",
+      "fr": "Nanomètre"
+    },
+    "Milla náutica": {
+      "es": "Milla náutica",
+      "en": "Nautical mile",
+      "fr": "Mille marin"
+    },
+    "Pársec": {
+      "es": "Pársec",
+      "en": "Parsec",
+      "fr": "Parsec"
+    },
+    "Rod (unidad de longitud)": {
+      "es": "Rod (unidad de longitud)",
+      "en": "Rod (unit of length)",
+      "fr": "Perche (unité de longueur)"
+    },
+    "Yarda": {
+      "es": "Yarda",
+      "en": "Yard",
+      "fr": "Yard"
+    },
+    "Ángstrom (símbolo alternativo)": {
+      "es": "Ángstrom (símbolo alternativo)",
+      "en": "Ångström (alternate symbol)",
+      "fr": "Ångström (symbole alternatif)"
+    },
+    "Área": {
+      "es": "Área",
+      "en": "Area",
+      "fr": "Aire"
+    },
+    "Acre": {
+      "es": "Acre",
+      "en": "Acre",
+      "fr": "Acre"
+    },
+    "Hectárea": {
+      "es": "Hectárea",
+      "en": "Hectare",
+      "fr": "Hectare"
+    },
+    "Volumen": {
+      "es": "Volumen",
+      "en": "Volume",
+      "fr": "Volume"
+    },
+    "Taza": {
+      "es": "Taza",
+      "en": "Cup",
+      "fr": "Tasse"
+    },
+    "Onza líquida estadounidense": {
+      "es": "Onza líquida estadounidense",
+      "en": "US fluid ounce",
+      "fr": "Once liquide américaine"
+    },
+    "Onza líquida británica": {
+      "es": "Onza líquida británica",
+      "en": "Imperial fluid ounce",
+      "fr": "Once liquide impériale"
+    },
+    "Galón estadounidense": {
+      "es": "Galón estadounidense",
+      "en": "US gallon",
+      "fr": "Gallon américain"
+    },
+    "Galón británico": {
+      "es": "Galón británico",
+      "en": "Imperial gallon",
+      "fr": "Gallon impérial"
+    },
+    "Litro": {
+      "es": "Litro",
+      "en": "Liter",
+      "fr": "Litre"
+    },
+    "Mililitro": {
+      "es": "Mililitro",
+      "en": "Milliliter",
+      "fr": "Millilitre"
+    },
+    "Pinta": {
+      "es": "Pinta",
+      "en": "Pint",
+      "fr": "Pinte"
+    },
+    "Cuarto (2 pintas)": {
+      "es": "Cuarto (2 pintas)",
+      "en": "Quart (2 pints)",
+      "fr": "Quart (2 pintes)"
+    },
+    "Cucharada": {
+      "es": "Cucharada",
+      "en": "Tablespoon",
+      "fr": "Cuillère à soupe"
+    },
+    "Cucharadita": {
+      "es": "Cucharadita",
+      "en": "Teaspoon",
+      "fr": "Cuillère à café"
+    },
+    "Tiempo": {
+      "es": "Tiempo",
+      "en": "Time",
+      "fr": "Temps"
+    },
+    "Día": {
+      "es": "Día",
+      "en": "Day",
+      "fr": "Jour"
+    },
+    "Hora": {
+      "es": "Hora",
+      "en": "Hour",
+      "fr": "Heure"
+    },
+    "Microsegundo": {
+      "es": "Microsegundo",
+      "en": "Microsecond",
+      "fr": "Microseconde"
+    },
+    "Minuto": {
+      "es": "Minuto",
+      "en": "Minute",
+      "fr": "Minute"
+    },
+    "Milisegundo": {
+      "es": "Milisegundo",
+      "en": "Millisecond",
+      "fr": "Milliseconde"
+    },
+    "Nanosegundo": {
+      "es": "Nanosegundo",
+      "en": "Nanosecond",
+      "fr": "Nanoseconde"
+    },
+    "Segundo": {
+      "es": "Segundo",
+      "en": "Second",
+      "fr": "Seconde"
+    },
+    "Semana": {
+      "es": "Semana",
+      "en": "Week",
+      "fr": "Semaine"
+    },
+    "Año": {
+      "es": "Año",
+      "en": "Year",
+      "fr": "Année"
+    },
+    "Velocidad": {
+      "es": "Velocidad",
+      "en": "Velocity",
+      "fr": "Vitesse"
+    },
+    "Nudo": {
+      "es": "Nudo",
+      "en": "Knot",
+      "fr": "Nœud"
+    },
+    "Kilómetros por hora": {
+      "es": "Kilómetros por hora",
+      "en": "Kilometers per hour",
+      "fr": "Kilomètres par heure"
+    },
+    "Millas por hora": {
+      "es": "Millas por hora",
+      "en": "Miles per hour",
+      "fr": "Milles par heure"
+    },
+    "Temperatura": {
+      "es": "Temperatura",
+      "en": "Temperature",
+      "fr": "Température"
+    },
+    "Conversión de diferencia de temperatura": {
+      "es": "Conversión de diferencia de temperatura",
+      "en": "Temperature-difference conversion",
+      "fr": "Conversion de différences de température"
+    },
+    "Grados Celsius": {
+      "es": "Grados Celsius",
+      "en": "Degrees Celsius",
+      "fr": "Degrés Celsius"
+    },
+    "Grados Fahrenheit": {
+      "es": "Grados Fahrenheit",
+      "en": "Degrees Fahrenheit",
+      "fr": "Degrés Fahrenheit"
+    },
+    "Kelvin": {
+      "es": "Kelvin",
+      "en": "Kelvin",
+      "fr": "Kelvin"
+    },
+    "Grados Rankine": {
+      "es": "Grados Rankine",
+      "en": "Degrees Rankine",
+      "fr": "Degrés Rankine"
+    },
+    "Intensidad luminosa": {
+      "es": "Intensidad luminosa",
+      "en": "Luminous intensity",
+      "fr": "Intensité lumineuse"
+    },
+    "Candela": {
+      "es": "Candela",
+      "en": "Candela",
+      "fr": "Candela"
+    },
+    "Cantidad de sustancia": {
+      "es": "Cantidad de sustancia",
+      "en": "Amount of substance",
+      "fr": "Quantité de matière"
+    },
+    "Mol": {
+      "es": "Mol",
+      "en": "Mole",
+      "fr": "Mole"
+    },
+    "Masa": {
+      "es": "Masa",
+      "en": "Mass",
+      "fr": "Masse"
+    },
+    "Unidad de masa atómica": {
+      "es": "Unidad de masa atómica",
+      "en": "Atomic mass unit",
+      "fr": "Unité de masse atomique"
+    },
+    "Gramo": {
+      "es": "Gramo",
+      "en": "Gram",
+      "fr": "Gramme"
+    },
+    "Kilogramo": {
+      "es": "Kilogramo",
+      "en": "Kilogram",
+      "fr": "Kilogramme"
+    },
+    "Libra": {
+      "es": "Libra",
+      "en": "Pound",
+      "fr": "Livre"
+    },
+    "Miligramo": {
+      "es": "Miligramo",
+      "en": "Milligram",
+      "fr": "Milligramme"
+    },
+    "Tonelada métrica": {
+      "es": "Tonelada métrica",
+      "en": "Metric ton",
+      "fr": "Tonne métrique"
+    },
+    "Onza": {
+      "es": "Onza",
+      "en": "Ounce",
+      "fr": "Once"
+    },
+    "Slug": {
+      "es": "Slug",
+      "en": "Slug",
+      "fr": "Slug"
+    },
+    "Tonelada (US)": {
+      "es": "Tonelada (US)",
+      "en": "US ton",
+      "fr": "Tonne américaine"
+    },
+    "Tonelada larga británica": {
+      "es": "Tonelada larga británica",
+      "en": "Imperial long ton",
+      "fr": "Tonne longue impériale"
+    },
+    "Fuerza": {
+      "es": "Fuerza",
+      "en": "Force",
+      "fr": "Force"
+    },
+    "Dina": {
+      "es": "Dina",
+      "en": "Dyne",
+      "fr": "Dyne"
+    },
+    "Kilogramo-fuerza": {
+      "es": "Kilogramo-fuerza",
+      "en": "Kilogram-force",
+      "fr": "Kilogramme-force"
+    },
+    "Libra-fuerza": {
+      "es": "Libra-fuerza",
+      "en": "Pound-force",
+      "fr": "Livre-force"
+    },
+    "Newton": {
+      "es": "Newton",
+      "en": "Newton",
+      "fr": "Newton"
+    },
+    "Tonelada-fuerza": {
+      "es": "Tonelada-fuerza",
+      "en": "Ton-force",
+      "fr": "Tonne-force"
+    },
+    "Energía": {
+      "es": "Energía",
+      "en": "Energy",
+      "fr": "Énergie"
+    },
+    "Unidad térmica británica": {
+      "es": "Unidad térmica británica",
+      "en": "British thermal unit",
+      "fr": "Unité thermique britannique"
+    },
+    "Caloría": {
+      "es": "Caloría",
+      "en": "Calorie",
+      "fr": "Calorie"
+    },
+    "Ergio": {
+      "es": "Ergio",
+      "en": "Erg",
+      "fr": "Erg"
+    },
+    "Electronvoltio": {
+      "es": "Electronvoltio",
+      "en": "Electronvolt",
+      "fr": "Électronvolt"
+    },
+    "Pie-libra": {
+      "es": "Pie-libra",
+      "en": "Foot-pound",
+      "fr": "Pied-livre"
+    },
+    "Julio": {
+      "es": "Julio",
+      "en": "Joule",
+      "fr": "Joule"
+    },
+    "Kilojulio": {
+      "es": "Kilojulio",
+      "en": "Kilojoule",
+      "fr": "Kilojoule"
+    },
+    "Kilocaloría": {
+      "es": "Kilocaloría",
+      "en": "Kilocalorie",
+      "fr": "Kilocalorie"
+    },
+    "Kilovatio-hora": {
+      "es": "Kilovatio-hora",
+      "en": "Kilowatt-hour",
+      "fr": "Kilowattheure"
+    },
+    "Litro-atmósfera": {
+      "es": "Litro-atmósfera",
+      "en": "Liter-atmosphere",
+      "fr": "Litre-atmosphère"
+    },
+    "Caballo de fuerza": {
+      "es": "Caballo de fuerza",
+      "en": "Horsepower",
+      "fr": "Cheval-vapeur"
+    },
+    "Caballo de fuerza métrico": {
+      "es": "Caballo de fuerza métrico",
+      "en": "Metric horsepower",
+      "fr": "Cheval-vapeur métrique"
+    },
+    "Kilovatio": {
+      "es": "Kilovatio",
+      "en": "Kilowatt",
+      "fr": "Kilowatt"
+    },
+    "Vatio": {
+      "es": "Vatio",
+      "en": "Watt",
+      "fr": "Watt"
+    },
+    "Presión": {
+      "es": "Presión",
+      "en": "Pressure",
+      "fr": "Pression"
+    },
+    "Atmósfera": {
+      "es": "Atmósfera",
+      "en": "Atmosphere",
+      "fr": "Atmosphère"
+    },
+    "Bar": {
+      "es": "Bar",
+      "en": "Bar",
+      "fr": "Bar"
+    },
+    "Milibar": {
+      "es": "Milibar",
+      "en": "Millibar",
+      "fr": "Millibar"
+    },
+    "Pulgada de agua": {
+      "es": "Pulgada de agua",
+      "en": "Inch of water",
+      "fr": "Pouce d’eau"
+    },
+    "Pulgada de mercurio": {
+      "es": "Pulgada de mercurio",
+      "en": "Inch of mercury",
+      "fr": "Pouce de mercure"
+    },
+    "Milímetro de agua": {
+      "es": "Milímetro de agua",
+      "en": "Millimeter of water",
+      "fr": "Millimètre d’eau"
+    },
+    "Milímetro de mercurio": {
+      "es": "Milímetro de mercurio",
+      "en": "Millimeter of mercury",
+      "fr": "Millimètre de mercure"
+    },
+    "Pascal": {
+      "es": "Pascal",
+      "en": "Pascal",
+      "fr": "Pascal"
+    },
+    "Kilopascal": {
+      "es": "Kilopascal",
+      "en": "Kilopascal",
+      "fr": "Kilopascal"
+    },
+    "Libra por pulgada cuadrada": {
+      "es": "Libra por pulgada cuadrada",
+      "en": "Pound per square inch",
+      "fr": "Livre par pouce carré"
+    },
+    "Torr": {
+      "es": "Torr",
+      "en": "Torr",
+      "fr": "Torr"
+    },
+    "Viscosidad, cinética": {
+      "es": "Viscosidad, cinética",
+      "en": "Kinematic viscosity",
+      "fr": "Viscosité cinématique"
+    },
+    "Stokes": {
+      "es": "Stokes",
+      "en": "Stokes",
+      "fr": "Stokes"
+    },
+    "Viscosidad, dinámica": {
+      "es": "Viscosidad, dinámica",
+      "en": "Dynamic viscosity",
+      "fr": "Viscosité dynamique"
+    },
+    "Poise": {
+      "es": "Poise",
+      "en": "Poise",
+      "fr": "Poise"
+    },
+    "Gigahercio": {
+      "es": "Gigahercio",
+      "en": "Gigahertz",
+      "fr": "Gigahertz"
+    },
+    "Hercio": {
+      "es": "Hercio",
+      "en": "Hertz",
+      "fr": "Hertz"
+    },
+    "Kilohercio": {
+      "es": "Kilohercio",
+      "en": "Kilohertz",
+      "fr": "Kilohertz"
+    },
+    "Megahercio": {
+      "es": "Megahercio",
+      "en": "Megahertz",
+      "fr": "Mégahertz"
+    },
+    "Corriente eléctrica": {
+      "es": "Corriente eléctrica",
+      "en": "Electric current",
+      "fr": "Courant électrique"
+    },
+    "Amperio": {
+      "es": "Amperio",
+      "en": "Ampere",
+      "fr": "Ampère"
+    },
+    "Kiloamperio": {
+      "es": "Kiloamperio",
+      "en": "Kiloampere",
+      "fr": "Kiloampère"
+    },
+    "Miliamperio": {
+      "es": "Miliamperio",
+      "en": "Milliampere",
+      "fr": "Milliampère"
+    },
+    "Microamperio": {
+      "es": "Microamperio",
+      "en": "Microampere",
+      "fr": "Microampère"
+    },
+    "Carga": {
+      "es": "Carga",
+      "en": "Charge",
+      "fr": "Charge"
+    },
+    "Culombio": {
+      "es": "Culombio",
+      "en": "Coulomb",
+      "fr": "Coulomb"
+    },
+    "Potencial": {
+      "es": "Potencial",
+      "en": "Potential",
+      "fr": "Potentiel"
+    },
+    "Kilovoltio": {
+      "es": "Kilovoltio",
+      "en": "Kilovolt",
+      "fr": "Kilovolt"
+    },
+    "Milivoltio": {
+      "es": "Milivoltio",
+      "en": "Millivolt",
+      "fr": "Millivolt"
+    },
+    "Voltio": {
+      "es": "Voltio",
+      "en": "Volt",
+      "fr": "Volt"
+    },
+    "Voltio (alias)": {
+      "es": "Voltio (alias)",
+      "en": "Volt (alias)",
+      "fr": "Volt (alias)"
+    },
+    "Resistencia": {
+      "es": "Resistencia",
+      "en": "Resistance",
+      "fr": "Résistance"
+    },
+    "Kiloohmio": {
+      "es": "Kiloohmio",
+      "en": "Kilohm",
+      "fr": "Kiloohm"
+    },
+    "Megaohmio": {
+      "es": "Megaohmio",
+      "en": "Megohm",
+      "fr": "Mégaohm"
+    },
+    "Ohmio": {
+      "es": "Ohmio",
+      "en": "Ohm",
+      "fr": "Ohm"
+    },
+    "Ohmio (símbolo)": {
+      "es": "Ohmio (símbolo)",
+      "en": "Ohm (symbol)",
+      "fr": "Ohm (symbole)"
+    },
+    "Conductancia": {
+      "es": "Conductancia",
+      "en": "Conductance",
+      "fr": "Conductance"
+    },
+    "Mho": {
+      "es": "Mho",
+      "en": "Mho",
+      "fr": "Mho"
+    },
+    "Milimho": {
+      "es": "Milimho",
+      "en": "Millimho",
+      "fr": "Millimho"
+    },
+    "Siemens": {
+      "es": "Siemens",
+      "en": "Siemens",
+      "fr": "Siemens"
+    },
+    "Micromho": {
+      "es": "Micromho",
+      "en": "Micromho",
+      "fr": "Micromho"
+    },
+    "Capacitancia": {
+      "es": "Capacitancia",
+      "en": "Capacitance",
+      "fr": "Capacité électrique"
+    },
+    "Faradio": {
+      "es": "Faradio",
+      "en": "Farad",
+      "fr": "Farad"
+    },
+    "Nanofaradio": {
+      "es": "Nanofaradio",
+      "en": "Nanofarad",
+      "fr": "Nanofarad"
+    },
+    "Picofaradio": {
+      "es": "Picofaradio",
+      "en": "Picofarad",
+      "fr": "Picofarad"
+    },
+    "Microfaradio": {
+      "es": "Microfaradio",
+      "en": "Microfarad",
+      "fr": "Microfarad"
+    },
+    "Intensidad de campo magnético": {
+      "es": "Intensidad de campo magnético",
+      "en": "Magnetic field strength",
+      "fr": "Intensité du champ magnétique"
+    },
+    "Oersted": {
+      "es": "Oersted",
+      "en": "Oersted",
+      "fr": "Oersted"
+    },
+    "Densidad de flujo magnético": {
+      "es": "Densidad de flujo magnético",
+      "en": "Magnetic flux density",
+      "fr": "Densité de flux magnétique"
+    },
+    "Gauss": {
+      "es": "Gauss",
+      "en": "Gauss",
+      "fr": "Gauss"
+    },
+    "Tesla": {
+      "es": "Tesla",
+      "en": "Tesla",
+      "fr": "Tesla"
+    },
+    "Flujo magnético": {
+      "es": "Flujo magnético",
+      "en": "Magnetic flux",
+      "fr": "Flux magnétique"
+    },
+    "Weber": {
+      "es": "Weber",
+      "en": "Weber",
+      "fr": "Weber"
+    },
+    "Inductancia": {
+      "es": "Inductancia",
+      "en": "Inductance",
+      "fr": "Inductance"
+    },
+    "Henrio": {
+      "es": "Henrio",
+      "en": "Henry",
+      "fr": "Henry"
+    },
+    "Milihenrio": {
+      "es": "Milihenrio",
+      "en": "Millihenry",
+      "fr": "Millihenry"
+    },
+    "Nanohenrio": {
+      "es": "Nanohenrio",
+      "en": "Nanohenry",
+      "fr": "Nanohenry"
+    },
+    "Microhenrio": {
+      "es": "Microhenrio",
+      "en": "Microhenry",
+      "fr": "Microhenry"
+    },
+    "Ceros complejos": {
+      "es": "Ceros complejos",
+      "en": "Complex zeros",
+      "fr": "Zéros complexes"
+    },
+    "Ángulo": {
+      "es": "Ángulo",
+      "en": "Angle",
+      "fr": "Angle"
+    },
+    "Fracción": {
+      "es": "Fracción",
+      "en": "Fraction",
+      "fr": "Fraction"
+    },
+    "Raíz enésima": {
+      "es": "Raíz enésima",
+      "en": "Nth root",
+      "fr": "Racine n-ième"
+    },
+    "Función por partes · 2": {
+      "es": "Función por partes · 2",
+      "en": "Piecewise function · 2",
+      "fr": "Fonction par morceaux · 2"
+    },
+    "Función por partes · N": {
+      "es": "Función por partes · N",
+      "en": "Piecewise function · N",
+      "fr": "Fonction par morceaux · N"
+    },
+    "Sistema · 2": {
+      "es": "Sistema · 2",
+      "en": "System · 2",
+      "fr": "Système · 2"
+    },
+    "Sistema · N": {
+      "es": "Sistema · N",
+      "en": "System · N",
+      "fr": "Système · N"
+    },
+    "Valor absoluto": {
+      "es": "Valor absoluto",
+      "en": "Absolute value",
+      "fr": "Valeur absolue"
+    },
+    "Grados, minutos, segundos": {
+      "es": "Grados, minutos, segundos",
+      "en": "Degrees, minutes, seconds",
+      "fr": "Degrés, minutes, secondes"
+    },
+    "Matriz · 2×2": {
+      "es": "Matriz · 2×2",
+      "en": "Matrix · 2×2",
+      "fr": "Matrice · 2×2"
+    },
+    "Matriz · 1×2": {
+      "es": "Matriz · 1×2",
+      "en": "Matrix · 1×2",
+      "fr": "Matrice · 1×2"
+    },
+    "Matriz · 2×1": {
+      "es": "Matriz · 2×1",
+      "en": "Matrix · 2×1",
+      "fr": "Matrice · 2×1"
+    },
+    "Matriz · M×N": {
+      "es": "Matriz · M×N",
+      "en": "Matrix · M×N",
+      "fr": "Matrice · M×N"
+    },
+    "Segunda derivada": {
+      "es": "Segunda derivada",
+      "en": "Second derivative",
+      "fr": "Dérivée seconde"
+    },
+    "Derivada · N": {
+      "es": "Derivada · N",
+      "en": "Derivative · N",
+      "fr": "Dérivée · N"
+    },
+    "Integral indefinida": {
+      "es": "Integral indefinida",
+      "en": "Indefinite integral",
+      "fr": "Intégrale indéfinie"
+    },
+    "Subíndice": {
+      "es": "Subíndice",
+      "en": "Subscript",
+      "fr": "Indice"
+    },
+    "Exponente": {
+      "es": "Exponente",
+      "en": "Exponent",
+      "fr": "Exposant"
+    },
+    "Exponencial e": {
+      "es": "Exponencial e",
+      "en": "Exponential e",
+      "fr": "Exponentielle e"
+    },
+    "Logaritmo con base": {
+      "es": "Logaritmo con base",
+      "en": "Logarithm with base",
+      "fr": "Logarithme de base donnée"
+    },
+    "Función por partes (2)": {
+      "es": "Función por partes (2)",
+      "en": "Piecewise function (2)",
+      "fr": "Fonction par morceaux (2)"
+    },
+    "Función por partes (N)": {
+      "es": "Función por partes (N)",
+      "en": "Piecewise function (N)",
+      "fr": "Fonction par morceaux (N)"
+    },
+    "Sistema de 2 ecuaciones": {
+      "es": "Sistema de 2 ecuaciones",
+      "en": "System of 2 equations",
+      "fr": "Système de 2 équations"
+    },
+    "Sistema de N ecuaciones": {
+      "es": "Sistema de N ecuaciones",
+      "en": "System of N equations",
+      "fr": "Système de N équations"
+    },
+    "Grados minutos segundos": {
+      "es": "Grados minutos segundos",
+      "en": "Degrees minutes seconds",
+      "fr": "Degrés minutes secondes"
+    },
+    "Matriz 2x2": {
+      "es": "Matriz 2x2",
+      "en": "Matrix 2×2",
+      "fr": "Matrice 2×2"
+    },
+    "Matriz 1x2": {
+      "es": "Matriz 1x2",
+      "en": "Matrix 1×2",
+      "fr": "Matrice 1×2"
+    },
+    "Matriz 2x1": {
+      "es": "Matriz 2x1",
+      "en": "Matrix 2×1",
+      "fr": "Matrice 2×1"
+    },
+    "Matriz m×n": {
+      "es": "Matriz m×n",
+      "en": "Matrix m×n",
+      "fr": "Matrice m×n"
+    },
+    "Primera derivada": {
+      "es": "Primera derivada",
+      "en": "First derivative",
+      "fr": "Dérivée première"
+    },
+    "Derivada enésima": {
+      "es": "Derivada enésima",
+      "en": "Nth derivative",
+      "fr": "Dérivée n-ième"
+    },
+    "Number": {
+      "es": "Número",
+      "en": "Number",
+      "fr": "Nombre"
+    },
+    "Angle": {
+      "es": "Ángulo",
+      "en": "Angle",
+      "fr": "Angle"
+    },
+    "List": {
+      "es": "Lista",
+      "en": "List",
+      "fr": "Liste"
+    },
+    "Matrix": {
+      "es": "Matriz",
+      "en": "Matrix",
+      "fr": "Matrice"
+    },
+    "Constants": {
+      "es": "Constantes",
+      "en": "Constants",
+      "fr": "Constantes"
+    },
+    "Length": {
+      "es": "Longitud",
+      "en": "Length",
+      "fr": "Longueur"
+    },
+    "Area": {
+      "es": "Área",
+      "en": "Area",
+      "fr": "Aire"
+    },
+    "Volume": {
+      "es": "Volumen",
+      "en": "Volume",
+      "fr": "Volume"
+    },
+    "Time": {
+      "es": "Tiempo",
+      "en": "Time",
+      "fr": "Temps"
+    },
+    "Velocity": {
+      "es": "Velocidad",
+      "en": "Velocity",
+      "fr": "Vitesse"
+    },
+    "Temperature": {
+      "es": "Temperatura",
+      "en": "Temperature",
+      "fr": "Température"
+    },
+    "Luminous intensity": {
+      "es": "Intensidad luminosa",
+      "en": "Luminous intensity",
+      "fr": "Intensité lumineuse"
+    },
+    "Amount of substance": {
+      "es": "Cantidad de sustancia",
+      "en": "Amount of substance",
+      "fr": "Quantité de matière"
+    },
+    "Mass": {
+      "es": "Masa",
+      "en": "Mass",
+      "fr": "Masse"
+    },
+    "Force": {
+      "es": "Fuerza",
+      "en": "Force",
+      "fr": "Force"
+    },
+    "Energy": {
+      "es": "Energía",
+      "en": "Energy",
+      "fr": "Énergie"
+    },
+    "Power": {
+      "es": "Potencia",
+      "en": "Power",
+      "fr": "Puissance"
+    },
+    "Pressure": {
+      "es": "Presión",
+      "en": "Pressure",
+      "fr": "Pression"
+    },
+    "Frequency": {
+      "es": "Frecuencia",
+      "en": "Frequency",
+      "fr": "Fréquence"
+    },
+    "Charge": {
+      "es": "Carga",
+      "en": "Charge",
+      "fr": "Charge"
+    },
+    "Potential": {
+      "es": "Potencial",
+      "en": "Potential",
+      "fr": "Potentiel"
+    },
+    "Resistance": {
+      "es": "Resistencia",
+      "en": "Resistance",
+      "fr": "Résistance"
+    },
+    "Conductance": {
+      "es": "Conductancia",
+      "en": "Conductance",
+      "fr": "Conductance"
+    },
+    "Capacitance": {
+      "es": "Capacitancia",
+      "en": "Capacitance",
+      "fr": "Capacité électrique"
+    },
+    "Magnetic field strength": {
+      "es": "Intensidad de campo magnético",
+      "en": "Magnetic field strength",
+      "fr": "Intensité du champ magnétique"
+    },
+    "Magnetic flux": {
+      "es": "Flujo magnético",
+      "en": "Magnetic flux",
+      "fr": "Flux magnétique"
+    },
+    "Magnetic flux density": {
+      "es": "Densidad de flujo magnético",
+      "en": "Magnetic flux density",
+      "fr": "Densité de flux magnétique"
+    },
+    "Inductance": {
+      "es": "Inductancia",
+      "en": "Inductance",
+      "fr": "Inductance"
+    },
+    "Viscosity, kinematic": {
+      "es": "Viscosidad, cinética",
+      "en": "Kinematic viscosity",
+      "fr": "Viscosité cinématique"
+    },
+    "Viscosity, dynamic": {
+      "es": "Viscosidad, dinámica",
+      "en": "Dynamic viscosity",
+      "fr": "Viscosité dynamique"
+    },
+    "Current": {
+      "es": "Corriente eléctrica",
+      "en": "Electric current",
+      "fr": "Courant électrique"
+    },
+    "A": {
+      "es": "A",
+      "en": "A",
+      "fr": "A",
+      "neutral": true
+    },
+    "B": {
+      "es": "B",
+      "en": "B",
+      "fr": "B",
+      "neutral": true
+    },
+    "C": {
+      "es": "C",
+      "en": "C",
+      "fr": "C",
+      "neutral": true
+    },
+    "D": {
+      "es": "D",
+      "en": "D",
+      "fr": "D",
+      "neutral": true
+    },
+    "E": {
+      "es": "E",
+      "en": "E",
+      "fr": "E",
+      "neutral": true
+    },
+    "F": {
+      "es": "F",
+      "en": "F",
+      "fr": "F",
+      "neutral": true
+    },
+    "G": {
+      "es": "G",
+      "en": "G",
+      "fr": "G",
+      "neutral": true
+    },
+    "I": {
+      "es": "I",
+      "en": "I",
+      "fr": "I",
+      "neutral": true
+    },
+    "L": {
+      "es": "L",
+      "en": "L",
+      "fr": "L",
+      "neutral": true
+    },
+    "M": {
+      "es": "M",
+      "en": "M",
+      "fr": "M",
+      "neutral": true
+    },
+    "N": {
+      "es": "N",
+      "en": "N",
+      "fr": "N",
+      "neutral": true
+    },
+    "O": {
+      "es": "O",
+      "en": "O",
+      "fr": "O",
+      "neutral": true
+    },
+    "P": {
+      "es": "P",
+      "en": "P",
+      "fr": "P",
+      "neutral": true
+    },
+    "Q": {
+      "es": "Q",
+      "en": "Q",
+      "fr": "Q",
+      "neutral": true
+    },
+    "R": {
+      "es": "R",
+      "en": "R",
+      "fr": "R",
+      "neutral": true
+    },
+    "S": {
+      "es": "S",
+      "en": "S",
+      "fr": "S",
+      "neutral": true
+    },
+    "T": {
+      "es": "T",
+      "en": "T",
+      "fr": "T",
+      "neutral": true
+    },
+    "U": {
+      "es": "U",
+      "en": "U",
+      "fr": "U",
+      "neutral": true
+    },
+    "V": {
+      "es": "V",
+      "en": "V",
+      "fr": "V",
+      "neutral": true
+    },
+    "W": {
+      "es": "W",
+      "en": "W",
+      "fr": "W",
+      "neutral": true
+    },
+    "X": {
+      "es": "X",
+      "en": "X",
+      "fr": "X",
+      "neutral": true
+    },
+    "Z": {
+      "es": "Z",
+      "en": "Z",
+      "fr": "Z",
+      "neutral": true
+    },
+    "^": {
+      "es": "^",
+      "en": "^",
+      "fr": "^",
+      "neutral": true
+    },
+    "root(x,n)": {
+      "es": "root(x,n)",
+      "en": "root(x,n)",
+      "fr": "root(x,n)",
+      "neutral": true
+    },
+    "e^(x)": {
+      "es": "e^(x)",
+      "en": "e^(x)",
+      "fr": "e^(x)",
+      "neutral": true
+    },
+    "log(x[,b])": {
+      "es": "log(x[,b])",
+      "en": "log(x[,b])",
+      "fr": "log(x[,b])",
+      "neutral": true
+    },
+    "piecewise(...)": {
+      "es": "piecewise(...)",
+      "en": "piecewise(...)",
+      "fr": "piecewise(...)",
+      "neutral": true
+    },
+    "system(...)": {
+      "es": "system(...)",
+      "en": "system(...)",
+      "fr": "system(...)",
+      "neutral": true
+    },
+    "abs(x)": {
+      "es": "abs(x)",
+      "en": "abs(x)",
+      "fr": "abs(x)",
+      "neutral": true
+    },
+    "d(...)": {
+      "es": "d(...)",
+      "en": "d(...)",
+      "fr": "d(...)",
+      "neutral": true
+    },
+    "d(...,2)": {
+      "es": "d(...,2)",
+      "en": "d(...,2)",
+      "fr": "d(...,2)",
+      "neutral": true
+    },
+    "d(...,n)": {
+      "es": "d(...,n)",
+      "en": "d(...,n)",
+      "fr": "d(...,n)",
+      "neutral": true
+    },
+    "integral(...)": {
+      "es": "integral(...)",
+      "en": "integral(...)",
+      "fr": "integral(...)",
+      "neutral": true
+    },
+    "limit(...)": {
+      "es": "limit(...)",
+      "en": "limit(...)",
+      "fr": "limit(...)",
+      "neutral": true
+    },
+    "ANOVA": {
+      "es": "ANOVA",
+      "en": "ANOVA",
+      "fr": "ANOVA",
+      "neutral": true
+    },
+    "and": {
+      "es": "and",
+      "en": "and",
+      "fr": "and",
+      "neutral": true
+    },
+    "nand": {
+      "es": "nand",
+      "en": "nand",
+      "fr": "nand",
+      "neutral": true
+    },
+    "nor": {
+      "es": "nor",
+      "en": "nor",
+      "fr": "nor",
+      "neutral": true
+    },
+    "not": {
+      "es": "not",
+      "en": "not",
+      "fr": "not",
+      "neutral": true
+    },
+    "or": {
+      "es": "or",
+      "en": "or",
+      "fr": "or",
+      "neutral": true
+    },
+    "xor": {
+      "es": "xor",
+      "en": "xor",
+      "fr": "xor",
+      "neutral": true
+    },
+    "Func...EndFunc": {
+      "es": "Func...EndFunc",
+      "en": "Func...EndFunc",
+      "fr": "Func...EndFunc",
+      "neutral": true
+    },
+    "Prgm...EndPrgm": {
+      "es": "Prgm...EndPrgm",
+      "en": "Prgm...EndPrgm",
+      "fr": "Prgm...EndPrgm",
+      "neutral": true
+    },
+    "If...Then...EndIf": {
+      "es": "If...Then...EndIf",
+      "en": "If...Then...EndIf",
+      "fr": "If...Then...EndIf",
+      "neutral": true
+    },
+    "If...Then...Else...EndIf": {
+      "es": "If...Then...Else...EndIf",
+      "en": "If...Then...Else...EndIf",
+      "fr": "If...Then...Else...EndIf",
+      "neutral": true
+    },
+    "ElseIf...Then": {
+      "es": "ElseIf...Then",
+      "en": "ElseIf...Then",
+      "fr": "ElseIf...Then",
+      "neutral": true
+    },
+    "For...EndFor": {
+      "es": "For...EndFor",
+      "en": "For...EndFor",
+      "fr": "For...EndFor",
+      "neutral": true
+    },
+    "While...EndWhile": {
+      "es": "While...EndWhile",
+      "en": "While...EndWhile",
+      "fr": "While...EndWhile",
+      "neutral": true
+    },
+    "Loop...EndLoop": {
+      "es": "Loop...EndLoop",
+      "en": "Loop...EndLoop",
+      "fr": "Loop...EndLoop",
+      "neutral": true
+    },
+    "Try...Else...EndTry": {
+      "es": "Try...Else...EndTry",
+      "en": "Try...Else...EndTry",
+      "fr": "Try...Else...EndTry",
+      "neutral": true
+    },
+    "Local": {
+      "es": "Local",
+      "en": "Local",
+      "fr": "Local",
+      "neutral": true
+    },
+    "Define": {
+      "es": "Define",
+      "en": "Define",
+      "fr": "Define",
+      "neutral": true
+    },
+    "DelVar": {
+      "es": "DelVar",
+      "en": "DelVar",
+      "fr": "DelVar",
+      "neutral": true
+    },
+    "Stop": {
+      "es": "Stop",
+      "en": "Stop",
+      "fr": "Stop",
+      "neutral": true
+    },
+    "warnCodes": {
+      "es": "warnCodes",
+      "en": "warnCodes",
+      "fr": "warnCodes",
+      "neutral": true
+    },
+    "Wait": {
+      "es": "Wait",
+      "en": "Wait",
+      "fr": "Wait",
+      "neutral": true
+    },
+    "Return": {
+      "es": "Return",
+      "en": "Return",
+      "fr": "Return",
+      "neutral": true
+    },
+    "Cycle": {
+      "es": "Cycle",
+      "en": "Cycle",
+      "fr": "Cycle",
+      "neutral": true
+    },
+    "Exit": {
+      "es": "Exit",
+      "en": "Exit",
+      "fr": "Exit",
+      "neutral": true
+    },
+    "Lbl": {
+      "es": "Lbl",
+      "en": "Lbl",
+      "fr": "Lbl",
+      "neutral": true
+    },
+    "Goto": {
+      "es": "Goto",
+      "en": "Goto",
+      "fr": "Goto",
+      "neutral": true
+    },
+    "Disp": {
+      "es": "Disp",
+      "en": "Disp",
+      "fr": "Disp",
+      "neutral": true
+    },
+    "DispAt": {
+      "es": "DispAt",
+      "en": "DispAt",
+      "fr": "DispAt",
+      "neutral": true
+    },
+    "Request": {
+      "es": "Request",
+      "en": "Request",
+      "fr": "Request",
+      "neutral": true
+    },
+    "RequestStr": {
+      "es": "RequestStr",
+      "en": "RequestStr",
+      "fr": "RequestStr",
+      "neutral": true
+    },
+    "Text": {
+      "es": "Text",
+      "en": "Text",
+      "fr": "Text",
+      "neutral": true
+    },
+    "getKey": {
+      "es": "getKey",
+      "en": "getKey",
+      "fr": "getKey",
+      "neutral": true
+    },
+    "Get": {
+      "es": "Get",
+      "en": "Get",
+      "fr": "Get",
+      "neutral": true
+    },
+    "DrawLine": {
+      "es": "DrawLine",
+      "en": "DrawLine",
+      "fr": "DrawLine",
+      "neutral": true
+    },
+    "DrawRect": {
+      "es": "DrawRect",
+      "en": "DrawRect",
+      "fr": "DrawRect",
+      "neutral": true
+    },
+    "FillRect": {
+      "es": "FillRect",
+      "en": "FillRect",
+      "fr": "FillRect",
+      "neutral": true
+    },
+    "DrawCircle": {
+      "es": "DrawCircle",
+      "en": "DrawCircle",
+      "fr": "DrawCircle",
+      "neutral": true
+    },
+    "FillCircle": {
+      "es": "FillCircle",
+      "en": "FillCircle",
+      "fr": "FillCircle",
+      "neutral": true
+    },
+    "DrawText": {
+      "es": "DrawText",
+      "en": "DrawText",
+      "fr": "DrawText",
+      "neutral": true
+    },
+    "DrawArc": {
+      "es": "DrawArc",
+      "en": "DrawArc",
+      "fr": "DrawArc",
+      "neutral": true
+    },
+    "FillArc": {
+      "es": "FillArc",
+      "en": "FillArc",
+      "fr": "FillArc",
+      "neutral": true
+    },
+    "DrawPoly": {
+      "es": "DrawPoly",
+      "en": "DrawPoly",
+      "fr": "DrawPoly",
+      "neutral": true
+    },
+    "FillPoly": {
+      "es": "FillPoly",
+      "en": "FillPoly",
+      "fr": "FillPoly",
+      "neutral": true
+    },
+    "PlotXY": {
+      "es": "PlotXY",
+      "en": "PlotXY",
+      "fr": "PlotXY",
+      "neutral": true
+    },
+    "Clear": {
+      "es": "Clear",
+      "en": "Clear",
+      "fr": "Clear",
+      "neutral": true
+    },
+    "SetColor": {
+      "es": "SetColor",
+      "en": "SetColor",
+      "fr": "SetColor",
+      "neutral": true
+    },
+    "SetPen": {
+      "es": "SetPen",
+      "en": "SetPen",
+      "fr": "SetPen",
+      "neutral": true
+    },
+    "UseBuffer": {
+      "es": "UseBuffer",
+      "en": "UseBuffer",
+      "fr": "UseBuffer",
+      "neutral": true
+    },
+    "PaintBuffer": {
+      "es": "PaintBuffer",
+      "en": "PaintBuffer",
+      "fr": "PaintBuffer",
+      "neutral": true
+    },
+    "zInterval σ,Lista[,Frec][,CLevel] o zInterval σ,x̄,n[,CLevel]": {
+      "es": "zInterval σ,Lista[,Frec][,CLevel] o zInterval σ,x̄,n[,CLevel]",
+      "en": "zInterval σ,List[,Frequency][,CLevel] or zInterval σ,x̄,n[,CLevel]",
+      "fr": "zInterval σ,Liste[,Fréquence][,CLevel] ou zInterval σ,x̄,n[,CLevel]"
+    }
+  }
+}

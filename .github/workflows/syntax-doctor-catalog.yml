@@ -13,7 +13,7 @@ on:
       - 'editor_XML/ti_catalog.py'
       - 'editor_XML/ti_syntax.py'
       - 'tests/test_ti_catalog_syntax.py'
-      - 'app.js'
+      - 'web/app.js'
       - '.github/workflows/syntax-doctor-catalog.yml'
 permissions:
   contents: read

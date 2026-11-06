@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
-await import('../ndless-project-core.js');
-await import('../ndless-project-core-enhancements.js');
-await import('../ndless-project-folder-build.js');
-await import('../ndless-project-file-tree.js');
+await import('../web/ndless-project-core.js');
+await import('../web/ndless-project-core-enhancements.js');
+await import('../web/ndless-project-folder-build.js');
+await import('../web/ndless-project-file-tree.js');
 
 const treeApi = globalThis.NdlessProjectFileTree;
 const core = globalThis.NdlessProjectCore;
