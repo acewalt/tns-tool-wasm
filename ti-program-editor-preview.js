@@ -187,7 +187,20 @@
       } finally { if (!closed) { busy = false; host.inert = false; source.readOnly = false; buttons.forEach((button, index) => { button.disabled = !enabled[index]; }); } }
     }
     function close(state = {}) {
-      if (closed) return; mathEditor?.flush(); saveDraft(); closed = true; mathEditor?.dispose(); mathObserver?.disconnect(); window.TnsMathTools?.close(); document.removeEventListener('keydown', keys, true);
+      if (closed) return;
+      mathEditor?.flush();
+      saveDraft();
+      // Math-view edits are flushed into the source textarea, but they do not
+      // pass through the textarea's input handler. Commit the final buffer
+      // before navigation or closing the Inspector can rescan the XML and
+      // replace its in-memory ProgramEditor candidate with the older source.
+      if (source.value !== baseSource) {
+        try {
+          const updating = options.onChange?.(source.value);
+          if (updating?.catch) updating.catch(showError);
+        } catch (error) { showError(error); }
+      }
+      closed = true; mathEditor?.dispose(); mathObserver?.disconnect(); window.TnsMathTools?.close(); document.removeEventListener('keydown', keys, true);
       overlay.__previewWindowCleanup?.(); delete overlay.__previewWindowCleanup;
       if (!state.switching) { if (options.closeBackdrop) options.closeBackdrop(overlay); else { overlay.remove(); overlay.__documentPreviewRestore?.(); delete overlay.__documentPreviewRestore; } }
       if (active?.close === close) active = null;
