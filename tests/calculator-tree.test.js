@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const source=fs.readFileSync(new URL("../ti-calculator-transfer.js",import.meta.url),"utf8")
+const source=fs.readFileSync(new URL("../web/ti-calculator-transfer.js",import.meta.url),"utf8")
   .replace("window.TnsCalculatorTransfer=Object.freeze({open,close});",
     "window.TnsCalculatorTransfer=Object.freeze({open,close,rows,toggleFolder,selected});window.__tiTestState=state;");
 assert.match(source,/window.__tiTestState=state/);
-const css=fs.readFileSync(new URL("../ti-calculator-transfer.css",import.meta.url),"utf8");
+const css=fs.readFileSync(new URL("../web/ti-calculator-transfer.css",import.meta.url),"utf8");
 assert.match(css,/\.ti-tree-children-wrapper/);
 assert.match(css,/\.ti-tree-icon/);
 assert.doesNotMatch(css,/^ul\s*\{/m,"Tree styles must not affect the application's other lists.");

@@ -7,7 +7,7 @@ const out=path.join(root,'release','qa','love-controls-v30.json');let win,server
 app.commandLine.appendSwitch('disable-gpu');
 app.whenReady().then(async()=>{
  fs.mkdirSync(path.dirname(out),{recursive:true});
- const html='<!doctype html><html lang="en"><head><base href="/"><link rel="stylesheet" href="styles.css"><link rel="stylesheet" href="preview-window.css"><link rel="stylesheet" href="love-preview-live-math.css"><link rel="stylesheet" href="love-preview-side-controls.css"><script defer src="love-preview-side-controls.js"></script><script defer src="love-preview-live-math.js"></script></head><body></body></html>';
+ const html='<!doctype html><html lang="en"><head><base href="/"><link rel="stylesheet" href="web/styles.css"><link rel="stylesheet" href="web/preview-window.css"><link rel="stylesheet" href="web/love-preview-live-math.css"><link rel="stylesheet" href="web/love-preview-side-controls.css"><script defer src="web/love-preview-side-controls.js"></script><script defer src="web/love-preview-live-math.js"></script></head><body></body></html>';
  fs.writeFileSync(path.join(root,'release','qa','love-controls-fixture-v30.html'),html);
  server=makeServer(root,path.join(desktop,'vendor'));const origin=await listen(server);
  session.defaultSession.webRequest.onBeforeRequest({urls:['*://*/*']},(info,done)=>done({cancel:!info.url.startsWith(origin)}));

@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
-const source=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
 const start=source.indexOf('function isTiBasicProgramCandidate('),end=source.indexOf('\nfunction insertXmlToolText(',start);
 assert(start>=0&&end>start);
 const box={disabled:false},context={xmlDoctor:{current:null},document:{querySelector:()=>box}};

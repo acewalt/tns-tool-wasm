@@ -1,6 +1,6 @@
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{Worker}=require('node:worker_threads'),crypto=require('node:crypto');
 const root=path.resolve(__dirname,'../..');
-function pack(files){const window={};vm.runInNewContext(fs.readFileSync(path.join(root,'ti-calculator-zip.js'),'utf8'),{window,TextEncoder,Uint8Array,Uint32Array,DataView,Date,Array,Error});return window.TnsCalculatorZip.pack(Object.entries(files).map(([name,source])=>({path:name,data:typeof source==='string'?new TextEncoder().encode(source):source})));}
+function pack(files){const window={};vm.runInNewContext(fs.readFileSync(path.join(root,'web/ti-calculator-zip.js'),'utf8'),{window,TextEncoder,Uint8Array,Uint32Array,DataView,Date,Array,Error});return window.TnsCalculatorZip.pack(Object.entries(files).map(([name,source])=>({path:name,data:typeof source==='string'?new TextEncoder().encode(source):source})));}
 async function build(name,files){return require('../../desktop/compiler.cjs').build(process.env.TNS_DESKTOP_COMPILER,{name,zip:pack(files)});}
 async function preview({bytes,files=[],args,timeoutMs=25000,observe}){
  const worker=new Worker(path.join(__dirname,'ndless-preview-worker.cjs'),{workerData:{bytes,files,args}});

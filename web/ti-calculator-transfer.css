@@ -1,0 +1,630 @@
+/* Native TNS Tool calculator manager (WebUSB), self-contained UI */
+.ti-manager-overlay{position:fixed;inset:0;z-index:12000;display:grid;place-items:center;padding:14px;background:rgba(5,10,22,.81);overflow:auto}
+.ti-manager-dialog{display:flex;flex-direction:column;gap:13px;width:min(1160px,100%);height:min(92vh,850px);padding:20px;border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--text);box-shadow:0 15px 80px #0007;overflow:hidden}
+.ti-manager-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}
+.ti-manager-head h2{margin:0 0 4px;font-size:22px}
+.ti-manager-head p{margin:0;color:var(--muted);font-size:12px}
+.ti-manager-x{border:0;background:transparent;color:var(--text);font-size:25px;cursor:pointer;padding:4px 10px}
+.ti-manager-toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.ti-manager-toolbar button,.ti-manager-actions button,.ti-manager-path button,.ti-manager-footer-actions button,.ti-manager-footer-actions label,.ti-manager-side>button,.ti-manager-image button{padding:9px 12px;border:1px solid var(--line);border-radius:7px;background:var(--button-bg);color:var(--button-text);font:700 13px/1.3 inherit;font-weight:700;cursor:pointer}
+.ti-manager-toolbar .ti-manager-primary{background:var(--lime2);border-color:var(--lime2);color:#112010}
+.ti-manager-dialog button:disabled,.ti-manager-footer-actions label:has(input:disabled){opacity:.43;cursor:not-allowed}
+.ti-manager-toolbar [data-ti-status]{font-size:12px;color:var(--muted);min-width:0}
+.ti-manager-toolbar [data-ti-status][data-error="1"]{color:#ef4444}
+.ti-manager-grid{display:grid;grid-template-columns:minmax(220px,270px) minmax(0,1fr);gap:14px;flex:1;min-height:0}
+.ti-manager-side,.ti-manager-files{border:1px solid var(--line);border-radius:9px;background:var(--bg);padding:13px;min-width:0;display:flex;flex-direction:column;gap:10px}
+.ti-manager-side h3,.ti-manager-files h3{font-size:14px;margin:0}
+.ti-manager-device{padding:12px;background:var(--panel);border:1px solid var(--line);border-radius:6px;font-weight:700;font-size:13px;overflow-wrap:anywhere}
+.ti-manager-side p,.ti-manager-side small{font-size:12px;line-height:1.5;margin:0;color:var(--muted)}
+.ti-manager-image{display:flex;flex-direction:column;align-items:center;gap:7px;min-height:100px;max-height:55%;overflow:auto}
+.ti-manager-image canvas{max-width:100%;height:auto;border:1px solid var(--line);border-radius:4px;background:white;image-rendering:pixelated}
+.ti-manager-files-head{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap}
+.ti-manager-actions{display:flex;gap:5px;flex-wrap:wrap}
+.ti-manager-actions button{padding:8px;font-size:12px}
+.ti-manager-path{display:flex;align-items:center;gap:8px}
+.ti-manager-path code{display:block;flex:1;min-width:0;max-height:45px;overflow:auto;border:1px solid var(--line);padding:9px;border-radius:6px;background:var(--panel);font-size:12px;color:var(--text)}
+.ti-manager-path span{font-size:12px;color:var(--muted);white-space:nowrap}
+.ti-manager-table{flex:1;min-height:170px;overflow:auto;border:1px solid var(--line);border-radius:7px;background:var(--panel)}
+.ti-manager-cols,.ti-manager-row{display:grid;grid-template-columns:30px minmax(190px,2.2fr) minmax(65px,.7fr) minmax(70px,.7fr) minmax(120px,1fr);align-items:center;gap:8px;min-width:565px;padding:9px 10px;font-size:12px}
+.ti-manager-cols{position:sticky;top:0;z-index:1;background:var(--bg);border-bottom:1px solid var(--line);font-weight:800;color:var(--muted)}
+.ti-manager-row{border-bottom:1px solid var(--line)}
+.ti-manager-row:hover,.ti-manager-row.selected{background:var(--button-bg)}
+.ti-manager-row input,.ti-manager-cols input{accent-color:var(--lime2);width:15px;height:15px}
+.ti-manager-row span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.ti-manager-filename{text-align:left;min-width:0;width:100%;border:0;background:transparent;color:var(--text);font-size:13px;font-weight:600;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ti-manager-empty{padding:22px;font-size:13px;color:var(--muted)}
+.ti-manager-footer-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.ti-manager-footer-actions label{display:flex;align-items:center;justify-content:center}
+.ti-manager-log{display:flex;gap:10px;font-size:11px;color:var(--muted);min-width:0}
+.ti-manager-log [data-ti-log]{font-size:11px;overflow:auto;white-space:nowrap}
+.ti-manager-bottom{display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:11px}
+.ti-manager-bottom a{color:var(--accent);white-space:nowrap}
+@media(max-width:760px){.ti-manager-overlay{padding:5px}.ti-manager-dialog{height:98vh;padding:10px;gap:7px}.ti-manager-head h2{font-size:18px}.ti-manager-grid{grid-template-columns:minmax(0,1fr);overflow:auto;gap:8px}.ti-manager-side{min-height:0}.ti-manager-table{min-height:210px}.ti-manager-bottom{flex-wrap:wrap}.ti-manager-toolbar button{font-size:12px}.ti-manager-side [data-ti-image]{max-height:300px}}
+
+
+/* Folder tree inspired by ashif_6672's Uiverse component (nice-warthog-84).
+   Scoped to this dialog: no global UL, input, button or icon selectors. */
+.ti-manager-table .ti-tree-list{list-style:none;margin:0;padding:0}
+.ti-manager-table .ti-tree-item{position:relative;margin:0;list-style:none}
+.ti-manager-table .ti-tree-row{position:relative;padding-top:8px;padding-bottom:8px;transition:background-color .18s ease}
+.ti-manager-table .ti-tree-row:hover{background:var(--button-bg)}
+.ti-manager-table .ti-tree-row.ti-tree-destination{box-shadow:inset 3px 0 0 var(--lime2);background:color-mix(in srgb,var(--lime2) 9%,transparent)}
+.ti-manager-table .ti-tree-row.selected{background:color-mix(in srgb,var(--lime2) 17%,var(--button-bg))}
+.ti-manager-table .ti-tree-row .ti-tree-label{display:flex;align-items:center;gap:8px;height:29px;border-radius:5px;padding:3px 6px;transition:background-color .2s ease}
+.ti-manager-table .ti-tree-row .ti-tree-label:hover,.ti-manager-table .ti-tree-row .ti-tree-label:focus-visible{background:var(--button-bg);outline:1px solid var(--line)}
+.ti-manager-table .ti-tree-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ti-manager-table .ti-tree-icon{display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;color:var(--muted);flex-shrink:0}
+.ti-manager-table .ti-tree-icon svg{width:17px;height:17px;display:block}
+.ti-manager-table .ti-tree-chevron{width:11px;display:inline-block;flex:0 0 11px;font-size:14px;line-height:1;color:var(--muted);transform:rotate(0deg);transition:transform .2s ease}
+.ti-manager-table .ti-tree-chevron.is-expanded{transform:rotate(90deg)}
+.ti-manager-table .ti-tree-children-wrapper{display:grid;grid-template-rows:0fr;transition:grid-template-rows .24s ease}
+.ti-manager-table .ti-tree-children-wrapper.is-open{grid-template-rows:1fr}
+.ti-manager-table .ti-tree-children{overflow:hidden;min-height:0;margin-left:20px;padding-left:12px;border-left:1px solid var(--line)}
+.ti-manager-table .ti-tree-children>.ti-tree-list>.ti-tree-item:before{content:"";position:absolute;left:-12px;top:24px;width:12px;height:1px;background:var(--line)}
+.ti-manager-table .ti-tree-empty{padding:12px 16px;color:var(--muted);font-size:12px}
+.ti-manager-table .ti-tree-item .ti-tree-children-wrapper:not(.is-open){pointer-events:none}
+.ti-manager-log{align-items:center;min-height:20px;flex-wrap:wrap}
+.ti-manager-log progress[data-ti-bar]{width:min(130px,28%);height:9px;accent-color:var(--lime2)}
+.ti-manager-log progress[data-ti-bar][hidden]{display:none}
+.ti-manager-log [data-ti-log]{min-width:0;flex:1;white-space:normal;overflow-wrap:anywhere;line-height:1.4}
+@media(max-width:760px){
+  .ti-manager-table .ti-tree-children{margin-left:12px;padding-left:8px}
+  .ti-manager-table .ti-tree-children>.ti-tree-list>.ti-tree-item:before{left:-8px;width:8px}
+  .ti-manager-log progress[data-ti-bar]{width:75px}
+}
+
+.ti-manager-table .ti-tree-row button:disabled{opacity:.75;cursor:progress}
+.ti-manager-table .ti-tree-row input:disabled{cursor:progress}
+.ti-manager-side{overflow-y:auto!important;overscroll-behavior:contain}
+.ti-manager-side>.ti-manager-image{flex-shrink:0;max-height:none;min-height:0}
+.ti-manager-side .ti-storage{display:flex;flex-direction:column;gap:7px;padding:10px;border:1px solid var(--line);border-radius:8px}
+.ti-storage>div{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ti-storage button{background:transparent;color:var(--text);border:1px solid var(--line);border-radius:5px;cursor:pointer}
+.ti-storage output{font-size:11px;color:var(--muted);line-height:1.5}
+.ti-storage meter{width:100%;height:12px;accent-color:var(--accent)}
+.ti-record-controls{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+.ti-record-controls button{padding:8px 10px;border:1px solid var(--line);border-radius:7px;background:var(--button-bg);color:var(--text);cursor:pointer}
+.ti-record-controls [data-ti-record-stop]{border-color:#e35e72;color:#ff9cab}
+.ti-record-controls output{width:100%;font-size:11px;color:var(--muted);overflow-wrap:anywhere}
+.ti-record-controls output:empty{display:none}
+.ti-record-controls a{color:var(--accent)}
+.ti-manager-dialog .ti-drop-hint{font-size:11px;color:var(--muted);margin:0;line-height:1.45;flex-shrink:0}
+.ti-manager-dialog .is-drop-target{outline:2px solid #edc35d;outline-offset:-2px;background:color-mix(in srgb,#edc35d 14%,var(--panel))!important}
+.ti-manager-dialog .is-drag-source{opacity:.55}
+
+/* Keep the modal within the viewport and put vertical scrolling on the file
+   explorer rather than letting the page behind the overlay consume wheel input. */
+.ti-manager-overlay{overflow:hidden;overscroll-behavior:contain}
+.ti-manager-dialog{
+  max-height:calc(100dvh - 24px);
+  min-height:0;
+  box-sizing:border-box;
+}
+.ti-manager-grid{min-height:0;overflow:hidden}
+.ti-manager-side,.ti-manager-files{min-height:0;overflow:hidden}
+.ti-manager-files-head,.ti-manager-path,.ti-manager-footer-actions,.ti-manager-log{flex-shrink:0}
+.ti-manager-table{
+  flex:1 1 0;
+  min-height:0;
+  height:0;
+  max-height:100%;
+  overflow-y:auto;
+  overflow-x:auto;
+  overscroll-behavior:contain;
+  scrollbar-width:thin;
+  scrollbar-color:var(--muted) transparent;
+  touch-action:pan-x pan-y;
+}
+.ti-manager-table:focus-visible{outline:2px solid var(--lime2);outline-offset:2px}
+.ti-manager-table::-webkit-scrollbar{width:9px;height:9px}
+.ti-manager-table::-webkit-scrollbar-thumb{border-radius:8px;background:var(--muted)}
+.ti-manager-table::-webkit-scrollbar-track{background:transparent}
+.ti-manager-table .ti-tree-row button:disabled{opacity:.75;color:var(--text)}
+.ti-manager-dialog .ti-manager-filename:disabled,.ti-manager-dialog .ti-grid-open:disabled{background:transparent!important;color:var(--text)!important;opacity:1!important;box-shadow:none;filter:none;cursor:progress}
+.ti-manager-table .ti-tree-icon.is-folder{color:#edc35d}
+.ti-manager-dialog[aria-busy="true"] [data-ti-status]::before{content:"";display:inline-block;width:11px;height:11px;margin-right:8px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;vertical-align:-2px;animation:ti-usb-spin .8s linear infinite}
+@keyframes ti-usb-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){.ti-manager-dialog[aria-busy="true"] [data-ti-status]::before{animation:none}}
+@media(max-width:760px){
+  .ti-manager-overlay{overflow:auto}
+  .ti-manager-dialog{max-height:98dvh}
+  .ti-manager-grid{overflow:auto;min-height:0}
+  .ti-manager-files{min-height:260px}
+  .ti-manager-table{height:260px;min-height:180px}
+}
+
+/* TI-Nspire CX II screen is 320 x 240. Do not shrink the preview:
+   each source pixel occupies exactly one CSS pixel at 100% browser zoom. */
+@media(min-width:800px){
+  .ti-manager-dialog{width:min(1310px,100%)}
+  .ti-manager-grid{grid-template-columns:minmax(352px,366px) minmax(0,1fr)}
+}
+.ti-manager-side{min-height:0}
+.ti-manager-image{
+  width:100%;
+  flex:0 0 auto;
+  min-height:0;
+  max-height:360px;
+  align-items:center;
+  justify-content:flex-start;
+  overflow:auto;
+  scrollbar-width:thin;
+}
+.ti-manager-image canvas.ti-manager-native-screenshot{
+  display:block;
+  flex:0 0 auto;
+  min-width:0;
+  max-width:none;
+  max-height:none;
+  height:auto;
+  image-rendering:pixelated;
+}
+.ti-manager-image .ti-manager-resolution{
+  display:block;
+  font-size:11px;
+  text-align:center;
+  color:var(--muted);
+  white-space:nowrap;
+}
+.ti-manager-image button{flex:0 0 auto}
+@media(max-width:799px){
+  .ti-manager-image{align-items:flex-start;overflow-x:auto;overflow-y:auto}
+  .ti-manager-image canvas.ti-manager-native-screenshot{max-width:none;max-height:none}
+}
+
+/* Individual actions on mouse hover / keyboard focus (inspired by the
+   supplied TI-Nspire tree video). Scoped to the calculator manager. */
+.ti-manager-table .ti-manager-namecell{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  min-width:0;
+  width:100%;
+}
+.ti-manager-table .ti-manager-namecell>.ti-manager-filename{
+  flex:1 1 auto;
+  min-width:0;
+}
+.ti-manager-table .ti-row-actions{
+  display:inline-flex;
+  align-items:center;
+  justify-content:flex-end;
+  flex:0 0 auto;
+  gap:3px;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  transform:translateX(5px);
+  transition:opacity .16s ease,transform .16s ease,visibility .16s;
+}
+.ti-manager-table .ti-tree-row:hover .ti-row-actions,
+.ti-manager-table .ti-tree-row:focus-within .ti-row-actions{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:none;
+}
+.ti-manager-table .ti-row-action{
+  display:grid;
+  place-items:center;
+  width:28px;
+  height:28px;
+  padding:0;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:transparent;
+  color:var(--text);
+  font-size:14px;
+  line-height:1;
+  cursor:pointer;
+  transition:background-color .16s,border-color .16s,transform .16s;
+}
+.ti-manager-table .ti-row-action:hover,
+.ti-manager-table .ti-row-action:focus-visible{
+  border-color:var(--line);
+  background:var(--button-bg);
+  transform:translateY(-1px);
+}
+.ti-manager-table .ti-row-action-danger:hover,
+.ti-manager-table .ti-row-action-danger:focus-visible{
+  color:#fca5a5;
+  border-color:#b91c1c;
+  background:rgba(185,28,28,.12);
+}
+.ti-manager-table .ti-row-action:disabled{opacity:.35;cursor:wait;transform:none}
+@media(hover:none){
+  .ti-manager-table .ti-row-actions{
+    opacity:1;visibility:visible;pointer-events:auto;transform:none;
+  }
+}
+@media(max-width:760px){
+  .ti-manager-table .ti-row-action{width:26px;height:28px;font-size:13px}
+}
+@media(prefers-reduced-motion:reduce){
+  .ti-manager-table .ti-row-actions,.ti-manager-table .ti-row-action{transition:none}
+}
+
+/* Theme-aware per-item SVG masks. The external vector assets stay editable
+   and the icon picks up currentColor from the surrounding button. */
+.ti-manager-table .ti-row-action .ti-action-icon{
+  display:block;
+  width:18px;
+  height:18px;
+  flex:0 0 18px;
+  background-color:currentColor;
+  color:inherit;
+  -webkit-mask-repeat:no-repeat;
+  mask-repeat:no-repeat;
+  -webkit-mask-position:center;
+  mask-position:center;
+  -webkit-mask-size:contain;
+  mask-size:contain;
+  overflow:visible;
+  pointer-events:none;
+}
+.ti-manager-table .ti-action-icon-download{
+  -webkit-mask-image:url("../assets/calculator-actions/download.svg");
+  mask-image:url("../assets/calculator-actions/download.svg");
+}
+.ti-manager-table .ti-action-icon-rename{
+  -webkit-mask-image:url("../assets/calculator-actions/rename.svg");
+  mask-image:url("../assets/calculator-actions/rename.svg");
+}
+.ti-manager-table .ti-action-icon-delete{
+  -webkit-mask-image:url("../assets/calculator-actions/delete.svg");
+  mask-image:url("../assets/calculator-actions/delete.svg");
+}
+
+/* Windows Explorer-style selection: reserve the checkbox's space to keep
+   filenames aligned, but reveal it only on hover/focus or while selected.
+   On touch screens there is no reliable hover, so keep it visible. */
+@media (hover:hover) and (pointer:fine){
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check{
+    opacity:0;
+    transform:scale(.85);
+    pointer-events:none;
+    transition:opacity .15s ease,transform .15s ease;
+  }
+  .ti-manager-table .ti-tree-row:hover > .ti-manager-item-check,
+  .ti-manager-table .ti-tree-row:focus-within > .ti-manager-item-check,
+  .ti-manager-table .ti-tree-row.selected > .ti-manager-item-check,
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check:checked,
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check:focus-visible{
+    opacity:1;
+    transform:scale(1);
+    pointer-events:auto;
+  }
+}
+@media (hover:none), (pointer:coarse){
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check{
+    opacity:1;
+    pointer-events:auto;
+    transform:none;
+  }
+}
+@media (prefers-reduced-motion:reduce){
+  .ti-manager-table .ti-tree-row > .ti-manager-item-check{transition:none}
+}
+
+
+/* Independent list/grid switch in the calculator explorer toolbar. */
+.ti-manager-toolbar [data-ti-connect][hidden],
+.ti-manager-toolbar [data-ti-disconnect][hidden]{display:none!important}
+.ti-manager-view-switch{
+  display:inline-flex;
+  gap:2px;
+  align-items:center;
+  padding:3px;
+  border:1px solid var(--line);
+  border-radius:8px;
+  background:var(--panel);
+  flex:0 0 auto;
+}
+.ti-manager-actions .ti-manager-view-switch button{
+  display:grid;
+  place-items:center;
+  width:31px;
+  height:29px;
+  padding:5px;
+  border:1px solid transparent;
+  border-radius:5px;
+  background:transparent;
+  color:var(--muted);
+  cursor:pointer;
+  transition:background-color .16s ease,color .16s ease;
+}
+.ti-manager-actions .ti-manager-view-switch button:hover{
+  background:var(--button-bg);
+  color:var(--text);
+}
+.ti-manager-actions .ti-manager-view-switch button.active,
+.ti-manager-actions .ti-manager-view-switch button[aria-pressed="true"]{
+  border-color:var(--line);
+  background:var(--button-bg);
+  color:var(--text);
+  box-shadow:0 1px 3px #0001;
+}
+.ti-manager-view-switch svg{width:17px;height:17px;display:block;pointer-events:none}
+
+/* Icon tiles use the same USB directory data and individual SVG actions as
+   the existing tree. Only entries in the current directory appear in grid. */
+.ti-manager-table[data-view="grid"] .ti-manager-cols{display:none}
+.ti-manager-table[data-view="grid"]{overflow-y:auto;overflow-x:hidden}
+.ti-manager-table .ti-grid-gallery{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(142px,1fr));
+  align-content:start;
+  align-items:stretch;
+  gap:12px;
+  padding:14px;
+  min-height:100%;
+  box-sizing:border-box;
+}
+.ti-manager-table .ti-grid-tile{
+  position:relative;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  min-width:0;
+  min-height:165px;
+  padding:11px 8px 8px;
+  border:1px solid var(--line);
+  border-radius:10px;
+  background:var(--bg);
+  transition:background-color .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.ti-manager-table .ti-grid-tile:hover,
+.ti-manager-table .ti-grid-tile:focus-within{
+  background:var(--button-bg);
+  border-color:var(--accent);
+}
+.ti-manager-table .ti-grid-tile.selected{
+  background:color-mix(in srgb,var(--lime2) 12%,var(--bg));
+  border-color:var(--lime2);
+  box-shadow:inset 0 0 0 1px var(--lime2);
+}
+.ti-manager-table .ti-grid-open{
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:4px;
+  min-height:0;
+  min-width:0;
+  padding:8px 2px 3px;
+  border:0;
+  border-radius:6px;
+  background:none;
+  color:var(--text);
+  text-align:center;
+  cursor:pointer;
+}
+.ti-manager-table .ti-grid-open:hover{background:transparent}
+.ti-manager-table .ti-grid-open .ti-tree-icon{
+  width:52px;
+  height:52px;
+  color:var(--accent);
+  flex:0 0 52px;
+}
+.ti-manager-table .ti-grid-open .ti-tree-icon svg{width:50px;height:50px}
+.ti-manager-table .ti-grid-name{
+  max-width:100%;
+  min-height:18px;
+  font-size:12px;
+  font-weight:700;
+  line-height:1.35;
+  overflow-wrap:anywhere;
+  word-break:break-word;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+}
+.ti-manager-table .ti-grid-meta{
+  font-size:10px;
+  line-height:1.3;
+  color:var(--muted);
+  margin-top:auto;
+}
+.ti-manager-table .ti-grid-tile > .ti-manager-item-check{
+  position:absolute;
+  z-index:1;
+  top:9px;
+  left:9px;
+  width:16px;
+  height:16px;
+  margin:0;
+  accent-color:var(--lime2);
+  cursor:pointer;
+}
+.ti-manager-table .ti-grid-tile .ti-row-actions{
+  justify-content:center;
+  gap:8px;
+  padding-top:6px;
+  min-height:31px;
+}
+.ti-manager-table .ti-grid-tile:hover .ti-row-actions,
+.ti-manager-table .ti-grid-tile:focus-within .ti-row-actions{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  transform:none;
+}
+@media(hover:hover) and (pointer:fine){
+  .ti-manager-table .ti-grid-tile > .ti-manager-item-check{
+    opacity:0;
+    pointer-events:none;
+    transition:opacity .16s ease;
+  }
+  .ti-manager-table .ti-grid-tile:hover > .ti-manager-item-check,
+  .ti-manager-table .ti-grid-tile:focus-within > .ti-manager-item-check,
+  .ti-manager-table .ti-grid-tile.selected > .ti-manager-item-check,
+  .ti-manager-table .ti-grid-tile > .ti-manager-item-check:checked{
+    opacity:1;
+    pointer-events:auto;
+  }
+}
+@media(hover:none),(pointer:coarse){
+  .ti-manager-table .ti-grid-tile > .ti-manager-item-check{
+    opacity:1;
+    pointer-events:auto;
+  }
+  .ti-manager-table .ti-grid-tile .ti-row-actions{
+    opacity:1;visibility:visible;pointer-events:auto;transform:none;
+  }
+}
+@media(max-width:760px){
+  .ti-manager-table .ti-grid-gallery{
+    grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+    gap:9px;
+    padding:10px;
+  }
+  .ti-manager-table .ti-grid-tile{min-height:155px}
+}
+@media(prefers-reduced-motion:reduce){
+  .ti-manager-table .ti-grid-tile,
+  .ti-manager-table .ti-grid-tile > .ti-manager-item-check,
+  .ti-manager-actions .ti-manager-view-switch button{transition:none}
+}
+
+
+/* USB upload destination chooser. Lives inside the calculator manager, but
+   does not change the folder currently displayed in the main explorer. */
+.ti-manager-dialog{position:relative}
+.ti-destination-overlay{
+  position:absolute;inset:0;z-index:10;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;box-sizing:border-box;
+  background:rgba(6,12,26,.78);
+  backdrop-filter:blur(3px);
+}
+.ti-destination-dialog{
+  display:flex;flex-direction:column;gap:12px;
+  width:min(480px,100%);max-height:min(590px,95%);
+  min-height:0;padding:20px;box-sizing:border-box;
+  background:var(--panel);color:var(--text);
+  border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 18px 65px #0006;
+}
+.ti-destination-dialog h3{font-size:17px;margin:0;font-weight:800}
+.ti-destination-description{
+  margin:0;font-size:12px;color:var(--muted);
+  line-height:1.5;overflow-wrap:anywhere;
+  max-height:55px;overflow-y:auto;
+}
+.ti-destination-toolbar{display:flex;gap:8px;align-items:center;min-width:0}
+.ti-destination-new-folder,.ti-destination-create-form button{
+  padding:8px;border:1px solid var(--line);border-radius:7px;
+  background:var(--button-bg);color:var(--text);font-size:12px;cursor:pointer;
+}
+.ti-destination-create-form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.ti-destination-create-form[hidden]{display:none}
+.ti-destination-folder-name{
+  flex:1;min-width:100px;width:100%;box-sizing:border-box;padding:9px;
+  border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--text);
+}
+.ti-destination-nav{
+  display:grid;place-items:center;flex:0 0 35px;
+  height:35px;border:1px solid var(--line);
+  border-radius:7px;background:var(--button-bg);
+  color:var(--text);cursor:pointer;font-size:17px;
+}
+.ti-destination-nav:hover:not(:disabled){border-color:var(--accent)}
+.ti-destination-nav:disabled{opacity:.38;cursor:default}
+.ti-destination-path{
+  flex:1;min-width:0;min-height:35px;
+  display:flex;align-items:center;
+  background:var(--bg);color:var(--text);
+  padding:8px 11px;box-sizing:border-box;
+  border:1px solid var(--line);border-radius:7px;
+  font-size:12px;white-space:nowrap;overflow-x:auto;
+}
+.ti-destination-list{
+  display:flex;flex-direction:column;gap:4px;
+  flex:1;min-height:90px;overflow:auto;
+  padding:6px;background:var(--bg);
+  border:1px solid var(--line);border-radius:8px;
+  overscroll-behavior:contain;
+}
+.ti-destination-folder{
+  display:flex;align-items:center;gap:10px;width:100%;
+  min-height:40px;padding:8px 11px;
+  border:1px solid transparent;border-radius:7px;
+  background:transparent;color:var(--text);
+  font-size:13px;text-align:left;cursor:pointer;
+}
+.ti-destination-folder:hover,.ti-destination-folder:focus-visible{
+  background:var(--button-bg);border-color:var(--line);
+}
+.ti-destination-folder span:nth-child(2){flex:1;min-width:0;overflow-wrap:anywhere}
+.ti-destination-folder span:last-child{font-size:21px;color:var(--muted)}
+.ti-destination-folder-icon{width:20px;height:20px;flex:0 0 20px;color:var(--accent)}
+.ti-destination-folder-icon svg{width:20px;height:20px}
+.ti-destination-empty{padding:12px;margin:auto;color:var(--muted);font-size:12px;text-align:center}
+.ti-destination-notice{
+  font-size:12px;color:var(--muted);min-height:18px;
+  line-height:1.4;margin:0;overflow-wrap:anywhere;
+}
+.ti-destination-notice[data-error="1"]{color:#ef4444}
+.ti-destination-footer{display:flex;gap:9px;justify-content:flex-end;flex-wrap:wrap}
+.ti-destination-cancel,.ti-destination-confirm{
+  padding:10px 14px;border:1px solid var(--line);
+  border-radius:8px;font-weight:700;font-size:13px;cursor:pointer;
+}
+.ti-destination-cancel{color:var(--text);background:var(--button-bg)}
+.ti-destination-confirm{background:var(--lime2);border-color:var(--lime2);color:#112010}
+.ti-destination-confirm:hover:not(:disabled){filter:brightness(1.06)}
+.ti-destination-dialog button:disabled{opacity:.44;cursor:not-allowed}
+@media(max-width:760px){
+  .ti-destination-overlay{padding:7px}
+  .ti-destination-dialog{padding:12px;max-height:95%;gap:9px}
+}
+.ti-manager-overlay[hidden]{display:none}
+
+.ti-manager-dialog .ti-destination-folder-icon{color:#edc35d}
+
+/* Before USB connection, use a compact, button-centered connection screen. */
+.ti-manager-dialog[data-connection-state="disconnected"] {
+  width: min(460px,100%);
+  height: min(300px,calc(100dvh - 24px));
+  min-height: 220px;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] .ti-manager-grid,
+.ti-manager-dialog[data-connection-state="disconnected"] .ti-manager-bottom {
+  display: none;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] .ti-manager-toolbar {
+  flex: 1 1 auto;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-height: 0;
+  overflow-y: auto;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] [data-ti-connect] {
+  min-width: min(260px,100%);
+  padding: 12px 20px;
+  font-size: 14px;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] [data-ti-status] {
+  display: none;
+  max-width: 100%;
+  text-align: center;
+}
+.ti-manager-dialog[data-connection-state="disconnected"] [data-ti-status][data-error="1"],
+.ti-manager-dialog[data-connection-state="disconnected"][aria-busy="true"] [data-ti-status] {
+  display: block;
+}
+@media(max-width:760px) {
+  .ti-manager-dialog[data-connection-state="disconnected"] {
+    height: min(280px,calc(100dvh - 12px));
+    padding: 16px;
+  }
+}
+.ti-usb-help{box-sizing:border-box;padding:18px;margin:14px 0;border:1px solid #b1a15b;border-radius:12px;background:var(--panel,#101a2a);color:var(--text,#e5edf8);max-height:55vh;overflow:auto;font:13px/1.55 Arial,sans-serif}
+.ti-usb-help[hidden]{display:none}.ti-usb-help h3{margin:0 0 10px}.ti-usb-help p{margin:10px 0}.ti-usb-help code{display:block;overflow-wrap:anywhere}.ti-usb-help details{margin:14px 0}.ti-usb-help summary{cursor:pointer;font-weight:700}.ti-usb-help li{margin:7px 0}.ti-usb-help a{color:#56d9d0}.ti-usb-help-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.ti-manager-dialog[data-connection-state="disconnected"]:has(.ti-usb-help:not([hidden])){width:min(720px,100%);height:min(760px,calc(100dvh - 28px))}
+.ti-manager-dialog[data-connection-state="disconnected"]:has(.ti-usb-help:not([hidden])) .ti-manager-toolbar{flex:0 0 auto;min-height:80px}
+.ti-manager-dialog:has(.ti-usb-help:not([hidden])) .ti-usb-help{flex:1;min-height:0;max-height:none;margin:0}

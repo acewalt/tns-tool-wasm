@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const hierarchy=JSON.parse(fs.readFileSync(new URL('../assets/math-tools/catalog-hierarchy.json',import.meta.url),'utf8'));
-const source=fs.readFileSync(new URL('../ti-math-tools.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../web/ti-math-tools.js',import.meta.url),'utf8');
 const window={};vm.runInNewContext(source,{window,document:{documentElement:{lang:'en'}}});
 const {buildCatalogWizard:build,flattenCatalog:flatten}=window.TnsMathTools;
 const leaves=flatten(hierarchy.math.tree),find=id=>leaves.find(n=>n.wizardId===id);

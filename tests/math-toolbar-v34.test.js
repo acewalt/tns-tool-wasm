@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
-const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
 const markup=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 
 test('Math view is the final Edit action, with a single preserved command target',()=>{

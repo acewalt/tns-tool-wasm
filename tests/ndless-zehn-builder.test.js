@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 globalThis.window = globalThis;
-await import('../ndless-elf32.js');
-await import('../ndless-zehn.js');
-await import('../ndless-zehn-builder.js');
+await import('../web/ndless-elf32.js');
+await import('../web/ndless-zehn.js');
+await import('../web/ndless-zehn-builder.js');
 
 function align(n,a=4){return (n+a-1)&~(a-1);}
 function makeElf(){

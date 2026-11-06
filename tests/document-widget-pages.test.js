@@ -3,12 +3,12 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
 
-const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
 const start=app.indexOf('function documentWidgetPreviewPages(');
 const end=app.indexOf('\nfunction documentPreviewFileKey(',start);
 assert.ok(start>=0&&end>start,'Document widget page mapper must be available');
 const context={documentPreviewFileKey:file=>String(file).replaceAll('\\','/').split('/').pop()};
-vm.runInNewContext(fs.readFileSync(new URL('../document-preview-navigation.js',import.meta.url),'utf8'),context);
+vm.runInNewContext(fs.readFileSync(new URL('../web/document-preview-navigation.js',import.meta.url),'utf8'),context);
 vm.runInNewContext(app.slice(start,end)+'\nglobalThis.mapPages=documentWidgetPreviewPages;',context);
 const groups=items=>context.TnsDocumentPreviewNavigation.groups(items);
 const map=items=>Array.from(context.mapPages(items,groups(items)));

@@ -24,7 +24,7 @@ root.querySelector=key=>{
 root.querySelectorAll=()=>[];
 const document={documentElement:{lang:'es'},addEventListener(){},createElement:()=>new Element()};
 const window={};
-const source=fs.readFileSync(new URL('../ti-calculator-transfer.js',import.meta.url),'utf8')
+const source=fs.readFileSync(new URL('../web/ti-calculator-transfer.js',import.meta.url),'utf8')
   .replace('window.TnsCalculatorTransfer=Object.freeze({open,close});',
     'window.TnsCalculatorTransfer=Object.freeze({open,close,screenshot,connect,disconnect,controls});window.__session=state;');
 vm.runInNewContext(source,{window,document,console,Date,setTimeout,clearTimeout,Uint8Array});

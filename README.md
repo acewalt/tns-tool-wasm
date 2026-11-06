@@ -18,19 +18,27 @@ Syntax Doctor includes a Program Editor menu with nine categories, mathematical 
 
 Calculator previews share these tools and evaluate numeric matrices and symbolic expressions with a local Giac/Xcas WebAssembly runtime. This is a partial TI-Nspire simulation; hardware, TI-Innovator and platform-specific operations still require the relevant device. Inserting a catalog entry does not certify that every TI command is supported in preview. Giac licenses and source-download information are in [assets/cas/README.md](assets/cas/README.md).
 
+## Repository layout
+
+Browser scripts and styles are grouped in [web/](web/). The public entry point remains `index.html`, so the website address is unchanged. Shared resources live in `assets/` and `vendor/`, command-line APIs in `src/` and `cli/`, and Windows integration in `desktop/`. Run build and test commands from the repository root. Root Python modules remain in place for the CLI and Pyodide.
+
 ## Live Demo
 
 https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.35/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.35)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.36/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.36)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
 **Ndless C/C++ projects currently compile on Windows only. Linux desktop support is planned; no Linux download is published yet.**
 
 ## What's new
+
+**0.1.36:** Python pages have separate calculator-style editor and shell previews. The shell runs the current script and accepts expressions in that script's namespace. Program Editor opens in source view. The magnifier enlarges the calculator screen without changing its resolution and follows widget navigation for the current session; a new startup resets it. Deleting the last calculator leaves an empty page instead of recreating the app. Catalog descriptions, categories and controls follow English, Spanish or French.
+
+The Windows portable bundles the runtimes, fonts and Ndless compiler required for offline editing, supported previews, TNS export and C/C++ builds. Statistics and opening external websites still require a connection. The first local build can download its dependencies; the extracted portable includes them.
 
 **0.1.35:** Document Inspector now previews the actual TI.ProgramEditor page, with a protected definition, editable source and the same syntax checks. Run opens Calculator and waits for Enter. Inspector elements have a contextual delete action with confirmation.
 

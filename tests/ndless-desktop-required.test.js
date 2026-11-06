@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 
-const source=fs.readFileSync(new URL('../ndless-desktop-required.js',import.meta.url),'utf8');
+const source=fs.readFileSync(new URL('../web/ndless-desktop-required.js',import.meta.url),'utf8');
 function fixture(desktop=false){
   const listeners={},nodes=new Map();
   let active;
@@ -44,7 +44,7 @@ assert.equal(card.attributes.role,'dialog');
 assert.equal(card.attributes['aria-modal'],'true');
 assert.match(card.children[2].textContent,/requiere TNS Tool Portable/);
 assert.equal(card.children[3].children.length,3);
-assert.equal(web.active.href,'https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.35/TNS-Tool-Portable-Windows-x64.zip');
+assert.equal(web.active.href,'https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.36/TNS-Tool-Portable-Windows-x64.zip');
 web.listeners.keydown({key:'Escape',preventDefault(){},stopImmediatePropagation(){}});
 assert.equal(web.nodes.size,0);
 assert.equal(web.active,web.previous);

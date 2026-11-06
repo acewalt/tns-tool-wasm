@@ -12,8 +12,8 @@ globalThis.importScripts=(...urls)=>{for(const url of urls){
   const mod={exports:{}};const code=fs.readFileSync(filename,'utf8');
   const factory=vm.runInThisContext('(function(module,exports,require,__dirname,__filename){'+code+';return module.exports;})',{filename})(mod,mod.exports,require,path.dirname(filename),filename);
   globalThis.MUnicorn=opts=>factory({...opts,wasmBinary:fs.readFileSync(path.join(root,'desktop/vendor/unicorn/unicorn.wasm'))});
- }else vm.runInThisContext(fs.readFileSync(path.join(root,path.basename(url)),'utf8'),{filename:url});
+ }else vm.runInThisContext(fs.readFileSync(path.join(root,'web',path.basename(url)),'utf8'),{filename:url});
 }};
-vm.runInThisContext(fs.readFileSync(path.join(root,'ndless-arm-preview-worker.js'),'utf8'),{filename:'ndless-arm-preview-worker.js'});
+vm.runInThisContext(fs.readFileSync(path.join(root,'web/ndless-arm-preview-worker.js'),'utf8'),{filename:'web/ndless-arm-preview-worker.js'});
 parentPort.on('message',data=>globalThis.onmessage({data}));
 globalThis.onmessage({data:{type:'start',bytes:workerData.bytes,files:workerData.files,args:workerData.args,engine:'unicorn.js',wasm:'unicorn.wasm'}});

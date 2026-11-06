@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 
 globalThis.window = globalThis;
-await import("../ndless-zehn.js");
-await import("../ndless-rebuilder.js");
+await import("../web/ndless-zehn.js");
+await import("../web/ndless-rebuilder.js");
 
 function putU32LE(bytes, offset, value) {
   new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).setUint32(offset, value >>> 0, true);

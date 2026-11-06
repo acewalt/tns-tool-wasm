@@ -36,7 +36,7 @@ assert.equal(suite.success, true);
 assert.equal(suite.passed, 2);
 assert.equal(suite.failed, 0);
 
-const appSource = await fs.readFile(path.join(__dirname, "..", "app.js"), "utf8");
+const appSource = await fs.readFile(path.join(__dirname, "..", "web/app.js"), "utf8");
 const analyzerStart = appSource.indexOf("function analyzeLuaBasic");
 const analyzerEnd = appSource.indexOf("function highlightLuaLine");
 assert.notEqual(analyzerStart, -1);

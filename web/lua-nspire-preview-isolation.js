@@ -1,0 +1,257 @@
+(() => {
+  "use strict";
+
+  const INSTALL_MARK = "__tnsNspirePreviewIsolationV8";
+  const RUNTIME_VERSION = "20260903-nspire-runtime-v8";
+  const BASE_RUNTIME_FILES = [
+    "vendor/luajs/lua.js",
+    "vendor/luajs/nspire/env.js",
+    "vendor/luajs/nspire/tools.js",
+    "vendor/luajs/nspire/bindings.js",
+    "vendor/luajs/nspire/platform.js",
+    "vendor/luajs/nspire/timer.js",
+    "vendor/luajs/nspire/locale.js",
+  ];
+
+  function loadLegacyTiCompat() {
+    const existing = document.querySelector('script[data-ti-nspire-legacy-image-compat="true"]');
+    if (existing) existing.remove();
+    const script = document.createElement("script");
+    script.src = "./web/ti-nspire-legacy-image-compat.js?v=20260903-eepro-inline-image-v2";
+    script.dataset.tiNspireLegacyImageCompat = "true";
+    script.async = false;
+    document.head.appendChild(script);
+  }
+
+  function loadTiFontCalibration() {
+    if (document.querySelector('script[data-ti-preview-font-calibration="true"]')) return;
+    const script = document.createElement("script");
+    script.src = "./web/ti-preview-font-calibration.js?v=20260904-ti-font-calibration-v1";
+    script.dataset.tiPreviewFontCalibration = "true";
+    script.async = false;
+    document.head.appendChild(script);
+  }
+
+  function copyFunctionMarkers(target, source) {
+    for (const key of Object.keys(source || {})) {
+      try { target[key] = source[key]; } catch (_error) {}
+    }
+  }
+
+  function bindGeneratedLuaSymbol(name, value) {
+    const root = window;
+    const slot = `__tnsGeneratedLuaBinding_${name}`;
+    root[slot] = value;
+    root[name] = value;
+    try {
+      (0, eval)(`${name} = window[${JSON.stringify(slot)}];`);
+    } catch (_error) {}
+    try { delete root[slot]; } catch (_error) { root[slot] = undefined; }
+    return value;
+  }
+
+  async function loadFreshNspireLuaJsSources() {
+    const sources = [];
+    const legacyArithmeticFiles = [];
+
+    for (const file of BASE_RUNTIME_FILES) {
+      const separator = file.includes("?") ? "&" : "?";
+      const response = await fetch(`./${file}${separator}v=${RUNTIME_VERSION}`, { cache: "no-store" });
+      if (!response.ok) throw new Error(`${file}: HTTP ${response.status}`);
+      const source = await response.text();
+      if (/\bfunction\s+binaryArithmetic\b/.test(source)) legacyArithmeticFiles.push(file);
+      sources.push(source);
+    }
+
+    window.__tnsNspirePreviewLegacyArithmeticFiles = legacyArithmeticFiles;
+    window.__tnsNspirePreviewRuntimeBuild = RUNTIME_VERSION;
+    return sources;
+  }
+
+  function parseLuaBaseInteger(text, radix) {
+    let source = String(text).trim();
+    if (!source) return null;
+
+    let sign = 1;
+    if (source[0] === "+" || source[0] === "-") {
+      if (source[0] === "-") sign = -1;
+      source = source.slice(1);
+    }
+    if (!source) return null;
+
+    let value = 0;
+    for (const ch of source.toLowerCase()) {
+      const code = ch.charCodeAt(0);
+      let digit = -1;
+      if (code >= 48 && code <= 57) digit = code - 48;
+      else if (code >= 97 && code <= 122) digit = code - 97 + 10;
+      if (digit < 0 || digit >= radix) return null;
+      value = value * radix + digit;
+    }
+    return sign * value;
+  }
+
+  function installTiTonumberSemantics() {
+    const root = window;
+    const globals = root.G?.str;
+    const current = globals?.tonumber;
+    if (typeof current !== "function" || current.__tnsTiTonumberV8) return;
+
+    const safeTonumber = function (value, base) {
+      if (typeof value === "number") {
+        return [Number.isNaN(value) ? null : value];
+      }
+      if (typeof value !== "string") return [null];
+
+      const text = value.trim();
+      if (!text) return [null];
+
+      if (base !== undefined && base !== null) {
+        const radix = Number(base);
+        if (!Number.isInteger(radix) || radix < 2 || radix > 36) return [null];
+        return [parseLuaBaseInteger(text, radix)];
+      }
+
+      if (/^[+-]?(?:(?:\d+(?:\.\d*)?)|(?:\.\d+))(?:[eE][+-]?\d+)?$/.test(text)) {
+        const numeric = Number(text);
+        return [Number.isNaN(numeric) ? null : numeric];
+      }
+
+      const hex = /^([+-]?)0[xX]([0-9a-fA-F]+)$/.exec(text);
+      if (hex) {
+        const magnitude = parseInt(hex[2], 16);
+        return [(hex[1] === "-" ? -1 : 1) * magnitude];
+      }
+
+      return [null];
+    };
+
+    safeTonumber.__tnsTiTonumberV8 = true;
+    safeTonumber.__tnsTiTonumberBase = current;
+    globals.tonumber = safeTonumber;
+
+    try {
+      root.__tnsNspirePreviewTonumberProbe = {
+        invalidIsNil: safeTonumber("not-a-number")[0] === null,
+        decimal: safeTonumber("12.5")[0] === 12.5,
+        trailingRejected: safeTonumber("12abc")[0] === null,
+      };
+    } catch (_error) {}
+  }
+
+  function installTiNilSemantics() {
+    const root = window;
+
+    for (const name of ["lua_rawget", "lua_tableget"]) {
+      const current = root[name];
+      if (typeof current !== "function" || current.__tnsTiNilReadV8) continue;
+
+      const safeRead = function (table, key) {
+        if (table == null || table === false || key === undefined || key === null) return null;
+        const value = current.apply(this, arguments);
+        return value === undefined ? null : value;
+      };
+
+      copyFunctionMarkers(safeRead, current);
+      safeRead.__tnsTiNilReadV8 = true;
+      safeRead.__tnsTiNilReadBase = current;
+      bindGeneratedLuaSymbol(name, safeRead);
+    }
+
+    const currentEq = root.lua_eq;
+    if (typeof currentEq === "function" && !currentEq.__tnsTiNilEqV8) {
+      const safeEq = function (left, right) {
+        const leftNil = left === undefined || left === null;
+        const rightNil = right === undefined || right === null;
+        if (leftNil || rightNil) return leftNil && rightNil;
+        return currentEq.apply(this, arguments);
+      };
+      copyFunctionMarkers(safeEq, currentEq);
+      safeEq.__tnsTiNilEqV8 = true;
+      safeEq.__tnsTiNilEqBase = currentEq;
+      bindGeneratedLuaSymbol("lua_eq", safeEq);
+    }
+
+    const typeFn = root.G?.str?.type;
+    if (typeof typeFn === "function" && !typeFn.__tnsTiNilTypeV8) {
+      const safeType = function (value) {
+        if (value === undefined || value === null) return ["nil"];
+        return typeFn.apply(this, arguments);
+      };
+      safeType.__tnsTiNilTypeV8 = true;
+      safeType.__tnsTiNilTypeBase = typeFn;
+      root.G.str.type = safeType;
+    }
+
+    installTiTonumberSemantics();
+
+    let equalityProbe = false;
+    try { equalityProbe = (0, eval)("lua_eq(null, null) === true"); } catch (_error) {}
+    root.__tnsNspirePreviewNilEqualityProbe = equalityProbe;
+    root.__tnsNspirePreviewNilSemanticsV8 = true;
+  }
+
+  function installIsolation() {
+    const currentCreate = window.createLuaJsPreviewRuntime;
+    if (typeof currentCreate !== "function") return false;
+    if (currentCreate[INSTALL_MARK]) return true;
+
+    const isolatedCreate = async function (...args) {
+      const savedLoader = window.loadLuaJsRuntimeSources;
+      const savedHarden = window.hardenLuaJsPreviewRuntime;
+
+      const freshLoader = async function () {
+        const sources = await loadFreshNspireLuaJsSources();
+        window.__tnsNspirePreviewFreshLoaderUsed = true;
+        return sources;
+      };
+
+      const tiHarden = function (...hardenArgs) {
+        const result = typeof savedHarden === "function"
+          ? savedHarden.apply(this, hardenArgs)
+          : undefined;
+
+        installTiNilSemantics();
+        window.__tnsNspirePreviewTiHardenUsed = true;
+        if (typeof queueMicrotask === "function") queueMicrotask(installTiNilSemantics);
+        else Promise.resolve().then(installTiNilSemantics);
+        window.setTimeout(installTiNilSemantics, 0);
+        return result;
+      };
+
+      bindGeneratedLuaSymbol("loadLuaJsRuntimeSources", freshLoader);
+      bindGeneratedLuaSymbol("hardenLuaJsPreviewRuntime", tiHarden);
+      window.__tnsNspirePreviewRuntimeActive = true;
+      window.__tnsNspirePreviewFreshLoaderUsed = false;
+      window.__tnsNspirePreviewTiHardenUsed = false;
+
+      try {
+        return await currentCreate.apply(this, args);
+      } finally {
+        window.__tnsNspirePreviewRuntimeActive = false;
+        bindGeneratedLuaSymbol("loadLuaJsRuntimeSources", savedLoader);
+        bindGeneratedLuaSymbol("hardenLuaJsPreviewRuntime", savedHarden);
+      }
+    };
+
+    copyFunctionMarkers(isolatedCreate, currentCreate);
+    isolatedCreate[INSTALL_MARK] = true;
+    isolatedCreate.__tnsNspirePreviewBase = currentCreate;
+    window.createLuaJsPreviewRuntime = isolatedCreate;
+    window.__tnsNspirePreviewIsolationInstalled = true;
+    return true;
+  }
+
+  loadLegacyTiCompat();
+
+  if (!installIsolation()) {
+    let attempts = 0;
+    const retry = window.setInterval(() => {
+      attempts += 1;
+      if (installIsolation() || attempts >= 400) window.clearInterval(retry);
+    }, 25);
+    window.addEventListener("DOMContentLoaded", installIsolation, { once: true });
+  }
+
+  loadTiFontCalibration();
+})();

@@ -7,7 +7,7 @@ const source=fs.readFileSync(process.env.TNS_SONAR_SOURCE||path.join(root,'relea
 let win,server;const report={ok:false,blocked:[]};app.commandLine.appendSwitch('disable-gpu');
 app.whenReady().then(async()=>{
  fs.mkdirSync(path.dirname(reportPath),{recursive:true});
- fs.writeFileSync(path.join(root,'release/qa/sonar-game-v33.html'),'<!doctype html><html lang="en"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/preview-window.css"><link rel="stylesheet" href="/prgm-preview.css"><script defer src="/document-preview-navigation.js"></script><script defer src="/preview-window.js"></script><script type="module" src="/prgm-preview.js"></script><body></body></html>');
+ fs.writeFileSync(path.join(root,'release/qa/sonar-game-v33.html'),'<!doctype html><html lang="en"><link rel="stylesheet" href="/web/styles.css"><link rel="stylesheet" href="/web/preview-window.css"><link rel="stylesheet" href="/web/prgm-preview.css"><script defer src="/web/document-preview-navigation.js"></script><script defer src="/web/preview-window.js"></script><script type="module" src="/web/prgm-preview.js"></script><body></body></html>');
  server=makeServer(root,path.join(desktop,'vendor'));const origin=await listen(server);
  session.defaultSession.webRequest.onBeforeRequest({urls:['*://*/*']},(details,done)=>{const blocked=!details.url.startsWith(origin);if(blocked)report.blocked.push(details.url);done({cancel:blocked});});
  win=new BrowserWindow({show:false,width:1440,height:1000,webPreferences:{sandbox:true,contextIsolation:true,backgroundThrottling:false,offscreen:true}});

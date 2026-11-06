@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const window={};
-vm.runInNewContext(fs.readFileSync(new URL('../ti-nspire-webusb.js',import.meta.url),'utf8'),{window,TextEncoder,TextDecoder,Uint8Array,DataView,setTimeout,clearTimeout,console});
+vm.runInNewContext(fs.readFileSync(new URL('../web/ti-nspire-webusb.js',import.meta.url),'utf8'),{window,TextEncoder,TextDecoder,Uint8Array,DataView,setTimeout,clearTimeout,console});
 let closed=0;
 const device={vendorId:0x0451,productId:0xe022,productName:'TI-Nspire CX II',opened:false,
   configuration:{interfaces:[{interfaceNumber:0,alternates:[{alternateSetting:0,endpoints:[{type:'bulk',direction:'in',endpointNumber:1},{type:'bulk',direction:'out',endpointNumber:1}]}]}]},
@@ -21,7 +21,7 @@ class Element {
 }
 const nodes=new Map(),root=new Element();root.querySelector=key=>{if(!nodes.has(key))nodes.set(key,new Element());return nodes.get(key);};root.querySelectorAll=()=>[];
 const document={documentElement:{lang:'en'},addEventListener(){},createElement:tag=>new Element(tag)};
-const managerSource=fs.readFileSync(new URL('../ti-calculator-transfer.js',import.meta.url),'utf8').replace('window.TnsCalculatorTransfer=Object.freeze({open,close});','window.TnsCalculatorTransfer=Object.freeze({open,close,connect});window.__usbHelpState=state;');
+const managerSource=fs.readFileSync(new URL('../web/ti-calculator-transfer.js',import.meta.url),'utf8').replace('window.TnsCalculatorTransfer=Object.freeze({open,close});','window.TnsCalculatorTransfer=Object.freeze({open,close,connect});window.__usbHelpState=state;');
 window.TnsNspireUSB.NspireUSB.select=async()=>({device,connected:false,async connect(){const error=new Error('Unable to claim interface');error.code='USB_INTERFACE_CLAIM';throw error;}});
 vm.runInNewContext(managerSource,{window,document,console,Date,setTimeout,clearTimeout,Uint8Array});
 window.__usbHelpState.root=root;

@@ -5,7 +5,7 @@ import vm from "node:vm";
 const load=path=>fs.readFileSync(new URL(path,import.meta.url),"utf8");
 const win={};
 const context=vm.createContext({window:win,Uint8Array,DataView,TextEncoder,Date,Error,console});
-vm.runInContext(load("../ti-calculator-zip.js"),context);
+vm.runInContext(load("../web/ti-calculator-zip.js"),context);
 const zip=win.TnsCalculatorZip;
 const files=[
   {path:"matematicas/",isDir:true},
@@ -47,7 +47,7 @@ const doc={
   addEventListener:()=>{},
   createElement:tag=>new Node(tag)
 };
-const js=load("../ti-calculator-transfer.js").replace(
+const js=load("../web/ti-calculator-transfer.js").replace(
   "window.TnsCalculatorTransfer=Object.freeze({open,close});",
   "window.TnsCalculatorTransfer=Object.freeze({open,close,rows,selected});window.__testState=state;"
 );
@@ -113,10 +113,14 @@ for(const kind of ["download","rename","delete"]){
   assert.match(svg,/stroke="currentColor"/);
   assert.doesNotMatch(svg,/<(rect|image)[^>]+fill="(?:#|rgb)/i);
 }
-const style=load("../ti-calculator-transfer.css");
-for(const kind of ["download","rename","delete"])
-  assert.ok(style.includes('url("./assets/calculator-actions/'+kind+'.svg")'),
-    "Missing CSS mask URL for "+kind);
+const style=load("../web/ti-calculator-transfer.css");
+for(const kind of ["download","rename","delete"]){
+  const mask=style.match(new RegExp('url\\("([^"\\n]*calculator-actions/'+kind+'\\.svg)"\\)'));
+  assert.ok(mask,"Missing CSS mask URL for "+kind);
+  assert.equal(new URL(mask[1],new URL('../web/ti-calculator-transfer.css',import.meta.url)).href,
+    new URL('../assets/calculator-actions/'+kind+'.svg',import.meta.url).href,
+    "CSS mask must resolve to the original SVG asset for "+kind);
+}
 assert.match(style,/background-color:currentColor/);
 
 assert.match(style,/\.ti-tree-row:hover \.ti-row-actions/);

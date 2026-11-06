@@ -61,7 +61,7 @@ globalThis.NdlessRebuilder = {
   },
 };
 
-await import("../ndless-experimental-export-fix.js");
+await import("../web/ndless-experimental-export-fix.js");
 
 const legacy = {
   type:"ndless-project", version:1, name:"legacy-demo", language:"c", template:"basic",

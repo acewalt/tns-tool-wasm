@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-const context={window:{},document:{documentElement:{lang:'en'}}};vm.runInNewContext(fs.readFileSync(new URL('../ti-math-tools.js',import.meta.url),'utf8'),context);
+const context={window:{},document:{documentElement:{lang:'en'}}};vm.runInNewContext(fs.readFileSync(new URL('../web/ti-math-tools.js',import.meta.url),'utf8'),context);
 const api=context.window.TnsMathTools;
 test('Var deduplicates names, retains values and inserts callable document symbols',()=>{
   const entries=api.normalizeVariables([{name:'a',value:1},{name:'A',value:2},{name:'sonar',type:'Prgm',insertion:'sonar()'},{name:'fn',type:'Func',parameters:'x,y'},{name:'',value:0}]);

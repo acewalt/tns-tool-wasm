@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import test from 'node:test';
-const app=fs.readFileSync(new URL('../app.js',import.meta.url),'utf8');
+const app=fs.readFileSync(new URL('../web/app.js',import.meta.url),'utf8');
 const slice=(start,end)=>app.slice(app.indexOf(start),app.indexOf(end,app.indexOf(start)));
 
 test('Program Editor source changes target the exact selected problem and preserve another draft',()=>{

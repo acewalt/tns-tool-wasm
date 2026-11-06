@@ -3,7 +3,7 @@ const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm'),{Wor
 const cases=require('./fixtures/ndless-preview-projects.cjs');
 const exe=process.env.TNS_DESKTOP_COMPILER;
 const root=path.resolve(__dirname,'..');
-function pack(files){const window={};vm.runInNewContext(fs.readFileSync(path.join(root,'ti-calculator-zip.js'),'utf8'),{window,TextEncoder,Uint8Array,Uint32Array,DataView,Date,Array,Error});return window.TnsCalculatorZip.pack(Object.entries(files).map(([name,source])=>({path:name,data:new TextEncoder().encode(source)})));}
+function pack(files){const window={};vm.runInNewContext(fs.readFileSync(path.join(root,'web/ti-calculator-zip.js'),'utf8'),{window,TextEncoder,Uint8Array,Uint32Array,DataView,Date,Array,Error});return window.TnsCalculatorZip.pack(Object.entries(files).map(([name,source])=>({path:name,data:new TextEncoder().encode(source)})));}
 test('real SDK + isolated ARM preview stress: C, C++, multifile, doubles, animation, input, assembly and failures',
  {skip:process.platform!=='win32'||!exe,timeout:180000},async t=>{
   for(const fixture of cases.filter(f=>!process.env.TNS_PREVIEW_CASE||f.name===process.env.TNS_PREVIEW_CASE))await t.test(fixture.name,{timeout:25000},async()=>{
