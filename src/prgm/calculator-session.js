@@ -1,4 +1,4 @@
-import {createMathSession} from './math-api.js?v=20261106-calculator-layout-v34';
+import {createMathSession} from './math-api.js?v=20261106-program-editor-v35';
 import {compilePrgm,createPrgmPreview} from './runtime.js?v=20261105-sonar-runtime-v32';
 import {split,formatPrgmValue,PrgmError} from './math.js?v=20261105-sonar-math-v32';
 

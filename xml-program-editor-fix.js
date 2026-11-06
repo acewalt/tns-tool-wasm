@@ -532,9 +532,18 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions, "sources"
 
   openDocumentInspector = async function () {
     const previous = xmlDoctor.current ? {name:xmlDoctor.current.program_name,type:xmlDoctor.current.document_type,file:xmlDoctor.current.file} : null;
-    if (xmlDoctor.current && !xmlDoctor.embedded) await persistCurrentProgram();
-    await scanXmlPrograms();
-    if(previous){
+    let canRescan=true;
+    if (xmlDoctor.current && !xmlDoctor.embedded) {
+      try { await persistCurrentProgram(); }
+      catch(error) {
+        // An unfinished draft is still editable. Inspector can show the last
+        // staged structure without requiring that draft to pass syntax first.
+        if(Number(xmlDoctor.lastReport?.errors)>0){canRescan=false;syncCode();}
+        else throw error;
+      }
+    }
+    if(canRescan)await scanXmlPrograms();
+    if(previous&&canRescan){
       const sameFile=(file)=>documentXmlFileIdentity(file)===documentXmlFileIdentity(previous.file);
       const selected=xmlDoctor.candidates.find(item=>item.program_name===previous.name&&item.document_type===previous.type&&sameFile(item.file));
       if(selected)selectXmlProgram(selected.index);
