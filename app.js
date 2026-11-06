@@ -2041,9 +2041,19 @@ function syncPrgmPreviewButton() {
   tiProgramTools?.refresh();tiMathEditor?.refresh();
 }
 
+function isTiBasicProgramCandidate(current) {
+  if (!current) return false;
+  if (current.is_program_editor || current.widget_type==='TI.ProgramEditor' || String(current.kind||'').startsWith('program_editor_')) return true;
+  // Stored TI programs can be launched from Calculator without retaining a
+  // TI.ProgramEditor page. Enable their source tools without inventing a page.
+  // Graph expressions are Func symbols too, so their type alone is insufficient.
+  if (current.kind !== 'symbol_value') return false;
+  if (current.document_type === 'Prgm') return true;
+  return current.document_type === 'Func' && /^\s*(?:Define\s+(?:(?:LibPub|LibPriv)\s+)?[^\n=]+\s*=\s*)?:?\s*Func\b/i.test(String(current.code||''));
+}
+
 function isTiProgramEditorSelected() {
-  const current=xmlDoctor.current;
-  return Boolean(current && !document.querySelector('#xml-code').disabled && (current.is_program_editor || current.widget_type==='TI.ProgramEditor' || String(current.kind||'').startsWith('program_editor_')));
+  return !document.querySelector('#xml-code').disabled && isTiBasicProgramCandidate(xmlDoctor.current);
 }
 
 function insertXmlToolText(text, _node=null, _context=null, range=null) {
@@ -2057,7 +2067,7 @@ function insertXmlToolText(text, _node=null, _context=null, range=null) {
 }
 
 async function chooseTiProgramEditor() {
-  const candidates=xmlDoctor.candidates.filter(item=>item.is_program_editor||item.widget_type==='TI.ProgramEditor'||String(item.kind||'').startsWith('program_editor_'));
+  const candidates=xmlDoctor.candidates.filter(isTiBasicProgramCandidate);
   const backdrop=document.createElement('div');backdrop.className='modal-backdrop';
   backdrop.innerHTML='<div class="modal document-modal"><h2></h2><div class="ti-program-open-list"></div><div class="modal-actions"><button data-close></button></div></div>';
   backdrop.querySelector('h2').textContent=({es:'Abrir programa',en:'Open program',fr:'Ouvrir un programme'})[document.documentElement.lang]||'Open program';
@@ -2095,12 +2105,12 @@ async function openXmlPrgmPreview() {
   const data = await inspectXmlDocument();
   const groups = window.TnsDocumentPreviewNavigation.groups(data.items);
   if (groups.basic.length) {
-    const selected = Math.max(0, groups.basic.findIndex(item => item.detail?.name === xmlDoctor.current?.program_name
-      && documentPreviewFileKey(item.file) === documentPreviewFileKey(xmlDoctor.current?.file)));
-    return openDocumentAppPreview(groups, 'basic', selected);
+    const selected = groups.basic.findIndex(item => item.detail?.name === xmlDoctor.current?.program_name
+      && documentPreviewFileKey(item.file) === documentPreviewFileKey(xmlDoctor.current?.file));
+    if (selected >= 0) return openDocumentAppPreview(groups, 'basic', selected);
   }
   const readSource = () => ({source: document.querySelector('#xml-code').value,
-    name: xmlDoctor.current?.program_name || 'programa', documentName: xmlDoctor.outputFileName});
+    name: xmlDoctor.current?.program_name || 'programa', parameters: xmlDoctor.current?.parameters || '', documentName: xmlDoctor.outputFileName});
   window.TnsPrgmPreview.open(readSource(), {readSource, revealLine: line => {
     window.TnsPrgmPreview.close();
     goToXmlLine(line);
@@ -2234,6 +2244,7 @@ for index, item in enumerate(items):
 json.dumps(items)
 `);
   xmlDoctor.candidates = JSON.parse(payload);
+  for (const item of xmlDoctor.candidates) item.storedFingerprint = JSON.stringify([item.program_name, item.document_type, item.library_access, item.parameters, item.code]);
   collectLoadedTnsVariables();
   const combo = document.querySelector("#xml-programs");
   combo.innerHTML = "";
@@ -17347,12 +17358,52 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   mountDocumentPreviewTabs(backdrop, options, '.love-preview-calculator-bar', next => closeModal(backdrop, () => options.pageNavigation.onSelect(next)), true);
 }
 
+function programEditorVisibilityWords() {
+  const lang=document.documentElement.lang?.slice(0,2);
+  return lang==='en'?{show:'Show editor on calculator',hide:'Hide editor on calculator',note:'The eye shows or hides the Program Editor page. The program stays callable from Calculator; its code is not encrypted.'}:lang==='fr'?{show:'Afficher l’éditeur sur la calculatrice',hide:'Masquer l’éditeur sur la calculatrice',note:'L’œil affiche ou masque la page de l’éditeur. Le programme reste accessible depuis Calculs ; le code n’est pas chiffré.'}:{show:'Mostrar editor en calculadora',hide:'Ocultar editor en calculadora',note:'El ojo muestra u oculta la página del editor. El programa sigue ejecutándose desde Calculadora; el código no se cifra.'};
+}
+function documentXmlFileIdentity(file) {
+  const normalized=String(file||'').replaceAll('\\','/');
+  for(const root of [xmlDoctor.stagePath,xmlDoctor.sourcePath]){const prefix=String(root||'').replaceAll('\\','/').replace(/\/$/,'')+'/';if(normalized.startsWith(prefix))return normalized.slice(prefix.length);}
+  return normalized;
+}
+async function setProgramEditorPageVisible(item, visible) {
+  tiMathEditor?.flush();
+  const current=xmlDoctor.current;
+  if(current){const fingerprint=JSON.stringify([current.program_name,current.document_type,current.library_access,current.parameters,document.querySelector('#xml-code').value]);if(fingerprint!==current.storedFingerprint)await embedXmlCode();}
+  await ensureXmlStageCopy();
+  const response=await fetch(`./templates/blank_tns_xml/Problem1.xml?v=${SOURCE_VERSION}`,{cache:'no-store'});
+  if(!response.ok)throw Error('Program Editor page template unavailable');
+  pyodide.globals.set('wasm_visibility_item',JSON.stringify({file:item.file,name:item.content_label==='ProgramEditor'?item.detail.name:item.name,visible:Boolean(visible)}));
+  pyodide.globals.set('wasm_visibility_template',await response.text());
+  pyodide.globals.set('wasm_visibility_auth',TI_CALCULATOR_AUTH_B64);
+  const result=JSON.parse(await pyodide.runPythonAsync(`
+import json,base64
+from pathlib import Path
+from xml_updater import XMLUpdater
+change=json.loads(wasm_visibility_item)
+source_file=Path(change['file'])
+source_root=Path("${xmlDoctor.sourcePath}")
+stage_root=Path("${xmlDoctor.stagePath}")
+try: relative=source_file.relative_to(stage_root)
+except ValueError: relative=source_file.relative_to(source_root)
+target=(stage_root/relative).resolve()
+target.relative_to(stage_root.resolve())
+json.dumps(XMLUpdater.set_program_editor_visible(target,change['name'],change['visible'],wasm_visibility_template,base64.b64decode(wasm_visibility_auth).decode()))
+`));
+  await scanXmlPrograms();
+  const selected=xmlDoctor.candidates.find(candidate=>candidate.program_name===current?.program_name&&documentXmlFileIdentity(candidate.file)===documentXmlFileIdentity(current?.file));
+  if(selected)selectXmlProgram(selected.index);
+  xmlDoctor.embedded=true;xmlDoctor.stagePrepared=true;
+  return result;
+}
 async function openDocumentInspector() {
   const data = await inspectXmlDocument();
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   const summary = data.summary || {};
   const previewGroups = window.TnsDocumentPreviewNavigation.groups(data.items);
+  const visibilityWords=programEditorVisibilityWords();
   previewGroups.widgets = documentWidgetPreviewPages(data.items || [], previewGroups);
   const summaryHtml = [
     ['Widgets', previewGroups.widgets.length, previewGroups.widgets.length > 1 ? 'widgets' : null], ['XML', summary.files], ['Cards', summary.cards],
@@ -17392,7 +17443,12 @@ async function openDocumentInspector() {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("viewValue"))}</button>`;
     }
     const xmlAction = item.raw_xml ? `<button type="button" class="mini-action xml-action" data-index="${index}">${escapeHtml(t("viewXml"))}</button>` : "";
-    const action = `${contentAction}${xmlAction}`;
+    const programName=item.content_label==='ProgramEditor'?item.detail?.name:item.name;
+    const candidate=xmlDoctor.candidates.find(c=>c.program_name===programName&&documentXmlFileIdentity(c.file)===documentXmlFileIdentity(item.file)&&isTiBasicProgramCandidate(c));
+    const editorVisible=(data.items||[]).some(w=>w.content_label==='ProgramEditor'&&w.file===item.file&&w.detail?.name===programName);
+    const canToggle=item.content_label==='ProgramEditor'||candidate&&!editorVisible&&['Prgm','Func'].includes(item.type);
+    const visibilityAction=canToggle?`<button type="button" class="mini-action program-editor-visibility" data-index="${index}" data-visible="${editorVisible}" aria-pressed="${editorVisible}" aria-label="${escapeHtml(editorVisible?visibilityWords.hide:visibilityWords.show)}" title="${escapeHtml(editorVisible?visibilityWords.hide:visibilityWords.show)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>${editorVisible?'':'<path d="M3 3l18 18"/>'}</svg></button>`:'';
+    const action = `${contentAction}${visibilityAction}${xmlAction}`;
     return `<tr><td>${escapeHtml(item.name)}</td><td>${action}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td></tr>`;
   }).join("");
   backdrop.innerHTML = `
@@ -17403,6 +17459,7 @@ async function openDocumentInspector() {
         ${summaryHtml}
       </div>
       <h3>${escapeHtml(t("documentElements"))}</h3>
+      <p class="program-editor-visibility-note">${escapeHtml(visibilityWords.note)}</p>
       <div class="inspector-table-wrap">
         <table class="problem-table inspector-table">
           <thead><tr><th>Nombre</th><th>Acciones</th><th>Tipo</th><th>Archivo</th><th>Path</th><th>Detalle</th></tr></thead>
@@ -17427,6 +17484,7 @@ async function openDocumentInspector() {
       </div>
     </div>`;
   document.body.append(backdrop);
+  for(const button of backdrop.querySelectorAll('.program-editor-visibility'))button.addEventListener('click',async()=>{button.disabled=true;try{await setProgramEditorPageVisible(sortedItems[Number(button.dataset.index)],button.dataset.visible!=='true');closeModal(backdrop,()=>openDocumentInspector());}catch(error){xmlLog(`ERROR: ${error.message}`);button.disabled=false;showTextModal(t('documentInspector'),error.message);}});
   for (const button of backdrop.querySelectorAll('[data-preview-kind]')) {
     button.addEventListener('click', () => openDocumentAppPreview(previewGroups, button.dataset.previewKind).catch(error => xmlLog(`ERROR Preview: ${error.message}`)));
   }
@@ -17952,10 +18010,16 @@ async function embedXmlCode() {
   pyodide.globals.set("wasm_xml_document_type", xmlDoctor.current.document_type || detectXmlDocumentType(document.querySelector("#xml-code").value));
   pyodide.globals.set("wasm_xml_library_access", xmlDoctor.current.library_access || "None");
   pyodide.globals.set("wasm_xml_parameters", xmlDoctor.current.parameters || "");
+  pyodide.globals.set("wasm_xml_target_file", xmlDoctor.current.file);
   await pyodide.runPythonAsync(`
 from pathlib import Path
 from xml_updater import XMLUpdater
 updater = XMLUpdater(Path("${updateBasePath}"))
+selected = Path(wasm_xml_target_file)
+try:
+    selected = selected.relative_to(Path("${xmlDoctor.stagePath}"))
+except ValueError:
+    selected = selected.relative_to(Path("${xmlDoctor.sourcePath}"))
 if wasm_xml_update_in_place:
     updater.update_program(
         wasm_xml_program,
@@ -17965,6 +18029,7 @@ if wasm_xml_update_in_place:
         document_type=wasm_xml_document_type,
         library_access=wasm_xml_library_access,
         parameters=wasm_xml_parameters,
+        target_file=selected,
     )
 else:
     updater.update_program(
@@ -17975,6 +18040,7 @@ else:
         document_type=wasm_xml_document_type,
         library_access=wasm_xml_library_access,
         parameters=wasm_xml_parameters,
+        target_file=selected,
     )
 `);
   xmlDoctor.embedded = true;

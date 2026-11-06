@@ -1,7 +1,7 @@
 // Bounded TI-Nspire CX II graphics model. Source is parsed/evaluated by runtime.js;
 // this module stores device-space drawing operations without a browser dependency.
 // TI reference: https://education.ti.com/html/webhelp/EG_TINspireCode/EN/Subsystems/RG_Nspire_EN/Content/M_RefGuide/RG_DrawCommand.htm
-import {fail, number, formatPrgmValue} from './math.js';
+import {fail, number, formatPrgmValue} from './math.js?v=20261105-sonar-math-v32';
 
 export const DRAWING_COMMANDS = Object.freeze(['clear','drawarc','drawcircle','drawline','drawpoly','drawrect','drawtext','fillarc','fillcircle','fillpoly','fillrect','paintbuffer','plotxy','setcolor','setpen','setwindow','usebuffer']);
 const commands = new Set(DRAWING_COMMANDS);
@@ -19,18 +19,30 @@ export class PrgmDrawing {
   constructor(options={}) {
     this.width=318;this.height=212;this.active=false;this.buffering=false;this.revision=0;this.total=0;this.resources=0;
     this.maxOperations=Math.min(20000,Math.max(1,options.maxDrawingOperations||10000));
-    this.color=[0,0,0];this.pen={thickness:1,style:1};this.window=null;this.front=[];this.back=[];
+    this.color=[0,0,0];this.pen={thickness:1,style:1};this.window=null;this.front=[];this.back=[];this.frontRaster=null;this.backRaster=null;
+    // The browser can flatten old overdraw into a bounded pixel checkpoint.
+    // CLI callers retain the original operation/resource limits without a renderer.
+    this.rasterize=typeof options.rasterizeGraphics==='function'?options.rasterizeGraphics:null;
   }
   point(x,y){x=integer(x);y=integer(y);return this.window?[(x-this.window[0])*this.width/(this.window[1]-this.window[0]),this.height-(y-this.window[2])*this.height/(this.window[3]-this.window[2])]:[x,y];}
   size(w,h){w=nonnegative(w,'El ancho');h=nonnegative(h,'La altura');return this.window?[w*this.width/(this.window[1]-this.window[0]),h*this.height/(this.window[3]-this.window[2])]:[w,h];}
+  compact(targetName) {
+    const pixels=this.rasterize({width:this.width,height:this.height,commands:clone(this[targetName]),raster:this[targetName+'Raster']});
+    if(!pixels||pixels.length!==this.width*this.height*4)fail('RESOURCE_LIMIT','No se pudo conservar la pantalla gráfica.');
+    this[targetName+'Raster']=new Uint8ClampedArray(pixels);this[targetName].length=0;
+    this.resources=[...this.front,...this.back].reduce((n,op)=>n+(op.points?.length||op.text?.length||1),0);
+  }
   add(operation) {
-    if(++this.total>this.maxOperations)fail('RESOURCE_LIMIT','Se alcanzó el límite de objetos gráficos del preview.');
-    this.resources+=operation.points?.length||operation.text?.length||1;
+    this.total++;
+    const targetName=this.buffering?'back':'front',target=this[targetName];
+    if(!this.rasterize&&this.total>this.maxOperations)fail('RESOURCE_LIMIT','Se alcanzó el límite de objetos gráficos del preview.');
+    const cost=operation.points?.length||operation.text?.length||1;
+    if(this.rasterize&&(target.length>=this.maxOperations||this.resources+cost>100000))this.compact(targetName);
+    this.resources+=cost;
     if(this.resources>100000)fail('RESOURCE_LIMIT','Se alcanzó el límite de puntos/texto del preview gráfico.');
     this.active=true;
-    const target=this.buffering?this.back:this.front;
     // A full clear replaces previous objects and bounds retained drawing memory.
-    if(operation.kind==='clear'&&!operation.rect)target.length=0;
+    if(operation.kind==='clear'&&!operation.rect){target.length=0;this[targetName+'Raster']=null;this.resources=[...this.front,...this.back].reduce((n,op)=>n+(op.points?.length||op.text?.length||1),cost);}
     target.push({...operation,color:[...this.color],pen:{...this.pen}});
     if(!this.buffering)this.revision++;
   }
@@ -40,8 +52,8 @@ export class PrgmDrawing {
     if(name==='setcolor'){count(name,args,3);const values=args.map(integer);if(values.some(n=>n<0||n>255))fail('DOMAIN_ERROR','SetColor requiere componentes RGB entre 0 y 255.');this.color=values;return;}
     if(name==='setpen'){count(name,args,2);const [thickness,style]=args.map(integer);if(thickness<1||thickness>3||style<1||style>3)fail('DOMAIN_ERROR','SetPen requiere grosor y estilo entre 1 y 3.');this.pen={thickness,style};return;}
     if(name==='setwindow'){count(name,args,4);const values=args.map(integer);if(values.every(n=>n===0))this.window=null;else {if(values[0]>=values[1]||values[2]>=values[3])fail('DOMAIN_ERROR','SetWindow requiere xmin < xmax e ymin < ymax.');this.window=values;}return;}
-    if(name==='usebuffer'){count(name,args,0);if(!this.buffering){this.back=clone(this.front);this.buffering=true;}return;}
-    if(name==='paintbuffer'){count(name,args,0);this.active=true;if(this.buffering)this.front=clone(this.back);this.revision++;return;}
+    if(name==='usebuffer'){count(name,args,0);if(!this.buffering){this.back=clone(this.front);this.backRaster=this.frontRaster?new Uint8ClampedArray(this.frontRaster):null;this.buffering=true;}return;}
+    if(name==='paintbuffer'){count(name,args,0);this.active=true;if(this.buffering){this.front=clone(this.back);this.frontRaster=this.backRaster?new Uint8ClampedArray(this.backRaster):null;}this.revision++;return;}
     if(name==='clear'){if(args.length!==0&&args.length!==4)fail('ARGUMENT_ERROR','Clear requiere cero o cuatro argumentos.');let rect=null;if(args.length){const [x,y]=this.point(args[0],args[1]),[w,h]=this.size(args[2],args[3]);rect=[x,y,w,this.window?-h:h];}this.add({kind:'clear',rect});return;}
     if(name==='drawline'){count(name,args,4);this.add({kind:'line',points:[this.point(args[0],args[1]),this.point(args[2],args[3])]});return;}
     if(name==='drawrect'||name==='fillrect'){count(name,args,4);const [x,y]=this.point(args[0],args[1]),[w,h]=this.size(args[2],args[3]);this.add({kind:'rect',rect:[x,y,w,this.window?-h:h],fill:name==='fillrect'});return;}
@@ -58,13 +70,14 @@ export class PrgmDrawing {
     if(name==='drawtext'){count(name,args,3,100);const text=args.slice(2).map(formatPrgmValue).join('\u2009');if(text.length>8192)fail('RESOURCE_LIMIT','DrawText supera el límite de texto.');this.add({kind:'text',point:this.point(args[0],args[1]),text});return;}
     if(name==='plotxy'){count(name,args,3);const shape=integer(args[2]);if(shape<1||shape>13)fail('DOMAIN_ERROR','PlotXY requiere un estilo entre 1 y 13.');this.add({kind:'point',point:this.point(args[0],args[1]),shape});}
   }
-  snapshot(){return {active:this.active,width:this.width,height:this.height,buffering:this.buffering,revision:this.revision,operationCount:this.total,bufferedOperations:this.back.length,commands:clone(this.front),color:[...this.color],pen:{...this.pen},window:this.window?[...this.window]:null};}
+  snapshot(){return {active:this.active,width:this.width,height:this.height,buffering:this.buffering,revision:this.revision,operationCount:this.total,bufferedOperations:this.back.length,commands:clone(this.front),...(this.frontRaster?{raster:new Uint8ClampedArray(this.frontRaster)}:{}),color:[...this.color],pen:{...this.pen},window:this.window?[...this.window]:null};}
 }
 
 // Render a snapshot on an existing CanvasRenderingContext2D. This keeps runtime
 // results inspectable in CLI/API tests and uses native clipping in the browser.
 export function renderPrgmGraphics(ctx,state) {
   ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.clearRect(0,0,state.width,state.height);ctx.fillStyle='#fff';ctx.fillRect(0,0,state.width,state.height);
+  if(state.raster){const image=ctx.createImageData(state.width,state.height);image.data.set(state.raster);ctx.putImageData(image,0,0);}
   ctx.beginPath();ctx.rect(0,0,state.width,state.height);ctx.clip();
   for(const op of state.commands){
     ctx.strokeStyle=ctx.fillStyle=`rgb(${op.color.join(',')})`;ctx.lineWidth=op.pen.thickness;ctx.lineCap='butt';ctx.lineJoin='miter';ctx.setLineDash(op.pen.style===2?[1,2]:op.pen.style===3?[5,3]:[]);

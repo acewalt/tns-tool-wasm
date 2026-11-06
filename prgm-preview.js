@@ -1,5 +1,5 @@
-import {createPrgmPreview,formatPrgmValue} from './src/prgm/runtime.js?v=20261105-prgm-drawing-v31';
-import {renderPrgmGraphics} from './src/prgm/drawing.js?v=20261105-prgm-drawing-v31';
+import {createPrgmPreview,formatPrgmValue} from './src/prgm/runtime.js?v=20261105-sonar-runtime-v32';
+import {renderPrgmGraphics} from './src/prgm/drawing.js?v=20261105-sonar-runtime-v32';
 
 const COPY={
   es:{title:'Preview Prgm',note:'Simulación TI-BASIC · entradas, texto y dibujos CX II.',run:'Ejecutar',pause:'Pausar',step:'Paso',stop:'Detener',restart:'Reiniciar / actualizar',expand:'Vista ampliada',normal:'Tamaño calculadora',close:'Cerrar',variables:'Variables',empty:'Todavía no hay valores.',copy:'Copiar salida',copied:'Salida copiada.',ok:'OK',cancel:'Cancelar',done:'Hecho',line:'Línea',ready:'Listo',waiting:'Esperando entrada',paused:'Pausado',running:'Ejecutando',stopped:'Detenido',error:'Error',support:'Cobertura del preview',help:'Prgm sin parámetros; Local, Disp, DispAt, Request/RequestStr, If/ElseIf, For, While, Loop, asignaciones, listas y matemáticas numéricas. ClrIO se omite para conservar el historial TI-Nspire. Dibujo CX II: líneas, formas, texto, colores, ventana y buffer. El dibujo se abre sobre la calculadora; al terminar, una tecla vuelve al historial. No reproduce CAS simbólico, unidades ni funciones externas; las instrucciones no soportadas se indican con su línea.',keys:'Enter: aceptar · Esc: cancelar entrada · ↑/↓: desplazar salida',angle:'Ángulos (reinicia)',request:'Entrada del programa',viewLine:'Ver línea en editor'},
@@ -9,9 +9,10 @@ const COPY={
 let active=null;
 const HISTORY_COPY={es:'Limpiar historial',en:'Clear history',fr:'Effacer l’historique'};
 const GRAPHICS_COPY={es:{show:'Ver dibujo',hint:'Pulsa una tecla para volver a la calculadora',running:'Ejecutando…',finished:'Terminado',stopped:'Detenido'},en:{show:'Show drawing',hint:'Press any key to return to Calculator',running:'Running…',finished:'Finished',stopped:'Stopped'},fr:{show:'Voir le dessin',hint:'Appuyez sur une touche pour revenir à Calculs',running:'En cours…',finished:'Terminé',stopped:'Arrêté'}};
+const KEYBOARD_COPY={es:{title:'Teclado del programa',hint:'Usa tu teclado · T, números, Enter y Esc se envían al programa.',waiting:'Esperando tecla'},en:{title:'Program keyboard',hint:'Use your keyboard · T, digits, Enter and Esc are sent to the program.',waiting:'Waiting for a key'},fr:{title:'Clavier du programme',hint:'Utilisez le clavier · T, chiffres, Entrée et Échap sont transmis au programme.',waiting:'Touche attendue'}};
 function open(initial,options={}) {
   active?.close();
-  const language=document.documentElement.lang?.slice(0,2),t=COPY[language]||COPY.es,g=GRAPHICS_COPY[language]||GRAPHICS_COPY.es;
+  const language=document.documentElement.lang?.slice(0,2),t=COPY[language]||COPY.es,g=GRAPHICS_COPY[language]||GRAPHICS_COPY.es,k=KEYBOARD_COPY[language]||KEYBOARD_COPY.es;
   const previous=document.activeElement;
   const overlay=options.createBackdrop?.('prgm-preview-overlay')||document.createElement('div');overlay.classList.add('prgm-preview-overlay');
   // Only constant markup is parsed as HTML; source, prompts and output use textContent.
@@ -31,6 +32,11 @@ function open(initial,options={}) {
   const $=selector=>overlay.querySelector(selector), modal=$('.prgm-preview-modal');
   for(const [selector,value] of Object.entries({'#prgm-preview-title':t.title,'[data-note]':t.note,'[data-expand]':t.expand,'[data-close]':t.close,'[data-run]':t.run,'[data-step]':t.step,'[data-stop]':t.stop,'[data-restart]':t.restart,'[data-angle-label]':t.angle,'[data-keys]':t.keys,'[data-copy]':t.copy,'[data-line]':t.viewLine,'[data-variables-title]':t.variables,'[data-ok]':t.ok,'[data-cancel]':t.cancel,'[data-support]':t.support,'[data-help]':t.help}))$(selector).textContent=value;
   $('[data-clear-history]').textContent=HISTORY_COPY[language]||HISTORY_COPY.es;
+  const keyboard=document.createElement('div');keyboard.className='prgm-preview-keyboard';keyboard.dataset.keyboard='';keyboard.hidden=true;
+  const keyboardTitle=document.createElement('strong');keyboardTitle.textContent=k.title;keyboard.append(keyboardTitle);
+  const keyboardPad=document.createElement('div');keyboardPad.className='prgm-preview-key-grid';
+  for(const value of ['7','8','9','4','5','6','1','2','3','t','0','del']){const button=document.createElement('button');button.type='button';button.dataset.programKey=value;button.textContent=value==='del'?'⌫':value.toUpperCase();button.onclick=()=>sendProgramKey(value);keyboardPad.append(button);}
+  keyboard.append(keyboardPad);$('.prgm-preview-controls').append(keyboard);
   $('[data-show-graphics]').textContent=g.show;$('[data-graphics]').setAttribute('aria-label',g.hint);$('[data-graphics]').title=g.hint;
   $('[data-request]').setAttribute('aria-label',t.request);
   document.body.append(overlay);const oldOverflow=document.body.style.overflow;
@@ -132,10 +138,14 @@ function open(initial,options={}) {
     const layoutChanged=layoutOutput();
     if(changed||layoutChanged)followOutput();
     const status=automatic&&state.status==='paused'?'running':state.status;
-    $('[data-status]').textContent=`${t[status]||status} · ${t.line} ${state.line||1}`;
+    $('[data-status]').textContent=`${state.keyWaiting?k.waiting:t[status]||status} · ${t.line} ${state.line||1}`;
     $('[data-run]').textContent=automatic?t.pause:t.run;$('[data-run]').disabled=['waiting','done','error','stopped'].includes(state.status);
     $('[data-step]').disabled=automatic||['waiting','done','error','stopped'].includes(state.status);$('[data-stop]').disabled=['done','error','stopped'].includes(state.status);
-    $('[data-enter]').disabled=!request&&!(graphicsVisible&&['done','error','stopped'].includes(state.status));$('[data-escape]').disabled=$('[data-enter]').disabled;
+    const programKeys=Boolean(state.keyPolling&&['paused','ready'].includes(state.status)&&!request);
+    modal.classList.toggle('prgm-preview-interactive',programKeys);
+    keyboard.hidden=!programKeys;$('[data-keys]').textContent=programKeys?k.hint:t.keys;
+    $('[data-graphics]').title=programKeys?k.hint:g.hint;
+    $('[data-enter]').disabled=!request&&!programKeys&&!(graphicsVisible&&['done','error','stopped'].includes(state.status));$('[data-escape]').disabled=$('[data-enter]').disabled;
     $('[data-line]').disabled=!options.revealLine;
     const vars=$('[data-variables]');vars.replaceChildren();
     if(!Object.keys(state.variables).length){const empty=document.createElement('p');empty.textContent=t.empty;vars.append(empty);}
@@ -144,13 +154,19 @@ function open(initial,options={}) {
     if(state.warnings.length){const row=document.createElement('li');row.textContent='ClrIO · '+state.warnings.map(w=>w.line).join(', ');warnings.append(row);}
     if(['waiting','done','error','stopped'].includes(state.status))automatic=false;
   }
-  function tick(){if(closed||!automatic)return;const state=runtime.run(250);if(state.status!=='paused')automatic=false;render(state);if(automatic)timer=setTimeout(tick,state.waitRemainingMs?Math.min(50,state.waitRemainingMs):runtime.frameYield?16:0);}
+  function tick(){if(closed||!automatic)return;const state=runtime.run(250);if(state.status!=='paused')automatic=false;render(state);if(automatic)timer=setTimeout(tick,state.keyWaiting?100:state.waitRemainingMs?Math.min(50,state.waitRemainingMs):runtime.frameYield?16:0);}
   function run(){clearTimeout(timer);automatic=true;tick();}
-  function restart(){clearTimeout(timer);automatic=false;archiveRun();data=options.readSource?.()||initial;renderedText='\0';requestToken='';inputResolved=false;graphicsDismissed=false;graphicsRevision=-1;runtime=createPrgmPreview(data.source,{name:data.name,parameters:data.parameters||'',angleMode:$('[data-angle]').value});render(runtime.snapshot());run();}
+  function rasterizeGraphics(state){const canvas=document.createElement('canvas');canvas.width=state.width;canvas.height=state.height;const context=canvas.getContext('2d');renderPrgmGraphics(context,state);return context.getImageData(0,0,state.width,state.height).data;}
+  function restart(){clearTimeout(timer);automatic=false;archiveRun();data=options.readSource?.()||initial;renderedText='\0';requestToken='';inputResolved=false;graphicsDismissed=false;graphicsRevision=-1;runtime=createPrgmPreview(data.source,{name:data.name,parameters:data.parameters||'',angleMode:$('[data-angle]').value,interactive:true,maxDrawingOperations:1000,rasterizeGraphics});render(runtime.snapshot());run();}
+  function sendProgramKey(name){if(!runtime?.sendKey||!snapshot?.keyPolling||!['paused','ready'].includes(snapshot.status)||runtime.pending)return false;const resume=automatic||snapshot.keyWaiting;render(runtime.sendKey(name));if(resume)run();return true;}
   function dismissGraphics(){if($('[data-graphics]').hidden||!['done','error','stopped'].includes(snapshot.status))return false;graphicsDismissed=true;render(runtime.snapshot());history.focus({preventScroll:true});return true;}
   function answer(cancel=false){if(!runtime?.pending)return;const state=runtime.answer($('[data-input]').value,{cancel});if(state.inputError){render(state,state.inputError);$('[data-input]').focus({preventScroll:true});return;}inputResolved=true;run();}
   function scroll(direction){$('.prgm-preview-history').scrollBy({top:direction*48,behavior:'smooth'});}
   function keys(event){
+    if(!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.target.closest?.('input,select,textarea,summary')&&!(event.target.closest?.('button:not([data-program-key])')&&event.key==='Enter')){
+      const name=({Escape:'esc',Enter:'enter',ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',Backspace:'del',Delete:'del',' ':'space'})[event.key]||(event.key.length===1?event.key.toLowerCase():null);
+      if(name&&sendProgramKey(name)){event.preventDefault();event.stopImmediatePropagation();return;}
+    }
     if(event.key!=='Tab'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.target.closest?.('button,select,summary')&&dismissGraphics()){event.preventDefault();event.stopImmediatePropagation();return;}
     if(event.key==='Escape'&&dismissGraphics()){event.preventDefault();event.stopImmediatePropagation();return;}
     if(event.key==='Tab'){const controls=[...modal.querySelectorAll('button:not(:disabled),input:not([hidden]),select,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}return;}
@@ -166,12 +182,12 @@ function open(initial,options={}) {
   $('[data-restart]').onclick=restart;$('[data-angle]').onchange=restart;
   $('[data-clear-history]').onclick=()=>{previousRuns.replaceChildren();$('[data-clear-history]').disabled=true;history.scrollTop=0;layoutOutput();followOutput();};
   $('[data-request]').onsubmit=e=>{e.preventDefault();e.stopPropagation();answer();};$('[data-cancel]').onclick=()=>answer(true);
-  $('[data-enter]').onclick=()=>{if(!dismissGraphics())answer();};$('[data-escape]').onclick=()=>{if(!dismissGraphics())answer(true);};
+  $('[data-enter]').onclick=()=>{if(!sendProgramKey('enter')&&!dismissGraphics())answer();};$('[data-escape]').onclick=()=>{if(!sendProgramKey('esc')&&!dismissGraphics())answer(true);};
   $('[data-show-graphics]').onclick=()=>{graphicsDismissed=false;graphicsRevision=-1;render(runtime.snapshot());$('[data-graphics]').focus({preventScroll:true});};
-  overlay.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>scroll(Number(b.dataset.scroll)));
+  overlay.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>{if(!sendProgramKey(Number(b.dataset.scroll)<0?'up':'down'))scroll(Number(b.dataset.scroll));});
   $('[data-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(snapshot.text);$('[data-status]').textContent=t.copied;}catch(error){$('[data-error]').hidden=false;$('[data-error]').textContent=error.message;}};
   $('[data-line]').onclick=()=>options.revealLine?.(snapshot.error?.line||snapshot.pending?.line||snapshot.line);
   window.TnsPreviewWindow?.mount(overlay,{...options,pageNavigation:tabOptions,onResize:()=>layout()});
-  document.addEventListener('keydown',keys,true);modal.focus();active={close,getSnapshot:()=>runtime.snapshot()};layout();restart();return active;
+  document.addEventListener('keydown',keys,true);modal.focus();active={close,getSnapshot:()=>runtime.snapshot(),sendKey:sendProgramKey};layout();restart();return active;
 }
 window.TnsPrgmPreview=Object.freeze({open,close:()=>active?.close(),getSnapshot:()=>active?.getSnapshot()||null});

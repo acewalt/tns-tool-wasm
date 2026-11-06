@@ -41,15 +41,17 @@ export function normalizeTiMath(source) {
     const c = source[i];
     if (quote) { out += c; if (c === quote) { if (source[i + 1] === quote) out += source[++i]; else quote = ''; } continue; }
     if (c === '"' || c === '“') { quote = c === '“' ? '”' : '"'; out += c; continue; }
-    const inverse = (i === 0 || !/[\p{L}\p{N}_]/u.test(source[i - 1])) && /^(sinh|cosh|tanh|sin|cos|tan)⁻¹/.exec(source.slice(i));
-    if (inverse) { out += ({ sin: 'asin', cos: 'acos', tan: 'atan', sinh: 'asinh', cosh: 'acosh', tanh: 'atanh' })[inverse[1]]; i += inverse[0].length - 1; continue; }
+    const inverse = (i === 0 || !/[\p{L}\p{N}_]/u.test(source[i - 1])) && /^(sinh|cosh|tanh|sin|cos|tan)(?:⁻¹|\uF005)/i.exec(source.slice(i));
+    if (inverse) { out += ({ sin: 'asin', cos: 'acos', tan: 'atan', sinh: 'asinh', cosh: 'acosh', tanh: 'atanh' })[key(inverse[1])]; i += inverse[0].length - 1; continue; }
+    const conversion = (i === 0 || !/[\p{L}\p{N}_]/u.test(source[i - 1])) && /^mat(?:[▶►]|@>)list(?=\s*\()/i.exec(source.slice(i));
+    if (conversion) { out += 'mat2list'; i += conversion[0].length - 1; continue; }
     out += ({ '\uF03F': 'ℯ', '\uF008': 'd', '∑': 'sumSeq', 'Σ': 'sumSeq', '∏': 'prodSeq', 'Π': 'prodSeq', '∫': 'integral', '′': "'", '″': "''", '²': '^2' }[c] ?? c);
   }
   return out;
 }
 function tokens(source) {
   const out = []; let i = 0; source = normalizeTiMath(source);
-  const symbols = { '−': '-', '–': '-', '×': '*', '·': '*', '÷': '/', '≤': '<=', '≥': '>=', '≠': '!=', '√': 'sqrt' };
+  const symbols = { '−': '-', '–': '-', '×': '*', '·': '*', '÷': '/', '≤': '<=', '≥': '>=', '≠': '!=', '√': 'sqrt', '\uF002': 'transpose' };
   while (i < source.length) {
     const c = source[i];
     if (/\s/u.test(c)) { i++; continue; }
@@ -77,7 +79,7 @@ function tokens(source) {
     if (id) { out.push({ type: 'id', value: key(id[0]) }); i += id[0].length; continue; }
     const pair = source.slice(i, i + 2);
     if (['<=', '>=', '!=', '<>', '=='].includes(pair)) { out.push({ type: 'op', value: pair }); i += 2; continue; }
-    if ('+-*/^&=<>(),{}[]!°\'%'.includes(c) || symbols[c]) { out.push({ type: 'op', value: symbols[c] || c }); i++; continue; }
+    if ('+-*/^&=<>(),{}[]!°\'%∠'.includes(c) || symbols[c]) { out.push({ type: 'op', value: symbols[c] || c }); i++; continue; }
     fail('UNSUPPORTED_EXPRESSION', 'Símbolo no soportado en una expresión: ' + c);
   }
   out.push({ type: 'end', value: '' }); return out;
@@ -93,6 +95,7 @@ export function expressionTree(source) {
     const token = take(); let node;
     if (token.type === 'number' || token.type === 'string') node = { type: 'literal', value: token.value, ...(token.angle ? { angle: true } : {}) };
     else if (['+', '-', 'not'].includes(token.value)) node = { type: 'unary', op: token.value, arg: expr(token.value === 'not' ? 3 : 7) };
+    else if (token.value === '∠') node = { type: 'polarAngle', arg: expr() };
     else if (token.value === '(') { node = expr(); expect(')'); }
     else if (token.value === '{') node = { type: 'list', args: sequence('}') };
     else if (token.value === '[') {
@@ -111,7 +114,7 @@ export function expressionTree(source) {
     while (true) {
       const next = peek();
       if (next.value === '[') { take(); node = { type: 'index', base: node, indices: sequence(']') }; continue; }
-      if (['!', '°', '%'].includes(next.value)) { take(); node = { type: 'unary', op: next.value, arg: node }; continue; }
+      if (['!', '°', '%', 'transpose'].includes(next.value)) { take(); node = { type: 'unary', op: next.value, arg: node }; continue; }
       let op = next.value, implicit = false;
       if ((next.type === 'number' || next.type === 'id' && !['and', 'or', 'xor'].includes(next.value) || next.value === '(') && PRECEDENCE[op] === undefined) { op = '*'; implicit = true; }
       const priority = PRECEDENCE[op]; if (priority === undefined || priority < min) break;
@@ -148,17 +151,23 @@ function inverse(input) { const [rows, cols] = dimensions(input); if (rows !== c
 function determinant(input) { const [n, cols] = dimensions(input); if (n !== cols) fail('DIMENSION_ERROR', 'El determinante requiere una matriz cuadrada.'); const a = input.map(row => row.map(number)); let result = 1; for (let c = 0; c < n; c++) { let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(a[r][c]) > Math.abs(a[p][c])) p = r; if (Math.abs(a[p][c]) < 1e-14) return 0; if (p !== c) { [a[p], a[c]] = [a[c], a[p]]; result *= -1; } const v = a[c][c]; result *= v; for (let r = c + 1; r < n; r++) { const factor = a[r][c] / v; for (let k = c + 1; k < n; k++) a[r][k] -= factor * a[c][k]; } } return number(result); }
 function seededRandom(seed) { let state = Number(seed) >>> 0; return () => { state += 0x6D2B79F5; let n = Math.imul(state ^ state >>> 15, 1 | state); n ^= n + Math.imul(n ^ n >>> 7, 61 | n); return ((n ^ n >>> 14) >>> 0) / 4294967296; }; }
 export function createMathContext(options = {}) {
-  return { random: options.random || (options.randomSeed === undefined ? Math.random : seededRandom(options.randomSeed)), modes: { 1: 7, 2: options.angleMode === 'DEG' ? 2 : options.angleMode === 'GRAD' ? 3 : 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 }, functions: Object.create(null), locks: new Set(), language: options.language || 'en', calls: 0, steps: 0, maxSteps: Math.min(500000, options.maxMathSteps || 100000) };
+  return { random: options.random || (options.randomSeed === undefined ? Math.random : seededRandom(options.randomSeed)), getKey: typeof options.getKey === 'function' ? options.getKey : () => '', modes: { 1: 7, 2: options.angleMode === 'DEG' ? 2 : options.angleMode === 'GRAD' ? 3 : 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 }, functions: Object.create(null), locks: new Set(), language: options.language || 'en', calls: 0, steps: 0, maxSteps: Math.min(500000, options.maxMathSteps || 100000) };
 }
-const NUMERIC_FUNCTIONS = 'string dim left right mid approx sqrt root abs floor ceiling ipart exp ln log sign sin cos tan asin acos atan arcsin arccos arctan sinh cosh tanh asinh acosh atanh sec csc cot min max round mod remain int intdiv fpart gcd lcm ncr npr rand randint randmat randseed newmat identity diag rowdim coldim det trace norm ref rref transpose augment colaugment submat rowswap rowadd mrow mrowadd newlist sum product mean median stdevpop stdevsamp varpop varsamp seq sumseq prodseq piecewise when getmode setmode getlanginfo getplatform getlockinfo char ord instring gettype isnumtype isvoid'.split(' ');
+const NUMERIC_FUNCTIONS = 'string expr dim left right mid approx sqrt root abs floor ceiling ipart exp ln log sign sin cos tan asin acos atan arcsin arccos arctan sinh cosh tanh asinh acosh atanh sec csc cot min max round mod remain int intdiv fpart gcd lcm ncr npr rand randint randmat randseed newmat identity diag rowdim coldim det trace norm dotp unitv mat2list ref rref transpose augment colaugment submat rowswap rowadd mrow mrowadd newlist sum product mean median stdevpop stdevsamp varpop varsamp seq sumseq prodseq piecewise when getmode setmode getlanginfo getplatform getlockinfo getkey char ord instring gettype isnumtype isvoid'.split(' ');
 export const supportedMathFunctions = Object.freeze([...NUMERIC_FUNCTIONS]);
 export function evaluate(node, vars, angle = 'RAD', context = createMathContext({ angleMode: angle })) {
   if (++context.steps > context.maxSteps) fail('RESOURCE_LIMIT', 'La expresión supera el límite de operaciones del preview.');
   const ev = n => evaluate(n, vars, angle, context), n = node.name;
   const currentAngle = context.modes[2] === 2 ? 'DEG' : context.modes[2] === 3 ? 'GRAD' : 'RAD';
-  if (node.type === 'literal') return node.value;
+  const angleScale = currentAngle === 'DEG' ? Math.PI / 180 : currentAngle === 'GRAD' ? Math.PI / 200 : 1;
+  if (node.type === 'literal') return node.angle ? node.value / angleScale : node.value;
   if (node.type === 'list') return node.args.map(ev);
-  if (node.type === 'matrix') return node.rows.map(row => row.map(ev));
+  if (node.type === 'matrix') return node.rows.map(row => {
+    if (!row.some(item => item.type === 'polarAngle')) return row.map(ev);
+    if (row.length !== 2 || row[0].type === 'polarAngle' || row[1].type !== 'polarAngle') fail('UNSUPPORTED_COORDINATES', 'El preview admite vectores polares de dos coordenadas [radio,∠ángulo].');
+    const radius = number(ev(row[0])), theta = number(ev(row[1].arg)) * angleScale;
+    return [radius * Math.cos(theta), radius * Math.sin(theta)];
+  });
   if (node.type === 'variable') {
     if (Object.hasOwn(vars, n)) return vars[n];
     const constants = { pi: Math.PI, 'π': Math.PI, e: Math.E, 'ℯ': Math.E, true: true, false: false };
@@ -167,12 +176,14 @@ export function evaluate(node, vars, angle = 'RAD', context = createMathContext(
   }
   if (node.type === 'index') {
     const value = ev(node.base), indices = node.indices.map(v => integer(ev(v), 1));
-    if (!Array.isArray(value) || indices.length !== (isMatrix(value) ? 2 : 1)) fail('INDEX_ERROR', 'Se requiere un índice para lista y dos para matriz.');
+    if (!Array.isArray(value) || !indices.length || indices.length > (isMatrix(value) ? 2 : 1)) fail('INDEX_ERROR', 'Se requiere un índice para lista, o uno/dos para fila/elemento de matriz.');
+    if (isMatrix(value) && indices.length === 1) { if (indices[0] > value.length) fail('INDEX_ERROR', 'Índice fuera de rango.'); return [clone(value[indices[0] - 1])]; }
     let result = value; for (const i of indices) { if (i > result.length) fail('INDEX_ERROR', 'Índice fuera de rango.'); result = result[i - 1]; } return result;
   }
   if (node.type === 'unary') {
     const value = ev(node.arg); if (node.op === 'not') return !truth(value);
-    return mapNumbers(value, v => { if (node.op === '-') return -v; if (node.op === '+') return v; if (node.op === '%') return v / 100; if (node.op === '°') return v * Math.PI / 180; integer(v, 0, 170); let f = 1; for (let k = 2; k <= v; k++) f *= k; return f; });
+    if (node.op === 'transpose') { const [r, c] = dimensions(value); return matrix(c, r, (i, j) => clone(value[j][i])); }
+    return mapNumbers(value, v => { if (node.op === '-') return -v; if (node.op === '+') return v; if (node.op === '%') return v / 100; if (node.op === '°') return v * (Math.PI / 180) / angleScale; integer(v, 0, 170); let f = 1; for (let k = 2; k <= v; k++) f *= k; return f; });
   }
   if (node.type === 'binary') {
     const a = ev(node.left); if (node.op === 'and') return truth(a) && truth(ev(node.right)); if (node.op === 'or') return truth(a) || truth(ev(node.right)); const b = ev(node.right);
@@ -195,7 +206,7 @@ export function evaluate(node, vars, angle = 'RAD', context = createMathContext(
   if (node.type !== 'call') fail('INTERNAL_ERROR', 'Expresión desconocida.');
   if (Object.hasOwn(context.functions, n)) {
     const fn = context.functions[n]; if (++context.calls > 100) { context.calls--; fail('EXECUTION_LIMIT', 'Límite de llamadas de función alcanzado.'); }
-    try { if (node.args.length !== fn.parameters.length) fail('ARGUMENT_ERROR', 'Número de argumentos incorrecto para ' + n + '().'); const scope = Object.assign(Object.create(null), vars); fn.parameters.forEach((p, i) => scope[p] = ev(node.args[i])); return evaluate(fn.body, scope, currentAngle, context); } finally { context.calls--; }
+    try { if (node.args.length !== fn.parameters.length) fail('ARGUMENT_ERROR', 'Número de argumentos incorrecto para ' + n + '().'); const args = node.args.map(ev); if (typeof fn.invoke === 'function') return fn.invoke(args); const scope = Object.assign(Object.create(null), vars); fn.parameters.forEach((p, i) => scope[p] = args[i]); return evaluate(fn.body, scope, currentAngle, context); } finally { context.calls--; }
   }
   if (!NUMERIC_FUNCTIONS.includes(n)) fail('UNSUPPORTED_FUNCTION', 'Función no soportada por el preview numérico: ' + n + '(). Use el CAS para operaciones simbólicas.');
   const arity = (min, max = min) => { if (node.args.length < min || node.args.length > max) fail('ARGUMENT_ERROR', 'Número de argumentos incorrecto para ' + n + '().'); };
@@ -211,14 +222,15 @@ export function evaluate(node, vars, angle = 'RAD', context = createMathContext(
   if (n === 'getlockinfo') { arity(1); if (node.args[0].type !== 'variable') fail('ARGUMENT_ERROR', 'getLockInfo requiere un nombre de variable.'); return context.locks.has(node.args[0].name) ? 1 : 0; }
   const args = node.args.map(ev);
   if (n === 'string') { arity(1); return formatPrgmValue(args[0]); }
+  if (n === 'expr') { arity(1); if (typeof args[0] !== 'string') fail('TYPE_ERROR', 'expr() requiere una cadena.'); return evaluate(expressionTree(args[0]), vars, currentAngle, context); }
+  if (n === 'getkey') { arity(0, 1); const mode = integer(args[0] ?? 0, 0, 1), value = context.getKey?.(mode) ?? ''; if (typeof value !== 'string') fail('TYPE_ERROR', 'getKey() debe devolver una cadena de tecla.'); return value; }
   if (n === 'dim') { arity(1); if (isMatrix(args[0])) return dimensions(args[0]); if (typeof args[0] !== 'string' && !Array.isArray(args[0])) fail('TYPE_ERROR', 'dim() requiere texto, lista o matriz.'); return args[0].length; }
   if (['left', 'right', 'mid'].includes(n)) { arity(n === 'mid' ? 2 : 1, n === 'mid' ? 3 : 2); const text = args[0]; if (typeof text !== 'string' && !Array.isArray(text)) fail('TYPE_ERROR', 'Se esperaba texto o lista.'); const count = args[1] ?? 1; return n === 'left' ? text.slice(0, count) : n === 'right' ? text.slice(-count) : text.slice(count - 1, args[2] === undefined ? undefined : count - 1 + args[2]); }
   if (n === 'root') { arity(1, 2); const degree = args[1] === undefined ? 2 : number(args[1]); if (!degree) fail('DOMAIN_ERROR', 'El índice de raíz no puede ser cero.'); return mapNumbers(args[0], x => number(x < 0 && Number.isInteger(degree) && degree % 2 ? -((-x) ** (1 / degree)) : x ** (1 / degree))); }
   if (n === 'log') { arity(1, 2); const base = args[1] === undefined ? 10 : number(args[1]); if (base <= 0 || base === 1) fail('DOMAIN_ERROR', 'La base del logaritmo debe ser positiva y distinta de 1.'); return mapNumbers(args[0], x => { if (x <= 0) fail('DOMAIN_ERROR', 'El argumento de log debe ser positivo.'); return number(Math.log(x) / Math.log(base)); }); }
-  const degree = currentAngle === 'DEG' ? Math.PI / 180 : currentAngle === 'GRAD' ? Math.PI / 200 : 1;
-  const angleUnit = value => value?.angle || value?.op === '°' || ['+', '-'].includes(value?.op) && value.type === 'unary' && angleUnit(value.arg);
-  const explicitDegree = angleUnit(node.args[0]);
-  const unary = { approx: x => x, sqrt: Math.sqrt, abs: Math.abs, floor: Math.floor, ceiling: Math.ceil, ipart: Math.trunc, int: Math.floor, exp: Math.exp, ln: Math.log, sign: Math.sign, fpart: x => x - Math.trunc(x), sin: x => Math.sin(explicitDegree ? x : x * degree), cos: x => Math.cos(explicitDegree ? x : x * degree), tan: x => Math.tan(explicitDegree ? x : x * degree), sec: x => 1 / Math.cos(x * degree), csc: x => 1 / Math.sin(x * degree), cot: x => 1 / Math.tan(x * degree), asin: x => Math.asin(x) / degree, acos: x => Math.acos(x) / degree, atan: x => Math.atan(x) / degree, arcsin: x => Math.asin(x) / degree, arccos: x => Math.acos(x) / degree, arctan: x => Math.atan(x) / degree, sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh, asinh: Math.asinh, acosh: Math.acosh, atanh: Math.atanh };
+  const degree = angleScale;
+  const unitInput=x=>Math.abs(x)<=1+8*Number.EPSILON?Math.max(-1,Math.min(1,x)):x;
+  const unary = { approx: x => x, sqrt: Math.sqrt, abs: Math.abs, floor: Math.floor, ceiling: Math.ceil, ipart: Math.trunc, int: Math.floor, exp: Math.exp, ln: Math.log, sign: Math.sign, fpart: x => x - Math.trunc(x), sin: x => Math.sin(x * degree), cos: x => Math.cos(x * degree), tan: x => Math.tan(x * degree), sec: x => 1 / Math.cos(x * degree), csc: x => 1 / Math.sin(x * degree), cot: x => 1 / Math.tan(x * degree), asin: x => Math.asin(unitInput(x)) / degree, acos: x => Math.acos(unitInput(x)) / degree, atan: x => Math.atan(x) / degree, arcsin: x => Math.asin(unitInput(x)) / degree, arccos: x => Math.acos(unitInput(x)) / degree, arctan: x => Math.atan(x) / degree, sinh: Math.sinh, cosh: Math.cosh, tanh: Math.tanh, asinh: Math.asinh, acosh: Math.acosh, atanh: Math.atanh };
   if (Object.hasOwn(unary, n)) { arity(1); return mapNumbers(args[0], x => number(unary[n](x))); }
   if (n === 'min' || n === 'max') { arity(1, 100); const values = args.length === 1 && Array.isArray(args[0]) ? args[0].flat() : args; return number(Math[n](...values.map(number))); }
   if (n === 'round') { arity(1, 2); const factor = 10 ** (args[1] === undefined ? 0 : number(args[1])); return mapNumbers(args[0], x => number(Math.round(x * factor) / factor)); }
@@ -236,6 +248,19 @@ export function evaluate(node, vars, angle = 'RAD', context = createMathContext(
   if (n === 'det') { arity(1); return determinant(args[0]); }
   if (n === 'trace') { arity(1); const [r, c] = dimensions(args[0]); if (r !== c) fail('DIMENSION_ERROR', 'trace() requiere matriz cuadrada.'); return args[0].reduce((v, row, i) => v + number(row[i]), 0); }
   if (n === 'norm') { arity(1); if (!Array.isArray(args[0])) fail('TYPE_ERROR', 'norm() requiere una lista o matriz.'); return Math.hypot(...args[0].flat().map(number)); }
+  if (n === 'dotp') {
+    arity(2); const a = args[0], b = args[1];
+    if (!Array.isArray(a) || !Array.isArray(b) || isMatrix(a) !== isMatrix(b)) fail('TYPE_ERROR', 'dotP() requiere dos listas o dos vectores del mismo tipo.');
+    if (isMatrix(a)) { const [ar, ac] = dimensions(a), [br, bc] = dimensions(b); if ((ar !== 1 && ac !== 1) || ar !== br || ac !== bc) fail('DIMENSION_ERROR', 'dotP() requiere vectores de igual dimensión y orientación.'); }
+    const av = a.flat(), bv = b.flat(); if (av.length !== bv.length) fail('DIMENSION_ERROR', 'Los vectores de dotP() deben tener la misma dimensión.');
+    return number(av.reduce((sum, value, i) => sum + number(value) * number(bv[i]), 0));
+  }
+  if (n === 'unitv') {
+    arity(1); const [r, c] = dimensions(args[0]); if (r !== 1 && c !== 1) fail('DIMENSION_ERROR', 'unitV() requiere un vector fila o columna.');
+    const magnitude = Math.hypot(...args[0].flat().map(number)); if (!magnitude) fail('DOMAIN_ERROR', 'El vector cero no tiene vector unitario.');
+    return mapNumbers(args[0], value => number(value / magnitude));
+  }
+  if (n === 'mat2list') { arity(1); dimensions(args[0]); return clone(args[0].flat()); }
   if (n === 'ref' || n === 'rref') { arity(1); return elimination(args[0], n === 'rref'); }
   if (n === 'transpose') { arity(1); const [r, c] = dimensions(args[0]); return matrix(c, r, (i, j) => args[0][j][i]); }
   if (n === 'augment' || n === 'colaugment') { arity(2); if (!Array.isArray(args[0]) || !Array.isArray(args[1])) fail('TYPE_ERROR', 'Se requieren listas o matrices.'); if (n === 'colaugment') { const [, a] = dimensions(args[0]), [, b] = dimensions(args[1]); if (a !== b) fail('DIMENSION_ERROR', 'Columnas incompatibles.'); return clone([...args[0], ...args[1]]); } if (isMatrix(args[0]) && isMatrix(args[1])) { const [a] = dimensions(args[0]), [b] = dimensions(args[1]); if (a !== b) fail('DIMENSION_ERROR', 'Filas incompatibles.'); return args[0].map((row, i) => clone([...row, ...args[1][i]])); } return clone([...args[0], ...args[1]]); }
