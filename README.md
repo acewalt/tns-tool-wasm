@@ -1,8 +1,36 @@
 # TNS Tool WASM
 
-**TNS Tool WASM lets you create, edit and preview TI-Nspire content in your browser. It now includes ROM Converter and direct USB file transfers to the calculator from the website. You can create, edit and compile Ndless C/C++ projects in TNS Tool Portable for Windows, with the SDK included. A Linux desktop version is coming soon. Some preview features and game compatibility remain experimental.**
+**TI-Nspire CX & CX II — Online TNS File Editor, Creator and Preview Tool**
 
-TNS Tool WASM is an experimental browser-based toolkit for TI-Nspire workflows.
+TNS Tool WASM is an experimental, browser-based **TI-Nspire development toolkit powered by WebAssembly**. Create, edit, inspect, preview and export `.tns` documents directly from your browser.
+
+Work with **TI-BASIC programs, Lua ScriptApps, Python pages, XML documents and mathematical expressions**. TNS Tool WASM also provides syntax validation, calculator-style previews and USB file transfers on supported devices.
+
+### Try TNS Tool
+
+**[Launch the Web Editor](https://acewalt.github.io/tns-tool-wasm/)** · **[Download TNS Tool Portable for Windows](https://github.com/acewalt/tns-tool-wasm/releases)**
+
+### Key features
+
+- **TNS file editor:** Create, open, modify and rebuild TI-Nspire `.tns` documents.
+- **TI-BASIC Program Editor:** Edit programs, check syntax and preview supported operations.
+- **Lua ScriptApp tools:** Create, edit and preview Lua applications with calculator-style rendering.
+- **Python support:** Work with supported TI-Nspire Python pages.
+- **XML editing:** Inspect and modify the underlying document structure.
+- **Math and CAS preview:** Display 2D mathematical expressions and evaluate supported calculations.
+- **USB calculator manager:** Browse folders and transfer files using compatible browsers or the Windows desktop integration.
+- **Ndless development:** Create, edit and compile supported C/C++ projects with TNS Tool Portable for Windows.
+- **ROM Converter:** Inspect supported cartridges and prepare emulator-based projects and calculator packages.
+
+![TNS Tool WASM editor and calculator interface](docs/images/new.gif)
+
+### Compatibility
+
+The **web edition** supports TNS/XML editing, selected program previews, ROM workflows and compatible WebUSB transfers. The **Windows portable edition** additionally supports compiling native Ndless C/C++ projects with the bundled SDK.
+
+**Experimental software:** TNS Tool WASM is not a complete TI-Nspire OS emulator. Preview support, device compatibility and game compatibility vary; some calculator-specific operations require real hardware.
+
+## Technical overview
 
 Prgm Preview also runs stored TI-BASIC programs without a visible Program Editor page, including interactive drawing programs such as Sonar. The eye control in Document Inspector shows or hides a program's editor page while keeping it callable from Calculator; it does not encrypt or protect its source.
 
@@ -169,7 +197,6 @@ https://paypal.me/waltDx
 - Run Lua ScriptApps programmatically from a Node CLI/API for agent-driven tests.
 - Work in Spanish, English, and French.
   
- ![New](docs/images/new.gif)
 
 ## Syntax Doctor
 
