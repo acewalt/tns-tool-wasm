@@ -37,7 +37,7 @@
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
   const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
-  const LOVE_PREVIEW_SIDE_V="20261105-preview-tools-v31";
+  const LOVE_PREVIEW_SIDE_V="20261106-preview-frame-fix-v32";
   const LOVE_PREVIEW_MATH_V="20261105-preview-tools-v31";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./web/runtime-loading-overlay.css?v=${RUNTIME_V}`, "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./web/header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
