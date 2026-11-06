@@ -443,7 +443,15 @@
       }
     }
 
-    if (stage.parentNode !== center) center.appendChild(stage);
+    // The shared preview's stage must remain inside its scroll/zoom frame.
+    // Reparenting only the stage breaks the magnifier CSS and leaves an empty
+    // frame in the center, which pushes the preview below its expected anchor.
+    const zoomFrame = shared ? stage.closest(".preview-window-frame") : null;
+    if (zoomFrame) {
+      if (zoomFrame.parentNode !== center) center.appendChild(zoomFrame);
+    } else if (stage.parentNode !== center) {
+      center.appendChild(stage);
+    }
     if (controls.parentNode !== leftKeys) leftKeys.appendChild(controls);
 
     let actionRow = rightActions.querySelector(".love-preview-side-action-row");
@@ -538,7 +546,7 @@
     });
 
     window.TnsLovePreviewSideControls = {
-      version: "20261104-preview-tools-v30",
+      version: "20261106-preview-frame-fix-v32",
       refresh: enhanceAll,
       enhanceModal,
       setMathEntryEnabled
