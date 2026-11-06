@@ -14,6 +14,9 @@ async function checkPrgm(win,report){
     while(!document.querySelector(".prgm-preview-overlay")){if(Date.now()>end)throw Error("Prgm preview did not open");await new Promise(r=>setTimeout(r,30));}
     const $=s=>document.querySelector('.prgm-preview-overlay '+s);
     const state=()=>window.TnsPrgmPreview.getSnapshot();
+    const executeCall=async()=>{$('[data-enter]').click();const limit=Date.now()+30000;while(state().executed===0&&!state().error){if(Date.now()>limit)throw Error('Enter did not execute the call');await new Promise(r=>setTimeout(r,15));}if(state().error)throw Error(state().error.message);};
+    if(state().executed!==0||$('[data-expression]').value!=='phy()')throw Error('Prgm preview must wait for Enter');
+    await executeCall();
     if(state().pending?.variable!=='opcion')throw Error('Main menu did not request input');
     const history=$('.prgm-preview-history'), originalRows=[...$('[data-output]').children];
     const initialWidth=history.clientWidth, initialLeft=originalRows[0].getBoundingClientRect().left;
@@ -50,14 +53,14 @@ async function checkPrgm(win,report){
         throw Error('A later Request recentered the existing transcript');
     }
     if(state().status!=='done'||!state().text.includes('(t)=0.70966 s'))throw Error('Physics screenshot route failed');
-    $('[data-restart]').click();
+    $('[data-restart]').click();await executeCall();
     if(!$('[data-previous-runs]').textContent.includes('(t)=0.70966 s'))throw Error('Restart discarded the completed calculator entry');
     const archivedLeft=$('[data-previous-runs] .prgm-preview-output-row').getBoundingClientRect().left;
     if(Math.abs(archivedLeft-screenBounds.left-15)>1)throw Error('First Request shifted an earlier execution');
     // Reproduce the supplied calculator screenshot with a real previous result.
     for(const value of [3,2,2,100,10]){$('[data-input]').value=String(value);$('[data-request]').requestSubmit();}
     if(state().status!=='done'||state().variables.energiapotencial!==9800)throw Error('Previous potential-energy calculation failed');
-    $('[data-restart]').click();
+    $('[data-restart]').click();await executeCall();
     const previous=$('[data-previous-runs]').lastElementChild;
     if(!previous.textContent.includes('Ep=9800 J')||!previous.querySelector('.prgm-preview-finish'))throw Error('Previous result and completion separator are missing');
     const callTop=$('[data-call]').getBoundingClientRect().top-screenBounds.top;
@@ -74,7 +77,7 @@ async function checkPrgm(win,report){
     $('[data-expand]').click();await new Promise(r=>setTimeout(r,80));
     const enlarged=$('.prgm-preview-screen-shell').getBoundingClientRect().width;
     if(enlarged<=normal)throw Error('Expanded Prgm preview did not enlarge');
-    $('[data-expand]').click();$('[data-restart]').click();
+    $('[data-expand]').click();$('[data-restart]').click();await executeCall();
     if(state().pending?.variable!=='opcion'||state().variables.opcion!==undefined)throw Error('Restart leaked old variables');
     const invalid='1/0';$('[data-input]').value=invalid;$('[data-request]').requestSubmit();
     if($('[data-error]').hidden||state().status!=='waiting')throw Error('Invalid input did not remain recoverable');
@@ -82,7 +85,7 @@ async function checkPrgm(win,report){
       throw Error('Invalid first input moved the pending output to the document margin');
     $('[data-input]').value='1';$('[data-request]').requestSubmit();
     if(!$('[data-error]').hidden||state().pending.variable!=='seleccion')throw Error('Corrected input failed');
-    $('[data-restart]').click();
+    $('[data-restart]').click();await executeCall();
     await new Promise(r=>setTimeout(r,100));
     return {ok:true,toolbar:true,viewport:{width:320,height:240},expanded:true,expandedCanvas:true,stableHistory:true,firstInputLayout:true,firstRunPlacement:true,firstCallTop,historyAcrossRuns:true,previousResult:9800,repeatedCallTop:callTop,initialOutputLeft:initialLeft-screenBounds.left,transcriptLeft:transcriptLeft-screenBounds.left,fixedPopup:true,physicsResult:0.70966,requests:12,restart:true,inputRecovery:true};
   })()`);
@@ -97,10 +100,10 @@ async function checkPrgm(win,report){
   await win.webContents.executeJavaScript(`document.querySelector('.prgm-preview-overlay [data-expand]').click()`);
   await new Promise(resolve=>setTimeout(resolve,100));
   await fs.writeFile(report+'.prgm-expanded.png',(await win.webContents.capturePage()).toPNG());
-  await win.webContents.executeJavaScript(String.raw`(()=>{
+  await win.webContents.executeJavaScript(String.raw`(async()=>{
     const old=document.querySelector('#xml-code').value;
     document.querySelector('#xml-code').value='Prgm\nDisp "UNSAVED EDIT"\nEndPrgm';
-    document.querySelector('.prgm-preview-overlay [data-restart]').click();
+    document.querySelector('.prgm-preview-overlay [data-restart]').click();if(window.TnsPrgmPreview.getSnapshot().executed!==0)throw Error('Refresh must wait for Enter');document.querySelector('.prgm-preview-overlay [data-enter]').click();await new Promise(r=>setTimeout(r,60));
     if(window.TnsPrgmPreview.getSnapshot().text!=='UNSAVED EDIT')throw Error('Refresh ignored unsaved source');
     const output=document.querySelector('.prgm-preview-overlay [data-output]').firstElementChild;
     const screen=document.querySelector('.prgm-preview-overlay .prgm-preview-screen');

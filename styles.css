@@ -4262,3 +4262,10 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 .love-calculator-composer.love-calculator-composer{box-sizing:border-box;max-height:calc(100% - 62px);align-items:center;overflow:auto;scrollbar-width:thin;padding-top:8px;padding-bottom:8px}.love-calculator-composer>.calc-v-expression,.love-calculator-composer>.calc-v-plain{flex-shrink:0}
 .preview-window .love-calculator-toolbar{display:flex;flex-wrap:wrap;gap:8px}.preview-window .love-calculator-toolbar #love-calculator-save{flex:1 0 100%;margin-top:4px}
 .program-editor-visibility{display:inline-flex;align-items:center;justify-content:center;vertical-align:middle}.program-editor-visibility[aria-pressed="true"]{color:#a5ed32}.program-editor-visibility-note{font:12px/1.5 Arial,sans-serif;color:#a5b7cf;max-width:850px}
+/* A declaration belongs to the Program Editor metadata, never its editable model. */
+.code-shell.has-program-declaration{grid-template-rows:34px minmax(0,1fr)}
+.program-declaration{grid-column:1/-1;min-width:0;padding:7px 14px 7px 64px;border-bottom:1px solid var(--line);font:600 13px/19px Consolas,monospace;white-space:pre;overflow-x:auto;overflow-y:hidden;color:var(--text);background:var(--panel);user-select:text;cursor:default}
+.program-declaration[hidden]{display:none}
+.code-shell.has-program-declaration>.editor-wrap{height:100%;min-height:0}
+.code-shell.has-program-declaration.monaco-enabled .program-declaration{padding-left:64px}
+[data-theme="dark"] .program-declaration{color:#dce8f8;background:#101b2d}

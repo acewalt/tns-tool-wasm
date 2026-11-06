@@ -94,6 +94,7 @@ if(primaryInstance) app.whenReady().then(async()=>{
       backgroundThrottling:!Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT),
       offscreen:Boolean(process.env.TNS_DESKTOP_SMOKE_REPORT)}});
   win.on('page-title-updated',event=>event.preventDefault());
+  require('./editor-shortcuts.cjs').installEditorShortcutMenuGuard(win.webContents);
   const smokeReport=process.env.TNS_DESKTOP_SMOKE_REPORT;
   if(smokeReport)win.webContents.on('console-message',(_event,level,message)=>console.log(level,message));
   if(!smokeReport)win.once('ready-to-show',()=>win.show());

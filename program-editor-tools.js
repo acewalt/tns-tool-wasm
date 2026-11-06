@@ -83,7 +83,9 @@
     if(!host)throw Error('Program Editor menu host is required');
     const trigger=document.createElement('button');trigger.type='button';trigger.className='menu-action program-editor-trigger';trigger.setAttribute('aria-haspopup','dialog');trigger.setAttribute('aria-expanded','false');trigger.dataset.programEditorTools='';
     const panel=document.createElement('section');panel.className='program-editor-tools-panel';panel.hidden=true;panel.setAttribute('role','dialog');
-    panel.setAttribute('aria-modal','false');panel.tabIndex=-1;document.body.append(panel);host.prepend(trigger);
+    panel.setAttribute('aria-modal','false');panel.tabIndex=-1;document.body.append(panel);
+    const settings=host.querySelector('#xml-document-btn');
+    if(settings)settings.after(trigger);else host.append(trigger);
     let data=null, path=[], busy=false, disposed=false;
     const currentLanguage=()=>language(options.language?.());
     const currentWords=()=>words(currentLanguage());

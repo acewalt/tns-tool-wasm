@@ -82,7 +82,7 @@ export function createMathSession(options = {}) {
       return {value:output,display:/^Define\b/i.test(text)?complete():output,kind:stored?'assignment':'expression',...(stored?{stored}:{}),backend:bridge.getStatus?.().backend||'CAS'};
     }
   }
-  return Object.freeze({ evaluate: calculate,evaluateAsync:calculateAsync, variables, context, expression: source => evaluate(expressionTree(source), variables, options.angleMode || 'RAD', context), snapshot: () => ({ variables: Object.fromEntries(Object.entries(variables).map(([name, value]) => [name, copy(value)])), modes: { ...context.modes } }) });
+  return Object.freeze({ evaluate: calculate,evaluateAsync:calculateAsync, variables, context,getDefinitions:()=>[...functions].map(([name,fn])=>({name,parameters:[...fn.parameters],type:'Func',insertion:name+'()'})),setAngleMode:value=>{options.angleMode=String(value).toUpperCase();context.modes[2]=options.angleMode==='DEG'?2:options.angleMode==='GRAD'?3:1;}, expression: source => evaluate(expressionTree(source), variables, options.angleMode || 'RAD', context), snapshot: () => ({ variables: Object.fromEntries([...Object.entries(variables).map(([name, value]) => [name, copy(value)]),...symbolic]), modes: { ...context.modes } }) });
 }
 
 export const api = Object.freeze({

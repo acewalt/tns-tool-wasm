@@ -22,7 +22,7 @@ test('real Func bodies qualify, graph expressions and non-BASIC widgets do not',
 });
 test('preview of a stored symbol cannot accidentally open another ProgramEditor page',async()=>{
   const a=source.indexOf('async function openXmlPrgmPreview('),b=source.indexOf('\nfunction setXmlDoctorDocumentActionsEnabled(',a);
-  const calls=[],ctx={window:{TnsPrgmPreview:{open:(data,options)=>calls.push({data,options})},TnsDocumentPreviewNavigation:{groups:()=>({basic:[{file:'/stage/Problem1.xml',detail:{name:'other'}}]})}},xmlDoctor:{current:{program_name:'sonar',file:'/stage/Problem1.xml',parameters:'x'},outputFileName:'Sonar.tns'},document:{querySelector:()=>({value:'Prgm\nDisp x\nEndPrgm'})},inspectXmlDocument:async()=>({items:[]}),documentPreviewFileKey:x=>x,openDocumentAppPreview:()=>{throw Error('Opened an unrelated program');}};
+  const calls=[],ctx={tiMathEditor:null,documentCalculatorContext:()=>({}),window:{TnsPrgmPreview:{open:(data,options)=>calls.push({data,options})},TnsDocumentPreviewNavigation:{groups:()=>({basic:[{file:'/stage/Problem1.xml',detail:{name:'other'}}]})}},xmlDoctor:{current:{program_name:'sonar',file:'/stage/Problem1.xml',parameters:'x'},outputFileName:'Sonar.tns'},document:{querySelector:()=>({value:'Prgm\nDisp x\nEndPrgm'})},inspectXmlDocument:async()=>({items:[]}),documentPreviewFileKey:x=>x,openDocumentAppPreview:()=>{throw Error('Opened an unrelated program');}};
   vm.runInNewContext(source.slice(a,b)+'\nglobalThis.openPreview=openXmlPrgmPreview;',ctx);
   await ctx.openPreview();assert.equal(calls.length,1);assert.equal(calls[0].data.name,'sonar');assert.equal(calls[0].data.parameters,'x');assert.equal(calls[0].data.source,'Prgm\nDisp x\nEndPrgm');
 });

@@ -6,6 +6,8 @@ TNS Tool WASM is an experimental browser-based toolkit for TI-Nspire workflows.
 
 Prgm Preview also runs stored TI-BASIC programs without a visible Program Editor page, including interactive drawing programs such as Sonar. The eye control in Document Inspector shows or hides a program's editor page while keeping it callable from Calculator; it does not encrypt or protect its source.
 
+Prgm Preview and Calculator share a Calculator screen: open a prepared `name()` call, press Enter when you want to run it, or use the entry for other calculations. Var lists this problem's programs and values. Ctrl+B checks syntax and Ctrl+R opens the corresponding preview in Syntax Doctor and the Lua ScriptApp editor. Program Editor's declaration header is read-only and follows Document Settings. Catalog libraries can list TNS files from a folder you choose, including Downloads.
+
 It runs directly in the browser with Pyodide/WebAssembly and JavaScript, so it can decode, inspect, edit, validate, and rebuild TI-Nspire-related files without requiring the original command-line workflow.
 
  ![New](docs/images/+page.png)
@@ -22,7 +24,7 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.32/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.31)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.33/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.33)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
