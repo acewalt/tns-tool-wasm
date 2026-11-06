@@ -24,6 +24,7 @@ class XMLUpdater:
         document_type: str | None = None,
         library_access: str | None = None,
         parameters: str | None = None,
+        target_file: str | Path | None = None,
     ) -> list[Path]:
         if out_dir is None and not in_place:
             raise ValueError("Use out_dir or in_place=True.")
@@ -34,7 +35,15 @@ class XMLUpdater:
             self._copy_xml_input(target)
 
         written: list[Path] = []
+        selected = None
+        if target_file is not None:
+            relative = Path(target_file)
+            if relative.is_absolute() or ".." in relative.parts:
+                raise ValueError("target_file must be a relative XML path inside the document.")
+            selected = (target.parent / relative if target.is_file() else target / relative).resolve()
         for xml_file in self._iter_target_xml_files(target):
+            if selected is not None and xml_file.resolve() != selected:
+                continue
             if XMLScanner._is_artifact(xml_file):
                 continue
             changed = self._update_file(
@@ -49,6 +58,70 @@ class XMLUpdater:
             if changed:
                 written.append(xml_file)
         return written
+
+    @staticmethod
+    def set_program_editor_visible(xml_file: Path, program_name: str, visible: bool,
+                                   template_xml: str = "", calculator_auth: str = "") -> dict:
+        """Toggle the app page only; the executable symbol is never removed."""
+        from ti_parser import ti_serialized_to_multiline
+        tree = ET.parse(xml_file)
+        root = tree.getroot()
+        pns, pe = namespace_uri(root.tag), TI_PROGRAM_EDITOR_NS
+        q = lambda ns, name: f"{{{ns}}}{name}" if ns else name
+        symbols = [e for sym in root if local_name(sym.tag) == "sym" for e in sym
+                   if local_name(e.tag) == "e" and e.attrib.get("t") in {"6", "7"}
+                   and any(local_name(n.tag) == "n" and (n.text or "").strip() == program_name for n in e)]
+        if len(symbols) != 1:
+            raise ValueError("The program must have one stored symbol before its editor page can be changed.")
+        symbol = symbols[0]
+        fields = {local_name(c.tag): c.text or "" for c in symbol}
+        editors = [w for w in root.iter() if local_name(w.tag) == "wdgt"
+                   and w.attrib.get("type") == "TI.ProgramEditor"
+                   and any(n.tag == q(pe, "name") and (n.text or "").strip() == program_name for n in w.iter())]
+        if bool(editors) == bool(visible):
+            return {"visible": bool(visible), "changed": False, "program": program_name}
+        if visible:
+            template = ET.fromstring(template_xml)
+            card = next((copy.deepcopy(c) for c in template if local_name(c.tag) == "card"
+                         and any(w.attrib.get("type") == "TI.ProgramEditor" for w in c.iter())), None)
+            if card is None:
+                raise ValueError("A valid Program Editor page template is required.")
+            kind = "Func" if symbol.attrib.get("t") == "6" else "Prgm"
+            access = {"65536": "LibPub", "196608": "LibPriv"}.get(symbol.attrib.get("f"), "None")
+            code = ti_serialized_to_multiline(fields.get("v", ""))
+            for node in card.iter():
+                if namespace_uri(node.tag) != pe:
+                    continue
+                name = local_name(node.tag)
+                if name == "name": node.text = program_name
+                elif name == "type": node.text = kind
+                elif name == "visibility": node.text = "" if access == "None" else access + " "
+                elif name == "laststoredexpr": node.text = XMLUpdater._build_laststoredexpr(program_name, fields.get("v", ""), access, fields.get("p", ""))
+                elif name == "editor": node.text = XMLUpdater._build_program_editor_tree(program_name, code, node.text or "", kind, access, fields.get("p", ""))
+            root.append(card)
+        else:
+            parent = {child: owner for owner in root.iter() for child in owner}
+            for widget in editors:
+                card = parent.get(widget)
+                while card is not None and local_name(card.tag) != "card": card = parent.get(card)
+                if card is None: raise ValueError("The editor is not inside a document page.")
+                other_widgets = [w for w in card.iter() if local_name(w.tag) == "wdgt" and w is not widget]
+                cards = [c for c in root if local_name(c.tag) == "card"]
+                if not other_widgets and len(cards) > 1:
+                    root.remove(card)
+                else:
+                    # Keep split-page slots and a document's last page valid.
+                    if not calculator_auth: raise ValueError("A Calculator page template is required.")
+                    owner = parent[widget]; index = list(owner).index(widget)
+                    scratch = ET.Element(q(pns, "wdgt"), {"type": "TI.Scratchpad", "ver": "1.0"})
+                    for name, value in [("mFlags", "0"), ("value", "0"), ("auth", calculator_auth)]:
+                        ET.SubElement(scratch, q("urn:TI.Scratchpad", name)).text = value
+                    owner.remove(widget); owner.insert(index, scratch)
+        # ET emits literal CRs, which an XML reader normalizes to LF. Keep
+        # serialized TI statements byte-for-byte when only changing app pages.
+        body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False).replace(b'\r', b'&#13;')
+        xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
+        return {"visible": bool(visible), "changed": True, "program": program_name}
 
     def _copy_xml_input(self, out_dir: Path) -> None:
         out_dir.mkdir(parents=True, exist_ok=True)

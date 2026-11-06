@@ -1,4 +1,4 @@
-import { IDENT, key, split, expressionTree, evaluate, evaluatePrgmExpression, createMathContext, formatPrgmValue, normalizeTiMath, supportedMathFunctions, PrgmError } from './math.js';
+import { IDENT, key, split, expressionTree, evaluate, evaluatePrgmExpression, createMathContext, formatPrgmValue, normalizeTiMath, supportedMathFunctions, PrgmError } from './math.js?v=20261105-sonar-math-v32';
 import { TI_CATALOG_COMMAND_NAMES } from './catalog-functions.js';
 
 const copy = value => Array.isArray(value) ? value.map(copy) : value;

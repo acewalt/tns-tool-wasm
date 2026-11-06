@@ -187,6 +187,13 @@
   async function persistCurrentProgram() {
     if (!xmlDoctor.current) return;
     syncCode();
+    const current=xmlDoctor.current;
+    const fingerprint=JSON.stringify([current.program_name,current.document_type,current.library_access,current.parameters,codeBox().value]);
+    if(current.storedFingerprint===fingerprint){
+      await ensureXmlStageCopy();
+      xmlDoctor.embedded=true;
+      return;
+    }
     if (!xmlDoctor.embedded) {
       await embedXmlCode();
       if (xmlDoctor.current) xmlDoctor.current.original_name = xmlDoctor.current.program_name;
@@ -528,7 +535,7 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions, "sources"
     if (xmlDoctor.current && !xmlDoctor.embedded) await persistCurrentProgram();
     await scanXmlPrograms();
     if(previous){
-      const sameFile=(file)=>String(file||'').replace(/\\/g,'/').split('/').pop()===String(previous.file||'').replace(/\\/g,'/').split('/').pop();
+      const sameFile=(file)=>documentXmlFileIdentity(file)===documentXmlFileIdentity(previous.file);
       const selected=xmlDoctor.candidates.find(item=>item.program_name===previous.name&&item.document_type===previous.type&&sameFile(item.file));
       if(selected)selectXmlProgram(selected.index);
     }
