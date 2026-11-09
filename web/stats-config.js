@@ -306,7 +306,7 @@ window.TNS_TOOL_STATS_API_BASE_URL = "https://tns-tool-stats.guard-mauricio-save
   isolationScript.addEventListener("load", () => {
     if (document.querySelector('script[data-love-preview-paste="true"]')) return;
     const pasteScript = document.createElement("script");
-    pasteScript.src = "./web/love-preview-paste.js?v=20260903-paste-v2";
+    pasteScript.src = "./web/love-preview-paste.js?v=20261109-paste-controls-v3";
     pasteScript.dataset.lovePreviewPaste = "true";
     pasteScript.async = false;
     document.head.appendChild(pasteScript);
