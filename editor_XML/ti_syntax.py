@@ -500,6 +500,8 @@ def _statement_line(line: str) -> str:
 
 def _assignment_parts(line: str) -> tuple[str, str] | None:
     """Return expression/target for either TI storage spelling, outside strings."""
+    if inline := _inline_if_parts(line):
+        line = inline[1]
     clean = _strip_strings_keep_layout(line)
     colon = clean.find(":=")
     if colon >= 0:
@@ -507,6 +509,24 @@ def _assignment_parts(line: str) -> tuple[str, str] | None:
     match = ASSIGN_ARROW_RE.match(clean)
     if match:
         return line[:match.end(1)].strip(), line[match.start(2):].strip()
+    return None
+
+
+def _inline_if_parts(line: str) -> tuple[str, str] | None:
+    """Separate a one-statement If from its command, never a quoted colon/:=."""
+    clean = _strip_strings_keep_layout(line)
+    header = IF_RE.match(clean)
+    if not header or re.search(r"\bThen\b", header.group(1), re.IGNORECASE):
+        return None
+    depth = 0
+    for index in range(header.start(1), len(clean)):
+        char = clean[index]
+        if char in "([{":
+            depth += 1
+        elif char in ")]}":
+            depth -= 1
+        elif char == ":" and depth == 0 and clean[index:index + 2] != ":=":
+            return line[header.start(1):index].strip(), line[index + 1:].strip()
     return None
 
 
@@ -694,14 +714,18 @@ def _analyze_flat_ti_code(
         if _is_comment_line(line):
             continue
 
+        inline_if = _inline_if_parts(line)
+        statement = inline_if[1] if inline_if else raw_line
+        visible_names = report.variables | report.assigned | known_names
+
         _check_lexical(report, number, raw_line)
         _check_delimiters(report, number, raw_line)
         _check_math_domains(report, number, raw_line)
         _check_function_arguments(report, number, raw_line)
-        _check_command_style_arguments(report, number, raw_line)
+        _check_command_style_arguments(report, number, statement)
         _check_invalid_implied_multiply(report, number, raw_line, report.variables | report.assigned)
         _check_assignment_errors(report, number, raw_line, report.variables | report.assigned | known_names)
-        _check_missing_function_parenthesis(report, number, raw_line)
+        _check_missing_function_parenthesis(report, number, raw_line, visible_names)
         _check_function_references(
             report,
             number,
@@ -712,14 +736,14 @@ def _analyze_flat_ti_code(
         _check_subscripts(report, number, raw_line)
         _check_ans_usage(report, number, raw_line)
 
-        command = _first_command(line)
+        command = _first_command(statement)
         if command:
             lower_command = command.lower()
-            if lower_command in TI_CATALOG_FUNCTIONS and not re.match(r"^\s*" + re.escape(command) + r"\s*\(", line, flags=re.IGNORECASE):
+            if lower_command in TI_CATALOG_FUNCTIONS and command not in visible_names and not re.match(r"^\s*" + re.escape(command) + r"\s*\(", statement, flags=re.IGNORECASE):
                 # The catalog recognizes a function, but it still requires call syntax.
                 syntax = TI_CATALOG[lower_command][1]
                 report.diagnostics.append(ti_error(680, number, f"Missing ( after {command}", f"Sintaxis de referencia: {syntax}"))
-            elif lower_command not in VALID_COMMANDS and command not in (report.variables | report.assigned | known_names) and not _is_symbolic_single_letter(command) and not _looks_like_expression(line) and not _looks_like_function_call(line):
+            elif lower_command not in VALID_COMMANDS and lower_command not in {"true", "false"} and command not in visible_names and not _is_symbolic_single_letter(command) and not _looks_like_expression(statement) and not _looks_like_function_call(statement):
                 choices = difflib.get_close_matches(lower_command, sorted(VALID_COMMANDS | TI_CATALOG_NAMES), n=3, cutoff=0.65)
                 hint = ""
                 if choices:
@@ -782,24 +806,30 @@ def _analyze_flat_ti_code(
             condition = if_match.group(1).strip()
             report.if_count += 1
             report.block_counts["If"] = report.block_counts.get("If", 0) + 1
-            if " then" not in line.lower():
-                if ":" not in line:
+            if not re.search(r"\bThen\b", _strip_strings_keep_layout(line), re.IGNORECASE):
+                # TI's single-statement form uses either a colon or the next
+                # physical line. Only the Then form opens an EndIf block.
+                next_statement = next((value.strip() for value in lines[number:]
+                                       if value.strip() and not _is_comment_line(value)), "")
+                if inline_if:
+                    condition = inline_if[0]
+                    if not inline_if[1]:
+                        report.diagnostics.append(ti_error(910, number, "If sin instruccion"))
+                elif not next_statement or re.match(r"^(?:End\w*|Else(?:If)?|Then)\b", next_statement, re.IGNORECASE):
                     report.diagnostics.append(ti_error(740, number, "Missing Then in the If..EndIf block"))
-                    if_stack.append(number)
-                    block_stack.append(("if", number))
             else:
                 condition = re.split(r"\bThen\b", condition, flags=re.IGNORECASE)[0].strip()
-                if not condition:
-                    report.diagnostics.append(ti_error(20, number, "Condicion vacia"))
                 if_stack.append(number)
                 block_stack.append(("if", number))
+            if not condition:
+                report.diagnostics.append(ti_error(20, number, "Condicion vacia"))
             report.infos.append(f"[INFO] Linea {number}: Inicio bloque If")
             tested_options.extend(_menu_tests(number, line))
 
         elif lower_line.startswith("elseif"):
             if not _has_open_block(block_stack, "if"):
                 report.diagnostics.append(ti_error(280, number, "Else and ElseIf invalid outside of If...EndIf block"))
-            if " then" not in lower_line:
+            if not re.search(r"\bThen\b", _strip_strings_keep_layout(line), re.IGNORECASE):
                 report.diagnostics.append(ti_error(740, number, "Missing Then in the If..EndIf block"))
             tested_options.extend(_menu_tests(number, line))
 
@@ -851,6 +881,8 @@ def _analyze_flat_ti_code(
             report.diagnostics.append(internal_warning(number, "Disp sin argumentos"))
 
         assignment = _assignment_parts(line)
+        if inline_if:
+            _collect_used_vars(report, inline_if[0], number)
         if assignment and (destination := _assignment_base(assignment[1])):
             report.assigned.add(destination)
             report.used.discard(destination)
@@ -982,11 +1014,9 @@ def autofix_ti_code(text: str, document_type: str | None = None) -> tuple[str, s
 
         if stripped.lower().startswith("if "):
             line = re.sub(r"\s+", " ", line).strip()
-            if re.search(r"\bThen\b", line, flags=re.IGNORECASE):
+            if re.search(r"\bThen\b", _strip_strings_keep_layout(line), flags=re.IGNORECASE):
                 scope["ifs"].append(len(fixed_lines))
                 actions.append("[100%] Normalizado espacio en If")
-            else:
-                scope["ifs"].append(len(fixed_lines))
 
         if stripped.lower() == "endif" and scope["ifs"]:
             scope["ifs"].pop()
@@ -1285,11 +1315,12 @@ def _check_assignment_errors(report: SyntaxReport, line_number: int, line: str, 
         report.diagnostics.append(ti_error(190, line_number, f"Circular definition: {destination}"))
 
 
-def _check_missing_function_parenthesis(report: SyntaxReport, line_number: int, line: str) -> None:
+def _check_missing_function_parenthesis(report: SyntaxReport, line_number: int, line: str,
+                                        known_names: set[str] | None = None) -> None:
     clean = _strip_strings_keep_layout(line)
     command_style_names = set(COMMAND_STYLE_SIGNATURES) | {"disp", "request", "prompt", "input", "local"}
     for name in COMMAND_SIGNATURES:
-        if name in command_style_names:
+        if name in command_style_names or name in (known_names or set()):
             continue
         pattern = rf"\b{name}\b\s+(?![,(])\S+"
         if re.search(pattern, clean, re.IGNORECASE):

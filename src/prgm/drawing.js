@@ -1,7 +1,7 @@
 // Bounded TI-Nspire CX II graphics model. Source is parsed/evaluated by runtime.js;
 // this module stores device-space drawing operations without a browser dependency.
 // TI reference: https://education.ti.com/html/webhelp/EG_TINspireCode/EN/Subsystems/RG_Nspire_EN/Content/M_RefGuide/RG_DrawCommand.htm
-import {fail, number, formatPrgmValue} from './math.js?v=20261105-sonar-math-v32';
+import {fail, number, formatPrgmValue} from './math.js?v=20261110-library-runtime-v37';
 
 export const DRAWING_COMMANDS = Object.freeze(['clear','drawarc','drawcircle','drawline','drawpoly','drawrect','drawtext','fillarc','fillcircle','fillpoly','fillrect','paintbuffer','plotxy','setcolor','setpen','setwindow','usebuffer']);
 const commands = new Set(DRAWING_COMMANDS);
