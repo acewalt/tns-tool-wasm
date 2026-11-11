@@ -1,7 +1,7 @@
 // Shared, DOM-free TI-BASIC text and CX II graphics preview.
-import { IDENT, key, PrgmError, fail, number, truth, split, expressionTree, evaluate, createMathContext, formatPrgmValue, evaluatePrgmExpression } from './math.js?v=20261105-sonar-math-v32';
+import { IDENT, key, PrgmError, fail, number, truth, split, expressionTree, evaluate, createMathContext, formatPrgmValue, formatExpressionValue, normalizeTiMath, evaluatePrgmExpression } from './math.js?v=20261110-library-runtime-v37';
 import {PrgmDrawing, isDrawingCommand} from './drawing.js?v=20261105-sonar-runtime-v32';
-export { PrgmError, formatPrgmValue, evaluatePrgmExpression } from './math.js?v=20261105-sonar-math-v32';
+export { PrgmError, formatPrgmValue, evaluatePrgmExpression } from './math.js?v=20261110-library-runtime-v37';
 const routineHeader=/^Define\s+(?:(?:LibPub|LibPriv)\s+)?([\p{L}_][\p{L}\p{N}_]*)\(([^)]*)\)\s*=\s*(Prgm|Func)?$/iu;
 export function compilePrgm(source) {
   const statements=[];
@@ -98,7 +98,7 @@ function compileStatements(statements) {
         const arrow=split(text,'→');const assignment=/^([\p{L}_][\p{L}\p{N}_]*(?:\s*\[[^\]]+\])?)\s*:=\s*(.+)$/u.exec(text);
         if(arrow.length===2){op.kind='assign';Object.assign(op,target(arrow[1]));op.expr=parsed(arrow[0]);}
         else if(assignment){op.kind='assign';Object.assign(op,target(assignment[1]));op.expr=parsed(assignment[2]);}
-        else if(/^[\p{L}_][\p{L}\p{N}_]*\s*\(/u.test(text)||/^(?:\d|[([{√+−-])/.test(text)){op.kind='evaluate';op.expr=parsed(text);}
+        else if(/^[\p{L}_][\p{L}\p{N}_]*(?:\\[\p{L}_][\p{L}\p{N}_]*)*\s*(?:$|[([+\-−*/^&=<>≤≥≠|])/u.test(normalizeTiMath(text))||/^(?:\d|["“([{√+−-])/.test(text)){op.kind='evaluate';op.expr=parsed(text);}
         else fail('UNSUPPORTED_COMMAND','Instrucción no soportada: '+text.slice(0,90));
       }
       code.push(op);
@@ -125,25 +125,27 @@ class KeyWait extends Error {}
 export class PrgmPreview {
   constructor(source,options={}) {
     const execution=options._execution;
-    this.source=String(source);this.options=options;this.angleMode=['DEG','GRAD'].includes(options.angleMode)?options.angleMode:'RAD';this.output=[];this.events=[];this.status='ready';this.pc=0;this.pending=null;this.error=null;this.lastLine=0;this.branches=new Set();this.loops=new Map();this.callStack=[];
-    this.globals=execution?.globals||Object.create(null);this.sharedFunctions=execution?.sharedFunctions||Object.create(null);this.scope={names:new Set(),values:Object.create(null),functions:Object.create(null)};this.vars=namespace(this.globals,this.scope,'values');
+    this.source=String(source);this.options=options;this.angleMode=['DEG','GRAD'].includes(options.angleMode)?options.angleMode:'RAD';this.output=execution?.output||[];this.events=execution?.events||[];this.status='ready';this.pc=0;this.pending=null;this.error=null;this.lastLine=0;this.branches=new Set();this.loops=new Map();this.callStack=[];this.lastValue=undefined;this.hasLastValue=false;
+    this.globals=execution?.globals||options.sharedVariables||Object.create(null);this.sharedFunctions=execution?.sharedFunctions||options.sharedFunctions||Object.create(null);this.scope=execution?.scope||{names:new Set(),values:Object.create(null),functions:Object.create(null)};this.vars=namespace(this.globals,this.scope,'values');
     this.meter=execution?.meter||{executed:0,window:0};this.keyboard=execution?.keyboard||{queue:[],polling:false,waiting:false};
     this.mathContext=execution?.mathContext||createMathContext({...options,getKey:mode=>this.readKey(mode)});
     if(!execution){
       const context=this.mathContext,shared=this.sharedFunctions;
       context.functions=new Proxy(Object.create(null),{
-        get:(_,name)=>{const scope=context.prgmScope;return scope?.names.has(name)?scope.functions[name]:shared[name];},
-        set:(_,name,value)=>{const scope=context.prgmScope;(scope?.names.has(name)?scope.functions:shared)[name]=value;return true;},
-        deleteProperty:(_,name)=>{const scope=context.prgmScope;delete (scope?.names.has(name)?scope.functions:shared)[name];return true;},
-        getOwnPropertyDescriptor:(_,name)=>{const scope=context.prgmScope,target=scope?.names.has(name)?scope.functions:shared;return Object.hasOwn(target,name)?{enumerable:true,configurable:true,writable:true,value:target[name]}:undefined;}
+        get:(_,name)=>{const scope=context.prgmScope,table=context.prgmRuntime?.sharedFunctions||shared;return scope?.names.has(name)?scope.functions[name]:table[name];},
+        set:(_,name,value)=>{const scope=context.prgmScope,table=context.prgmRuntime?.sharedFunctions||shared;(scope?.names.has(name)?scope.functions:table)[name]=value;return true;},
+        deleteProperty:(_,name)=>{const scope=context.prgmScope,table=context.prgmRuntime?.sharedFunctions||shared;delete (scope?.names.has(name)?scope.functions:table)[name];return true;},
+        getOwnPropertyDescriptor:(_,name)=>{const scope=context.prgmScope,table=context.prgmRuntime?.sharedFunctions||shared,target=scope?.names.has(name)?scope.functions:table;return Object.hasOwn(target,name)?{enumerable:true,configurable:true,writable:true,value:target[name]}:undefined;}
       });
+      context.executeString=(source,vars)=>context.prgmRuntime?context.prgmRuntime.evaluateString(source,vars):evaluate(expressionTree(source),vars,context.modes[2]===2?'DEG':context.modes[2]===3?'GRAD':'RAD',context);
     }
     this.tries=[];this.lastCaughtError=null;this.graphics=execution?.graphics||new PrgmDrawing(options);this.waitUntil=0;this.frameYield=false;
     this.maxInstructions=Math.min(1000000,Math.max(1,options.maxInstructions||50000));this.maxLines=options.maxLines||1000;
-    try {this.program=execution?.program||compilePrgm(this.source);this.name=options.name||this.program.name||'programa';
+    try {this.program=execution?.program||options.compiledProgram||compilePrgm(this.source);this.name=options.name||this.program.name||'programa';
       const supplied=Array.isArray(options.parameters)?options.parameters:String(options.parameters||'').trim()?String(options.parameters).split(','):[];
       const metadata=supplied.map(name=>key(String(name).trim()));
       if(metadata.some(name=>!IDENT.test(name)))fail('ARGUMENT_ERROR','La lista de parámetros del documento no es válida.');
+      if(new Set(metadata).size!==metadata.length)fail('ARGUMENT_ERROR','Los parámetros del documento deben ser distintos.');
       if(metadata.length&&this.program.parameters.length&&JSON.stringify(metadata)!==JSON.stringify(this.program.parameters))fail('ARGUMENT_ERROR','Los parámetros del documento no coinciden con su definición.');
       const parameters=this.program.parameters.length?this.program.parameters:metadata;
       if(parameters.length&&options.args===undefined)fail('MISSING_ARGUMENTS','El preview necesita valores para los parámetros: '+parameters.join(', ')+'.');
@@ -166,25 +168,27 @@ export class PrgmPreview {
     this.keyboard.waiting=false;return '';
   }
   sendKey(name){if(this.keyboard.queue.length<100)this.keyboard.queue.push(String(name));this.keyboard.waiting=false;this.checkpoint();return this.snapshot();}
-  frame(){return {program:this.program,pc:this.pc,scope:this.scope,vars:this.vars,branches:this.branches,loops:this.loops,tries:this.tries,lastCaughtError:this.lastCaughtError};}
-  restoreFrame(frame){Object.assign(this,frame);this.mathContext.prgmScope=this.scope;}
+  frame(){return {program:this.program,pc:this.pc,scope:this.scope,vars:this.vars,globals:this.globals,sharedFunctions:this.sharedFunctions,branches:this.branches,loops:this.loops,tries:this.tries,lastCaughtError:this.lastCaughtError,lastValue:this.lastValue,hasLastValue:this.hasLastValue};}
+  restoreFrame(frame){Object.assign(this,frame);this.mathContext.prgmScope=this.scope;this.mathContext.prgmRuntime=this;}
   enterRoutine(fn,args,returnPc){
     if(this.callStack.length+this.mathContext.calls>=100)fail('EXECUTION_LIMIT','Límite de llamadas de subrutina alcanzado.');
     if(args.length!==fn.parameters.length)fail('ARGUMENT_ERROR','Número de argumentos incorrecto para '+fn.program.name+'().');
     const frame=this.frame();frame.pc=returnPc;this.callStack.push(frame);
     this.program=fn.program;this.pc=0;this.branches=new Set();this.loops=new Map();this.tries=[];this.lastCaughtError=null;
+    this.globals=fn.globals||this.globals;this.sharedFunctions=fn.functions||this.sharedFunctions;this.lastValue=undefined;this.hasLastValue=false;
     this.scope={names:new Set(fn.parameters),values:Object.create(null),functions:Object.create(null)};this.vars=namespace(this.globals,this.scope,'values');
     fn.parameters.forEach((name,index)=>this.vars[name]=copyValue(args[index]));this.mathContext.prgmScope=this.scope;
   }
   finishRoutine(value,hasValue=false){
+    if(!hasValue&&this.program.documentKind==='func'&&this.hasLastValue){value=this.lastValue;hasValue=true;}
     if(this.callStack.length){this.restoreFrame(this.callStack.pop());return this.pc;}
     if(hasValue){this.returnValue=value;if(!this.options._silentReturn)this.append(formatPrgmValue(value),'return');}
     this.status='done';return this.pc+1;
   }
   callFunction(fn,args){
     if(fn.program.documentKind!=='func')fail('PROGRAM_IN_EXPRESSION','Un Prgm solo puede llamarse como instrucción independiente.');
-    const previousScope=this.mathContext.prgmScope;
-    const child=new PrgmPreview('',{...this.options,name:fn.program.name,parameters:'',args,_silentReturn:true,_execution:{program:fn.program,mathContext:this.mathContext,globals:this.globals,sharedFunctions:this.sharedFunctions,meter:this.meter,keyboard:this.keyboard,graphics:this.graphics}});
+    const previousScope=this.mathContext.prgmScope,previousRuntime=this.mathContext.prgmRuntime;
+    const child=new PrgmPreview('',{...this.options,name:fn.program.name,parameters:'',args,_silentReturn:true,_execution:{program:fn.program,mathContext:this.mathContext,globals:fn.globals||this.globals,sharedFunctions:fn.functions||this.sharedFunctions,meter:this.meter,keyboard:this.keyboard,graphics:this.graphics,output:this.output,events:this.events}});
     try{
       while(!['done','error','stopped','waiting'].includes(child.status)){
         child.step(false);
@@ -194,7 +198,18 @@ export class PrgmPreview {
       if(child.status==='waiting')fail('FUNCTION_SIDE_EFFECT','Una Func no puede solicitar entradas dentro de una expresión.');
       if(child.returnValue===undefined)fail('MISSING_RETURN','La Func '+fn.program.name+'() no devolvió un valor.');
       return copyValue(child.returnValue);
-    }finally{this.mathContext.prgmScope=previousScope;}
+    }finally{this.mathContext.prgmScope=previousScope;this.mathContext.prgmRuntime=previousRuntime;}
+  }
+  evaluateString(source,vars=this.vars){
+    // expr() parses TI source through the same bounded interpreter. It never
+    // invokes JavaScript, a shell or an external process.
+    if(!/^\s*(?:Disp\b|[\p{L}_][\p{L}\p{N}_]*(?:\s*\[[^\]]+\])?\s*:=)/iu.test(source))return evaluate(expressionTree(source),vars,this.angleMode,this.mathContext);
+    if(this.mathContext.calls>=100)fail('EXECUTION_LIMIT','Límite de llamadas expr() alcanzado.');
+    const previousScope=this.mathContext.prgmScope,previousRuntime=this.mathContext.prgmRuntime;
+    const child=new PrgmPreview('',{...this.options,name:this.name,parameters:'',args:[],_silentReturn:true,_execution:{program:compilePrgm(source),mathContext:this.mathContext,globals:this.globals,sharedFunctions:this.sharedFunctions,meter:this.meter,keyboard:this.keyboard,graphics:this.graphics,scope:this.scope,output:this.output,events:this.events}});
+    this.mathContext.calls++;
+    try{while(!['done','error','stopped','waiting'].includes(child.status))child.step(false);if(child.error)throw child.error;if(child.status==='waiting')fail('FUNCTION_SIDE_EFFECT','expr() no puede solicitar entradas.');return copyValue(child.returnValue===undefined?child.lastValue:child.returnValue);}
+    finally{this.mathContext.calls--;this.mathContext.prgmScope=previousScope;this.mathContext.prgmRuntime=previousRuntime;}
   }
   assign(op,value){
     if(this.mathContext.locks.has(op.name))fail('LOCKED_VARIABLE','La variable «'+op.name+'» está bloqueada.');
@@ -210,8 +225,8 @@ export class PrgmPreview {
     this.vars[op.name]=target;
   }
   handleError(error) {this.error=error instanceof PrgmError?error:new PrgmError('RUNTIME_ERROR',String(error.message||error));if(!this.error.line)this.error.line=this.lastLine;this.status='error';this.pending=null;}
-  ev(node) {this.mathContext.steps=0;this.mathContext.prgmScope=this.scope;const value=evaluate(node,this.vars,this.angleMode,this.mathContext);this.angleMode=this.mathContext.modes[2]===2?'DEG':this.mathContext.modes[2]===3?'GRAD':'RAD';return value;}
-  append(text,kind='disp') {if(this.output.length>=this.maxLines)fail('OUTPUT_LIMIT','Límite de historial alcanzado.');const row={text:String(text),kind,line:this.lastLine};this.output.push(row);this.event({type:'output',...row});}
+  ev(node) {this.mathContext.steps=0;this.mathContext.prgmScope=this.scope;this.mathContext.prgmRuntime=this;const value=evaluate(node,this.vars,this.angleMode,this.mathContext);this.angleMode=this.mathContext.modes[2]===2?'DEG':this.mathContext.modes[2]===3?'GRAD':'RAD';return value;}
+  append(text,kind='disp',details={}) {if(this.output.length>=this.maxLines)fail('OUTPUT_LIMIT','Límite de historial alcanzado.');const row={text:String(text),kind,line:this.lastLine,...details};this.output.push(row);this.event({type:'output',...row});}
   event(value) {this.events.push(value);if(this.events.length>2000)this.events.shift();}
   step(emitSnapshot=true) {
     if(['waiting','done','stopped','error'].includes(this.status))return emitSnapshot?this.snapshot():undefined;
@@ -221,23 +236,27 @@ export class PrgmPreview {
     try {
       this.meter.executed++;if(++this.meter.window>this.maxInstructions)fail('EXECUTION_LIMIT','Se alcanzó el límite de instrucciones; posible bucle infinito.');
       this.mathContext.prgmScope=this.scope;
+      this.mathContext.prgmRuntime=this;
       let next=this.pc+1;
       if(op.kind==='local')op.names.forEach(name=>this.scope.names.add(name)); // Uninitialized Locals shadow problem variables without becoming zero.
       else if(op.kind==='delvar')op.names.forEach(n=>{if(this.mathContext.locks.has(n))fail('LOCKED_VARIABLE','La variable «'+n+'» está bloqueada.');delete this.vars[n];delete this.mathContext.functions[n];});
       else if(op.kind==='lock'||op.kind==='unlock')op.names.forEach(n=>op.kind==='lock'?this.mathContext.locks.add(n):this.mathContext.locks.delete(n));
-      else if(op.kind==='assign')this.assign(op,this.ev(op.expr));
+      else if(op.kind==='assign'){const value=this.ev(op.expr);this.assign(op,value);this.lastValue=copyValue(value);this.hasLastValue=true;}
       else if(op.kind==='defineFunction')this.mathContext.functions[op.name]={parameters:op.parameters,body:op.body};
       else if(op.kind==='defineRoutine'){const fn={parameters:op.parameters,program:op.program};fn.invoke=args=>this.callFunction(fn,args);this.mathContext.functions[op.name]=fn;}
       else if(op.kind==='evaluate'){
         const fn=op.expr.type==='call'&&this.mathContext.functions[op.expr.name];
         if(fn?.program?.documentKind==='prgm'){const args=op.expr.args.map(arg=>this.ev(arg));this.enterRoutine(fn,args,next);next=0;}
-        else this.ev(op.expr);
+        else{this.lastValue=copyValue(this.ev(op.expr));this.hasLastValue=true;}
       }
       else if(op.kind==='drawing'){this.graphics.execute(op.command,op.args.map(n=>this.ev(n)));this.event({type:'graphics',command:op.command,revision:this.graphics.revision,line:op.line});if(op.command==='paintbuffer'){this.frameYield=true;this.checkpoint();}}
       else if(op.kind==='wait'){const seconds=number(this.ev(op.expr));if(seconds<0||seconds>86400)fail('DOMAIN_ERROR','Wait requiere un tiempo entre 0 y 86400 segundos.');if(!this.options.skipWait)this.waitUntil=(this.options.now||Date.now)()+seconds*1000;this.checkpoint();}
       else if(op.kind==='disp'||op.kind==='dispat') {
         const args=op.args.map(n=>this.ev(n));
-        if(op.kind==='disp')this.append(args.map(formatPrgmValue).join('\u2009'));
+        if(op.kind==='disp'){
+          const segments=args.map((value,index)=>({kind:typeof value==='string'?'text':'math',text:formatExpressionValue(op.args[index],value,this.mathContext)}));
+          this.append(segments.map(segment=>segment.text).join('\u2009'),'disp',{values:args.map(copyValue),segments});
+        }
         else {const row=number(args.shift());if(!Number.isInteger(row)||row<1||row>8)fail('DOMAIN_ERROR','DispAt requiere una fila entre 1 y 8.');while(this.output.length<row)this.append('');this.output[row-1]={text:args.map(formatPrgmValue).join('\u2009'),kind:'disp',line:op.line};}
       }else if(op.kind==='clear'){this.event({type:'compatibility',command:'ClrIO',ignored:true,line:op.line});}
       else if(op.kind==='try')this.tries.push({start:this.pc,handler:op.handler,end:op.end});

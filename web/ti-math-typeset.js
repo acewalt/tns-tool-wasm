@@ -45,7 +45,7 @@
     const powers=split(s,'^');if(powers.length>1){const cut=powers[0].index;return `<msup>${expr(s.slice(0,cut))}${expr(ungroup(s.slice(cut+1)))}</msup>`;}
     let m=s.match(/^(.+?)([₀₁₂₃₄₅₆₇₈₉]+)$/);if(m)return `<msub>${expr(m[1])}<mn>${m[2].replace(/[₀₁₂₃₄₅₆₇₈₉]/g,c=>'₀₁₂₃₄₅₆₇₈₉'.indexOf(c))}</mn></msub>`;
     if((m=s.match(/^(.+?)°(.+?)[′'](.+?)(?:″|''|")$/)))return row(expr(m[1]),'<mo>°</mo>',expr(m[2]),'<mo>′</mo>',expr(m[3]),'<mo>″</mo>');
-    if((m=s.match(/^([\p{L}_][\p{L}\p{N}_]*|[√∫∑∏ΣΠ])\s*\(([\s\S]*)\)$/u))&&balanced(m[2])){
+    if((m=s.match(/^([\p{L}_][\p{L}\p{N}_]*(?:\\[\p{L}_][\p{L}\p{N}_]*)*|[√∫∑∏ΣΠ])\s*\(([\s\S]*)\)$/u))&&balanced(m[2])){
       const name=m[1].toLowerCase(),args=split(m[2],',').map(p=>p.text),a=i=>expr(args[i]||'');
       if(['sqrt','√'].includes(name))return `<msqrt>${a(0)}</msqrt>`;
       if(name==='root')return `<mroot>${a(0)}${a(1)}</mroot>`;
@@ -59,7 +59,7 @@
       if(['d','derivative'].includes(name)&&args.length>=2){const order=args[2]||'1',numerator=order==='1'?atom('d'):`<msup>${atom('d')}${expr(order)}</msup>`,denominator=order==='1'?row(atom('d'),a(1)):row(atom('d'),`<msup>${a(1)}${expr(order)}</msup>`);return row(`<mfrac>${numerator}${denominator}</mfrac>`,fence(a(0)));}
       if(['∫','integral'].includes(name)&&args.length>=2)return row(args.length>=4?`<msubsup><mo>∫</mo>${a(2)}${a(3)}</msubsup>`:'<mo>∫</mo>',a(0),'<mspace width=".3em"/>',atom('d'),a(1));
       if(['lim','limit'].includes(name)&&args.length>=3)return row(`<munder><mi mathvariant="normal">lim</mi>${row(a(1),'<mo>→</mo>',a(2),args[3]?`<msup><mrow/>${a(3)}</msup>`:'')}</munder>`,fence(a(0)));
-      return row(`<mi mathvariant="normal">${esc(m[1])}</mi>`,fence(row(...args.flatMap((x,i)=>[i?'<mo>,</mo>':'',expr(x)]))));
+      return row(`<mi mathvariant="${m[1].includes('\\')?'italic':'normal'}">${esc(m[1])}</mi>`,fence(row(...args.flatMap((x,i)=>[i?'<mo>,</mo>':'',expr(x)]))));
     }
     if(/^[+-]/.test(s))return row(`<mo>${s[0]}</mo>`,expr(s.slice(1)));
     return atom(s);

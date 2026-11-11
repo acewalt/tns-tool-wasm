@@ -19,3 +19,14 @@ test('invalid input remains literal and markup is always escaped',()=>{
   assert(!math.renderLine('Disp "<script>"').includes('<script>'));
   assert(math.renderLine('Prgm').includes('<code>Prgm</code>'));
 });
+
+test('qualified library calls italicize the name and typeset arguments without changing TI source',()=>{
+  const source='numtheory\\factorstep(10)',result=math.parse(source);
+  assert.equal(result.source,source);
+  assert.equal(result.valid,true);
+  assert.match(result.markup,/<mi mathvariant="italic">numtheory\\factorstep<\/mi>/);
+  assert.match(result.markup,/<mn>10<\/mn>/);
+  const nested=math.render('numtheory\\test(sin(x),1/2)');
+  assert.match(nested,/<mi mathvariant="normal">sin<\/mi>/);
+  assert.match(nested,/<mfrac>/);
+});

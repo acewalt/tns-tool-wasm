@@ -56,13 +56,15 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.36/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.36)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.37/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.37)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
 **Ndless C/C++ projects currently compile on Windows only. Linux desktop support is planned; no Linux download is published yet.**
 
 ## What's new
+
+**0.1.37:** Calculator can call supported stored Prgm/Func routines and public `library\name(...)` definitions, keeping each problem's variables and private helpers in their own scope. Saved Calculator history retains intermediate `Disp` text and matrices as well as the final result, without executing calls when opening the file. Var uses an alphabetical TI-style list with icons for programs, functions and value types. Recent light-theme, preview shadow, LÖVE zoom-frame and paste fixes are included in the portable build.
 
 **0.1.36:** Python pages have separate calculator-style editor and shell previews. The shell runs the current script and accepts expressions in that script's namespace. Program Editor opens in source view. The magnifier enlarges the calculator screen without changing its resolution and follows widget navigation for the current session; a new startup resets it. Deleting the last calculator leaves an empty page instead of recreating the app. Catalog descriptions, categories and controls follow English, Spanish or French.
 

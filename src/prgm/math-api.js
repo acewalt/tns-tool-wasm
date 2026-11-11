@@ -1,4 +1,4 @@
-import { IDENT, key, split, expressionTree, evaluate, evaluatePrgmExpression, createMathContext, formatPrgmValue, normalizeTiMath, supportedMathFunctions, PrgmError } from './math.js?v=20261105-sonar-math-v32';
+import { IDENT, key, split, expressionTree, evaluate, evaluatePrgmExpression, createMathContext, formatPrgmValue, normalizeTiMath, supportedMathFunctions, PrgmError } from './math.js?v=20261110-library-runtime-v37';
 import { TI_CATALOG_COMMAND_NAMES } from './catalog-functions.js';
 
 const copy = value => Array.isArray(value) ? value.map(copy) : value;
@@ -45,6 +45,10 @@ export function createMathSession(options = {}) {
   async function calculateAsync(source) {
     try{return calculate(source);}catch(error){
       if(!['UNDEFINED_VARIABLE','UNSUPPORTED_FUNCTION','TYPE_ERROR','SYNTAX_ERROR'].includes(error.code))throw error;
+      // A stored TI routine may write Disp output or use private helpers. Its
+      // errors must not be reinterpreted as a same-named CAS operation.
+      const documentCalls=[...String(source).replace(/"(?:[^"\\]|\\.)*"/g,'').matchAll(/([\p{L}_][\p{L}\p{N}_]*(?:\\[\p{L}_][\p{L}\p{N}_]*)*)\s*\(/gu)].map(match=>key(match[1]));
+      if(documentCalls.some(name=>name.includes('\\')||context.documentCallNames?.has(name)))throw error;
       const text=normalizeTiMath(String(source||'')).trim();
       if(text.length>8192||/[;`]/.test(text)||/\b(?:javascript|python|load|readfile|writefile|exec|shell)\s*\(/i.test(text))throw error;
       let bridge=options.cas||globalThis.window?.TnsCasBridge;
