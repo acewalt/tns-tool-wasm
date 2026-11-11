@@ -92,8 +92,10 @@
       modal.classList.toggle('preview-window-expanded', expanded); backdrop.dataset.previewExpanded = String(expanded);
       options.setExpanded?.(expanded);
       toggle.setAttribute('aria-pressed',String(expanded)); if (!nativeToggle) toggle.textContent=labels()[expanded ? 1 : 0];
-      modal.classList.toggle('preview-window-zoomed', sessionZoomed);
-      zoomToggle.setAttribute('aria-pressed', String(sessionZoomed));
+      const zoomed = sessionZoomed && !expanded;
+      modal.classList.toggle('preview-window-zoomed', zoomed);
+      zoomToggle.disabled = expanded;
+      zoomToggle.setAttribute('aria-pressed', String(zoomed));
       zoomToggle.setAttribute('aria-label', zoomLabel()); zoomToggle.title = zoomLabel();
       const availableWidth = Math.max(1, center.clientWidth);
       const width = expanded ? Math.max(1,Math.min(800,availableWidth,Math.max(160,body.clientHeight-22)*4/3)) : Math.min(320,availableWidth);
@@ -102,14 +104,14 @@
       const changed = !state.geometry || Object.keys(next).some(key=>next[key]!==state.geometry[key]);
       state.geometry=next;
       modal.style.setProperty('--preview-display-width',next.width+'px');modal.style.setProperty('--preview-display-height',next.height+'px');
-      const scale = sessionZoomed ? 1.75 : 1;
+      const scale = zoomed ? 1.75 : 1;
       modal.style.setProperty('--preview-zoom-factor', String(scale));
       modal.style.setProperty('--preview-frame-width', next.width * scale + 'px');
       modal.style.setProperty('--preview-frame-height', next.height * scale + 'px');
       if (changed) { options.onResize?.(next);backdrop.dispatchEvent(new CustomEvent('tns-preview-window-resize',{detail:next})); }
     }
     if (!nativeToggle) toggle.addEventListener('click',()=>{expanded=!expanded;refresh();});
-    zoomToggle.addEventListener('click', () => { sessionZoomed = !sessionZoomed; refresh(); });
+    zoomToggle.addEventListener('click', () => { if (expanded) return; sessionZoomed = !sessionZoomed; refresh(); });
     const observer = new ResizeObserver(refresh); observer.observe(body); observer.observe(center);
     const mutation = new MutationObserver(() => { const next=modal.matches('.expanded,.document-preview-expanded,.document-image-expanded');if(nativeToggle && next!==expanded) refresh(); });
     mutation.observe(modal,{attributes:true,attributeFilter:['class']});

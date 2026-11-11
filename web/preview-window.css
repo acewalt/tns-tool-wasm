@@ -60,6 +60,7 @@
 
 .preview-window .preview-window-frame>.preview-window-stage{transform:scale(var(--preview-zoom-factor,1))!important;transform-origin:top left!important}
 .preview-window .preview-window-zoom-toggle{display:inline-grid;place-items:center;flex:none;min-width:40px;padding:8px 10px}
+.preview-window .preview-window-zoom-toggle:disabled{opacity:.4;cursor:default;box-shadow:none}
 .preview-window-zoom-toggle svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
 .preview-window .preview-window-zoom-toggle[aria-pressed=true]{box-shadow:0 0 0 2px #101827,0 0 0 4px #a7e930}
 [data-theme=light] .preview-window .preview-window-zoom-toggle[aria-pressed=true]{box-shadow:0 0 0 2px #f5f8fc,0 0 0 4px #5b8b18}
