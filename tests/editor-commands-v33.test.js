@@ -19,7 +19,7 @@ test('readonly declaration derives only from program metadata and follows rename
 });
 test('document variables and callable source are scoped to the selected problem, without Local identifiers',()=>{
   const first={program_name:'same',document_type:'Prgm',parameters:'',file:'/source/sub/Problem1.xml',code:'Prgm\nLocal private\nDisp 1\nEndPrgm'},second={...first,file:'/stage/other/Problem1.xml',code:'Prgm\nDisp 2\nEndPrgm'};
-  const context={xmlDoctor:{current:first,candidates:[first,second],previewItems:[{content_label:'Value',type:'Symbol',name:'n',content:'7',file:first.file}]},document:{querySelector:()=>({value:'Prgm\nDisp 3\nEndPrgm'})},documentPreviewFileKey:file=>file.replace(/^\/(source|stage)\//,''),Map};
+  const context={xmlDoctor:{current:first,candidates:[first,second],previewItems:[{content_label:'Value',type:'Symbol',name:'n',content:'7',file:first.file}]},document:{querySelector:()=>({value:'Prgm\nDisp 3\nEndPrgm'})},documentPreviewDocumentName:()=> 'testdoc',documentPreviewFileKey:file=>file.replace(/^\/(source|stage)\//,''),Map};
   vm.runInNewContext(slice('function documentCalculatorFile(','function documentCalculatorContext(')+'\nglobalThis.programs=documentCalculatorPrograms;globalThis.variables=documentStoredVariables;',context);
   assert.equal(context.programs(first.file).length,1);assert(context.programs(first.file)[0].source.includes('Disp 3'));assert(context.programs(second.file)[0].source.includes('Disp 2'));
   assert.deepEqual([...context.variables(first.file)].map(item=>item.name),['n','same']);assert.deepEqual([...context.variables(second.file)].map(item=>item.name),['same']);

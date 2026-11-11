@@ -1,8 +1,36 @@
 # TNS Tool WASM
 
-**TNS Tool WASM lets you create, edit and preview TI-Nspire content in your browser. It now includes ROM Converter and direct USB file transfers to the calculator from the website. You can create, edit and compile Ndless C/C++ projects in TNS Tool Portable for Windows, with the SDK included. A Linux desktop version is coming soon. Some preview features and game compatibility remain experimental.**
+**TI-Nspire CX & CX II — Online TNS File Editor, Creator and Preview Tool**
 
-TNS Tool WASM is an experimental browser-based toolkit for TI-Nspire workflows.
+TNS Tool WASM is an experimental, browser-based **TI-Nspire development toolkit powered by WebAssembly**. Create, edit, inspect, preview and export `.tns` documents directly from your browser.
+
+Work with **TI-BASIC programs, Lua ScriptApps, Python pages, XML documents and mathematical expressions**. TNS Tool WASM also provides syntax validation, calculator-style previews and USB file transfers on supported devices.
+
+### Try TNS Tool
+
+**[Launch the Web Editor](https://acewalt.github.io/tns-tool-wasm/)** · **[Download TNS Tool Portable for Windows](https://github.com/acewalt/tns-tool-wasm/releases)**
+
+### Key features
+
+- **TNS file editor:** Create, open, modify and rebuild TI-Nspire `.tns` documents.
+- **TI-BASIC Program Editor:** Edit programs, check syntax and preview supported operations.
+- **Lua ScriptApp tools:** Create, edit and preview Lua applications with calculator-style rendering.
+- **Python support:** Work with supported TI-Nspire Python pages.
+- **XML editing:** Inspect and modify the underlying document structure.
+- **Math and CAS preview:** Display 2D mathematical expressions and evaluate supported calculations.
+- **USB calculator manager:** Browse folders and transfer files using compatible browsers or the Windows desktop integration.
+- **Ndless development:** Create, edit and compile supported C/C++ projects with TNS Tool Portable for Windows.
+- **ROM Converter:** Inspect supported cartridges and prepare emulator-based projects and calculator packages.
+
+![TNS Tool WASM editor and calculator interface](docs/images/new.gif)
+
+### Compatibility
+
+The **web edition** supports TNS/XML editing, selected program previews, ROM workflows and compatible WebUSB transfers. The **Windows portable edition** additionally supports compiling native Ndless C/C++ projects with the bundled SDK.
+
+**Experimental software:** TNS Tool WASM is not a complete TI-Nspire OS emulator. Preview support, device compatibility and game compatibility vary; some calculator-specific operations require real hardware.
+
+## Technical overview
 
 Prgm Preview also runs stored TI-BASIC programs without a visible Program Editor page, including interactive drawing programs such as Sonar. The eye control in Document Inspector shows or hides a program's editor page while keeping it callable from Calculator; it does not encrypt or protect its source.
 
@@ -28,13 +56,15 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.36/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.36)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.37/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.37)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
 **Ndless C/C++ projects currently compile on Windows only. Linux desktop support is planned; no Linux download is published yet.**
 
 ## What's new
+
+**0.1.37:** Calculator can call supported stored Prgm/Func routines and public `library\name(...)` definitions, keeping each problem's variables and private helpers in their own scope. Saved Calculator history retains intermediate `Disp` text and matrices as well as the final result, without executing calls when opening the file. Var uses an alphabetical TI-style list with icons for programs, functions and value types. Recent light-theme, preview shadow, LÖVE zoom-frame and paste fixes are included in the portable build.
 
 **0.1.36:** Python pages have separate calculator-style editor and shell previews. The shell runs the current script and accepts expressions in that script's namespace. Program Editor opens in source view. The magnifier enlarges the calculator screen without changing its resolution and follows widget navigation for the current session; a new startup resets it. Deleting the last calculator leaves an empty page instead of recreating the app. Catalog descriptions, categories and controls follow English, Spanish or French.
 
@@ -169,7 +199,6 @@ https://paypal.me/waltDx
 - Run Lua ScriptApps programmatically from a Node CLI/API for agent-driven tests.
 - Work in Spanish, English, and French.
   
- ![New](docs/images/new.gif)
 
 ## Syntax Doctor
 

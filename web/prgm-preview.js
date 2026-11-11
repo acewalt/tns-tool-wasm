@@ -1,6 +1,6 @@
-import {createPrgmPreview,formatPrgmValue} from '../src/prgm/runtime.js?v=20261105-sonar-runtime-v32';
-import {renderPrgmGraphics} from '../src/prgm/drawing.js?v=20261105-sonar-runtime-v32';
-import {createCalculatorSession} from '../src/prgm/calculator-session.js?v=20261106-program-editor-v35';
+import {createPrgmPreview,formatPrgmValue} from '../src/prgm/runtime.js?v=20261110-library-runtime-v37';
+import {renderPrgmGraphics} from '../src/prgm/drawing.js?v=20261110-library-runtime-v37';
+import {createCalculatorSession} from '../src/prgm/calculator-session.js?v=20261110-library-runtime-v37';
 
 const COPY={
   es:{title:'Preview Prgm',note:'Simulación TI-BASIC · entradas, texto y dibujos CX II.',run:'Ejecutar',pause:'Pausar',step:'Paso',stop:'Detener',restart:'Reiniciar / actualizar',expand:'Vista ampliada',normal:'Tamaño calculadora',close:'Cerrar',variables:'Variables',empty:'Todavía no hay valores.',copy:'Copiar salida',copied:'Salida copiada.',ok:'OK',cancel:'Cancelar',done:'Hecho',line:'Línea',ready:'Listo',waiting:'Esperando entrada',paused:'Pausado',running:'Ejecutando',stopped:'Detenido',error:'Error',support:'Cobertura del preview',help:'Calcula o llama a los programas del problema con Enter. Se simulan entradas, texto y dibujos CX II. Las operaciones no soportadas muestran su error y línea; no es un emulador completo de la calculadora.',keys:'Enter: aceptar · Esc: cancelar entrada · ↑/↓: desplazar salida',angle:'Ángulos (reinicia)',request:'Entrada del programa',viewLine:'Ver línea en editor'},
@@ -45,7 +45,7 @@ function open(initial,options={}) {
   document.body.style.overflow='hidden';
   let runtime=null, snapshot=null, timer=null, automatic=false, expanded=Boolean(options.expanded), closed=false, requestToken='', renderedText='', inputResolved=false, data=initial,graphicsDismissed=false,graphicsRevision=-1;
   let submitting=false,showingProgram=false,currentCall='';
-  const calc=createCalculatorSession({...options,runtimeOptions:{...options.runtimeOptions,maxDrawingOperations:1000,rasterizeGraphics},getAngleMode:()=>$('[data-angle]').value,getPrograms:()=>{
+  const calc=createCalculatorSession({...options,language,runtimeOptions:{...options.runtimeOptions,maxDrawingOperations:1000,rasterizeGraphics},getAngleMode:()=>$('[data-angle]').value,getPrograms:()=>{
     const definitions=options.getPrograms?.()||options.programs||[];
     const current=options.readSource?.()||initial;
     return current.name&&current.source?.trim()?[...definitions.filter(item=>(item.name||item.program_name).toLowerCase()!==current.name.toLowerCase()),current]:definitions;
@@ -99,12 +99,25 @@ function open(initial,options={}) {
         answerCell.className='prgm-calculator-answer';
         const input=String(row.entry??row.exact??''),answer=String(row.display??row.full??'');
         if(window.TnsMathTypeset){
-          expressionCell.innerHTML=window.TnsMathTypeset.render(input);
-          if(row.status!=='error')answerCell.innerHTML=window.TnsMathTypeset.render(answer);
+          if(window.TnsCalculatorHistory)window.TnsCalculatorHistory.renderSource(expressionCell,input);
+          else expressionCell.innerHTML=window.TnsMathTypeset.render(input);
+          if(row.status!=='error'){
+            if(window.TnsCalculatorHistory)window.TnsCalculatorHistory.renderSource(answerCell,answer);
+            else answerCell.innerHTML=window.TnsMathTypeset.render(answer);
+          }
           else answerCell.textContent=answer;
         }else{expressionCell.textContent=input;answerCell.textContent=answer;}
         if(row.status==='error')answerCell.classList.add('prgm-calculator-answer-error');
-        entry.append(expressionCell,answerCell);
+        const transcript=Array.isArray(row.output)?row.output:window.TnsCalculatorHistory?.parseRichOutput(row.intr||'')||[];
+        if(transcript.length){
+          entry.classList.add('prgm-calculator-row-transcript');
+          const lines=document.createElement('div');lines.className='prgm-calculator-transcript';
+          for(const item of transcript){
+            if(window.TnsCalculatorHistory)window.TnsCalculatorHistory.appendOutputLine(lines,item);
+            else{const line=document.createElement('div');line.className='prgm-calculator-transcript-line';line.textContent=item.text||'\u00a0';lines.append(line);}
+          }
+          entry.append(expressionCell,lines,answerCell);
+        }else entry.append(expressionCell,answerCell);
       }else{
         // Keep Disp/Request and completed program output in their established
         // transcript layout. Mathematical cells must not restyle these lines.

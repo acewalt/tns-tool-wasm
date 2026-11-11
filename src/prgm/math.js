@@ -1,6 +1,7 @@
 // TI-BASIC expressions shared by Program Preview and the Calculator widget.
 // This is a bounded parser/evaluator: source is never evaluated as JavaScript.
 export const IDENT = /^[\p{L}_][\p{L}\p{N}_]*$/u;
+export const QUALIFIED_IDENT = /^[\p{L}_][\p{L}\p{N}_]*(?:\\[\p{L}_][\p{L}\p{N}_]*)*$/u;
 export const key = value => String(value).toLowerCase();
 export class PrgmError extends Error {
   constructor(code, message, line = 0) { super(message); this.code = code; this.line = line; }
@@ -43,8 +44,8 @@ export function normalizeTiMath(source) {
     if (c === '"' || c === '“') { quote = c === '“' ? '”' : '"'; out += c; continue; }
     const inverse = (i === 0 || !/[\p{L}\p{N}_]/u.test(source[i - 1])) && /^(sinh|cosh|tanh|sin|cos|tan)(?:⁻¹|\uF005)/i.exec(source.slice(i));
     if (inverse) { out += ({ sin: 'asin', cos: 'acos', tan: 'atan', sinh: 'asinh', cosh: 'acosh', tanh: 'atanh' })[key(inverse[1])]; i += inverse[0].length - 1; continue; }
-    const conversion = (i === 0 || !/[\p{L}\p{N}_]/u.test(source[i - 1])) && /^mat(?:[▶►]|@>)list(?=\s*\()/i.exec(source.slice(i));
-    if (conversion) { out += 'mat2list'; i += conversion[0].length - 1; continue; }
+    const conversion = (i === 0 || !/[\p{L}\p{N}_]/u.test(source[i - 1])) && /^(mat(?:[▶►]|@>)list|list(?:[▶►]|@>)mat)(?=\s*\()/i.exec(source.slice(i));
+    if (conversion) { out += /^mat/i.test(conversion[0]) ? 'mat2list' : 'list2mat'; i += conversion[0].length - 1; continue; }
     out += ({ '\uF03F': 'ℯ', '\uF008': 'd', '∑': 'sumSeq', 'Σ': 'sumSeq', '∏': 'prodSeq', 'Π': 'prodSeq', '∫': 'integral', '′': "'", '″': "''", '²': '^2' }[c] ?? c);
   }
   return out;
@@ -75,16 +76,18 @@ function tokens(source) {
     }
     const numeric = /^(?:\d+(?:\.\d*)?|\.\d+)(?:[eEᴇ][+−-]?\d+)?/.exec(source.slice(i));
     if (numeric) { out.push({ type: 'number', value: Number(numeric[0].replace('ᴇ', 'e').replace('−', '-')) }); i += numeric[0].length; continue; }
-    const id = /^[\p{L}_][\p{L}\p{N}_]*/u.exec(source.slice(i));
+    const id = /^[\p{L}_][\p{L}\p{N}_]*(?:\\[\p{L}_][\p{L}\p{N}_]*)*/u.exec(source.slice(i));
     if (id) { out.push({ type: 'id', value: key(id[0]) }); i += id[0].length; continue; }
     const pair = source.slice(i, i + 2);
     if (['<=', '>=', '!=', '<>', '=='].includes(pair)) { out.push({ type: 'op', value: pair }); i += 2; continue; }
-    if ('+-*/^&=<>(),{}[]!°\'%∠'.includes(c) || symbols[c]) { out.push({ type: 'op', value: symbols[c] || c }); i++; continue; }
+    if(c==='?'){out.push({type:'id',value:c});i++;continue;}
+    if ('+-*/^&=<>(),{}[]!°\'%∠|'.includes(c) || symbols[c]) { out.push({ type: 'op', value: symbols[c] || c }); i++; continue; }
     fail('UNSUPPORTED_EXPRESSION', 'Símbolo no soportado en una expresión: ' + c);
   }
   out.push({ type: 'end', value: '' }); return out;
 }
-const PRECEDENCE = { or: 1, xor: 1, and: 2, '=': 3, '==': 3, '!=': 3, '<>': 3, '<': 3, '>': 3, '<=': 3, '>=': 3, '&': 4, '+': 5, '-': 5, '*': 6, '/': 6, '^': 8 };
+const PRECEDENCE = { '|':0, or: 1, xor: 1, and: 2, '=': 3, '==': 3, '!=': 3, '<>': 3, '<': 3, '>': 3, '<=': 3, '>=': 3, '&': 4, '+': 5, '-': 5, '*': 6, '/': 6, '^': 8 };
+const comparisons=new Set(['=','==','!=','<>','<','>','<=','>=']);
 export function expressionTree(source) {
   if (String(source).length > 100000) fail('RESOURCE_LIMIT', 'La expresión supera 100000 caracteres.');
   const ts = tokens(source); let at = 0;
@@ -96,7 +99,7 @@ export function expressionTree(source) {
     if (token.type === 'number' || token.type === 'string') node = { type: 'literal', value: token.value, ...(token.angle ? { angle: true } : {}) };
     else if (['+', '-', 'not'].includes(token.value)) node = { type: 'unary', op: token.value, arg: expr(token.value === 'not' ? 3 : 7) };
     else if (token.value === '∠') node = { type: 'polarAngle', arg: expr() };
-    else if (token.value === '(') { node = expr(); expect(')'); }
+    else if (token.value === '(') { node = {...expr(),grouped:true}; expect(')'); }
     else if (token.value === '{') node = { type: 'list', args: sequence('}') };
     else if (token.value === '[') {
       const rows = [];
@@ -118,7 +121,11 @@ export function expressionTree(source) {
       let op = next.value, implicit = false;
       if ((next.type === 'number' || next.type === 'id' && !['and', 'or', 'xor'].includes(next.value) || next.value === '(') && PRECEDENCE[op] === undefined) { op = '*'; implicit = true; }
       const priority = PRECEDENCE[op]; if (priority === undefined || priority < min) break;
-      if (!implicit) take(); node = { type: 'binary', op, left: node, right: expr(priority + (op === '^' ? 0 : 1)) };
+      if (!implicit) take();
+      const right=expr(priority+(op==='^'?0:1));
+      if(comparisons.has(op)&&node.type==='comparison'&&!node.grouped)node={type:'comparison',operands:[...node.operands,right],operators:[...node.operators,op]};
+      else if(comparisons.has(op))node={type:'comparison',operands:[node,right],operators:[op]};
+      else node = { type: 'binary', op, left: node, right };
     }
     return node;
   }
@@ -154,13 +161,44 @@ export function createMathContext(options = {}) {
   return { random: options.random || (options.randomSeed === undefined ? Math.random : seededRandom(options.randomSeed)), getKey: typeof options.getKey === 'function' ? options.getKey : () => '', modes: { 1: 7, 2: options.angleMode === 'DEG' ? 2 : options.angleMode === 'GRAD' ? 3 : 1, 3: 1, 4: 1, 5: 1, 6: 1, 7: 1, 8: 1 }, functions: Object.create(null), locks: new Set(), language: options.language || 'en', calls: 0, steps: 0, maxSteps: Math.min(500000, options.maxMathSteps || 100000) };
 }
 const NUMERIC_FUNCTIONS = 'string expr dim left right mid approx sqrt root abs floor ceiling ipart exp ln log sign sin cos tan asin acos atan arcsin arccos arctan sinh cosh tanh asinh acosh atanh sec csc cot min max round mod remain int intdiv fpart gcd lcm ncr npr rand randint randmat randseed newmat identity diag rowdim coldim det trace norm dotp unitv mat2list ref rref transpose augment colaugment submat rowswap rowadd mrow mrowadd newlist sum product mean median stdevpop stdevsamp varpop varsamp seq sumseq prodseq piecewise when getmode setmode getlanginfo getplatform getlockinfo getkey char ord instring gettype isnumtype isvoid'.split(' ');
+NUMERIC_FUNCTIONS.push('isprime','factor','list2mat');
 export const supportedMathFunctions = Object.freeze([...NUMERIC_FUNCTIONS]);
+function primeFactors(value,context){
+  value=number(value);if(!Number.isSafeInteger(value))fail('DOMAIN_ERROR','La factorización numérica requiere un entero exacto.');
+  const factors=[];let remaining=Math.abs(value);
+  if(remaining<2)return [[value,1]];
+  for(let divisor=2;divisor<=remaining/divisor;divisor+=divisor===2?1:2){
+    if(++context.steps>context.maxSteps)fail('RESOURCE_LIMIT','La factorización supera el límite de operaciones del preview.');
+    let count=0;while(remaining%divisor===0){remaining/=divisor;count++;}if(count)factors.push([divisor,count]);
+  }
+  if(remaining>1)factors.push([remaining,1]);if(value<0)factors.unshift([-1,1]);return factors;
+}
+export function formatExpressionValue(node,value,context=createMathContext()){
+  if(node?.type==='call'&&node.name==='factor'&&typeof value==='number')return primeFactors(value,context).map(([base,power])=>String(base)+(power>1?'^'+power:'')).join('*');
+  return formatPrgmValue(value);
+}
 export function evaluate(node, vars, angle = 'RAD', context = createMathContext({ angleMode: angle })) {
   if (++context.steps > context.maxSteps) fail('RESOURCE_LIMIT', 'La expresión supera el límite de operaciones del preview.');
   const ev = n => evaluate(n, vars, angle, context), n = node.name;
   const currentAngle = context.modes[2] === 2 ? 'DEG' : context.modes[2] === 3 ? 'GRAD' : 'RAD';
   const angleScale = currentAngle === 'DEG' ? Math.PI / 180 : currentAngle === 'GRAD' ? Math.PI / 200 : 1;
   if (node.type === 'literal') return node.angle ? node.value / angleScale : node.value;
+  if(node.type==='comparison'){
+    let a=ev(node.operands[0]);
+    for(let i=0;i<node.operators.length;i++){
+      const b=ev(node.operands[i+1]),op=node.operators[i];let yes;
+      if(['=','==','!=','<>'].includes(op))yes=['=','=='].includes(op)?JSON.stringify(a)===JSON.stringify(b):JSON.stringify(a)!==JSON.stringify(b);
+      else{if(typeof a!==typeof b||!['number','string'].includes(typeof a))fail('TYPE_ERROR','Comparación de tipos incompatibles.');yes=op==='<'?a<b:op==='>'?a>b:op==='<='?a<=b:a>=b;}
+      if(!yes)return false;a=b;
+    }
+    return true;
+  }
+  if(node.type==='binary'&&node.op==='|'){
+    const binding=node.right;
+    if(binding.type!=='comparison'||binding.operators.length!==1||binding.operators[0]!=='='||binding.operands[0].type!=='variable')fail('UNSUPPORTED_SUBSTITUTION','La sustitución requiere una variable y un valor: expresión|x=valor.');
+    const scope=Object.assign(Object.create(null),vars);scope[binding.operands[0].name]=ev(binding.operands[1]);
+    return evaluate(node.left,scope,currentAngle,context);
+  }
   if (node.type === 'list') return node.args.map(ev);
   if (node.type === 'matrix') return node.rows.map(row => {
     if (!row.some(item => item.type === 'polarAngle')) return row.map(ev);
@@ -221,11 +259,13 @@ export function evaluate(node, vars, angle = 'RAD', context = createMathContext(
   }
   if (n === 'getlockinfo') { arity(1); if (node.args[0].type !== 'variable') fail('ARGUMENT_ERROR', 'getLockInfo requiere un nombre de variable.'); return context.locks.has(node.args[0].name) ? 1 : 0; }
   const args = node.args.map(ev);
-  if (n === 'string') { arity(1); return formatPrgmValue(args[0]); }
-  if (n === 'expr') { arity(1); if (typeof args[0] !== 'string') fail('TYPE_ERROR', 'expr() requiere una cadena.'); return evaluate(expressionTree(args[0]), vars, currentAngle, context); }
+  if (n === 'string') { arity(1); return formatExpressionValue(node.args[0],args[0],context); }
+  if (n === 'expr') { arity(1); if (typeof args[0] !== 'string') fail('TYPE_ERROR', 'expr() requiere una cadena.'); return typeof context.executeString==='function'?context.executeString(args[0],vars):evaluate(expressionTree(args[0]), vars, currentAngle, context); }
+  if(n==='factor'){arity(1);primeFactors(args[0],context);return args[0];}
+  if(n==='isprime'){arity(1);const value=number(args[0]);if(!Number.isSafeInteger(value))fail('DOMAIN_ERROR','isPrime() requiere un entero exacto.');if(value<2)return false;const factors=primeFactors(value,context);return factors.length===1&&factors[0][0]===value&&factors[0][1]===1;}
   if (n === 'getkey') { arity(0, 1); const mode = integer(args[0] ?? 0, 0, 1), value = context.getKey?.(mode) ?? ''; if (typeof value !== 'string') fail('TYPE_ERROR', 'getKey() debe devolver una cadena de tecla.'); return value; }
   if (n === 'dim') { arity(1); if (isMatrix(args[0])) return dimensions(args[0]); if (typeof args[0] !== 'string' && !Array.isArray(args[0])) fail('TYPE_ERROR', 'dim() requiere texto, lista o matriz.'); return args[0].length; }
-  if (['left', 'right', 'mid'].includes(n)) { arity(n === 'mid' ? 2 : 1, n === 'mid' ? 3 : 2); const text = args[0]; if (typeof text !== 'string' && !Array.isArray(text)) fail('TYPE_ERROR', 'Se esperaba texto o lista.'); const count = args[1] ?? 1; return n === 'left' ? text.slice(0, count) : n === 'right' ? text.slice(-count) : text.slice(count - 1, args[2] === undefined ? undefined : count - 1 + args[2]); }
+  if (['left', 'right', 'mid'].includes(n)) { arity(n === 'mid' ? 2 : 1, n === 'mid' ? 3 : 2); const text = args[0]; if (typeof text !== 'string' && !Array.isArray(text)) fail('TYPE_ERROR', 'Se esperaba texto o lista.'); const count = integer(args[1] ?? 1,n==='mid'?1:0,100000); return n === 'left' ? text.slice(0, count) : n === 'right' ? count?text.slice(-count):text.slice(0,0) : text.slice(count - 1, args[2] === undefined ? undefined : count - 1 + integer(args[2],0,100000)); }
   if (n === 'root') { arity(1, 2); const degree = args[1] === undefined ? 2 : number(args[1]); if (!degree) fail('DOMAIN_ERROR', 'El índice de raíz no puede ser cero.'); return mapNumbers(args[0], x => number(x < 0 && Number.isInteger(degree) && degree % 2 ? -((-x) ** (1 / degree)) : x ** (1 / degree))); }
   if (n === 'log') { arity(1, 2); const base = args[1] === undefined ? 10 : number(args[1]); if (base <= 0 || base === 1) fail('DOMAIN_ERROR', 'La base del logaritmo debe ser positiva y distinta de 1.'); return mapNumbers(args[0], x => { if (x <= 0) fail('DOMAIN_ERROR', 'El argumento de log debe ser positivo.'); return number(Math.log(x) / Math.log(base)); }); }
   const degree = angleScale;
@@ -261,6 +301,7 @@ export function evaluate(node, vars, angle = 'RAD', context = createMathContext(
     return mapNumbers(args[0], value => number(value / magnitude));
   }
   if (n === 'mat2list') { arity(1); dimensions(args[0]); return clone(args[0].flat()); }
+  if(n==='list2mat'){arity(1,2);if(!Array.isArray(args[0])||isMatrix(args[0])||!args[0].length)fail('TYPE_ERROR','list▶mat() requiere una lista no vacía.');const columns=integer(args[1]??args[0].length,1,100),rows=Math.ceil(args[0].length/columns);return matrix(rows,columns,(r,c)=>clone(args[0][r*columns+c]??0));}
   if (n === 'ref' || n === 'rref') { arity(1); return elimination(args[0], n === 'rref'); }
   if (n === 'transpose') { arity(1); const [r, c] = dimensions(args[0]); return matrix(c, r, (i, j) => args[0][j][i]); }
   if (n === 'augment' || n === 'colaugment') { arity(2); if (!Array.isArray(args[0]) || !Array.isArray(args[1])) fail('TYPE_ERROR', 'Se requieren listas o matrices.'); if (n === 'colaugment') { const [, a] = dimensions(args[0]), [, b] = dimensions(args[1]); if (a !== b) fail('DIMENSION_ERROR', 'Columnas incompatibles.'); return clone([...args[0], ...args[1]]); } if (isMatrix(args[0]) && isMatrix(args[1])) { const [a] = dimensions(args[0]), [b] = dimensions(args[1]); if (a !== b) fail('DIMENSION_ERROR', 'Filas incompatibles.'); return args[0].map((row, i) => clone([...row, ...args[1][i]])); } return clone([...args[0], ...args[1]]); }

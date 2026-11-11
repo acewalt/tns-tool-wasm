@@ -37,7 +37,7 @@
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
   const NOTES_SAVE_FIX_V="20260904-notepad-save-fix-v1";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
-  const LOVE_PREVIEW_SIDE_V="20261105-preview-tools-v31";
+  const LOVE_PREVIEW_SIDE_V="20261106-preview-frame-fix-v32";
   const LOVE_PREVIEW_MATH_V="20261105-preview-tools-v31";
   ensureStyle('link[data-runtime-loading-overlay-style="true"]', `./web/runtime-loading-overlay.css?v=${RUNTIME_V}`, "runtimeLoadingOverlayStyle");
   ensureStyle('link[data-header-controls-compact="true"]', "./web/header-controls-compact.css?v=20260827-header-controls-v3", "headerControlsCompact");
@@ -93,7 +93,7 @@
     .then(() => loadScript('script[data-ndless-framebuffer-preview="true"]', `./web/ndless-framebuffer-preview.js?v=${V}`, "ndlessFramebufferPreview"))
     .then(() => loadScript('script[data-ndless-project-folder-build="true"]', `./web/ndless-project-folder-build.js?v=${V}`, "ndlessProjectFolderBuild"))
     .then(() => loadScript('script[data-ndless-live-session="true"]', `./web/ndless-live-session.js?v=${V}`, "ndlessLiveSession"))
-    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./web/ndless-project-workspace.js?v=20261105-native-build-v31`, "ndlessProjectWorkspace"))
+    .then(() => loadScript('script[data-ndless-project-workspace="true"]', `./web/ndless-project-workspace.js?v=20261111-native-build-v37`, "ndlessProjectWorkspace"))
     .then(() => loadScript('script[data-ndless-arm-runtime-v2="true"]', `./web/ndless-arm-runtime-v2.js?v=${V}`, "ndlessArmRuntimeV2"))
     .then(() => loadScript('script[data-ndless-project-sdk-enhancements-v2="true"]', `./web/ndless-project-sdk-enhancements-v2.js?v=${V}`, "ndlessProjectSdkEnhancementsV2"))
     .then(() => loadScript('script[data-ndless-project-file-tree="true"]', `./web/ndless-project-file-tree.js?v=${V}`, "ndlessProjectFileTree"))
@@ -109,7 +109,7 @@
     .then(() => loadScript('script[data-rom-gb-preview="true"]', `./web/rom-gb-preview.js?v=20261029-usb-rom-v21`, "romGbPreview"))
     .then(() => loadScript('script[data-rom-web-converter="true"]', `./web/rom-web-converter.js?v=${V}`, "romWebConverter"))
     .then(() => loadScript('script[data-rom-converter-view="true"]', `./web/rom-converter-view.js?v=20261029-usb-rom-v21`, "romConverterView"))
-    .then(() => loadScript('script[data-rom-converter="true"]', `./web/rom-converter.js?v=20261105-native-v31`, "romConverter"));
+    .then(() => loadScript('script[data-rom-converter="true"]', `./web/rom-converter.js?v=20261111-native-v37`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));

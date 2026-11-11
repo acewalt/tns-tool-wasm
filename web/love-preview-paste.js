@@ -168,36 +168,157 @@
     canvas.dispatchEvent(new KeyboardEvent("keyup", options));
   }
 
-  document.addEventListener(
-    "paste",
-    (event) => {
-      const canvas = document.querySelector("#love-preview-canvas");
-      if (!canvas?.isConnected) return;
+  function previewCanvas() {
+    const modal = document.querySelector(".love-preview-modal");
+    if (!modal?.isConnected || modal.querySelector("#love-calculator-composer")) return null;
+    return modal.querySelector("#love-preview-canvas");
+  }
 
-      // Preserve native paste in the calculator composer and any normal form field.
-      if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) return;
+  function pasteText(canvas, source) {
+    if (!canvas?.isConnected) return false;
+    const text = String(source || "")
+      .replace(/\r\n?/g, "\n")
+      .replace(/\u2212|\u2013/g, "-")
+      .replace(/\u00d7/g, "*")
+      .replace(/\u00f7/g, "/")
+      .replace(/\u03c0/g, "pi")
+      .replace(/\u00b2/g, "^2")
+      .replace(/\u00b3/g, "^3")
+      .replace(/\u221a/g, "sqrt");
+    if (!text || text.length > 2048) return false;
+    // A pasted newline is whitespace, never an implicit Enter/calculation.
+    for (const char of text) {
+      dispatchPreviewKey(canvas, char === "\n" || char === "\t" ? " " : char);
+    }
+    canvas.focus({ preventScroll: true });
+    return true;
+  }
 
-      const text = event.clipboardData?.getData("text/plain") ?? "";
-      if (!text) return;
+  function labels() {
+    const lang = String(document.documentElement.lang || "es").slice(0, 2).toLowerCase();
+    if (lang === "en") return {
+      paste: "Paste", hint: "Paste an expression (Ctrl+V)",
+      insert: "Insert", close: "Close", tooLong: "Empty text or over 2048 characters."
+    };
+    if (lang === "fr") return {
+      paste: "Coller", hint: "Collez une expression (Ctrl+V)",
+      insert: "Insérer", close: "Fermer", tooLong: "Texte vide ou plus de 2048 caractères."
+    };
+    return {
+      paste: "Pegar", hint: "Pega una expresión (Ctrl+V)",
+      insert: "Insertar", close: "Cerrar", tooLong: "Texto vacío o más de 2048 caracteres."
+    };
+  }
 
-      event.preventDefault();
+  function installPasteButton() {
+    const canvas = previewCanvas();
+    if (!canvas) return;
+    const modal = canvas.closest(".love-preview-modal");
+    const anchor = modal.querySelector(".love-preview-side-action-row") || modal.querySelector(".modal-actions");
+    if (!anchor || anchor.querySelector(".love-preview-paste-button")) return;
 
-      // Normalize Windows/macOS line endings so a pasted multi-line test behaves
-      // like typing each line and pressing Enter in the Preview LÖVE window.
-      const normalized = text.replace(/\r\n?/g, "\n");
+    if (!document.getElementById("tns-love-paste-style")) {
+      const style = document.createElement("style");
+      style.id = "tns-love-paste-style";
+      style.textContent = [
+        ".love-preview-paste-button{display:block;width:100%;border:1px solid #7195c0;border-radius:12px;background:#254567;color:#f3f8ff;font:600 12px sans-serif;padding:9px 12px;cursor:pointer}",
+        ".love-preview-paste-button:hover{background:#315780}",
+        ".love-preview-paste-panel{display:flex;flex-direction:column;gap:7px;margin-top:7px;padding:9px;border:1px solid #456382;border-radius:10px;background:#122239;color:#dce8f6;font:12px sans-serif}",
+        ".love-preview-paste-panel[hidden]{display:none!important}",
+        ".love-preview-paste-panel textarea{box-sizing:border-box;width:100%;min-height:64px;resize:vertical;border:1px solid #6484a5;border-radius:6px;background:#f7fbff;color:#17243b;padding:6px;font:12px sans-serif}",
+        ".love-preview-paste-panel button{border:1px solid #52769b;border-radius:7px;background:#29496d;color:white;padding:6px;cursor:pointer}",
+        ".love-preview-paste-actions{display:flex;gap:6px}",
+        ".love-preview-paste-actions button{flex:1}"
+      ].join("\n");
+      document.head.appendChild(style);
+    }
 
-      for (const char of normalized) {
-        if (char === "\n") {
-          dispatchPreviewKey(canvas, "Enter");
-        } else if (char === "\t") {
-          dispatchPreviewKey(canvas, "Tab");
-        } else {
-          dispatchPreviewKey(canvas, char);
-        }
+    const l = labels();
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "love-preview-paste-button";
+    button.textContent = l.paste;
+    button.title = "Ctrl+V";
+    const panel = document.createElement("div");
+    panel.className = "love-preview-paste-panel";
+    panel.hidden = true;
+    const hint = document.createElement("label");
+    hint.textContent = l.hint;
+    const field = document.createElement("textarea");
+    field.spellcheck = false;
+    field.autocomplete = "off";
+    field.placeholder = l.hint;
+    field.setAttribute("aria-label", l.hint);
+    const status = document.createElement("span");
+    status.setAttribute("role", "status");
+    const actions = document.createElement("div");
+    actions.className = "love-preview-paste-actions";
+    const insert = document.createElement("button");
+    insert.type = "button";
+    insert.textContent = l.insert;
+    const close = document.createElement("button");
+    close.type = "button";
+    close.textContent = l.close;
+    actions.append(insert, close);
+    panel.append(hint, field, status, actions);
+    anchor.append(button, panel);
+
+    const finish = (value) => {
+      if (!pasteText(canvas, value)) {
+        status.textContent = l.tooLong;
+        panel.hidden = false;
+        return;
       }
+      field.value = "";
+      status.textContent = "";
+      panel.hidden = true;
+    };
+    button.addEventListener("click", async (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      try {
+        if (!navigator.clipboard?.readText) throw Error("Clipboard API unavailable");
+        const value = await navigator.clipboard.readText();
+        if (!value) throw Error("Clipboard empty");
+        finish(value);
+      } catch (_error) {
+        panel.hidden = false;
+        field.focus({ preventScroll: true });
+      }
+    });
+    field.addEventListener("paste", (event) => {
+      const value = event.clipboardData?.getData("text/plain");
+      if (!value) return;
+      event.preventDefault();
+      event.stopPropagation();
+      finish(value);
+    });
+    insert.addEventListener("click", () => finish(field.value));
+    close.addEventListener("click", () => { panel.hidden = true; canvas.focus({ preventScroll: true }); });
+  }
 
-      canvas.focus({ preventScroll: true });
-    },
-    true
-  );
+  document.addEventListener("paste", (event) => {
+    const canvas = previewCanvas();
+    if (!canvas) return;
+    const modal = canvas.closest(".love-preview-modal");
+    // Do not intercept paste in source editors or other browser inputs.
+    if (!modal.contains(event.target) && !modal.contains(document.activeElement)) return;
+    if (isEditableTarget(event.target) || isEditableTarget(document.activeElement)) return;
+    const value = event.clipboardData?.getData("text/plain");
+    if (!value) return;
+    event.preventDefault();
+    pasteText(canvas, value);
+  }, true);
+
+  // Preview modals are created dynamically; observe top-level insertions only.
+  const observeModals = () => {
+    installPasteButton();
+    const observer = new MutationObserver(() => installPasteButton());
+    observer.observe(document.body, { childList: true });
+  };
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", observeModals, { once: true });
+  } else {
+    observeModals();
+  }
 })();

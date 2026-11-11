@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 
 class TIParser:
     """Parser for TI-Nspire serialized program statements."""
@@ -12,10 +14,29 @@ class TIParser:
         current: list[str] = []
         stack: list[str] = []
         in_string = False
+        # Native program values include physical CR/LF line boundaries. A ©
+        # comment owns the rest of that physical line, including colons, quotes
+        # and brackets. Flat legacy values have no such boundary and retain
+        # their historical colon-delimited decoding.
+        has_line_boundaries = "\r" in text or "\n" in text
+        in_comment = False
         i = 0
 
         while i < len(text):
             ch = text[i]
+
+            if in_comment:
+                current.append(ch)
+                if ch in "\r\n":
+                    in_comment = False
+                i += 1
+                continue
+
+            if has_line_boundaries and not in_string and ch == "©":
+                current.append(ch)
+                in_comment = True
+                i += 1
+                continue
 
             if ch == '"':
                 current.append(ch)
@@ -59,8 +80,8 @@ class TIParser:
     @staticmethod
     def _should_keep_inline_if_separator(statement: str) -> bool:
         compact = statement.strip()
-        lower = compact.lower()
-        return lower.startswith("if ") and " then" not in lower and ":" not in compact
+        clean = re.sub(r'"(?:[^"]|"")*"', '""', compact)
+        return clean.lower().startswith("if ") and not re.search(r"\bThen\b", clean, re.IGNORECASE) and ":" not in clean
 
     def to_multiline(self, text: str) -> str:
         return "\n".join(self.split_statements(text))
