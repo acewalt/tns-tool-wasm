@@ -7,7 +7,7 @@
 .ti-graph-entry{box-sizing:border-box;position:absolute;inset:0 0 auto;z-index:2;display:flex;align-items:center;gap:6px;height:31px;margin:0;padding:3px 7px;background:#fff;border-top:1px solid #269ebb;border-bottom:1px solid #269ebb;color:#111;font:italic 14px 'Times New Roman',serif}
 .ti-graph-entry[hidden]{display:none}
 .ti-graph-entry input[type=checkbox]{flex:none;width:13px;height:13px;margin:0 5px 0 0;accent-color:#219bb8}
-.ti-graph-entry-name{flex:none;white-space:nowrap}
+.ti-graph-entry-name{flex:none;white-space:nowrap;color:#111;font:inherit}
 .ti-graph-entry .ti-graph-entry-input{box-sizing:border-box;flex:1;width:0;min-width:0;margin:0;padding:1px 0;border:0;border-radius:0;box-shadow:none;outline:none;background:#fff;color:#111;font:14px 'Times New Roman',serif}
 .ti-graph-entry .ti-graph-entry-list{flex:none;display:grid;place-items:center;min-width:23px;min-height:23px;width:23px;height:23px;margin:0;padding:0;border:1px solid transparent;border-radius:0;background:white;color:#269ebb;font:bold 23px/1 Arial,sans-serif}
 .ti-graph-entry .ti-graph-entry-list:focus-visible{border-color:#269ebb;outline:0}
