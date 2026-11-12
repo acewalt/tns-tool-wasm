@@ -2801,9 +2801,9 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 }
 
 .inspector-table {
-  min-width: 1120px;
-  width: max-content;
-  table-layout: auto;
+  min-width: calc(910px + var(--inspector-actions-width, 360px));
+  width: 100%;
+  table-layout: fixed;
 }
 
 .inspector-table th:nth-child(1),
@@ -2813,8 +2813,7 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 
 .inspector-table th:nth-child(2),
 .inspector-table td:nth-child(2) {
-  width: 1%;
-  white-space: nowrap;
+  width: var(--inspector-actions-width, 360px);
 }
 
 .inspector-actions{display:flex;align-items:center;flex-wrap:nowrap;gap:4px;white-space:nowrap}

@@ -142,7 +142,7 @@
     if (direct != null) return direct;
     const formatId = leaf.getAttribute(`id${runIndex}`) ?? leaf.getAttribute("id0");
     const entry = formatId != null ? entries.get(String(formatId)) : null;
-    const inherited = entry?.getAttribute(key);
+    const inherited = entry?.getAttribute(key) ?? (key === "fn" ? entry?.getAttribute("fn0") : null);
     if (inherited != null) return inherited;
     const unsuffixed = leaf.getAttribute(key);
     return unsuffixed != null ? unsuffixed : null;
@@ -249,11 +249,24 @@
       return parseLeaf(node, entries).map(run => ({ ...run, keyword: true }));
     }
     const box = Array.from(node.children || []).find(child => child.localName === "mbox");
-    const input = box ? Array.from(node.children).find(child => child.localName === "node") : node;
+    const expressions = Array.from(node.children || []).filter(child => child.localName === "node");
+    const input = box ? expressions[0] : node;
+    const answer = box ? expressions[1] : null;
     const source = nativeMathSource(input);
-    const output = box ? byLocalName(box, "full")[0]?.textContent || "" : "";
+    // The formatted result is a sibling of the input tree. In particular a
+    // successful assignment may have only "Done" here, without an out/full.
+    const output = nativeMathSource(answer) || (box ? byLocalName(box, "full")[0]?.textContent || "" : "");
+    const sourceRuns = byLocalName(input, "leaf").filter(leaf => leaf.getAttribute("name") !== "cursor").flatMap(leaf => parseLeaf(leaf, entries));
+    const outputRuns = byLocalName(answer, "leaf").flatMap(leaf => parseLeaf(leaf, entries));
+    const sourceStyle = parseRunStyle(input || node, 0, entries);
+    const outputStyle = parseRunStyle(answer || box || node, 0, entries);
+    if (!answer) outputStyle.color = "#008000";
+    // Older Notes uses 1keyword for its built-in bold style, and stores inline
+    // unevaluated program names without a format table at all.
+    if (!input?.hasAttribute("id0") && !input?.hasAttribute("tc0") && /^[\p{L}_][\p{L}\p{N}_]*\(\)$/u.test(source)) sourceStyle.bold = true;
     return [{ text: source, kind: "native", nativeXml: new XMLSerializer().serializeToString(node),
-      source, output, outputOnly: box?.querySelector("attr")?.getAttribute("iomode") === "2",
+      source, output, sourceStyle, outputStyle, sourceRuns, outputRuns,
+      outputOnly: box?.querySelector("attr")?.getAttribute("iomode") === "2",
       style: parseRunStyle(node, 0, entries) }];
   }
 
@@ -348,9 +361,7 @@
       span.dataset.tiOutputOnly = String(run.outputOnly);
       const result = options.recalculate ? safeNoteExpression(run.source, options.mathSession) : null;
       const output = result ?? run.output;
-      const source = run.outputOnly && output ? output : run.source;
-      if (window.TnsMathTypeset) span.innerHTML = window.TnsMathTypeset.render(source);
-      else span.textContent = source;
+      renderNativeMath(span, run, output);
       span.title = run.source;
     } else {
       span.textContent = run.text;
@@ -361,7 +372,7 @@
     if (run.style.background) span.style.backgroundColor = run.style.background;
     span.style.fontFamily = familyCss(run.style.fontFamily);
     span.style.fontSize = `${Math.max(1, run.style.fontSize) * 4 / 3}px`;
-    span.style.fontWeight = run.style.bold ? "700" : "400";
+    span.style.fontWeight = run.style.bold || run.keyword ? "700" : "400";
     span.style.fontStyle = run.style.italic ? "italic" : "normal";
     span.style.textDecoration = run.style.underline ? "underline" : "none";
     if (run.style.subscript) {
@@ -372,6 +383,55 @@
       span.style.fontSize = `${Math.max(1, run.style.fontSize) * 1.05}px`;
     }
     return span;
+  }
+
+  function renderNativeMath(span, run, output = run.output) {
+    span.replaceChildren();
+    const append = (source, role, style, runs = []) => {
+      const part = document.createElement("span");
+      part.className = `ti-note-math-${role}`;
+      part.style.color = style?.color || (role === "output" ? "#008000" : "#111111");
+      part.style.fontSize = `${Math.max(1, style?.fontSize || run.style.fontSize) * 4 / 3}px`;
+      part.style.fontWeight = style?.bold ? "700" : "400";
+      part.style.fontStyle = style?.italic ? "italic" : "normal";
+      if (window.TnsMathTypeset) {
+        // Keep assignment on one baseline while rendering both mathematical
+        // sides, rather than treating the colon as part of the variable name.
+        const assignment = String(source).match(/^([\s\S]+?):=([\s\S]+)$/);
+        if (assignment) {
+          part.innerHTML = window.TnsMathTypeset.render(assignment[1]);
+          const math = part.querySelector("math"), rhs = document.createElement("span");
+          rhs.innerHTML = window.TnsMathTypeset.render(assignment[2]);
+          if (math && rhs.querySelector("math")) {
+            const op = document.createElementNS("http://www.w3.org/1998/Math/MathML", "mo");
+            op.textContent = ":="; math.append(op, ...rhs.querySelector("math").childNodes);
+          }
+        } else part.innerHTML = window.TnsMathTypeset.render(source);
+        for (const token of part.querySelectorAll("mi,mn,mo,mtext")) {
+          const native = runs.find(entry => entry.text.trim() === token.textContent.trim());
+          if (!native) continue;
+          token.style.color = native.style.color;
+          token.style.fontWeight = native.style.bold ? "700" : "400";
+          token.style.fontStyle = native.style.italic ? "italic" : "normal";
+        }
+        // Empty parentheses in a prose mathbox are a callable name, not an
+        // active entry field. No placeholder/stepper is shown on the device.
+        if (/^[\p{L}_][\p{L}\p{N}_]*\(\)$/u.test(String(source))) {
+          part.querySelectorAll(".ti-math-placeholder").forEach(node => node.remove());
+          if (style?.bold) part.querySelectorAll('mi').forEach(node => { node.style.fontWeight = '700'; });
+        }
+      } else part.textContent = source;
+      span.appendChild(part);
+    };
+    if (!run.outputOnly || !output) append(run.source, "input", run.sourceStyle || run.style, run.sourceRuns);
+    if (output) {
+      if (!run.outputOnly) {
+        const arrow = document.createElement("span");
+        arrow.className = "ti-note-math-result-arrow"; arrow.textContent = "▸"; arrow.setAttribute("aria-hidden", "true");
+        span.appendChild(arrow);
+      }
+      append(output, "output", run.outputStyle || { ...run.style, color: "#008000" }, run.outputRuns);
+    }
   }
 
   function renderRichModel(container, model, options = {}) {
@@ -413,8 +473,8 @@
       host.querySelectorAll(".ti-note-math").forEach(span => {
         const value = safeNoteExpression(span.dataset.tiSource, context.mathSession);
         if (value != null && span.dataset.tiOutputOnly === "true") {
-          if (window.TnsMathTypeset) span.innerHTML = window.TnsMathTypeset.render(value);
-          else span.textContent = value;
+          const run = model.paragraphs.flatMap(para => para.lines.flatMap(line => line.runs)).find(entry => entry.nativeXml && encodeURIComponent(entry.nativeXml) === span.dataset.tiNative);
+          if (run) renderNativeMath(span, run, value);
         }
       });
     };
@@ -488,9 +548,10 @@
       parts.forEach((part, index) => {
         if (part) {
           const style = styleFromEditableTextNode(node, editor);
+          const keyword = Boolean((node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement)?.closest?.('[data-ti-keyword="true"]'));
           const previous = current.runs[current.runs.length - 1];
-          if (previous && sameRawStyle(previous.style.raw, style.raw)) previous.text += part;
-          else current.runs.push({ text: part, style });
+          if (previous && previous.keyword === keyword && sameRawStyle(previous.style.raw, style.raw)) previous.text += part;
+          else current.runs.push({ text: part, style, keyword });
         }
         if (index < parts.length - 1) newParagraph();
       });
@@ -603,6 +664,7 @@
         }
         const leaf = clone.createElement("leaf");
         applyStyleAttributes(leaf, run.style, cpLength(run.text));
+        if (run.keyword) leaf.setAttribute("name", "1keyword");
         if (run.text) leaf.appendChild(clone.createTextNode(run.text));
         if (paraIndex === source.length - 1 && runIndex === runs.length - 1) {
           const cursor = clone.createElement("cursor");

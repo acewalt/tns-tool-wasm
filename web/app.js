@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-12-widgets-v39";
+const SOURCE_VERSION = "2026-11-12-widgets-v40";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -10471,6 +10471,7 @@ async function saveGraphWidgetToStage(item, formula) {
   const payload=await pyodide.runPythonAsync(`
 import json
 import xml.etree.ElementTree as ET
+from copy import deepcopy
 from pathlib import Path
 from xml_scanner import local_name, namespace_uri
 source_root=Path("${xmlDoctor.sourcePath}"); stage_root=Path("${xmlDoctor.stagePath}")
@@ -10532,6 +10533,27 @@ for curve in curves:
     expr=by_id.get(str(curve.get("expressionId","")))
     graph=by_id.get(str(curve.get("id","")))
     name=str(curve.get("name") or fname); text=str(curve.get("formula") or "0")
+    if expr is None:
+        expr=next((n for n in by_id.values() if local_name(n.tag)=="expression" and read(n,"lbl")==name),None)
+    if graph is None and expr is not None:
+        graph=next((n for n in by_id.values() if local_name(n.tag)=="graph" and read(expr,"id") in read(n,"par").split()),None)
+    # New entry lines must create native graph objects as well as a symbol.
+    # Reuse by name on subsequent saves so the same preview never duplicates it.
+    if objects is not None and (expr is None or graph is None):
+        def allocate(kind):
+            prototype=next((n for n in by_id.values() if local_name(n.tag)==kind),None)
+            node=deepcopy(prototype) if prototype is not None else ET.Element(f"{{{gg_ns}}}{kind}")
+            ident=str(max([int(k) for k in by_id if k.isdigit()]+[0])+1)
+            write(node,"id",ident); objects.append(node); by_id[ident]=node
+            return node
+        if expr is None:
+            expr=allocate("expression")
+            write(expr,"lbl",name);write(expr,"prms","x");write(expr,"xtpe",1)
+        if graph is None:
+            graph=allocate("graph")
+            axes=next((n for n in by_id.values() if local_name(n.tag)=="axes_system"),None)
+            write(graph,"par",f"{read(axes,'id') if axes is not None else '1'} {read(expr,'id')} ")
+            write(graph,"pref",f"{name}(x)");write(graph,"type",0)
     if expr is not None and local_name(expr.tag)=="expression":
         write(expr,"expr",text)
         if child(expr,"relv") is not None: write(expr,"relv",text)
@@ -16903,8 +16925,8 @@ function evaluateSpreadsheetFormula(formula, cells, options = {}) {
     if (visited.has(id)) throw Error("#CIRC!");
     if (visited.size > 256) throw Error("#LIMIT!");
     let value = spreadsheetCellDisplay(cell);
-    if (String(cell.formula || "").trim().startsWith("=")) {
-      value = evaluateSpreadsheetFormula(cell.formula, cells, { ...options, visited: new Set([...visited, id]) });
+    if (String(cell.formula || "").trim().startsWith("=") && (String(cell.data ?? "") === "" || options.invalidated?.has(id))) {
+      value = options.memo?.has(id) ? options.memo.get(id) : evaluateSpreadsheetFormula(cell.formula, cells, { ...options, visited: new Set([...visited, id]) });
       if (String(value).startsWith("#")) throw Error(value);
     }
     if (String(value).startsWith("#")) throw Error(value);
@@ -16922,14 +16944,14 @@ function evaluateSpreadsheetFormula(formula, cells, options = {}) {
       const ranges = [];
       part = part.replace(/\$?([A-Za-z]+)\$?(\d+):\$?([A-Za-z]+)\$?(\d+)/g, (_match, a, r, b, s) => {
         const first = spreadsheetCellRefToCoords(a + r), last = spreadsheetCellRefToCoords(b + s);
-        if (!first || !last || Math.abs(first.row - last.row) * Math.abs(first.col - last.col) > 10000) throw Error("#REF!");
+        if (!first || !last || (Math.abs(first.row - last.row) + 1) * (Math.abs(first.col - last.col) + 1) > 10000) throw Error("#REF!");
         const values = [];
         for (let row = Math.min(first.row, last.row); row <= Math.max(first.row, last.row); row++) {
           for (let col = Math.min(first.col, last.col); col <= Math.max(first.col, last.col); col++) values.push(resolve(spreadsheetColumnName(col) + (row + 1)));
         }
         ranges.push(`{${values.join(",")}}`); return `§${ranges.length - 1}§`;
       });
-      part = part.replace(/(?<![\p{L}\p{N}_])\$?[A-Za-z]+\$?\d+\b/gu, resolve);
+      part = part.replace(/(?<![\p{L}\p{N}_])\$?[A-Za-z]+\$?\d+\b(?!\s*\()/gu, resolve);
       return part.replace(/§(\d+)§/g, (_match, i) => ranges[Number(i)]);
     }).join("");
     expression = expression.replace(/\bAVERAGE\s*\(/gi, "mean(").replace(/\bCOUNT\s*\(/gi, "dim(");
@@ -16946,13 +16968,51 @@ function evaluateSpreadsheetFormula(formula, cells, options = {}) {
   }
 }
 
+function spreadsheetFormulaReferences(formula) {
+  const refs = new Set();
+  for (const [index, text] of String(formula || "").split(/("(?:[^"]|"")*")/g).entries()) {
+    if (index % 2) continue;
+    const ranges = text.replace(/\$?([A-Za-z]+)\$?(\d+):\$?([A-Za-z]+)\$?(\d+)/g, (_match, a, r, b, s) => {
+      const first = spreadsheetCellRefToCoords(a + r), last = spreadsheetCellRefToCoords(b + s);
+      if (first && last && (Math.abs(first.row - last.row) + 1) * (Math.abs(first.col - last.col) + 1) <= 10000) {
+        for (let row = Math.min(first.row, last.row); row <= Math.max(first.row, last.row); row++) {
+          for (let col = Math.min(first.col, last.col); col <= Math.max(first.col, last.col); col++) refs.add(`${row}:${col}`);
+        }
+      }
+      return "";
+    });
+    for (const match of ranges.matchAll(/(?<![\p{L}\p{N}_])\$?[A-Za-z]+\$?\d+\b(?!\s*\()/gu)) {
+      const coords = spreadsheetCellRefToCoords(match[0].replace(/\$/g, ""));
+      if (coords) refs.add(`${coords.row}:${coords.col}`);
+    }
+  }
+  return refs;
+}
+
 function recalculateSpreadsheetCells(cells, options = {}) {
+    const invalidated = new Set(options.changedCellKeys ?? Object.keys(cells || {}));
+    if (options.changedCellKeys) {
+      // A native sheet may contain a valid cached CAS answer which this preview
+      // cannot recompute. Editing another cell must not destroy that answer.
+      let grew = true;
+      while (grew) {
+        grew = false;
+        for (const [id, cell] of Object.entries(cells || {})) {
+          if (!invalidated.has(id) && [...spreadsheetFormulaReferences(cell?.formula)].some(ref => invalidated.has(ref))) {
+            invalidated.add(id); grew = true;
+          }
+        }
+      }
+    }
+    const memo = new Map();
     for (const [id, cell] of Object.entries(cells || {})) {
       if (!cell || !String(cell.formula || "").trim().startsWith("=")) continue;
+      if (!invalidated.has(id)) continue;
       // Preserve exact symbolic answers saved by the calculator until an edit
       // explicitly requires recalculation; unsupported formulas stay intact.
       if (options.preserveCached && String(cell.data ?? "") !== "") continue;
-      cell.data = evaluateSpreadsheetFormula(cell.formula, cells, { ...options, visited: new Set([id]) });
+      cell.data = evaluateSpreadsheetFormula(cell.formula, cells, { ...options, invalidated, memo, visited: new Set([id]) });
+      memo.set(id, cell.data);
     }
 }
 
@@ -17400,8 +17460,8 @@ function showSpreadsheetModal(item, options = {}) {
   const controller = window.TnsSpreadsheetTools.mount(backdrop, state, {
     selectedLabel: sheetWords.selected,
     evaluate: formula => evaluateSpreadsheetFormula(formula, state.cells, { mathSession }),
-    onChange: () => {
-      recalculateSpreadsheetCells(state.cells, { mathSession });
+    onChange: (_state, change) => {
+      recalculateSpreadsheetCells(state.cells, { mathSession, changedCellKeys: change.changedCellKeys });
       for (const cell of Object.values(state.cells)) {
         if (!/^[\p{L}_][\p{L}\p{N}_]*$/u.test(cell.globalName || '') || String(cell.data || '').startsWith('#')) continue;
         try { mathSession.evaluate(`${cell.globalName}:=(${cell.data})`); } catch (_) { /* Unsupported native formulas remain explicit cell errors. */ }
@@ -17992,6 +18052,17 @@ async function openDocumentInspector() {
       </div>
     </div>`;
   document.body.append(backdrop);
+  // Size only Actions to its buttons. Fixed widths keep long XML paths/details
+  // from changing the other columns or pushing them off the table entirely.
+  const inspectorTable = backdrop.querySelector('.inspector-table');
+  let inspectorActionsWidth = 210;
+  for (const actions of backdrop.querySelectorAll('.inspector-actions')) {
+    const buttons = [...actions.children];
+    inspectorActionsWidth = Math.max(inspectorActionsWidth,
+      buttons.reduce((sum, button) => sum + button.getBoundingClientRect().width, 0)
+      + Math.max(0, buttons.length - 1) * 4 + 20);
+  }
+  inspectorTable.style.setProperty('--inspector-actions-width', `${Math.ceil(inspectorActionsWidth)}px`);
   for(const button of backdrop.querySelectorAll('.inspector-delete-action'))button.addEventListener('click',async()=>{const item=sortedItems[Number(button.dataset.deleteElement)];if(!await confirmInspectorElementRemoval(item))return;button.disabled=true;try{await deleteDocumentInspectorElement(item);closeModal(backdrop,()=>openDocumentInspector());}catch(error){button.disabled=false;xmlLog(`ERROR: ${error.message}`);showTextModal(inspectorElementDeleteWords(item).title,error.message);}});
   for(const button of backdrop.querySelectorAll('.program-editor-visibility'))button.addEventListener('click',async()=>{button.disabled=true;try{await setProgramEditorPageVisible(sortedItems[Number(button.dataset.index)],button.dataset.visible!=='true');closeModal(backdrop,()=>openDocumentInspector());}catch(error){xmlLog(`ERROR: ${error.message}`);button.disabled=false;showTextModal(t('documentInspector'),error.message);}});
   for (const button of backdrop.querySelectorAll('[data-preview-kind]')) {
