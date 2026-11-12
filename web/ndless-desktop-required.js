@@ -14,7 +14,7 @@
       steps:['Téléchargez TNS Tool Portable pour Windows.','Extrayez tout le ZIP dans un dossier.','Ouvrez TNS Tool Portable.exe et poursuivez votre projet.'],
       download:'Télécharger pour Windows',close:'Fermer',note:'Téléchargement public pour Windows x64. La version figure dans le titre de l’application.',badge:'Version de bureau requise'}
   };
-  const download='https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.39/TNS-Tool-Portable-Windows-x64.zip';
+  const download='https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.40/TNS-Tool-Portable-Windows-x64.zip';
   const desktop=()=>Boolean(window.TnsDesktop);
   let overlay=null,previousFocus=null;
   const text=()=>copy[String(document.documentElement.lang||'es').slice(0,2)]||copy.es;
