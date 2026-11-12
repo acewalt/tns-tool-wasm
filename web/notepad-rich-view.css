@@ -186,6 +186,7 @@
   vertical-align: middle;
   max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
   color: #111;
   white-space: nowrap;
   font-family: "Cambria Math", "STIX Two Math", serif !important;
@@ -238,6 +239,9 @@
 
 .ti-note-math{display:inline-block;vertical-align:middle;white-space:nowrap;max-width:100%}
 .ti-note-math math{font-family:'Times New Roman',serif;font-size:1em;vertical-align:middle}
+.ti-note-math-input,.ti-note-math-output{display:inline-block;vertical-align:middle;white-space:nowrap}
+.ti-note-math-result-arrow{display:inline-block;vertical-align:middle;margin:0 .28em;color:#008000;font-family:Arial,sans-serif;font-weight:700}
+.ti-note-math-input math,.ti-note-math-output math{font-size:1em}
 .ti-note-rich-view.ti-note-embedded-view{width:100%;height:100%;min-height:0;box-sizing:border-box}
 .ti-note-rich-view .ti-note-line{overflow-wrap:normal}
 

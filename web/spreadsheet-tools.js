@@ -10,6 +10,7 @@
     const grid=host.querySelector('.spreadsheet-grid'), formula=host.querySelector('.spreadsheet-formula-value'), name=host.querySelector('.spreadsheet-cell-name'), info=host.querySelector('.spreadsheet-selection-info');
     const selection={anchorRow:state.activeRow||0,anchorCol:state.activeCol||0,row:state.activeRow||0,col:state.activeCol||0};
     let dragging=false,editing=null,destroyed=false;
+    const changedCellKeys=new Set();
     const cleanups=[];
     const listen=(node,event,handler,opts)=>{node.addEventListener(event,handler,opts);cleanups.push(()=>node.removeEventListener(event,handler,opts));};
     const display=cell=>String(cell?.data??cell?.formula??'');
@@ -53,10 +54,12 @@
       renderSelection();
     }
     function changed() {
-      state.dirty=true;options.onChange?.(state);render();
+      if(changedCellKeys.size){state.dirty=true;const change={changedCellKeys:[...changedCellKeys]};changedCellKeys.clear();options.onChange?.(state,change);}render();
     }
     function write(row,col,text) {
       const key=row+':'+col,raw=String(text);
+      if(raw===String(state.cells[key]?.formula??''))return;
+      changedCellKeys.add(key);
       if(!raw){delete state.cells[key];return;}
       state.cells[key]={...state.cells[key],formula:raw,data:raw.startsWith('=')?options.evaluate?.(raw,state.cells)??'#LOADING!':raw};
       state.rows=Math.max(state.rows,row+1);state.cols=Math.max(state.cols,col+1);
@@ -84,7 +87,7 @@
       else if(event.key==='F2'){event.preventDefault();beginEdit(activeCell());}
       else if(event.key.length===1&&!event.ctrlKey&&!event.metaKey&&!event.altKey){event.preventDefault();beginEdit(activeCell(),event.key);}
     });
-    function clear(){const b=bounds(selection);for(let row=b.top;row<=b.bottom;row++)for(let col=b.left;col<=b.right;col++)delete state.cells[row+':'+col];changed();}
+    function clear(){const b=bounds(selection);for(let row=b.top;row<=b.bottom;row++)for(let col=b.left;col<=b.right;col++){const key=row+':'+col;if(state.cells[key]){changedCellKeys.add(key);delete state.cells[key];}}changed();}
     listen(formula,'keydown',event=>{if(event.key==='Enter'){event.preventDefault();const text=formula.value;formula.blur();write(state.activeRow,state.activeCol,text);changed();move(1,0);}else if(event.key==='Escape'){event.preventDefault();formula.value=String(state.cells[state.activeRow+':'+state.activeCol]?.formula??'');formula.blur();renderSelection();grid.focus();}});
     listen(formula,'change',()=>{write(state.activeRow,state.activeCol,formula.value);changed();});
     listen(grid,'copy',event=>{if(editing)return;const b=bounds(selection),rows=[];for(let row=b.top;row<=b.bottom;row++){const cells=[];for(let col=b.left;col<=b.right;col++)cells.push(display(state.cells[row+':'+col]));rows.push(cells.join('\t'));}event.clipboardData.setData('text/plain',rows.join('\n'));event.preventDefault();});
