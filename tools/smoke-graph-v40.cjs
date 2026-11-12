@@ -29,7 +29,7 @@ async function check(circle){
  const wait=async(fn,label)=>{const end=Date.now()+60000;while(!fn()){if(Date.now()>end)throw Error('Timeout: '+label);await pause(25);}};
  await wait(()=>typeof pyodide!=='undefined'&&pyodide&&window.TnsGraphPreview&&!document.querySelector('#startup-loader'),'offline startup');
  applyLanguage('en');
- const blank='<prob xmlns="urn:TI.Problem" xmlns:g="urn:TI.GeoGrapher"><sym/><card><wdgt type="TI.GeoGrapher" ver="1.0"><g:fig><g:objs><g:axes_system><g:id>1</g:id><g:umin>-10</g:umin><g:umax>10</g:umax><g:vmin>-6.6666666667</g:vmin><g:vmax>6.6666666667</g:vmax><g:srfw>320</g:srfw><g:srfh>214</g:srfh></g:axes_system><g:expression><g:id>2</g:id><g:lbl>f1</g:lbl><g:expr>0</g:expr></g:expression><g:graph><g:id>3</g:id><g:par>1 2</g:par><g:expr>0</g:expr><g:asho>1</g:asho></g:graph></g:objs></g:fig></wdgt></card></prob>';
+ const blank='<prob xmlns="urn:TI.Problem" xmlns:g="urn:TI.GeoGrapher"><sym/><card><wdgt type="TI.GeoGrapher" ver="1.0"><g:fig><g:objs><g:axes_system><g:id>1</g:id><g:umin>-10</g:umin><g:umax>10</g:umax><g:vmin>-6.6666666667</g:vmin><g:vmax>6.6666666667</g:vmax><g:srfw>320</g:srfw><g:srfh>214</g:srfh></g:axes_system><g:expression><g:id>2</g:id><g:lbl>f1</g:lbl><g:expr>0</g:expr></g:expression><g:graph><g:id>3</g:id><g:par>1 2</g:par><g:expr>0</g:expr><g:asho>1</g:asho></g:graph><g:label><g:id>4</g:id><g:par>3</g:par><g:lbl_g/><g:x>8</g:x><g:y>200</g:y><g:chrs>1 1 3 0 0 0 f1(x)=0</g:chrs></g:label></g:objs></g:fig></wdgt></card></prob>';
  await loadXmlDoctorFiles([new File([blank],'Problem1.xml')],'file');
  const item=(await inspectXmlDocument()).items.find(i=>i.content_label==='Graph');must(item,'Blank graph missing');
  const opened=openGraphInLovePreview(item),view=opened.view;await pause(200);
@@ -38,6 +38,7 @@ async function check(circle){
  must(!entry.hidden&&Math.abs(bounds.top-paper.top)<2&&bounds.bottom<paper.bottom,'Default entry is not inside the graph screen');
  const submit=formula=>{field.value=formula;entry.requestSubmit();};
  submit('sin(x)');await pause(80);must(entry.hidden&&!view.root.dataset.error,'sin(x) failed: '+view.root.dataset.error);
+ const textCalls=[],ctx=view.canvas.getContext('2d'),fillText=ctx.fillText.bind(ctx);ctx.fillText=(text,...args)=>{textCalls.push(String(text));return fillText(text,...args);};view.draw();must(textCalls.filter(text=>text.startsWith('f1(x)=')).join('')==='f1(x)=sin(x)','Native graph label was duplicated or stale: '+textCalls);ctx.fillText=fillText;
  for(let i=0;i<20;i++)view.draw();must(!view.root.dataset.error,'Repeated redraw exhausted Calculator math budget');
  view.showEntry();must(entry.querySelector('label').textContent==='f2(x)=','Reopening did not offer next function');
  submit('cos(x)');await pause(70);must(view.getState().curves.length===2,'Second function not added');
