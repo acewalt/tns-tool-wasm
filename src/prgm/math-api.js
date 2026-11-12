@@ -1,11 +1,14 @@
-import { IDENT, key, split, expressionTree, evaluate, evaluatePrgmExpression, createMathContext, formatPrgmValue, normalizeTiMath, supportedMathFunctions, PrgmError } from './math.js?v=20261110-library-runtime-v37';
+import { IDENT, key, split, expressionTree, evaluate, evaluatePrgmExpression, createMathContext, formatPrgmValue, formatExpressionValue, normalizeTiMath, supportedMathFunctions, PrgmError } from './math.js?v=20261110-library-runtime-v37';
 import { TI_CATALOG_COMMAND_NAMES } from './catalog-functions.js';
+import {parseStoredTiValue} from './stored-values.js';
+import {captureExactTree} from './exact-format.js';
 
 const copy = value => Array.isArray(value) ? value.map(copy) : value;
 let nextSessionId=0;
 const CAS_ALIASES=new Set([...supportedMathFunctions,'d','diff','derivative','integral','integrate','lim','limit','sumseq','prodseq','surd','sqrt','system','solve','factor','expand','simplify','normal','laplace','ilaplace','desolve']);
 export function createMathSession(options = {}) {
   const variables = Object.create(null), context = createMathContext(options);
+  context.exactBindings=Object.create(null);context.exactVariables=variables;
   const functions=new Map(),symbolic=new Map(),deleted=new Set(),namespace=`tnscalcs${++nextSessionId}q`;
   const casNames=new Map(),casDisplay=new Map();let nextSymbol=0;
   const casName=name=>{name=key(name);if(!casNames.has(name)){const value=namespace+'v'+(++nextSymbol);casNames.set(name,value);casDisplay.set(value,name);}return casNames.get(name);};
@@ -24,19 +27,19 @@ export function createMathSession(options = {}) {
       return { value: undefined, display: complete(), kind: 'definition', stored: name };
     }
     if ((match = /^Define\s+([\p{L}_][\p{L}\p{N}_]*)\s*=\s*([\s\S]+)$/iu.exec(text)) || (match = /^([\p{L}_][\p{L}\p{N}_]*)\s*:=\s*([\s\S]+)$/u.exec(text))) {
-      const name = target(match[1]), value = evaluate(expressionTree(match[2]), variables, options.angleMode || 'RAD', context); variables[name] = copy(value);
-      result = { value, display: /^Define\b/i.test(text) ? complete() : formatPrgmValue(value), kind: 'assignment', stored: name };
+      const name=target(match[1]),node=expressionTree(match[2]),tree=captureExactTree(node,context.exactBindings,variables),value=evaluate(node,variables,options.angleMode||'RAD',context);variables[name]=copy(value);context.exactBindings[name]={expr:tree,value};
+      result = { value, display: /^Define\b/i.test(text) ? complete() : formatExpressionValue(tree,value,context), kind: 'assignment', stored: name };
     } else if (/^(DelVar|Lock|Unlock)\s+/i.test(text)) {
       const [, command, rest] = /^(DelVar|Lock|Unlock)\s+(.+)$/i.exec(text);
-      for (const item of split(rest, ',')) { const name = key(item.trim()); if (!IDENT.test(name)) throw new PrgmError('INVALID_NAME', 'Nombre no válido.'); if (key(command) === 'unlock') context.locks.delete(name); else if (key(command) === 'lock') context.locks.add(name); else { target(name); delete variables[name]; delete context.functions[name];functions.delete(name);symbolic.delete(name);deleted.add(name); } }
+      for (const item of split(rest, ',')) { const name = key(item.trim()); if (!IDENT.test(name)) throw new PrgmError('INVALID_NAME', 'Nombre no válido.'); if (key(command) === 'unlock') context.locks.delete(name); else if (key(command) === 'lock') context.locks.add(name); else { target(name); delete variables[name]; delete context.exactBindings[name]; delete context.functions[name];functions.delete(name);symbolic.delete(name);deleted.add(name); } }
       return { value: undefined, display: complete(), kind: 'command' };
     } else {
       const arrow = split(text, '→');
       const name = arrow.length === 2 ? target(arrow[1]) : null;
       if (arrow.length > 2) throw new PrgmError('SYNTAX_ERROR', 'Una asignación requiere un solo destino.');
-      const value = evaluate(expressionTree(name ? arrow[0] : text), variables, options.angleMode || 'RAD', context);
-      if (name) variables[name] = copy(value);
-      result = { value, display: value === undefined ? complete() : formatPrgmValue(value), kind: name ? 'assignment' : 'expression', ...(name ? { stored: name } : {}) };
+      const node=expressionTree(name?arrow[0]:text),tree=captureExactTree(node,context.exactBindings,variables),value=evaluate(node,variables,options.angleMode||'RAD',context);
+      if(name){variables[name]=copy(value);context.exactBindings[name]={expr:tree,value};}
+      result = { value, display: value === undefined ? complete() : formatExpressionValue(tree,value,context), kind: name ? 'assignment' : 'expression', ...(name ? { stored: name } : {}) };
     }
     if(result.stored)symbolic.delete(result.stored);
     if (result.value !== undefined) variables.ans = copy(result.value);
@@ -95,6 +98,7 @@ export const api = Object.freeze({
   normalize: normalizeTiMath,
   parse: expressionTree,
   createSession: createMathSession,
+  parseStoredValue: parseStoredTiValue,
   supportedFunctions: supportedMathFunctions,
 });
 if (typeof window !== 'undefined') window.TnsTiBasicMath = api;

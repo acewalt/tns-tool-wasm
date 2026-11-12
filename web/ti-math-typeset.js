@@ -2,7 +2,9 @@
 (() => {
   'use strict';
   const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-  const normalize = value => String(value ?? '').replace(/\uF03F/g,'e').replace(/\uF008/g,'d').replace(/[−–]/g,'-').replace(/\r\n?/g,'\n');
+  // U+F042 is TI's arbitrary-integer prefix. It is rendered as n, while the
+  // original source (and the following digits identifying the constant) stays intact.
+  const normalize = value => String(value ?? '').replace(/\uF03F/g,'e').replace(/\uF008/g,'d').replace(/\uF042/g,'n').replace(/[−–]/g,'-').replace(/\r\n?/g,'\n');
   const row = (...parts) => `<mrow>${parts.join('')}</mrow>`;
   const fence = (body, open='(', close=')') => row(`<mo stretchy="true">${esc(open)}</mo>`,body,`<mo stretchy="true">${esc(close)}</mo>`);
   const atom = s => /^\d+(?:\.\d*)?(?:[eE][+-]?\d+)?$/.test(s) ? `<mn>${esc(s)}</mn>` : `<mi>${esc(s)}</mi>`;

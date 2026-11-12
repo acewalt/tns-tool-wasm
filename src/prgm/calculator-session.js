@@ -1,9 +1,10 @@
 import {createMathSession} from './math-api.js?v=20261110-library-runtime-v37';
 import {compilePrgm,createPrgmPreview} from './runtime.js?v=20261110-library-runtime-v37';
-import {split,formatPrgmValue,PrgmError} from './math.js?v=20261110-library-runtime-v37';
+import {split,expressionTree,formatPrgmValue,PrgmError} from './math.js?v=20261110-library-runtime-v37';
 
 const key=name=>String(name||'').trim().toLowerCase();
 const clone=value=>Array.isArray(value)?value.map(clone):value;
+import {captureExactTree} from './exact-format.js';
 const terminal=state=>['done','error','stopped'].includes(state.status);
 
 export function normalizeCalculatorProgram(item={}){
@@ -19,13 +20,13 @@ export function normalizeCalculatorProgram(item={}){
 // continue to belong to the source problem rather than capturing the caller.
 export function createCalculatorSession(options={}){
   const math=options.mathSession||createMathSession(options),rows=(options.initialRows||[]).map(row=>({...row}));
-  const localId=key(options.problemId||'local'),libraryScopes=new Map();
+  const localId=key(options.problemId||'local'),libraryScopes=new Map(),libraryExactScopes=new Map();
   let runtime=null,program=null,currentEntry='',committed=false,currentRegistry=null;
   function programs(){const all=typeof options.getPrograms==='function'?options.getPrograms():options.programs||[];return (all||[]).map(normalizeCalculatorProgram).filter(item=>item.name&&item.source.trim());}
   function notify(){options.onRowsChange?.(rows.map(row=>({...row})));options.onSessionChange?.(getVariables());}
   function makeRegistry(){
     const locals=programs(),libraryItems=(typeof options.getLibraryPrograms==='function'?options.getLibraryPrograms():options.libraryPrograms||locals).map(normalizeCalculatorProgram).filter(item=>item.name&&item.source.trim());
-    const groups=new Map([[localId,{id:localId,items:[],globals:math.variables,table:Object.create(null)}]]),records=new Map(),localNames=new Map(),aliases=new Map();
+    const groups=new Map([[localId,{id:localId,items:[],globals:math.variables,exactBindings:math.context.exactBindings||(math.context.exactBindings=Object.create(null)),table:Object.create(null)}]]),records=new Map(),localNames=new Map(),aliases=new Map();
     const itemScope=item=>key(item.problemId||item.file||localId),identityFor=item=>(locals.some(local=>key(local.name)===key(item.name)&&itemScope(local)===itemScope(item))?localId:itemScope(item))+'\0'+key(item.name);
     function add(item,isLocal){
       const identity=isLocal?localId+'\0'+key(item.name):identityFor(item),id=identity.split('\0')[0];
@@ -34,11 +35,11 @@ export function createCalculatorSession(options={}){
       if(!group){
         const supplied=options.getLibraryVariables?.(item);
         const globals=supplied&&typeof supplied==='object'?supplied:libraryScopes.get(id)||Object.create(null);libraryScopes.set(id,globals);
-        group={id,items:[],globals,table:Object.create(null)};groups.set(id,group);
+        if(!libraryExactScopes.has(id))libraryExactScopes.set(id,Object.create(null));group={id,items:[],globals,exactBindings:libraryExactScopes.get(id),table:Object.create(null)};groups.set(id,group);
       }
       let compiled,error;
       try{compiled=compilePrgm(item.source);compiled={...compiled,name:compiled.name||item.name,parameters:compiled.parameters.length?compiled.parameters:item.parameters.split(',').map(key).filter(Boolean)};}catch(failure){error=failure;}
-      const descriptor={item,program:compiled,parameters:compiled?.parameters||item.parameters.split(',').map(key).filter(Boolean),globals:group.globals,functions:group.table,error};
+      const descriptor={item,program:compiled,parameters:compiled?.parameters||item.parameters.split(',').map(key).filter(Boolean),globals:group.globals,exactBindings:group.exactBindings,functions:group.table,error};
       group.items.push(item);group.table[key(item.name)]=descriptor;records.set(identity,descriptor);if(isLocal)localNames.set(key(item.name),descriptor);
     }
     locals.forEach(item=>add(item,true));libraryItems.forEach(item=>add(item,false));
@@ -51,16 +52,16 @@ export function createCalculatorSession(options={}){
   }
   function syncLibraries(registry){for(const group of registry.groups.values())if(group.id!==localId&&group.items[0])options.onLibraryVariablesChange?.(group.items[0],Object.fromEntries(Object.entries(group.globals).map(([name,value])=>[name,clone(value)])));}
   function bind(instance,registry){
-    for(const descriptor of registry.records.values())descriptor.invoke=args=>{if(descriptor.error)throw descriptor.error;return instance.callFunction(descriptor,args);};
+    for(const descriptor of registry.records.values())descriptor.invoke=(args,metadata)=>{if(descriptor.error)throw descriptor.error;return instance.callFunction(descriptor,args,metadata);};
   }
-  function prepare(descriptor,args=[],registry=currentRegistry){
+  function prepare(descriptor,args=[],registry=currentRegistry,argumentTrees=[]){
     const item=descriptor.item;
-    const instance=createPrgmPreview(item.source,{...options.runtimeOptions,language:options.runtimeOptions?.language||options.language,name:item.name,parameters:item.parameters,args,compiledProgram:descriptor.program,sharedVariables:descriptor.globals,sharedFunctions:descriptor.functions,angleMode:options.getAngleMode?.()||options.angleMode||'RAD',interactive:true});
+    const instance=createPrgmPreview(item.source,{...options.runtimeOptions,language:options.runtimeOptions?.language||options.language,name:item.name,parameters:item.parameters,args,argExpressions:argumentTrees,sharedExactBindings:descriptor.exactBindings,compiledProgram:descriptor.program,sharedVariables:descriptor.globals,sharedFunctions:descriptor.functions,angleMode:options.getAngleMode?.()||options.angleMode||'RAD',interactive:true});
     bind(instance,registry);return instance;
   }
-  function runFunction(descriptor,args,registry){
+  function runFunction(descriptor,args,registry,metadata={}){
     if(descriptor.error)throw descriptor.error;
-    const instance=prepare(descriptor,args,registry);let state=instance.snapshot();
+    const instance=prepare(descriptor,args,registry,metadata.argumentTrees);let state=instance.snapshot();
     while(!terminal(state)&&state.status!=='waiting'){state=instance.run(250);if(state.keyPolling||instance.waitUntil)throw new PrgmError('FUNCTION_SIDE_EFFECT','Una Func no puede esperar entradas o tiempo dentro de una expresión.');}
     expressionOutput.push(...state.output.filter(row=>row.kind!=='return').map(row=>({...row})));
     syncLibraries(registry);
@@ -74,7 +75,7 @@ export function createCalculatorSession(options={}){
     const registered=math.context.documentFunctions||(math.context.documentFunctions=new Set());for(const name of registered)delete math.context.functions[name];registered.clear();
     const available=new Map([...registry.localNames,...registry.aliases]);
     for(const [name,descriptor]of available){
-      registered.add(name);math.context.functions[name]={parameters:descriptor.parameters,invoke:args=>{if(key(descriptor.item.documentType)!=='func')throw new PrgmError('PROGRAM_IN_EXPRESSION','Un Prgm solo puede llamarse como instrucción independiente.');return runFunction(descriptor,args,registry);}};
+      registered.add(name);math.context.functions[name]={parameters:descriptor.parameters,invoke:(args,metadata)=>{if(key(descriptor.item.documentType)!=='func')throw new PrgmError('PROGRAM_IN_EXPRESSION','Un Prgm solo puede llamarse como instrucción independiente.');return runFunction(descriptor,args,registry,metadata);}};
     }
     math.context.documentCallNames=new Set([...available.keys()]);
   }
@@ -88,8 +89,8 @@ export function createCalculatorSession(options={}){
       throw new PrgmError(hidden?'LIBRARY_ACCESS':'UNDEFINED_LIBRARY_FUNCTION',hidden?'Esta definición es privada de la biblioteca.':'La función de biblioteca no está disponible en este documento.');
     }
     if(descriptor&&key(descriptor.item.documentType)!=='func'){
-      const args=match[2].trim()?split(match[2],',').map(value=>math.expression(value)):[];
-      runtime=prepare(descriptor,args,registry);
+      const argumentSources=match[2].trim()?split(match[2],','):[],argumentTrees=argumentSources.map(source=>captureExactTree(expressionTree(source),math.context.exactBindings,math.variables)),args=argumentSources.map(source=>math.expression(source));
+      runtime=prepare(descriptor,args,registry,argumentTrees);
       // Argument Func calls run before the Prgm body. Keep their Disp output in
       // the same transcript instead of losing it when switching runtimes.
       for(const output of expressionOutput)runtime.append(output.text,output.kind,{...output});

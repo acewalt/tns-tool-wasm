@@ -5,7 +5,7 @@
     const result = Object.fromEntries(kinds.map(kind => [kind, []]));
     for (const item of items) {
       const kind = item.type === 'Lua Script' ? 'lua'
-        : item.content_label === 'Python' ? 'python'
+        : ['Python', 'PythonShell'].includes(item.content_label) || item.name === 'TI.PythonShell' ? 'python'
         : item.content_label === 'Image' ? 'images'
         : item.content_label === 'Spreadsheet' ? 'sheets'
         : item.content_label === 'Notepad' ? 'notes'

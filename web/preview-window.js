@@ -48,7 +48,7 @@
       }
       if (!stage) return null;
       center.append(stage);
-      const toLeft = ['.preview-controls','.love-graph-editor','.love-calculator-editor','.ti-note-modebar','.document-image-controls'];
+      const toLeft = ['.preview-controls','.love-graph-editor','.love-calculator-editor','.ti-note-modebar','.document-image-controls','.spreadsheet-tools'];
       const toRight = ['.ti-note-formatbar','#love-preview-log','#lua-preview-input','#lua-preview-log','.py-preview-terminal-label'];
       for (const selector of toLeft) { const node = modal.querySelector(selector); if (node) left.append(node); }
       for (const selector of toRight) { const node = modal.querySelector(selector); if (node) right.append(node); }

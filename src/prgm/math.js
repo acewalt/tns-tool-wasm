@@ -1,5 +1,6 @@
 // TI-BASIC expressions shared by Program Preview and the Calculator widget.
 // This is a bounded parser/evaluator: source is never evaluated as JavaScript.
+import {captureExactTree,exactExpressionText} from './exact-format.js';
 export const IDENT = /^[\p{L}_][\p{L}\p{N}_]*$/u;
 export const QUALIFIED_IDENT = /^[\p{L}_][\p{L}\p{N}_]*(?:\\[\p{L}_][\p{L}\p{N}_]*)*$/u;
 export const key = value => String(value).toLowerCase();
@@ -175,6 +176,10 @@ function primeFactors(value,context){
 }
 export function formatExpressionValue(node,value,context=createMathContext()){
   if(node?.type==='call'&&node.name==='factor'&&typeof value==='number')return primeFactors(value,context).map(([base,power])=>String(base)+(power>1?'^'+power:'')).join('*');
+  if(typeof value==='number'){
+    const exact=exactExpressionText(node,{bindings:context.exactBindings,variables:context.exactVariables,angleMode:context.modes[2]===2?'DEG':context.modes[2]===3?'GRAD':'RAD'});
+    if(exact!==null)return exact;
+  }
   return formatPrgmValue(value);
 }
 export function evaluate(node, vars, angle = 'RAD', context = createMathContext({ angleMode: angle })) {
@@ -244,7 +249,16 @@ export function evaluate(node, vars, angle = 'RAD', context = createMathContext(
   if (node.type !== 'call') fail('INTERNAL_ERROR', 'Expresión desconocida.');
   if (Object.hasOwn(context.functions, n)) {
     const fn = context.functions[n]; if (++context.calls > 100) { context.calls--; fail('EXECUTION_LIMIT', 'Límite de llamadas de función alcanzado.'); }
-    try { if (node.args.length !== fn.parameters.length) fail('ARGUMENT_ERROR', 'Número de argumentos incorrecto para ' + n + '().'); const args = node.args.map(ev); if (typeof fn.invoke === 'function') return fn.invoke(args); const scope = Object.assign(Object.create(null), vars); fn.parameters.forEach((p, i) => scope[p] = args[i]); return evaluate(fn.body, scope, currentAngle, context); } finally { context.calls--; }
+    try {
+      if (node.args.length !== fn.parameters.length) fail('ARGUMENT_ERROR', 'Número de argumentos incorrecto para ' + n + '().');
+      const argumentTrees=node.args.map(arg=>captureExactTree(arg,context.exactBindings,vars)),args=node.args.map(ev);
+      if(typeof fn.invoke==='function')return fn.invoke(args,{argumentTrees});
+      const scope=Object.assign(Object.create(null),vars),bindings=Object.assign(Object.create(null),context.exactBindings);
+      fn.parameters.forEach((p,i)=>{scope[p]=args[i];bindings[p]={value:args[i],expr:argumentTrees[i]};});
+      const before=context.exactBindings,beforeVars=context.exactVariables;
+      context.exactBindings=bindings;context.exactVariables=scope;
+      try{return evaluate(fn.body,scope,currentAngle,context);}finally{context.exactBindings=before;context.exactVariables=beforeVars;}
+    } finally { context.calls--; }
   }
   if (!NUMERIC_FUNCTIONS.includes(n)) fail('UNSUPPORTED_FUNCTION', 'Función no soportada por el preview numérico: ' + n + '(). Use el CAS para operaciones simbólicas.');
   const arity = (min, max = min) => { if (node.args.length < min || node.args.length > max) fail('ARGUMENT_ERROR', 'Número de argumentos incorrecto para ' + n + '().'); };
