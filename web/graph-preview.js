@@ -212,7 +212,8 @@
         ctx.strokeStyle=curve.color;ctx.lineWidth=curve===selectedCurve&&drag?.curve?2.1:curve.width||1.2;ctx.setLineDash(curve.style===1?[5,4]:curve.style===2?[1,3]:[]);ctx.beginPath();let previous=null;
         for(const p of samples.points){if(!p){previous=null;continue;}const screen=xy(p);if(!Number.isFinite(screen.y)||Math.abs(screen.y)>height*8){previous=null;continue;}if(previous&&Math.abs(previous.y-screen.y)<height*1.5)ctx.lineTo(screen.x,screen.y);else ctx.moveTo(screen.x,screen.y);previous=screen;}ctx.stroke();
       }
-      if(selectedCurve?.formula.trim()) {ctx.fillStyle=selectedCurve.color;ctx.font='12px Times New Roman';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(`${selectedCurve.name}(x)=${selectedCurve.formula}`,4,entry.hidden?14:43);}
+      const nativeLabel=selectedCurve&&state.objects.some(obj=>obj.kinds.includes('lbl_g')&&String(obj.par||'').trim().split(/\s+/)[0]===selectedCurve.id&&obj.asho!=='0');
+      if(selectedCurve?.formula.trim()&&!nativeLabel) {ctx.fillStyle=selectedCurve.color;ctx.font='12px Times New Roman';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(`${selectedCurve.name}(x)=${selectedCurve.formula}`,4,entry.hidden?14:43);}
       return errors;
     }
     function textForObject(obj) {
@@ -238,8 +239,10 @@
         else if(['text','label'].includes(obj.type)) {
           // Axis numbers and titles are laid out with the current viewport by
           // drawAxes. Their saved paper-coordinate copies would overlap ticks.
-          if(obj.children.lbl_a || ids.some(id=>byId.get(id)?.children.axisval || byId.get(id)?.children.axistic))continue;
-          const label=textForObject(obj);if(!label)continue;let q=paperToWorld(state,obj.x,obj.y);if(obj.children.lbl_p){const parent=point(ids[0]);if(parent){q={x:parent.x+finite(obj.children.lbl_p.dx)/state.surface.width*(state.originalViewport.xmax-state.originalViewport.xmin),y:parent.y+finite(obj.children.lbl_p.dy)/state.surface.height*(state.originalViewport.ymax-state.originalViewport.ymin)};}}
+          if(obj.kinds.includes('lbl_a') || ids.some(id=>byId.get(id)?.children.axisval || byId.get(id)?.children.axistic))continue;
+          const curve=obj.kinds.includes('lbl_g')&&state.curves.find(curve=>curve.id===ids[0]);
+          if(curve&&(!curve.visible||!curve.formula.trim()))continue;
+          const label=curve?`${curve.name}(x)=${curve.formula}`:textForObject(obj);if(!label)continue;let q=paperToWorld(state,obj.x,obj.y);if(obj.children.lbl_p){const parent=point(ids[0]);if(parent){q={x:parent.x+finite(obj.children.lbl_p.dx)/state.surface.width*(state.originalViewport.xmax-state.originalViewport.xmin),y:parent.y+finite(obj.children.lbl_p.dy)/state.surface.height*(state.originalViewport.ymax-state.originalViewport.ymin)};}}
           const pos=xy(q);ctx.fillStyle=color(obj.atco||obj.acol);ctx.font='11px Arial';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(label,pos.x,pos.y);}
         else if(['conic','locus','implicit','surface','image'].includes(obj.type))unsupported.add(obj.type);
       }
