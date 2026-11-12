@@ -3,6 +3,7 @@ import path from "node:path";
 import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import { installTiNspireMocks } from "./ti-nspire-mocks.js";
+import { installLuaDocumentBindings } from "./document-symbols.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = path.resolve(__dirname, "..", "..");
@@ -63,6 +64,14 @@ export class LuaRuntime {
 
     installLuaJsCompatibilityPatches(this.context, this.state);
     installTiNspireMocks(this.context, this.state, this.options);
+    installLuaDocumentBindings(this.context, {
+      variables: this.state.store, basicFunctions: this.options.basicFunctions,
+      language: this.options.language,
+      onError: error => {
+        const item = { api: 'math.eval', code: error.code || 'TI_EVALUATION_ERROR', message: String(error.message || error) };
+        if (!this.state.missingApis.some(previous => previous.message === item.message)) this.state.missingApis.push(item);
+      },
+    });
     return this;
   }
 
@@ -93,10 +102,10 @@ export class LuaRuntime {
   }
 
   callLifecycle() {
-    for (const eventName of ["create", "construction"]) {
+    for (const eventName of ["resize", "create", "construction"]) {
       try {
         const handler = this.getGlobalPath(`on.${eventName}`);
-        if (handler) this.context.lua_call(handler, []);
+        if (handler) this.context.lua_call(handler, eventName === 'resize' ? [Number(this.options.width) || 318, Number(this.options.height) || 212] : []);
       } catch (error) {
         this.state.errors.push(serializeError(error, `lifecycle:${eventName}`));
       }
@@ -371,6 +380,9 @@ function installLuaJsCompatibilityPatches(global, state) {
   };
   global.lua_tableget = (table, key) => {
     if (table == null || table === false || key === undefined || key === null) return null;
+    // VM string literals have their own intrinsic prototype. Resolve their
+    // methods in this runtime's library instead of a previous VM's prototype.
+    if (typeof table === 'string') return originalTableGet(global.G.str.string, key);
     try {
       return originalTableGet(table, key);
     } catch (error) {

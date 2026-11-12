@@ -86,6 +86,9 @@ dotimer = function () {
     var mathTable = G.str.math;
     var varTable = G.str.var;
     var originalEval = lua_tableget(mathTable, "eval");
+    // The current preview already installed a bounded, problem-scoped TI
+    // interpreter. Do not replace it with this older document-wide fallback.
+    if (originalEval && originalEval.__tnsDocumentScope) return;
     var recallFn = lua_tableget(varTable, "recall");
     var storeFn = lua_tableget(varTable, "store");
     if (typeof originalEval !== "function") return;

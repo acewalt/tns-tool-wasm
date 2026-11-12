@@ -55,7 +55,7 @@ test('Python drafts persist to their exact staged resource without marking an un
 
 test('Python Widgets opens its editor; explicit Run and Preview PY route to a separate shell', async () => {
   const item={content_label:'Python',detail:{name:'demo.py'},content:'x=7'},data={name:'demo.py',source:'x=7'},calls=[];
-  const context={Map,documentPreviewDocumentName:()=> 'document',ensureXmlStageCopy:async()=>{},documentPythonPreviewSource:()=>data,documentPythonPreviewFile:()=>'/stage/demo.py',createPythonPreviewExecutionSession:()=>({execute(){},dispose(){}}),setDocumentPythonPreviewSource:(_item,text)=>{data.source=text;},analyzePythonPreviewSource:async()=>({errors:0}),xmlLog(){},t:x=>x,openPyPreviewModal:async(source,options)=>calls.push({kind:'shell',source,options}),window:{TnsPythonPreview:{openEditor:(source,options)=>calls.push({kind:'editor',source,options})}}};
+  const context={Map,documentPreviewFileKey:file=>file,documentPreviewDocumentName:()=> 'document',ensureXmlStageCopy:async()=>{},documentPythonPreviewSource:()=>data,documentPythonPreviewFile:()=>'/stage/demo.py',createPythonPreviewExecutionSession:()=>({execute(){},dispose(){}}),setDocumentPythonPreviewSource:(_item,text)=>{data.source=text;},analyzePythonPreviewSource:async()=>({errors:0}),xmlLog(){},t:x=>x,openPyPreviewModal:async(source,options)=>calls.push({kind:'shell',source,options}),window:{TnsPythonPreview:{openEditor:(source,options)=>calls.push({kind:'editor',source,options})}}};
   vm.runInNewContext(slice('async function openDocumentAppPreview(', 'function programEditorVisibilityWords(')+'\nglobalThis.openPreview=openDocumentAppPreview;',context);
   const groups={python:[item],widgets:[{previewKind:'python',previewItem:item}]},session={};
   await context.openPreview(groups,'widgets',0,session);assert.equal(calls.at(-1).kind,'editor');
@@ -63,4 +63,25 @@ test('Python Widgets opens its editor; explicit Run and Preview PY route to a se
   await calls.at(-1).options.onRun({source:'x=9'},{expanded:true});assert.equal(calls.at(-1).kind,'shell');assert.equal(calls.at(-1).source,'x=9');assert.equal(calls.at(-1).options.autoRun,true);
   await calls.at(-1).options.onEdit({expanded:true});assert.equal(calls.at(-1).kind,'editor');assert.equal(calls.at(-1).source.source,'x=9');
   await context.openPreview(groups,'python',0,{pythonRun:true});assert.equal(calls.at(-1).kind,'shell');assert.equal(calls.at(-1).options.autoRun,false,'Opening a shell from Inspector must not execute the script');
+});
+
+test('native Python shells resolve only editors in their own problem and honor explicit script names', () => {
+  const ctx = {documentPreviewFileKey: file => file.split('/').pop()};
+  vm.runInNewContext(slice('function documentPythonShellEditor(', 'function documentPythonPreviewSource(')+'\nglobalThis.resolve=documentPythonShellEditor;',ctx);
+  const editor=(file,path,name)=>({file,path,content_label:'Python',detail:{name}});
+  const first=editor('/stage/Problem1.xml','/prob/card[1]/wdgt','one.py');
+  const second=editor('/stage/Problem1.xml','/prob/card[3]/wdgt','two.py');
+  const foreign=editor('/stage/Problem2.xml','/prob/card[4]/wdgt','two.py');
+  const shell={file:'/stage/Problem1.xml',path:'/prob/card[4]/wdgt',name:'TI.PythonShell',detail:{}};
+  assert.equal(ctx.resolve(shell,[foreign,first,second]),second);
+  assert.equal(ctx.resolve({...shell,detail:{name:'one'}},[foreign,first,second]),first);
+  assert.equal(ctx.resolve({...shell,file:'/stage/Problem3.xml'},[foreign,first,second]),null);
+});
+
+test('full Python Syntax Doctor autosaves draft changes without resetting the changes comparison', () => {
+  let written; const box={value:'x = 7',disabled:false};
+  const ctx={document:{querySelector:selector=>selector==='#py-code'?box:{}},pyDoctor:{target:{mode:'xml-python',item:{name:'demo.py'}},lastOriginal:'x = 1'},setDocumentPythonPreviewSource:(item,text)=>{written={item,text};return text;}};
+  vm.runInNewContext(slice('function persistPyDoctorDraft(', 'async function openPyDoctorPreview(')+'\nglobalThis.persist=persistPyDoctorDraft;',ctx);
+  ctx.persist();assert.equal(written.text,'x = 7');assert.equal(ctx.pyDoctor.lastOriginal,'x = 1');
+  box.disabled=true;written=null;ctx.persist();assert.equal(written,null);
 });

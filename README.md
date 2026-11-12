@@ -56,13 +56,15 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.38/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.38)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.39/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.39)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
 **Ndless C/C++ projects currently compile on Windows only. Linux desktop support is planned; no Linux download is published yet.**
 
 ## What's new
+
+**0.1.39:** Document previews preserve split application pages and shared variables. Graphs support stored curves, mouse-wheel zoom, dragging and context tools; Notes retain native math boxes and saved exact answers. Spreadsheet range and formula editing is expanded. Python Editor, Syntax Doctor PY and Python Shell have separate actions, with staged autosave and a shared execution namespace. Preview support is still partial; this is not a full TI-Nspire emulator.
 
 **0.1.38:** Expanded view disables the magnifier and displays the preview without additional zoom. Returning to Calculator view restores the session's previous zoom setting.
 
