@@ -1,6 +1,7 @@
 // Shared, DOM-free TI-BASIC text and CX II graphics preview.
 import { IDENT, key, PrgmError, fail, number, truth, split, expressionTree, evaluate, createMathContext, formatPrgmValue, formatExpressionValue, normalizeTiMath, evaluatePrgmExpression } from './math.js?v=20261110-library-runtime-v37';
 import {PrgmDrawing, isDrawingCommand} from './drawing.js?v=20261105-sonar-runtime-v32';
+import {captureExactTree} from './exact-format.js';
 export { PrgmError, formatPrgmValue, evaluatePrgmExpression } from './math.js?v=20261110-library-runtime-v37';
 const routineHeader=/^Define\s+(?:(?:LibPub|LibPriv)\s+)?([\p{L}_][\p{L}\p{N}_]*)\(([^)]*)\)\s*=\s*(Prgm|Func)?$/iu;
 export function compilePrgm(source) {
@@ -115,8 +116,8 @@ const copyValue=value=>Array.isArray(value)?value.map(copyValue):value;
 function namespace(shared,scope,field) {
   return new Proxy(Object.create(null),{
     get:(_,name)=>scope.names.has(name)?scope[field][name]:shared[name],
-    set:(_,name,value)=>{(scope.names.has(name)?scope[field]:shared)[name]=value;return true;},
-    deleteProperty:(_,name)=>{delete (scope.names.has(name)?scope[field]:shared)[name];return true;},
+    set:(_,name,value)=>{(scope.names.has(name)?scope[field]:shared)[name]=value;if(field==='values')delete scope.exactProxy?.[name];return true;},
+    deleteProperty:(_,name)=>{delete (scope.names.has(name)?scope[field]:shared)[name];if(field==='values')delete scope.exactProxy?.[name];return true;},
     ownKeys:()=>[...new Set([...Reflect.ownKeys(shared).filter(name=>!scope.names.has(name)),...Reflect.ownKeys(scope[field])])],
     getOwnPropertyDescriptor:(_,name)=>Object.hasOwn(scope.names.has(name)?scope[field]:shared,name)?{enumerable:true,configurable:true,writable:true,value:(scope.names.has(name)?scope[field]:shared)[name]}:undefined
   });
@@ -127,6 +128,7 @@ export class PrgmPreview {
     const execution=options._execution;
     this.source=String(source);this.options=options;this.angleMode=['DEG','GRAD'].includes(options.angleMode)?options.angleMode:'RAD';this.output=execution?.output||[];this.events=execution?.events||[];this.status='ready';this.pc=0;this.pending=null;this.error=null;this.lastLine=0;this.branches=new Set();this.loops=new Map();this.callStack=[];this.lastValue=undefined;this.hasLastValue=false;
     this.globals=execution?.globals||options.sharedVariables||Object.create(null);this.sharedFunctions=execution?.sharedFunctions||options.sharedFunctions||Object.create(null);this.scope=execution?.scope||{names:new Set(),values:Object.create(null),functions:Object.create(null)};this.vars=namespace(this.globals,this.scope,'values');
+    this.exactGlobals=execution?.exactGlobals||options.sharedExactBindings||Object.create(null);this.scope.exact||=Object.create(null);this.exact=namespace(this.exactGlobals,this.scope,'exact');this.scope.exactProxy=this.exact;
     this.meter=execution?.meter||{executed:0,window:0};this.keyboard=execution?.keyboard||{queue:[],polling:false,waiting:false};
     this.mathContext=execution?.mathContext||createMathContext({...options,getKey:mode=>this.readKey(mode)});
     if(!execution){
@@ -155,6 +157,7 @@ export class PrgmPreview {
         const valid=value=>typeof value==='number'?Number.isFinite(value):typeof value==='string'||typeof value==='boolean'||Array.isArray(value)&&value.every(valid);
         if(!valid(value))fail('ARGUMENT_ERROR','El argumento «'+name+'» no es un valor válido del preview.');
         this.scope.names.add(name);this.vars[name]=copyValue(value);
+        if(options.argExpressions?.[index])this.exact[name]={value,expr:options.argExpressions[index]};
       });
     } catch(error){this.program={code:[],warnings:[]};this.name=options.name||'programa';this.handleError(error);}
   }
@@ -168,16 +171,16 @@ export class PrgmPreview {
     this.keyboard.waiting=false;return '';
   }
   sendKey(name){if(this.keyboard.queue.length<100)this.keyboard.queue.push(String(name));this.keyboard.waiting=false;this.checkpoint();return this.snapshot();}
-  frame(){return {program:this.program,pc:this.pc,scope:this.scope,vars:this.vars,globals:this.globals,sharedFunctions:this.sharedFunctions,branches:this.branches,loops:this.loops,tries:this.tries,lastCaughtError:this.lastCaughtError,lastValue:this.lastValue,hasLastValue:this.hasLastValue};}
-  restoreFrame(frame){Object.assign(this,frame);this.mathContext.prgmScope=this.scope;this.mathContext.prgmRuntime=this;}
-  enterRoutine(fn,args,returnPc){
+  frame(){return {program:this.program,pc:this.pc,scope:this.scope,vars:this.vars,exact:this.exact,exactGlobals:this.exactGlobals,globals:this.globals,sharedFunctions:this.sharedFunctions,branches:this.branches,loops:this.loops,tries:this.tries,lastCaughtError:this.lastCaughtError,lastValue:this.lastValue,hasLastValue:this.hasLastValue};}
+  restoreFrame(frame){Object.assign(this,frame);this.mathContext.prgmScope=this.scope;this.mathContext.prgmRuntime=this;this.mathContext.exactBindings=this.exact;this.mathContext.exactVariables=this.vars;}
+  enterRoutine(fn,args,returnPc,argumentTrees=[]){
     if(this.callStack.length+this.mathContext.calls>=100)fail('EXECUTION_LIMIT','Límite de llamadas de subrutina alcanzado.');
     if(args.length!==fn.parameters.length)fail('ARGUMENT_ERROR','Número de argumentos incorrecto para '+fn.program.name+'().');
     const frame=this.frame();frame.pc=returnPc;this.callStack.push(frame);
     this.program=fn.program;this.pc=0;this.branches=new Set();this.loops=new Map();this.tries=[];this.lastCaughtError=null;
     this.globals=fn.globals||this.globals;this.sharedFunctions=fn.functions||this.sharedFunctions;this.lastValue=undefined;this.hasLastValue=false;
-    this.scope={names:new Set(fn.parameters),values:Object.create(null),functions:Object.create(null)};this.vars=namespace(this.globals,this.scope,'values');
-    fn.parameters.forEach((name,index)=>this.vars[name]=copyValue(args[index]));this.mathContext.prgmScope=this.scope;
+    this.scope={names:new Set(fn.parameters),values:Object.create(null),functions:Object.create(null),exact:Object.create(null)};this.vars=namespace(this.globals,this.scope,'values');this.exactGlobals=fn.exactBindings||this.exactGlobals;this.exact=namespace(this.exactGlobals,this.scope,'exact');this.scope.exactProxy=this.exact;
+    fn.parameters.forEach((name,index)=>{this.vars[name]=copyValue(args[index]);if(argumentTrees[index])this.exact[name]={value:args[index],expr:argumentTrees[index]};});this.mathContext.prgmScope=this.scope;
   }
   finishRoutine(value,hasValue=false){
     if(!hasValue&&this.program.documentKind==='func'&&this.hasLastValue){value=this.lastValue;hasValue=true;}
@@ -185,10 +188,10 @@ export class PrgmPreview {
     if(hasValue){this.returnValue=value;if(!this.options._silentReturn)this.append(formatPrgmValue(value),'return');}
     this.status='done';return this.pc+1;
   }
-  callFunction(fn,args){
+  callFunction(fn,args,metadata={}){
     if(fn.program.documentKind!=='func')fail('PROGRAM_IN_EXPRESSION','Un Prgm solo puede llamarse como instrucción independiente.');
     const previousScope=this.mathContext.prgmScope,previousRuntime=this.mathContext.prgmRuntime;
-    const child=new PrgmPreview('',{...this.options,name:fn.program.name,parameters:'',args,_silentReturn:true,_execution:{program:fn.program,mathContext:this.mathContext,globals:fn.globals||this.globals,sharedFunctions:fn.functions||this.sharedFunctions,meter:this.meter,keyboard:this.keyboard,graphics:this.graphics,output:this.output,events:this.events}});
+    const child=new PrgmPreview('',{...this.options,name:fn.program.name,parameters:'',args,argExpressions:metadata.argumentTrees,_silentReturn:true,_execution:{program:fn.program,mathContext:this.mathContext,globals:fn.globals||this.globals,exactGlobals:fn.exactBindings||this.exactGlobals,sharedFunctions:fn.functions||this.sharedFunctions,meter:this.meter,keyboard:this.keyboard,graphics:this.graphics,output:this.output,events:this.events}});
     try{
       while(!['done','error','stopped','waiting'].includes(child.status)){
         child.step(false);
@@ -198,7 +201,7 @@ export class PrgmPreview {
       if(child.status==='waiting')fail('FUNCTION_SIDE_EFFECT','Una Func no puede solicitar entradas dentro de una expresión.');
       if(child.returnValue===undefined)fail('MISSING_RETURN','La Func '+fn.program.name+'() no devolvió un valor.');
       return copyValue(child.returnValue);
-    }finally{this.mathContext.prgmScope=previousScope;this.mathContext.prgmRuntime=previousRuntime;}
+    }finally{this.mathContext.prgmScope=previousScope;this.mathContext.prgmRuntime=previousRuntime;this.mathContext.exactBindings=this.exact;this.mathContext.exactVariables=this.vars;}
   }
   evaluateString(source,vars=this.vars){
     // expr() parses TI source through the same bounded interpreter. It never
@@ -206,14 +209,14 @@ export class PrgmPreview {
     if(!/^\s*(?:Disp\b|[\p{L}_][\p{L}\p{N}_]*(?:\s*\[[^\]]+\])?\s*:=)/iu.test(source))return evaluate(expressionTree(source),vars,this.angleMode,this.mathContext);
     if(this.mathContext.calls>=100)fail('EXECUTION_LIMIT','Límite de llamadas expr() alcanzado.');
     const previousScope=this.mathContext.prgmScope,previousRuntime=this.mathContext.prgmRuntime;
-    const child=new PrgmPreview('',{...this.options,name:this.name,parameters:'',args:[],_silentReturn:true,_execution:{program:compilePrgm(source),mathContext:this.mathContext,globals:this.globals,sharedFunctions:this.sharedFunctions,meter:this.meter,keyboard:this.keyboard,graphics:this.graphics,scope:this.scope,output:this.output,events:this.events}});
+    const child=new PrgmPreview('',{...this.options,name:this.name,parameters:'',args:[],_silentReturn:true,_execution:{program:compilePrgm(source),mathContext:this.mathContext,globals:this.globals,exactGlobals:this.exactGlobals,sharedFunctions:this.sharedFunctions,meter:this.meter,keyboard:this.keyboard,graphics:this.graphics,scope:this.scope,output:this.output,events:this.events}});
     this.mathContext.calls++;
     try{while(!['done','error','stopped','waiting'].includes(child.status))child.step(false);if(child.error)throw child.error;if(child.status==='waiting')fail('FUNCTION_SIDE_EFFECT','expr() no puede solicitar entradas.');return copyValue(child.returnValue===undefined?child.lastValue:child.returnValue);}
     finally{this.mathContext.calls--;this.mathContext.prgmScope=previousScope;this.mathContext.prgmRuntime=previousRuntime;}
   }
-  assign(op,value){
+  assign(op,value,tree=null){
     if(this.mathContext.locks.has(op.name))fail('LOCKED_VARIABLE','La variable «'+op.name+'» está bloqueada.');
-    if(!op.indices){this.vars[op.name]=copyValue(value);return;}
+    if(!op.indices){this.vars[op.name]=copyValue(value);if(tree)this.exact[op.name]={value,expr:tree};return;}
     if(!Object.hasOwn(this.vars,op.name))fail('UNDEFINED_VARIABLE','La variable «'+op.name+'» no está definida.');
     const target=copyValue(this.vars[op.name]),indices=op.indices.map(node=>{const index=number(this.ev(node));if(!Number.isInteger(index)||index<1)fail('INDEX_ERROR','Los índices deben ser enteros positivos.');return index-1;});
     const matrix=Array.isArray(target)&&target.length>0&&target.every(Array.isArray);
@@ -225,7 +228,7 @@ export class PrgmPreview {
     this.vars[op.name]=target;
   }
   handleError(error) {this.error=error instanceof PrgmError?error:new PrgmError('RUNTIME_ERROR',String(error.message||error));if(!this.error.line)this.error.line=this.lastLine;this.status='error';this.pending=null;}
-  ev(node) {this.mathContext.steps=0;this.mathContext.prgmScope=this.scope;this.mathContext.prgmRuntime=this;const value=evaluate(node,this.vars,this.angleMode,this.mathContext);this.angleMode=this.mathContext.modes[2]===2?'DEG':this.mathContext.modes[2]===3?'GRAD':'RAD';return value;}
+  ev(node) {this.mathContext.steps=0;this.mathContext.prgmScope=this.scope;this.mathContext.prgmRuntime=this;this.mathContext.exactBindings=this.exact;this.mathContext.exactVariables=this.vars;const value=evaluate(node,this.vars,this.angleMode,this.mathContext);this.angleMode=this.mathContext.modes[2]===2?'DEG':this.mathContext.modes[2]===3?'GRAD':'RAD';return value;}
   append(text,kind='disp',details={}) {if(this.output.length>=this.maxLines)fail('OUTPUT_LIMIT','Límite de historial alcanzado.');const row={text:String(text),kind,line:this.lastLine,...details};this.output.push(row);this.event({type:'output',...row});}
   event(value) {this.events.push(value);if(this.events.length>2000)this.events.shift();}
   step(emitSnapshot=true) {
@@ -241,12 +244,12 @@ export class PrgmPreview {
       if(op.kind==='local')op.names.forEach(name=>this.scope.names.add(name)); // Uninitialized Locals shadow problem variables without becoming zero.
       else if(op.kind==='delvar')op.names.forEach(n=>{if(this.mathContext.locks.has(n))fail('LOCKED_VARIABLE','La variable «'+n+'» está bloqueada.');delete this.vars[n];delete this.mathContext.functions[n];});
       else if(op.kind==='lock'||op.kind==='unlock')op.names.forEach(n=>op.kind==='lock'?this.mathContext.locks.add(n):this.mathContext.locks.delete(n));
-      else if(op.kind==='assign'){const value=this.ev(op.expr);this.assign(op,value);this.lastValue=copyValue(value);this.hasLastValue=true;}
+      else if(op.kind==='assign'){const tree=captureExactTree(op.expr,this.exact,this.vars),value=this.ev(op.expr);this.assign(op,value,tree);this.lastValue=copyValue(value);this.hasLastValue=true;}
       else if(op.kind==='defineFunction')this.mathContext.functions[op.name]={parameters:op.parameters,body:op.body};
-      else if(op.kind==='defineRoutine'){const fn={parameters:op.parameters,program:op.program};fn.invoke=args=>this.callFunction(fn,args);this.mathContext.functions[op.name]=fn;}
+      else if(op.kind==='defineRoutine'){const fn={parameters:op.parameters,program:op.program};fn.invoke=(args,metadata)=>this.callFunction(fn,args,metadata);this.mathContext.functions[op.name]=fn;}
       else if(op.kind==='evaluate'){
         const fn=op.expr.type==='call'&&this.mathContext.functions[op.expr.name];
-        if(fn?.program?.documentKind==='prgm'){const args=op.expr.args.map(arg=>this.ev(arg));this.enterRoutine(fn,args,next);next=0;}
+        if(fn?.program?.documentKind==='prgm'){const trees=op.expr.args.map(arg=>captureExactTree(arg,this.exact,this.vars)),args=op.expr.args.map(arg=>this.ev(arg));this.enterRoutine(fn,args,next,trees);next=0;}
         else{this.lastValue=copyValue(this.ev(op.expr));this.hasLastValue=true;}
       }
       else if(op.kind==='drawing'){this.graphics.execute(op.command,op.args.map(n=>this.ev(n)));this.event({type:'graphics',command:op.command,revision:this.graphics.revision,line:op.line});if(op.command==='paintbuffer'){this.frameYield=true;this.checkpoint();}}

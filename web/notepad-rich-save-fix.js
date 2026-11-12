@@ -131,6 +131,12 @@
   }
 
   function buildCanonicalRich(editor) {
+    // Native Notes expressions are complete r2d subtrees. Keep them and their
+    // formatManager references while formatting surrounding prose.
+    if (editor.querySelector("[data-ti-native]") && editor.__tiRichModel && window.TiNotepadRichView) {
+      const edited = window.TiNotepadRichView.extractEditableModel(editor);
+      return { rich: window.TiNotepadRichView.buildRichTextFromParagraphRuns(editor.__tiRichModel, edited.paragraphs), plainText: edited.plainText };
+    }
     const paragraphs = extractEditorParagraphs(editor);
     const xml = document.implementation.createDocument(null, "r2dtotree", null);
     const root = xml.documentElement;
@@ -173,6 +179,12 @@
 
   function plainTextFromRich(rich) {
     try {
+      if (window.TiNotepadRichView) {
+        const wrapper = document.implementation.createDocument("urn:TI.Notepad", "fmtxt", null);
+        wrapper.documentElement.textContent = String(rich || "");
+        const model = window.TiNotepadRichView.parseNotepadRichText(new XMLSerializer().serializeToString(wrapper));
+        if (model) return model.plainText;
+      }
       const xml = new DOMParser().parseFromString(String(rich || ""), "application/xml");
       if (xml.querySelector("parsererror")) return null;
       const paras = Array.from(xml.getElementsByTagName("node")).filter(node => node.getAttribute("name") === "1para");

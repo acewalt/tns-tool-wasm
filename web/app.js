@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-11-numtheory-v37";
+const SOURCE_VERSION = "2026-11-12-widgets-v39";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -2448,6 +2448,7 @@ for xml_file in sorted(root_path.rglob("*.xml")):
             elif widget_type == "TI.PythonShell":
                 pysh_ns = "urn:TI.PythonShell"
                 detail.update({"name": child_text(element, pysh_ns, "name")})
+                content_label = "PythonShell"
             elif widget_type == "tabulator":
                 tb_ns = "urn:tabulator"
                 summary["spreadsheets"] += 1
@@ -4674,6 +4675,7 @@ function restorePyDoctorPanelFromModal({ collapse = true } = {}) {
 function closePyDoctorModal() {
   const backdrop = pyDoctorModal.backdrop;
   if (!backdrop) return;
+  persistPyDoctorDraft();
   closeModal(backdrop, () => {
     restorePyDoctorPanelFromModal();
     pyDoctor.target = null;
@@ -4685,6 +4687,7 @@ function closePyDoctorModal() {
 async function openPyDoctorModal(options = {}) {
   const panel = document.querySelector("#py-doctor-panel");
   if (!panel) return;
+  if (options.target?.mode === 'xml-python') await ensureXmlStageCopy();
   if (pyDoctorModal.backdrop) {
     const previousBackdrop = pyDoctorModal.backdrop;
     restorePyDoctorPanelFromModal();
@@ -4721,7 +4724,7 @@ async function openPyDoctorModal(options = {}) {
 function showPythonEditor(item) {
   closeDocumentInspectorModals();
   openPyDoctorModal({
-    code: item.content || "",
+    code: documentPythonPreviewSource(item).source,
     target: { mode: "xml-python", item },
   }).catch((error) => {
     pyLog(`ERROR: ${error.message}`);
@@ -9568,6 +9571,10 @@ function normalizeGraphFormulaInput(value = "") {
 }
 
 function extractGraphStateFromRawXml(rawXml = "") {
+  if (window.TnsGraphPreview) {
+    const state = window.TnsGraphPreview.parseXml(rawXml);
+    return { ...state, name: state.curves[0]?.name || 'f1', formula: state.curves[0]?.formula || '0' };
+  }
   const state = { name: "f1", formula: "0" };
   if (!rawXml) return state;
   try {
@@ -10245,14 +10252,28 @@ function documentCalculatorMathSession(file = '') {
   if(!context){
     if(!window.TnsTiBasicMath)throw Error('The mathematical runtime is still loading.');
     const mathSession=window.TnsTiBasicMath.createSession({language:document.documentElement.lang,angleMode:'RAD'});
-    for(const item of documentStoredVariables(file))if(item.type==='variable'){
-      try{mathSession.evaluate(`${item.name}:=(${item.value})`);}catch(_){/* Keep unsupported stored values visible in Var without executing source. */}
+    const stored=documentStoredVariables(file).filter(item=>item.type==='variable'),pending=[];
+    for(const item of stored){
+      try{mathSession.variables[item.name.toLowerCase()]=window.TnsTiBasicMath.parseStoredValue(item.value,item.symbolType);}
+      catch(_){pending.push(item);}
+    }
+    // Resolve a bounded set of forward references without running assignments
+    // or changing Ans. TI type-4 values are strings, even when their text looks
+    // like a function; meval/evalStr decide when to interpret those strings.
+    for(let pass=0;pending.length&&pass<Math.min(stored.length+1,32);pass++){
+      let progress=false;
+      for(let index=pending.length-1;index>=0;index--){
+        const item=pending[index];
+        try{
+          const value=mathSession.expression(String(item.value));
+          if(value!==undefined){mathSession.variables[item.name.toLowerCase()]=value;pending.splice(index,1);progress=true;}
+        }catch(_){/* Unsupported raw values remain available in Var. */}
+      }
+      if(!progress)break;
     }
     // Loading symbol values is not a calculation performed by the user. Those
     // assignments must not replace Ans with the last library lookup table.
-    const storedAns=documentStoredVariables(file).find(item=>item.type==='variable'&&item.name.toLowerCase()==='ans');
-    delete mathSession.variables.ans;
-    if(storedAns){try{mathSession.variables.ans=mathSession.expression(storedAns.value);}catch(_){}}
+    if(!stored.some(item=>item.name.toLowerCase()==='ans'))delete mathSession.variables.ans;
     context={mathSession};documentCalculatorSessions.set(problem,context);
   }
   return context.mathSession;
@@ -10320,19 +10341,25 @@ async function openCalculatorInLovePreview(item, options = {}) {
   });
 }
 function openGraphInLovePreview(item, options = {}) {
-  const state = extractGraphStateFromRawXml(item?.raw_xml || "");
-  const functionName = item?.detail?.function || state.name || "f1";
-  const formula = normalizeGraphFormulaInput(
-    options.draft?.formula || item?.detail?.expression || item?.content || state.formula || "sin(x)"
-  ) || "sin(x)";
-  const code = buildGraphPreviewLua(formula, functionName);
-  return showLovePreview(code, null, null, {
-    ...options,
-    graphEditor: {
-      item,
-      functionName,
-      formula,
+  if (!window.TnsGraphPreview) throw new Error('Graph preview is still loading.');
+  const mathSession = documentCalculatorMathSession(item.file);
+  const notify = variables => {
+    Object.assign(mathSession.variables, variables);
+    window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: item.file, variables } }));
+  };
+  return window.TnsGraphPreview.open(item, {
+    ...options, mathSession, storedVariables: documentStoredVariables(item.file),
+    getVariables: () => mathSession.snapshot().variables,
+    onVariablesChange: notify,
+    onStateChange: state => options.setDraft?.(state),
+    onSave: async state => {
+      const result = await saveGraphWidgetToStage(item, state);
+      item.raw_xml = result.raw_xml; item.content = result.formula;
+      item.detail = { ...(item.detail || {}), function: result.function, expression: result.formula };
+      xmlLog(`${t('graphSave')}: ${result.function}(x)=${result.formula}`);
     },
+    closeBackdrop: backdrop => closeModal(backdrop),
+    mountWindow: backdrop => mountDocumentPreviewTabs(backdrop, options, '.graph-preview-chrome', next => closeModal(backdrop, () => options.pageNavigation.onSelect(next)), true),
   });
 }
 
@@ -10433,11 +10460,14 @@ async function saveGraphWidgetToStage(item, formula) {
   await ensureXmlStageCopy();
   const state=extractGraphStateFromRawXml(item?.raw_xml || "");
   const fname=item?.detail?.function || state.name || "f1";
-  const clean=normalizeGraphFormulaInput(formula);
+  const graphState = formula && typeof formula === 'object' ? formula : state;
+  const clean=normalizeGraphFormulaInput(typeof formula === 'string' ? formula : graphState.curves?.[0]?.formula || state.formula);
+  if (typeof formula === 'string' && graphState.curves?.length) graphState.curves[0].formula = clean;
   pyodide.globals.set("wasm_graph_save_file", item?.file || "");
   pyodide.globals.set("wasm_graph_save_path", item?.path || "");
   pyodide.globals.set("wasm_graph_save_name", fname);
   pyodide.globals.set("wasm_graph_save_formula", clean);
+  pyodide.globals.set('wasm_graph_save_state', JSON.stringify(graphState));
   const payload=await pyodide.runPythonAsync(`
 import json
 import xml.etree.ElementTree as ET
@@ -10482,86 +10512,82 @@ if wdgt is None or wdgt.attrib.get("type")!="TI.GeoGrapher":
     if not matches: raise RuntimeError("TI.GeoGrapher widget not found")
     wdgt=matches[-1]
 fname=str(wasm_graph_save_name or "f1"); formula=str(wasm_graph_save_formula or "0")
-for node in wdgt.iter():
-    if namespace_uri(node.tag)!=gg_ns: continue
-    lname=local_name(node.tag)
-    if lname=="expression":
-        for child in node:
-            cn=local_name(child.tag)
-            if cn in {"expr","relv"}: child.text=formula
-            elif cn=="lbl": child.text=fname
-    elif lname=="graph":
-        for child in node:
-            cn=local_name(child.tag)
-            if cn=="expr": child.text=formula
-            elif cn=="pref": child.text=f"{fname}(x)"
-    elif lname=="label":
-        has_graph_label=any(local_name(c.tag)=="lbl_g" for c in node)
-        if has_graph_label:
-            chrs=next((c for c in node if local_name(c.tag)=="chrs"),None)
-            if chrs is not None: chrs.text=f"1 1 3 0 0 0 {fname}(x)={formula}\\n"
-    elif lname=="ToolGrapher":
-        dhs=next((c for c in node if local_name(c.tag)=="dhs"),None)
-        if dhs is not None: dhs.text=f"*{fname}*"
+state=json.loads(wasm_graph_save_state)
+def child(node,name): return next((c for c in node if local_name(c.tag)==name),None)
+def read(node,name,default=""):
+    c=child(node,name)
+    return (c.text or "").strip() if c is not None else default
+def write(node,name,value):
+    c=child(node,name)
+    if c is None: c=ET.SubElement(node,f"{{{gg_ns}}}{name}")
+    c.text=str(value)
+objects=next((n for n in wdgt.iter() if namespace_uri(n.tag)==gg_ns and local_name(n.tag)=="objs"),None)
+by_id={read(n,"id"):n for n in objects} if objects is not None else {}
+curves=state.get("curves",[])
+if not curves:
+    first=next((n for n in by_id.values() if local_name(n.tag)=="expression"),None)
+    if first is not None: curves=[{"expressionId":read(first,"id"),"name":fname,"formula":formula}]
+updates={}
+for curve in curves:
+    expr=by_id.get(str(curve.get("expressionId","")))
+    graph=by_id.get(str(curve.get("id","")))
+    name=str(curve.get("name") or fname); text=str(curve.get("formula") or "0")
+    if expr is not None and local_name(expr.tag)=="expression":
+        write(expr,"expr",text)
+        if child(expr,"relv") is not None: write(expr,"relv",text)
+        updates[name]=text
+    if graph is not None and local_name(graph.tag)=="graph":
+        if child(graph,"expr") is not None: write(graph,"expr",text)
+        write(graph,"asho",1 if curve.get("visible",True) else 0)
+        if "color" in curve: write(graph,"alco",int(curve["color"].lstrip("#"),16))
+    for node in by_id.values():
+        if local_name(node.tag)=="label" and read(node,"par").split()[:1]==[str(curve.get("id"))] and child(node,"lbl_g") is not None:
+            write(node,"chrs",f"1 1 3 0 0 0 {name}(x)={text}\\n")
+view=state.get("viewport"); old=state.get("originalViewport",view); surface=state.get("surface",{})
+for obj in state.get("objects",[]):
+    node=by_id.get(str(obj.get("id","")))
+    if node is None: continue
+    if obj.get("type")=="point":
+        for name,data in obj.get("children",{}).items():
+            nested=child(node,name)
+            if nested is not None and name=="pton_c" and "t" in data: write(nested,"t",data["t"])
+    if obj.get("type")=="number" and "num" in obj and child(node,"axisval") is None and child(node,"axistic") is None: write(node,"num",obj["num"])
+    if view and old and surface and "x" in obj and "y" in obj and child(node,"x") is not None and child(node,"y") is not None:
+        for axis,low,high,size in [("x","xmin","xmax","width"),("y","ymin","ymax","height")]:
+            origin=float(surface[axis]); span=float(surface[size]); val=float(str(obj[axis]).replace("−","-"))
+            world=old[low]+(val-origin)/span*(old[high]-old[low])
+            write(node,axis,origin+(world-view[low])/(view[high]-view[low])*span)
+if view:
+    axes=next((n for n in by_id.values() if local_name(n.tag)=="axes_system"),None)
+    if axes is not None:
+        for name,key in [("umin","xmin"),("umax","xmax"),("vmin","ymin"),("vmax","ymax")]: write(axes,name,view[key])
+        write(axes,"asho",1 if state.get("axesVisible",True) else 0)
+    for node in by_id.values():
+        if local_name(node.tag)=="grid": write(node,"asho",1 if state.get("grid",False) else 0)
+        axisval=child(node,"axisval")
+        if axisval is not None:
+            key={"0":"xmax","1":"xmin","2":"ymax","3":"ymin"}.get(read(axisval,"ty"))
+            if key: write(node,"num",view[key])
 sym=next((x for x in root if local_name(x.tag)=="sym"),None)
-entry=None
 if sym is not None:
-    for candidate in sym:
-        if local_name(candidate.tag)!="e": continue
-        n=next((c for c in candidate if local_name(c.tag)=="n"),None)
-        if n is not None and (n.text or "").strip()==fname: entry=candidate; break
-if entry is None and sym is not None:
-    entry=ET.SubElement(sym, f"{{{root.tag[1:].split('}',1)[0]}}}e" if root.tag.startswith("{") else "e", {"t":"6","f":"0","c":"255"})
-    ns=root.tag[1:].split("}",1)[0] if root.tag.startswith("{") else ""
-    def q(name): return f"{{{ns}}}{name}" if ns else name
-    ET.SubElement(entry,q("n")).text=fname; ET.SubElement(entry,q("p")).text="x"; ET.SubElement(entry,q("v")).text=formula
-elif entry is not None:
-    for child in entry:
-        if local_name(child.tag)=="v": child.text=formula
+    ns=namespace_uri(root.tag)
+    for name,text in updates.items():
+        entry=next((n for n in sym if local_name(n.tag)=="e" and read(n,"n")==name),None)
+        if entry is None:
+            entry=ET.SubElement(sym,f"{{{ns}}}e" if ns else "e",{"t":"6","f":"0","c":"255"})
+            for key,data in [("n",name),("p","x"),("v",text)]: ET.SubElement(entry,f"{{{ns}}}{key}" if ns else key).text=data
+        else:
+            v=child(entry,"v")
+            if v is not None: v.text=text
 body=ET.tostring(root,encoding="UTF-8",short_empty_elements=False)
 xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+body)
 json.dumps({"file":str(xml_file),"formula":formula,"function":fname,"raw_xml":ET.tostring(wdgt,encoding="unicode",short_empty_elements=False)})
 `);
-  xmlDoctor.embedded=true; xmlDoctor.stagePrepared=true; return JSON.parse(payload);
+  xmlDoctor.stagePrepared=true; return JSON.parse(payload);
 }
 
-function showGraphModal(item) {
-  const base=extractGraphStateFromRawXml(item?.raw_xml || "");
-  const functionName=item?.detail?.function || base.name || "f1";
-  const initialFormula=item?.content || item?.detail?.expression || base.formula || "sin(x)";
-  const backdrop=document.createElement("div"); backdrop.className="modal-backdrop";
-  backdrop.innerHTML=`
-    <div class="modal graph-page-modal">
-      <div class="modal-top-actions">
-        <button type="button" id="graph-love-preview" class="green-tool-button">${escapeHtml(t("graphPreviewLove"))}</button>
-        <button type="button" id="graph-save" class="green-tool-button">${escapeHtml(t("graphSave"))}</button>
-        <button type="button" id="graph-cancel">${escapeHtml(t("cancel"))}</button>
-      </div>
-      <h2>${escapeHtml(t("graphTitle"))}</h2>
-      <div class="graph-calculator-shell">
-        <div class="love-preview-calculator-bar">CALCULATOR VIEW</div>
-        <div class="graph-function-row"><span class="graph-check">□</span><span class="graph-function-name">${escapeHtml(functionName)}(x)=</span><input id="graph-formula-input" value="${escapeHtml(initialFormula)}" spellcheck="false"/><span class="graph-list-icon">☷</span></div>
-        <canvas id="graph-native-canvas" width="320" height="182"></canvas>
-      </div>
-      <p class="muted-text">${escapeHtml(t("graphFormula"))}: ${escapeHtml(functionName)}(x)</p>
-    </div>`;
-  document.body.append(backdrop);
-  const input=backdrop.querySelector("#graph-formula-input"); const canvas=backdrop.querySelector("#graph-native-canvas");
-  const redraw=()=>drawNativeGraphPreview(canvas,input.value); redraw();
-  input.addEventListener("input",redraw);
-  backdrop.querySelector("#graph-cancel").addEventListener("click",()=>closeModal(backdrop));
-  backdrop.querySelector("#graph-love-preview").addEventListener("click",()=>{
-    const code=buildGraphPreviewLua(input.value,functionName);
-    showLovePreview(code,null,null,{}).catch((error)=>xmlLog(`ERROR Graph Preview LÖVE: ${error.message}`));
-  });
-  backdrop.querySelector("#graph-save").addEventListener("click",async()=>{
-    try {
-      const result=await saveGraphWidgetToStage(item,input.value);
-      item.content=result.formula; item.detail={...(item.detail||{}),function:result.function,expression:result.formula}; item.raw_xml=result.raw_xml||item.raw_xml;
-      xmlLog(`${t("graphSave")}: ${result.function}(x)=${result.formula}`); closeModal(backdrop);
-    } catch(error) { xmlLog(`ERROR Graph Save: ${error.message}`); }
-  });
-  input.focus(); input.select();
+function showGraphModal(item, options = {}) {
+  return openGraphInLovePreview(item, options);
 }
 
 async function addPageFromFileMenu(kind) {
@@ -12721,6 +12747,7 @@ parent_map = {child: parent for parent in root.iter() for child in parent}
 variables = {}
 functions = []
 basic_functions = {}
+stored_values = {}
 resources = []
 
 def element_path(element):
@@ -12893,24 +12920,31 @@ for element in root.iter():
             params = child.text or ""
     if not name:
         continue
-    if params or (value or "").lstrip().startswith(("Func", "Prgm")):
+    if element.attrib.get("t") in ("6", "7") or params or (value or "").lstrip().startswith(("Func", "Prgm")):
         functions.append(name)
-        if (value or "").lstrip().startswith("Func"):
-            basic_functions[name] = {"params": params, "body": value}
+        kind = "Prgm" if element.attrib.get("t") == "7" or (value or "").lstrip().startswith("Prgm") else "Func"
+        body = value or ""
+        if kind == "Func" and not body.lstrip().startswith("Func"):
+            body = "Func\\nReturn " + body + "\\nEndFunc"
+        basic_functions[name] = {"params": params, "body": body, "documentType": kind}
     else:
+        stored_values[name] = {"value": value, "type": element.attrib.get("t", "")}
         converted = convert(value)
         if converted is not None:
             variables[name] = converted
-json.dumps({"variables": variables, "functions": functions, "basicFunctions": basic_functions, "resources": resources})
+json.dumps({"variables": variables, "storedValues": stored_values, "functions": functions, "basicFunctions": basic_functions, "resources": resources})
 `);
   const raw = JSON.parse(payload);
-  const convertValue = (value) => {
-    if (Array.isArray(value) && typeof window.lua_newtable === "function") return window.lua_newtable(value.map(convertValue));
-    return value;
-  };
+  const { parseStoredTiValue } = await import('../src/lua/document-symbols.js?v=20261112-widgets-v39');
+  const variables = {};
+  for (const [name, stored] of Object.entries(raw.storedValues || {})) {
+    try { variables[name] = parseStoredTiValue(stored.value, stored.type); }
+    catch (error) { console.warn(`Lua stored variable ${name}: ${error.message}`); }
+  }
   const resources = await loadLuaPreviewImageResources(raw.resources || []);
   return {
-    variables: Object.fromEntries(Object.entries(raw.variables || {}).map(([key, value]) => [key, convertValue(value)])),
+    variables,
+    problemFile: item.file,
     functions: raw.functions || [],
     basicFunctions: raw.basicFunctions || {},
     resources,
@@ -12984,6 +13018,7 @@ async function loadLuaJsRuntimeSources() {
 }
 
 async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {}) {
+  const { installLuaDocumentBindings, toLuaDocumentValue } = await import('../src/lua/document-symbols.js?v=20261112-widgets-v39');
   const sources = await loadLuaJsRuntimeSources();
   for (const source of sources) {
     (0, eval)(source);
@@ -13056,7 +13091,20 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   global.lua_tableset(stringTable, "find", luaJsStringFind);
   global.lua_tableset(stringTable, "match", luaJsStringMatch);
   global.lua_tableset(stringTable, "gsub", luaJsStringGsub);
-  global.lua_tableset(mathTable, "eval", (expr) => luaJsMathEval(expr, store, global, basicFunctions));
+  const mathSession = symbols.problemFile ? documentCalculatorMathSession(symbols.problemFile) : null;
+  const reportedMathErrors = new Set();
+  const variableOrigin = Symbol('Lua preview');
+  const bindings = installLuaDocumentBindings(global, {
+    variables: store, basicFunctions, mathSession,
+    language: document.documentElement.lang,
+    onStore: (name, value) => window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: {
+      file: symbols.problemFile, changedNames: [name], variables: mathSession?.variables || store, origin: variableOrigin,
+    } })),
+    onError: error => {
+      const message = `math.eval: ${error.message || error}`;
+      if (!reportedMathErrors.has(message)) { reportedMathErrors.add(message); appendPreviewLog(logEl, message); }
+    },
+  });
   attachLuaJsD2Editor(d2EditorTable, nativeEditors);
   if (!global.lua_tableget(timerTable, "getMilliSecCounter")) {
     const startedAt = performance.now();
@@ -13081,17 +13129,12 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     (0, eval)(parsed);
   };
   const userCode = global.lua_parser.parse(safeCode).split("\n").slice(19).join("\n");
-  for (const [name, value] of Object.entries(store)) {
-    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) global.G.str[name] = value;
-  }
-  for (const [name, definition] of Object.entries(basicFunctions)) {
-    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
-      global.G.str[name] = (...args) => [evaluateTiBasicFunction(definition, args, store, basicFunctions)];
-    }
+  for (const [name, value] of Object.entries(bindings.variables)) {
+    if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) global.G.str[name] = toLuaDocumentValue(global, value);
   }
   for (const name of symbols.functions || []) {
     if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(name) && !global.G.str[name]) {
-      global.G.str[name] = () => [0];
+      global.G.str[name] = () => { throw new Error(`Stored TI routine is unavailable: ${name}`); };
     }
   }
   (0, eval)(userCode);
@@ -13192,15 +13235,24 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   function boot() {
     clear();
     try {
-      global.callEvent("create", gc());
       global.callEvent("resize", canvas.width, canvas.height);
+      global.callEvent("create", gc());
     } catch (error) {
       log(`ERROR boot LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
       throw error;
     }
     repaint(true);
+    window.addEventListener('tns-document-variables-change', onDocumentVariablesChange);
     timerId = window.setInterval(tick, 120);
     log("Preview LuaJS activo: snapshots por timer/eventos.");
+  }
+  function onDocumentVariablesChange(event) {
+    const detail = event.detail || {};
+    if (detail.origin === variableOrigin || !symbols.problemFile || documentPreviewFileKey(detail.file) !== documentPreviewFileKey(symbols.problemFile)) return;
+    const names = (detail.changedNames || Object.keys(detail.variables || {})).map(name => String(name).toLowerCase()).filter(name => bindings.monitored.has(name));
+    if (!names.length) return;
+    try { global.callEvent('varChange', global.lua_newtable(names)); repaint(); }
+    catch (error) { log(`ERROR varChange LuaJS: ${describeLuaJsError(error)}`); }
   }
   function focusedNativeEditor() {
     for (let index = nativeEditors.length - 1; index >= 0; index -= 1) {
@@ -13311,6 +13363,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   }
   function close() {
     if (timerId) window.clearInterval(timerId);
+    window.removeEventListener('tns-document-variables-change', onDocumentVariablesChange);
   }
   function getScreenText() {
     const explicit = luaJsGlobalText(global, ["__tnsToolCopyText", "__tnsPreviewText", "__copyScreenText"]);
@@ -16837,44 +16890,74 @@ function spreadsheetNumericValue(cell) {
   return Number.isFinite(value) ? value : 0;
 }
 
-function evaluateSpreadsheetFormula(formula, cells) {
+function evaluateSpreadsheetFormula(formula, cells, options = {}) {
   const raw = String(formula || "").trim();
   if (!raw.startsWith("=")) return raw;
-  let expression = raw.slice(1);
-  expression = expression.replace(/\b([A-Za-z]+)(\d+)\b/g, (match) => {
-    const coords = spreadsheetCellRefToCoords(match);
-    if (!coords) return "0";
-    return String(spreadsheetNumericValue(cells[`${coords.row}:${coords.col}`]));
-  });
-  expression = expression.replace(/\^/g, "**");
-  if (!/^[0-9+\-*/().\s*]+$/.test(expression)) return "";
+  const visited = options.visited || new Set();
+  const literal = value => typeof value === "number" || typeof value === "boolean" ? String(value) : JSON.stringify(String(value ?? ""));
+  const resolve = ref => {
+    const coords = spreadsheetCellRefToCoords(ref.replace(/\$/g, ""));
+    if (!coords || coords.row > 9999 || coords.col > 25) throw Error("#REF!");
+    const id = `${coords.row}:${coords.col}`, cell = cells[id];
+    if (!cell || !spreadsheetCellFormula(cell).trim()) return "0";
+    if (visited.has(id)) throw Error("#CIRC!");
+    if (visited.size > 256) throw Error("#LIMIT!");
+    let value = spreadsheetCellDisplay(cell);
+    if (String(cell.formula || "").trim().startsWith("=")) {
+      value = evaluateSpreadsheetFormula(cell.formula, cells, { ...options, visited: new Set([...visited, id]) });
+      if (String(value).startsWith("#")) throw Error(value);
+    }
+    if (String(value).startsWith("#")) throw Error(value);
+    const number = Number(value);
+    if (String(value).trim() && Number.isFinite(number)) return String(number);
+    // Cached native symbolic values (sqrt, pi, fractions) are expressions too.
+    if (options.mathSession) {
+      try { const parsed = options.mathSession.expression(value); if (typeof parsed === "number" && Number.isFinite(parsed)) return String(parsed); } catch (_) {}
+    }
+    return literal(value);
+  };
   try {
-    const result = Function(`"use strict"; return (${expression});`)();
-    if (typeof result !== "number" || !Number.isFinite(result)) return "";
-    return String(Number.isInteger(result) ? result : Number(result.toPrecision(12)));
-  } catch (_) {
-    return "";
+    let expression = raw.slice(1).split(/("(?:[^"]|"")*")/g).map((part, index) => {
+      if (index % 2) return part;
+      const ranges = [];
+      part = part.replace(/\$?([A-Za-z]+)\$?(\d+):\$?([A-Za-z]+)\$?(\d+)/g, (_match, a, r, b, s) => {
+        const first = spreadsheetCellRefToCoords(a + r), last = spreadsheetCellRefToCoords(b + s);
+        if (!first || !last || Math.abs(first.row - last.row) * Math.abs(first.col - last.col) > 10000) throw Error("#REF!");
+        const values = [];
+        for (let row = Math.min(first.row, last.row); row <= Math.max(first.row, last.row); row++) {
+          for (let col = Math.min(first.col, last.col); col <= Math.max(first.col, last.col); col++) values.push(resolve(spreadsheetColumnName(col) + (row + 1)));
+        }
+        ranges.push(`{${values.join(",")}}`); return `§${ranges.length - 1}§`;
+      });
+      part = part.replace(/(?<![\p{L}\p{N}_])\$?[A-Za-z]+\$?\d+\b/gu, resolve);
+      return part.replace(/§(\d+)§/g, (_match, i) => ranges[Number(i)]);
+    }).join("");
+    expression = expression.replace(/\bAVERAGE\s*\(/gi, "mean(").replace(/\bCOUNT\s*\(/gi, "dim(");
+    const math = options.mathSession || window.TnsTiBasicMath?.createSession();
+    if (!math) return "#LOADING!";
+    const result = math.expression(expression);
+    if (typeof result === "number") return Number.isFinite(result) ? String(Number(result.toPrecision(12))) : "#NUM!";
+    if (typeof result === "string" || typeof result === "boolean") return String(result);
+    return "#VALUE!";
+  } catch (error) {
+    if (/^#/.test(error.message)) return error.message;
+    if (/zero|cero/i.test(error.message)) return "#DIV/0!";
+    return error.code === "UNDEFINED_VARIABLE" || error.code === "UNSUPPORTED_FUNCTION" ? "#NAME?" : "#VALUE!";
   }
 }
 
-function recalculateSpreadsheetCells(cells) {
-  // A few passes are enough for simple dependency chains such as A3=B2+C2.
-  for (let pass = 0; pass < 6; pass += 1) {
-    let changed = false;
-    for (const cell of Object.values(cells || {})) {
+function recalculateSpreadsheetCells(cells, options = {}) {
+    for (const [id, cell] of Object.entries(cells || {})) {
       if (!cell || !String(cell.formula || "").trim().startsWith("=")) continue;
-      const next = evaluateSpreadsheetFormula(cell.formula, cells);
-      if (next !== "" && next !== String(cell.data ?? "")) {
-        cell.data = next;
-        changed = true;
-      }
+      // Preserve exact symbolic answers saved by the calculator until an edit
+      // explicitly requires recalculation; unsupported formulas stay intact.
+      if (options.preserveCached && String(cell.data ?? "") !== "") continue;
+      cell.data = evaluateSpreadsheetFormula(cell.formula, cells, { ...options, visited: new Set([id]) });
     }
-    if (!changed) break;
-  }
 }
 
 function extractSpreadsheetStateFromRawXml(rawXml) {
-  const result = { cells: {}, rows: 20, cols: 12, sourceName: "" };
+  const result = { cells: {}, rows: 20, cols: 12, sourceName: "", columnNames: [], columnWidths: [] };
   const text = String(rawXml || "").trim();
   if (!text) return result;
   try {
@@ -16885,6 +16968,10 @@ function extractSpreadsheetStateFromRawXml(rawXml) {
     let maxRow = 0;
     let maxCol = 0;
     columns.forEach((column, col) => {
+      const value = name => Array.from(column.children).find(node => node.localName === name)?.textContent || '';
+      result.columnNames[col] = value('columnName') || value('name');
+      const width = Number(value('columnWidthNative') || value('columnWidth'));
+      result.columnWidths[col] = Number.isFinite(width) && width > 0 ? width : 70;
       const cellsNode = Array.from(column.children).find((node) => node.localName === "cells");
       if (!cellsNode) return;
       for (const cellNode of Array.from(cellsNode.children).filter((node) => node.localName === "cell")) {
@@ -16893,7 +16980,7 @@ function extractSpreadsheetStateFromRawXml(rawXml) {
         if (!Number.isFinite(rowId) || rowId < 1) continue;
         const formula = childText("formula");
         const data = childText("data");
-        result.cells[`${rowId - 1}:${col}`] = { formula, data };
+        result.cells[`${rowId - 1}:${col}`] = { formula, data, rawXml: new XMLSerializer().serializeToString(cellNode), globalName: childText("globalName") };
         maxRow = Math.max(maxRow, rowId);
         maxCol = Math.max(maxCol, col + 1);
       }
@@ -17078,16 +17165,25 @@ for key, value in cells.items():
     data = str((value or {}).get("data", ""))
     if not formula and not data:
         continue
-    by_col.setdefault(col, []).append((row, formula, data))
+    by_col.setdefault(col, []).append((row, formula, data, str((value or {}).get("rawXml", ""))))
 
 for col, entries in by_col.items():
     column = columns[col]
     cells_node = next(child for child in column if child.tag == q(tb_ns, "cells"))
-    for row, formula, data in sorted(entries, key=lambda item: item[0]):
-        cell = ET.SubElement(cells_node, q(tb_ns, "cell"))
-        ET.SubElement(cell, q(tb_ns, "rowId")).text = str(row + 1)
-        ET.SubElement(cell, q(tb_ns, "formula")).text = formula
-        ET.SubElement(cell, q(tb_ns, "data")).text = data
+    for row, formula, data, original_cell in sorted(entries, key=lambda item: item[0]):
+        try:
+            cell = ET.fromstring(original_cell) if original_cell else ET.Element(q(tb_ns, "cell"))
+            if cell.tag != q(tb_ns, "cell"):
+                cell = ET.Element(q(tb_ns, "cell"))
+        except ET.ParseError:
+            cell = ET.Element(q(tb_ns, "cell"))
+        # Preserve native globalName, cell formatting, and other cell metadata.
+        for name, value in (("rowId", str(row + 1)), ("formula", formula), ("data", data)):
+            child = cell.find(q(tb_ns, name))
+            if child is None:
+                child = ET.SubElement(cell, q(tb_ns, name))
+            child.text = value
+        cells_node.append(cell)
 
 body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
 xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
@@ -17098,7 +17194,6 @@ json.dumps({
     "saved_cells": sum(len(v) for v in by_col.values()),
 })
 `);
-  xmlDoctor.embedded = true;
   xmlDoctor.stagePrepared = true;
   return JSON.parse(payload);
 }
@@ -17234,14 +17329,23 @@ function showSpreadsheetModal(item, options = {}) {
   const saved = spreadsheetPreviewSessions.get(key);
   const baseState = options.draft || (saved && saved.rawXml === String(item?.raw_xml || "") ? saved : xmlState);
   const state = {
-    cells: Object.fromEntries(Object.entries(baseState.cells || {}).map(([cellKey, cell]) => [cellKey, { formula: String(cell?.formula ?? ""), data: String(cell?.data ?? "") }])),
+    cells: Object.fromEntries(Object.entries(baseState.cells || {}).map(([cellKey, cell]) => [cellKey, { ...cell, formula: String(cell?.formula ?? ""), data: String(cell?.data ?? "") }])),
     rows: Math.max(20, baseState.rows || 20),
     cols: Math.min(26, Math.max(12, baseState.cols || 12)),
     sourceName: baseState.sourceName || "",
     activeRow: 0,
     activeCol: 0,
+    columnNames: baseState.columnNames || xmlState.columnNames || [],
+    columnWidths: baseState.columnWidths || xmlState.columnWidths || [],
+    dirty: false,
   };
-  recalculateSpreadsheetCells(state.cells);
+  const mathSession = documentCalculatorContext(item.file).mathSession;
+  recalculateSpreadsheetCells(state.cells, { mathSession, preserveCached: true });
+  const sheetWords = ({
+    en: { clear: "Clear selection", row: "+ Row", col: "+ Column", sum: "Sum", hint: "Drag or Shift-click to select cells. Double-click, F2 or the formula bar edits a cell. Copy/paste supports tables.", formula: "Cell formula", selected: "selected" },
+    es: { clear: "Vaciar selección", row: "+ Fila", col: "+ Columna", sum: "Suma", hint: "Arrastra o usa Mayús-clic para seleccionar. Doble clic, F2 o la barra de fórmulas editan una celda. Copiar/pegar admite tablas.", formula: "Fórmula de celda", selected: "seleccionadas" },
+    fr: { clear: "Effacer la sélection", row: "+ Ligne", col: "+ Colonne", sum: "Somme", hint: "Glissez ou Maj-clic pour sélectionner. Double-clic, F2 ou la barre de formule modifient la cellule. Copier/coller accepte les tableaux.", formula: "Formule de cellule", selected: "sélectionnées" }
+  })[String(document.documentElement.lang || "en").slice(0, 2)];
 
   const backdrop = makeDocumentPreviewBackdrop(options);
   backdrop.innerHTML = `
@@ -17258,6 +17362,13 @@ function showSpreadsheetModal(item, options = {}) {
         </div>
       </div>
       <input id="spreadsheet-file-input" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden />
+      <div class="spreadsheet-tools" role="toolbar">
+        <button type="button" data-sheet-tool="clear">${escapeHtml(sheetWords.clear)}</button>
+        <button type="button" data-sheet-tool="row">${escapeHtml(sheetWords.row)}</button>
+        <button type="button" data-sheet-tool="col">${escapeHtml(sheetWords.col)}</button>
+        <button type="button" data-sheet-tool="sum">Σ ${escapeHtml(sheetWords.sum)}</button>
+        <output class="spreadsheet-selection-info"></output>
+      </div>
       <div class="spreadsheet-preview-stage">
         <div class="spreadsheet-calc" aria-label="TI-Nspire Lists & Spreadsheet preview">
           <div class="spreadsheet-calc-topbar">
@@ -17268,15 +17379,16 @@ function showSpreadsheetModal(item, options = {}) {
           <div class="spreadsheet-grid-shell">
             <div class="spreadsheet-grid" tabindex="0"></div>
           </div>
-          <div class="spreadsheet-formula-bar"><span class="spreadsheet-cell-name">A1</span><span class="spreadsheet-formula-value"></span><span class="spreadsheet-nav-arrows">◀ ▶</span></div>
+          <div class="spreadsheet-formula-bar"><span class="spreadsheet-cell-name">A1</span><input class="spreadsheet-formula-value" aria-label="${escapeHtml(sheetWords.formula)}" spellcheck="false"/><span class="spreadsheet-nav-arrows">fx</span></div>
         </div>
       </div>
-      <div class="spreadsheet-preview-note">${escapeHtml(t("spreadsheetPreviewOnly"))}</div>
+      <div class="spreadsheet-preview-note">${escapeHtml(sheetWords.hint)}</div>
     </div>`;
   document.body.append(backdrop);
 
   const grid = backdrop.querySelector(".spreadsheet-grid");
   mountDocumentPreviewTabs(backdrop, options, '.spreadsheet-calc-topbar', next => {
+    controller.commit();
     options.setDraft?.({ ...state, cells: Object.fromEntries(Object.entries(state.cells).map(([key, value]) => [key, { ...value }])) });
     closeModal(backdrop, () => options.pageNavigation.onSelect(next));
   }, true);
@@ -17285,82 +17397,24 @@ function showSpreadsheetModal(item, options = {}) {
   const sourceNameEl = backdrop.querySelector(".spreadsheet-source-name");
   const docTitle = backdrop.querySelector("[data-preview-document]");
 
-  const activeKey = () => `${state.activeRow}:${state.activeCol}`;
-  const updateFormulaBar = () => {
-    cellName.textContent = `${spreadsheetColumnName(state.activeCol)}${state.activeRow + 1}`;
-    formulaValue.textContent = spreadsheetCellFormula(state.cells[activeKey()]);
-  };
-
-  const render = () => {
-    const visibleRows = Math.min(100, Math.max(20, state.rows));
-    const visibleCols = Math.min(26, Math.max(12, state.cols));
-    let html = `<div class="sheet-corner"></div>`;
-    for (let col = 0; col < visibleCols; col += 1) html += `<div class="sheet-col-header">${spreadsheetColumnName(col)}</div>`;
-    for (let row = 0; row < visibleRows; row += 1) {
-      html += `<div class="sheet-row-header">${row + 1}</div>`;
-      for (let col = 0; col < visibleCols; col += 1) {
-        const cell = state.cells[`${row}:${col}`];
-        const value = spreadsheetCellDisplay(cell);
-        const active = row === state.activeRow && col === state.activeCol ? " active" : "";
-        html += `<div class="sheet-cell${active}" contenteditable="true" spellcheck="false" data-row="${row}" data-col="${col}">${escapeHtml(String(value))}</div>`;
+  const controller = window.TnsSpreadsheetTools.mount(backdrop, state, {
+    selectedLabel: sheetWords.selected,
+    evaluate: formula => evaluateSpreadsheetFormula(formula, state.cells, { mathSession }),
+    onChange: () => {
+      recalculateSpreadsheetCells(state.cells, { mathSession });
+      for (const cell of Object.values(state.cells)) {
+        if (!/^[\p{L}_][\p{L}\p{N}_]*$/u.test(cell.globalName || '') || String(cell.data || '').startsWith('#')) continue;
+        try { mathSession.evaluate(`${cell.globalName}:=(${cell.data})`); } catch (_) { /* Unsupported native formulas remain explicit cell errors. */ }
       }
-    }
-    grid.style.setProperty("--sheet-cols", String(visibleCols));
-    grid.innerHTML = html;
-    updateFormulaBar();
-  };
-
-  grid.addEventListener("focusin", (event) => {
-    const cell = event.target.closest(".sheet-cell");
-    if (!cell) return;
-    state.activeRow = Number(cell.dataset.row) || 0;
-    state.activeCol = Number(cell.dataset.col) || 0;
-    grid.querySelector(".sheet-cell.active")?.classList.remove("active");
-    cell.classList.add("active");
-    updateFormulaBar();
+      window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: item.file, variables: mathSession.snapshot().variables } }));
+    },
   });
-
-  grid.addEventListener("input", (event) => {
-    const cellEl = event.target.closest(".sheet-cell");
-    if (!cellEl) return;
-    const row = Number(cellEl.dataset.row) || 0;
-    const col = Number(cellEl.dataset.col) || 0;
-    const raw = cellEl.textContent || "";
-    const keyName = `${row}:${col}`;
-    if (!raw) {
-      delete state.cells[keyName];
-    } else {
-      const record = state.cells[keyName] || { formula: "", data: "" };
-      record.formula = raw;
-      record.data = raw.startsWith("=") ? evaluateSpreadsheetFormula(raw, state.cells) : raw;
-      state.cells[keyName] = record;
-    }
-    recalculateSpreadsheetCells(state.cells);
-    for (const formulaCell of grid.querySelectorAll(".sheet-cell")) {
-      const formulaRow = Number(formulaCell.dataset.row) || 0;
-      const formulaCol = Number(formulaCell.dataset.col) || 0;
-      const formulaRecord = state.cells[`${formulaRow}:${formulaCol}`];
-      if (formulaRecord && String(formulaRecord.formula || "").startsWith("=") && formulaCell !== cellEl) {
-        formulaCell.textContent = spreadsheetCellDisplay(formulaRecord);
-      }
-    }
-    state.rows = Math.max(state.rows, row + 1);
-    state.cols = Math.min(26, Math.max(state.cols, col + 1));
-    updateFormulaBar();
-  });
-
-  grid.addEventListener("focusout", (event) => {
-    const cellEl = event.target.closest(".sheet-cell");
-    if (!cellEl) return;
-    const row = Number(cellEl.dataset.row) || 0;
-    const col = Number(cellEl.dataset.col) || 0;
-    const record = state.cells[`${row}:${col}`];
-    if (record && String(record.formula || "").startsWith("=")) {
-      recalculateSpreadsheetCells(state.cells);
-      cellEl.textContent = spreadsheetCellDisplay(record);
-    }
-  });
-
+  const render = () => controller.render();
+  const close = () => { controller.commit(); controller.destroy(); closeModal(backdrop); };
+  const windowCleanup = backdrop.__previewWindowCleanup;
+  backdrop.__previewWindowCleanup = () => { controller.destroy(); windowCleanup?.(); };
+  const cleanup = backdrop.__documentPreviewRestore;
+  backdrop.__documentPreviewRestore = () => { controller.destroy(); cleanup?.(); };
   const fileInput = backdrop.querySelector("#spreadsheet-file-input");
   backdrop.querySelector("#spreadsheet-import").addEventListener("click", () => fileInput.click());
   fileInput.addEventListener("change", async () => {
@@ -17389,7 +17443,7 @@ function showSpreadsheetModal(item, options = {}) {
     const saveButton = backdrop.querySelector("#spreadsheet-save");
     saveButton.disabled = true;
     try {
-      recalculateSpreadsheetCells(state.cells);
+      controller.commit();
       const result = await saveSpreadsheetWidgetToStage(item, state);
       item.raw_xml = result.raw_xml || item.raw_xml;
       item.file = result.file || item.file;
@@ -17398,10 +17452,12 @@ function showSpreadsheetModal(item, options = {}) {
         rows: state.rows,
         cols: state.cols,
         sourceName: state.sourceName,
+        columnNames: state.columnNames,
+        columnWidths: state.columnWidths,
         rawXml: item.raw_xml || "",
       });
       xmlLog(`${t("spreadsheetSave")}: ${result.saved_cells} celdas guardadas en XML TI-Nspire`);
-      closeModal(backdrop);
+      close();
     } catch (error) {
       saveButton.disabled = false;
       xmlLog(`ERROR Spreadsheet Save: ${error.message}`);
@@ -17409,7 +17465,7 @@ function showSpreadsheetModal(item, options = {}) {
   });
 
   // Cancel descarta todos los cambios hechos desde que se abrió esta ventana.
-  backdrop.querySelector("#spreadsheet-cancel").addEventListener("click", () => closeModal(backdrop));
+  backdrop.querySelector("#spreadsheet-cancel").addEventListener("click", () => close());
   render();
 }
 
@@ -17457,7 +17513,7 @@ function makeDocumentPreviewBackdrop(options = {}, className = 'modal-backdrop')
 
 function documentWidgetPreviewPages(items, groups) {
   const sameFile = (a, b) => documentPreviewFileKey(a.file) === documentPreviewFileKey(b.file);
-  return items.filter(item => item.type === 'Widget').sort((a, b) =>
+  const pages = items.filter(item => item.type === 'Widget' && !/\/wdgt(?:\[\d+\])?\//.test(item.path)).sort((a, b) =>
     String(a.file).localeCompare(String(b.file), undefined, { numeric: true }) || String(a.path).localeCompare(String(b.path), undefined, { numeric: true })
   ).map(widget => {
     let kind = Object.keys(groups).find(key => groups[key].includes(widget));
@@ -17471,6 +17527,19 @@ function documentWidgetPreviewPages(items, groups) {
       }
     }
     return { ...widget, previewKind: kind || 'unsupported', previewItem: target };
+  });
+  const cards = new Map();
+  for (const page of pages) {
+    const cardPath = page.path.replace(/\/wdgt(?:\[\d+\])?$/, '');
+    const key = documentPreviewFileKey(page.file) + ':' + cardPath;
+    if (!cards.has(key)) cards.set(key, []);
+    cards.get(key).push(page);
+  }
+  return [...cards.values()].map(panes => {
+    if (panes.length === 1) return panes[0];
+    const first = panes[0], cardPath = first.path.replace(/\/wdgt(?:\[\d+\])?$/, '');
+    const card = items.find(item => item.type === 'Card' && sameFile(item, first) && item.path === cardPath);
+    return { ...(card || first), path: cardPath, previewKind: 'compound', previewItems: panes, previewItem: card || first };
   });
 }
 
@@ -17518,6 +17587,19 @@ function documentPythonPreviewFile(item) {
   return String(xmlDoctor.stagePath).replace(/\/$/, '') + '/' + relative;
 }
 
+function documentPythonShellEditor(item, items = xmlDoctor.previewItems || []) {
+  if (item.content_label === 'Python') return item;
+  const sameProblem = candidate => documentPreviewFileKey(candidate.file) === documentPreviewFileKey(item.file);
+  const editors = items.filter(candidate => candidate.content_label === 'Python' && sameProblem(candidate));
+  const name = String(item.detail?.name || '').replace(/\.py[tc]?$/i, '').toLowerCase();
+  const named = name && editors.find(candidate => String(candidate.detail?.name || '').replace(/\.py[tc]?$/i, '').toLowerCase() === name);
+  if (named) return named;
+  // A native shell is shared by the Python editors in its own problem. Prefer
+  // the nearest preceding editor when the shell has no explicit script name.
+  const preceding = editors.filter(candidate => String(candidate.path).localeCompare(String(item.path), undefined, { numeric: true }) < 0);
+  return preceding.at(-1) || editors[0] || null;
+}
+
 function documentPythonPreviewSource(item) {
   const file = documentPythonPreviewFile(item);
   let source = String(item.content || '');
@@ -17552,7 +17634,7 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
     ? items.map(image => groups.widgets.find(widget => widget.previewKind === 'images' && widget.previewItem === image) || image)
     : items;
   session.drafts ||= new Map();
-  const draftKey = appKind === 'python' ? `${selected}:python-${session.pythonRun ? 'run' : 'editor'}` : `${selected}:${session.programRun ? 'run' : 'editor'}`;
+  const draftKey = appKind === 'python' ? `${selected}:python-${session.pythonRun || item.content_label === 'PythonShell' || item.name === 'TI.PythonShell' ? 'run' : 'editor'}` : `${selected}:${session.programRun ? 'run' : 'editor'}`;
   const options = {
     item, documentName: documentPreviewDocumentName(),
     expanded: session.expanded || false,
@@ -17583,6 +17665,20 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
       });
     } },
   };
+  if (appKind === 'compound') {
+    if (!window.TnsCompoundPreview) throw new Error('Document page preview is still loading.');
+    const context = documentCalculatorContext(page.file);
+    return window.TnsCompoundPreview.open(page, {
+      ...options, ...context, storedVariables: documentStoredVariables(page.file), getVariables: () => context.mathSession.snapshot().variables,
+      mountWindow: backdrop => mountDocumentPreviewTabs(backdrop, options, '.compound-preview-chrome', next => closeModal(backdrop, () => options.pageNavigation.onSelect(next)), true),
+      closeBackdrop: backdrop => closeModal(backdrop),
+      onVariablesChange: values => {
+        Object.assign(context.mathSession.variables, values);
+        window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: page.file, variables: context.mathSession.variables } }));
+      },
+      onSave: layout => saveDocumentCardLayout(page, layout),
+    });
+  }
   if (appKind === 'basic') {
     const readSource = () => documentProgramPreviewSource(item);
     if (!session.programRun) {
@@ -17610,12 +17706,15 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   if (appKind === 'python') {
     if (!window.TnsPythonPreview) throw new Error('Python preview is still loading.');
     await ensureXmlStageCopy();
-    const data = documentPythonPreviewSource(item);
+    const isShell = item.content_label === 'PythonShell' || item.name === 'TI.PythonShell';
+    const linkedEditor = session.pythonEditorItem && documentPreviewFileKey(session.pythonEditorItem.file) === documentPreviewFileKey(item.file) ? session.pythonEditorItem : null;
+    const sourceItem = isShell ? linkedEditor || documentPythonShellEditor(item) : item;
+    const data = sourceItem ? documentPythonPreviewSource(sourceItem) : { source: '', name: '', file: item.file, path: item.path };
     session.pythonExecutions ||= new Map();
-    const resource = documentPythonPreviewFile(item);
+    const resource = sourceItem ? documentPythonPreviewFile(sourceItem) : `shell:${item.file}`;
     if (!session.pythonExecutions.has(resource)) session.pythonExecutions.set(resource, createPythonPreviewExecutionSession());
     const engine = session.pythonExecutions.get(resource), createBackdrop = options.createBackdrop;
-    const pythonOptions = { ...options, draft: options.draft?.source === data.source ? options.draft : undefined, execute: engine.execute,
+    const pythonOptions = { ...options, item: sourceItem || item, draft: options.draft?.source === data.source ? options.draft : undefined, execute: engine.execute,
       onSyntax: source => analyzePythonPreviewSource(source),
       createBackdrop: className => {
         const backdrop = createBackdrop(className);
@@ -17627,9 +17726,14 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
         backdrop.__documentPreviewRestore = session.restore;
         return backdrop;
       },
-      onEdit: (state = {}) => openDocumentAppPreview(groups, kind, selected, { ...session, ...state, pythonRun: false }),
+      onEdit: sourceItem ? (state = {}) => {
+        const next = items.findIndex(page => (page.previewItem || page) === sourceItem);
+        if (next >= 0) return openDocumentAppPreview(groups, kind, next, { ...session, ...state, pythonRun: false });
+        const editorGroups = { ...groups, python: [sourceItem] };
+        return openDocumentAppPreview(editorGroups, 'python', 0, { ...session, ...state, pythonRun: false });
+      } : undefined,
     };
-    if (session.pythonRun) {
+    if (isShell || session.pythonRun) {
       const autoRun = Boolean(session.pythonAutoRun); session.pythonAutoRun = false;
       return openPyPreviewModal(data.source, { ...pythonOptions, autoRun });
     }
@@ -17639,7 +17743,11 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
       onSave: source => { setDocumentPythonPreviewSource(item, source); xmlLog(t('pyStageUpdated')); },
       onRun: (next, state = {}) => {
         setDocumentPythonPreviewSource(item, next.source);
-        return openDocumentAppPreview(groups, kind, selected, { ...session, ...state, pythonRun: true, pythonAutoRun: true });
+        const shell = items.findIndex(page => {
+          const target = page.previewItem || page;
+          return target.name === 'TI.PythonShell' && documentPreviewFileKey(target.file) === documentPreviewFileKey(item.file);
+        });
+        return openDocumentAppPreview(groups, kind, shell < 0 ? selected : shell, { ...session, ...state, pythonEditorItem: item, pythonRun: true, pythonAutoRun: true });
       },
     });
   }
@@ -17655,6 +17763,25 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   const close = backdrop.querySelector('[data-widget-close]'); close.textContent = t('close'); close.onclick = () => closeModal(backdrop);
   document.body.append(backdrop);
   mountDocumentPreviewTabs(backdrop, options, '.love-preview-calculator-bar', next => closeModal(backdrop, () => options.pageNavigation.onSelect(next)), true);
+}
+
+async function saveDocumentCardLayout(page, layout) {
+  await ensureXmlStageCopy();
+  const file = String(xmlDoctor.stagePath).replace(/\/$/, '') + '/' + documentXmlFileIdentity(page.file);
+  const xml = pyodide.FS.readFile(file, { encoding: 'utf8' });
+  const parsed = new DOMParser().parseFromString(xml, 'application/xml');
+  if (parsed.querySelector('parsererror')) throw new Error('Invalid document XML.');
+  const cardIndex = Number(/\/card\[(\d+)\]/.exec(page.path)?.[1] || 1) - 1;
+  const card = [...parsed.documentElement.children].filter(node => node.localName === 'card')[cardIndex];
+  if (!card) throw new Error('The document page no longer exists.');
+  for (const key of ['w1', 'h1']) {
+    const value = Math.round(Math.max(1000, Math.min(9000, Number(layout[key]))));
+    if (!Number.isFinite(value)) continue;
+    card.setAttribute(key, String(value));
+    page.detail[key] = String(value);
+  }
+  pyodide.FS.writeFile(file, new XMLSerializer().serializeToString(parsed));
+  xmlDoctor.stagePrepared = true;
 }
 
 function programEditorVisibilityWords() {
@@ -17761,24 +17888,36 @@ json.dumps(removed)
   return result;
 }
 
+function documentInspectorWords() {
+  return ({
+    es: {name:'Nombre',actions:'Acciones',type:'Tipo',file:'Archivo',path:'Ruta',detail:'Detalle',Widgets:'Widgets',Cards:'Páginas',Resources:'Recursos',Images:'Imágenes',Sheets:'Hojas',Notes:'Notas',Graphs:'Gráficos',Calculators:'Calculadoras',Basic:'Programas',Symbols:'Símbolos',editorPy:'Abrir editor PY',syntaxPy:'Abrir Syntax PY'},
+    en: {name:'Name',actions:'Actions',type:'Type',file:'File',path:'Path',detail:'Details',Widgets:'Widgets',Cards:'Cards',Resources:'Resources',Images:'Images',Sheets:'Sheets',Notes:'Notes',Graphs:'Graphs',Calculators:'Calculators',Basic:'Basic',Symbols:'Symbols',editorPy:'Open editor PY',syntaxPy:'Open Syntax PY'},
+    fr: {name:'Nom',actions:'Actions',type:'Type',file:'Fichier',path:'Chemin',detail:'Détails',Widgets:'Widgets',Cards:'Pages',Resources:'Ressources',Images:'Images',Sheets:'Feuilles',Notes:'Notes',Graphs:'Graphiques',Calculators:'Calculatrices',Basic:'Programmes',Symbols:'Symboles',editorPy:'Ouvrir l’éditeur PY',syntaxPy:'Ouvrir Syntax PY'},
+  })[document.documentElement.lang?.slice(0,2)] || documentInspectorWordsEnglish();
+}
+function documentInspectorWordsEnglish() {
+  return {name:'Name',actions:'Actions',type:'Type',file:'File',path:'Path',detail:'Details',editorPy:'Open editor PY',syntaxPy:'Open Syntax PY'};
+}
+
 async function openDocumentInspector() {
   const data = await inspectXmlDocument();
   const backdrop = document.createElement("div");
   backdrop.className = "modal-backdrop";
   const summary = data.summary || {};
+  const words = documentInspectorWords();
   const previewGroups = window.TnsDocumentPreviewNavigation.groups(data.items);
   const visibilityWords=programEditorVisibilityWords();
   previewGroups.widgets = documentWidgetPreviewPages(data.items || [], previewGroups);
   const summaryHtml = [
-    ['Widgets', previewGroups.widgets.length, previewGroups.widgets.length > 1 ? 'widgets' : null], ['XML', summary.files], ['Cards', summary.cards],
-    ['Lua', previewGroups.lua.length, 'lua'], ['Python', previewGroups.python.length, 'python'],
+    ['Widgets', summary.widgets ?? previewGroups.widgets.length, (summary.widgets ?? previewGroups.widgets.length) > 1 ? 'widgets' : null], ['XML', summary.files], ['Cards', summary.cards],
+    ['Lua', previewGroups.lua.length, 'lua'], ['Python', previewGroups.python.filter(item => item.content_label === 'Python').length || previewGroups.python.length, 'python'],
     ['Resources', summary.resources], ['Images', previewGroups.images.length, 'images'],
     ['Sheets', previewGroups.sheets.length, 'sheets'], ['Notes', previewGroups.notes.length, 'notes'],
     ['Graphs', previewGroups.graphs.length, 'graphs'], ['Calculators', previewGroups.calculators.length, 'calculators'],
     ['Basic', previewGroups.basic.length, 'basic'], ['Symbols', summary.symbols],
   ].filter(([, count]) => Number(count) > 0).map(([label, count, kind]) => kind
-    ? `<button type="button" class="inspector-preview-action${kind === 'images' ? ' tns-image-gallery-chip' : ''}" data-preview-kind="${kind}" title="${escapeHtml(label)} preview">${label}: ${count}</button>`
-    : `<span>${label}: ${count}</span>`).join('');
+    ? `<button type="button" class="inspector-preview-action${kind === 'images' ? ' tns-image-gallery-chip' : ''}" data-preview-kind="${kind}" title="${escapeHtml(words[label] || label)}">${escapeHtml(words[label] || label)}: ${count}</button>`
+    : `<span>${escapeHtml(words[label] || label)}: ${count}</span>`).join('');
   const previewItem = (kind, item, session = {}) => openDocumentAppPreview(previewGroups, kind, Math.max(0, previewGroups[kind].indexOf(item)), session).catch(error => xmlLog(`ERROR Preview: ${error.message}`));
   const sortedItems = [...(data.items || [])].sort((a, b) => {
     const rank = (item) => item.type === "Lua Script" ? 0 : item.content_label === "Python" ? 1 : item.content_label === "Spreadsheet" ? 2 : item.content_label === "Notepad" ? 3 : item.content_label === "Graph" ? 4 : item.content_label === "Image" ? 5 : item.type === "Widget" && item.name === "TI.ScriptApp" ? 6 : item.type === "Card" ? 7 : 8;
@@ -17793,8 +17932,9 @@ async function openDocumentInspector() {
     } else if (item.type === "Lua Script") {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("openLua"))}</button><button type="button" class="mini-action edit-lua-action green-mini-action" data-index="${index}">${escapeHtml(t("editLua"))}</button>`;
     } else if (item.content_label === "Python") {
-      const pythonActions = ({ es: ['Abrir editor PY', 'Preview PY'], en: ['Open editor PY', 'Preview PY'], fr: ['Ouvrir l’éditeur PY', 'Aperçu PY'] })[document.documentElement.lang?.slice(0, 2)] || ['Open editor PY', 'Preview PY'];
-      contentAction = `<button type="button" class="mini-action python-editor-action green-mini-action" data-index="${index}">${escapeHtml(pythonActions[0])}</button><button type="button" class="mini-action python-preview-action green-mini-action" data-index="${index}">${escapeHtml(pythonActions[1])}</button>`;
+      contentAction = `<button type="button" class="mini-action python-editor-action green-mini-action" data-index="${index}">${escapeHtml(words.editorPy)}</button><button type="button" class="mini-action python-syntax-action green-mini-action" data-index="${index}">${escapeHtml(words.syntaxPy)}</button>`;
+    } else if (item.content_label === 'PythonShell' || item.name === 'TI.PythonShell') {
+      contentAction = `<button type="button" class="mini-action python-shell-action green-mini-action" data-index="${index}">Shell Run</button>`;
     } else if (item.content_label === "Image") {
       contentAction = `<button type="button" class="mini-action image-action green-mini-action" data-index="${index}">${escapeHtml(t("viewImage"))}</button>`;
     } else if (item.content_label === "Spreadsheet") {
@@ -17817,7 +17957,7 @@ async function openDocumentInspector() {
     const deleteWords=inspectorElementDeleteWords(item);
     const deleteAction=`<button type="button" class="mini-action inspector-delete-action" data-delete-element="${index}" title="${escapeHtml(deleteWords.button)}" aria-label="${escapeHtml(deleteWords.button+': '+(item.detail?.name||item.name))}">×</button>`;
     const action = `${contentAction}${visibilityAction}${xmlAction}${deleteAction}`;
-    return `<tr data-inspector-element="${index}"><td>${escapeHtml(item.name)}</td><td>${action}</td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td></tr>`;
+    return `<tr data-inspector-element="${index}"><td>${escapeHtml(item.name)}</td><td><div class="inspector-actions">${action}</div></td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td></tr>`;
   }).join("");
   backdrop.innerHTML = `
     <div class="modal inspector-modal">
@@ -17830,7 +17970,7 @@ async function openDocumentInspector() {
       <p class="program-editor-visibility-note">${escapeHtml(visibilityWords.note)}</p>
       <div class="inspector-table-wrap">
         <table class="problem-table inspector-table">
-          <thead><tr><th>Nombre</th><th>Acciones</th><th>Tipo</th><th>Archivo</th><th>Path</th><th>Detalle</th></tr></thead>
+          <thead><tr>${['name','actions','type','file','path','detail'].map(key=>`<th>${escapeHtml(words[key])}</th>`).join('')}</tr></thead>
           <tbody>${rows}</tbody>
         </table>
       </div>
@@ -17980,7 +18120,8 @@ async function openDocumentInspector() {
     });
   }
   for (const button of backdrop.querySelectorAll('.python-editor-action')) button.addEventListener('click', () => previewItem('python', sortedItems[Number(button.dataset.index)]));
-  for (const button of backdrop.querySelectorAll('.python-preview-action')) button.addEventListener('click', () => previewItem('python', sortedItems[Number(button.dataset.index)], { pythonRun: true }));
+  for (const button of backdrop.querySelectorAll('.python-syntax-action')) button.addEventListener('click', () => showPythonEditor(sortedItems[Number(button.dataset.index)]));
+  for (const button of backdrop.querySelectorAll('.python-shell-action')) button.addEventListener('click', () => previewItem('python', sortedItems[Number(button.dataset.index)], { pythonRun: true, pythonAutoRun: true }));
 }
 
 function detectXmlDocumentType(text) {
@@ -18941,6 +19082,7 @@ json.dumps({"fixed": fixed, "changes": changes})
     pyLog(t("autoFixNoChanges"));
   }
   for (const change of pyDoctor.lastChanges) pyLog(change);
+  persistPyDoctorDraft();
   await runPyDoctorSyntax();
 }
 
@@ -19093,13 +19235,30 @@ function showAbout() {
   });
 }
 
+function persistPyDoctorDraft() {
+  const box = document.querySelector('#py-code');
+  if (!box || box.disabled) return;
+  if (pyDoctor.target?.mode === 'xml-python') return setDocumentPythonPreviewSource(pyDoctor.target.item, box.value);
+  document.querySelector('#py-inline').value = box.value;
+  return box.value;
+}
+
+async function openPyDoctorPreview() {
+  persistPyDoctorDraft();
+  const item = pyDoctor.target?.mode === 'xml-python' ? pyDoctor.target.item : null;
+  if (item) {
+    const groups = window.TnsDocumentPreviewNavigation.groups(xmlDoctor.previewItems || [item]);
+    if (!groups.python.includes(item)) groups.python.push(item);
+    return openDocumentAppPreview(groups, 'python', groups.python.indexOf(item), { pythonRun: true });
+  }
+  return openPyPreviewModal();
+}
+
 async function savePyDoctorBlock() {
   const code = document.querySelector("#py-code").value;
   if (pyDoctor.target?.mode === "xml-python") {
     const item = pyDoctor.target.item;
-    await savePythonFileToStage(item, code);
-    item.content = code;
-    if (item.detail) item.detail.length = code.length;
+    setDocumentPythonPreviewSource(item, code);
     pyDoctor.lastOriginal = code;
     pyDoctor.lastFixed = code;
     pyLog(t("pyStageUpdated"));
@@ -19153,12 +19312,13 @@ function wireEvents() {
   document.querySelector("#py-syntax-btn").addEventListener("click", () => analyzePython().catch((err) => log(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-toggle-btn").addEventListener("click", () => openPyDoctor().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-syntax-btn").addEventListener("click", () => runPyDoctorSyntax().catch((err) => pyLog(`ERROR: ${err.message}`)));
-  document.querySelector("#py-doctor-preview-btn").addEventListener("click", () => openPyPreviewModal().catch((err) => pyLog(`ERROR: ${err.message}`)));
+  document.querySelector("#py-doctor-preview-btn").addEventListener("click", () => openPyDoctorPreview().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-autofix-btn").addEventListener("click", () => autoFixPyDoctor().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-changes-btn").addEventListener("click", showPyChanges);
   document.querySelector("#py-doctor-save-btn").addEventListener("click", () => savePyDoctorBlock().catch((err) => pyLog(`ERROR: ${err.message}`)));
   document.querySelector("#py-doctor-download-btn").addEventListener("click", downloadPyDoctorFile);
   document.querySelector("#py-code").addEventListener("input", () => {
+    persistPyDoctorDraft();
     updateDoctorLineNumbers("py", pyDoctor.issueLines);
     updatePyLineLabel();
     updatePyHighlight();

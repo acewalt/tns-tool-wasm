@@ -378,12 +378,13 @@
     return `Func\nReturn ${rawBody}\nEndFunc`;
   }
 
-  function collectMemoryFuncSymbols() {
+  function collectMemoryFuncSymbols(problemFile = '') {
     const functions = [];
     const basicFunctions = {};
     const sources = {};
     const add = (item, source, bodyOverride = null) => {
       if (!item) return;
+      if (problemFile && documentXmlFileIdentity(item.file) !== documentXmlFileIdentity(problemFile)) return;
       const name = String(item.program_name || item.name || "").trim();
       const body = normalizeFuncBody(item, bodyOverride);
       if (!name || !body) return;
@@ -396,9 +397,13 @@
     return { functions, basicFunctions, sources };
   }
 
-  async function readFuncSymbolsFromXml() {
-    const memory = collectMemoryFuncSymbols();
+  async function readFuncSymbolsFromXml(problemFile = '') {
+    // Functions are local to their Problem XML. A same-named function on
+    // another page must never replace the definition called by this ScriptApp.
+    if (!problemFile) return { functions: [], basicFunctions: {}, sources: {} };
+    const memory = collectMemoryFuncSymbols(problemFile);
     if (!pyodide) return memory;
+    pyodide.globals.set("wasm_xpe_problem_file", String(problemFile));
     pyodide.globals.set("wasm_xpe_stage_root", String(xmlDoctor.stagePath || ""));
     pyodide.globals.set("wasm_xpe_source_root", String(xmlDoctor.sourcePath || ""));
     const payload = await pyodide.runPythonAsync(`
@@ -412,7 +417,7 @@ def usable(raw):
     if not raw: return None
     p = Path(raw)
     return p if p.exists() else None
-root_path = usable(stage_raw) or usable(source_raw)
+root_path = usable(str(wasm_xpe_problem_file or ""))
 functions, basic_functions, sources = [], {}, {}
 def xml_files(root):
     if root is None: return []
@@ -454,7 +459,7 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions, "sources"
     return {
       ...(base || {}),
       functions: Array.from(new Set([...(base?.functions || []), ...(funcs?.functions || [])])),
-      basicFunctions: hasFuncs ? { ...(funcs.basicFunctions || {}) } : { ...(base?.basicFunctions || {}) },
+      basicFunctions: hasFuncs ? { ...(base?.basicFunctions || {}), ...(funcs.basicFunctions || {}) } : { ...(base?.basicFunctions || {}) },
     };
   }
 
@@ -468,11 +473,11 @@ json.dumps({"functions": functions, "basicFunctions": basic_functions, "sources"
 
   loadLuaPreviewSymbols = async function (item, sourceOverride = null) {
     const base = await oldLoadLuaPreviewSymbols(item, sourceOverride);
-    return mergePreviewSymbols(base, await readFuncSymbolsFromXml());
+    return mergePreviewSymbols(base, await readFuncSymbolsFromXml(item?.file || ''));
   };
 
   createLovePreviewNspireRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
-    const funcs = await readFuncSymbolsFromXml();
+    const funcs = await readFuncSymbolsFromXml(symbols.problemFile || '');
     const merged = mergePreviewSymbols(symbols, funcs);
     const linked = Object.entries(merged.basicFunctions || {}).map(([name, def]) => `${name}(${String(def?.params || "").trim()})`);
     if (logEl) {

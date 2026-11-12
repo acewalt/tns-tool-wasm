@@ -85,3 +85,18 @@ test('unsupported widgets and empty ScriptApps remain visible pages with an expl
   assert.equal(pages[1].previewItem,unsupported);
   assert.deepEqual(map([]),[]);
 });
+
+test('a native split card remains one navigation page with its direct applications in native order',()=>{
+  const graph={...widget(1,1,'TI.GeoGrapher','Graph'),path:'/prob/card[1]/wdgt[1]'};
+  const right={...widget(1,1,'TI.Notepad','Notepad'),path:'/prob/card[1]/wdgt[2]'};
+  const bottom={...widget(1,1,'TI.Notepad','Notepad'),path:'/prob/card[1]/wdgt[3]'};
+  const internal={...widget(1,1,'TextEdit'),path:graph.path+'/fig/objs/wdgt'};
+  const card={type:'Card',file:graph.file,path:'/prob/card[1]',detail:{clay:'5',w1:'4687',h1:'6965'}};
+  const sheet=widget(1,2,'tabulator','Spreadsheet');
+  const pages=map([right,internal,card,bottom,sheet,graph]);
+  assert.equal(pages.length,2);assert.equal(pages[0].previewKind,'compound');
+  assert.equal(pages[0].previewItems.length,3);assert.equal(pages[0].detail.w1,'4687');
+  assert.deepEqual(Array.from(pages[0].previewItems,p=>p.previewKind),['graphs','notes','notes']);
+  assert.equal(context.TnsDocumentPreviewNavigation.pageLabel(pages[0]),'1.1');
+  assert.equal(context.TnsDocumentPreviewNavigation.pageLabel(pages[1]),'1.2');
+});

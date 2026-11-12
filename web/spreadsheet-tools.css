@@ -1,0 +1,11 @@
+.spreadsheet-tools{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.spreadsheet-tools button{padding:6px 9px;font-size:12px}
+.spreadsheet-selection-info{font-size:11px;color:var(--muted);padding:4px}
+.spreadsheet-grid .sheet-cell{outline:none;overflow:hidden;min-width:0;box-sizing:border-box;white-space:nowrap;user-select:none}
+.spreadsheet-grid .sheet-cell.selected{background:#e9f0fc;box-shadow:inset 0 0 0 1px #9eb5d6}
+.spreadsheet-grid .sheet-cell.active{background:#dbeafe;box-shadow:inset 0 0 0 2px #2563eb}
+.spreadsheet-grid .sheet-cell[contenteditable=true]{user-select:text;background:white;overflow:visible;position:relative;z-index:2}
+.sheet-column-name{font-weight:bold;background:#f4f4f4;color:#111;border:1px solid #d4d4d4;min-height:22px;padding:2px 4px;font-family:Arial,sans-serif;font-size:11px;overflow:hidden}
+.spreadsheet-formula-value{min-width:0;flex:1;background:white!important;color:#111!important;border:0!important;border-radius:0!important;padding:3px 4px!important;box-shadow:none!important;font-family:'Times New Roman',serif!important;font-size:13px!important}
+.spreadsheet-modal.preview-window .spreadsheet-tools{display:flex;flex-direction:column;align-items:stretch}
+.spreadsheet-modal.preview-window .spreadsheet-tools button{width:100%}

@@ -119,12 +119,13 @@
   }
 
   function parseNumber(value, fallback = 0) {
+    if (value == null || value === '') return fallback;
     const n = Number(value);
     return Number.isFinite(n) ? n : fallback;
   }
 
   function cloneRaw(raw = {}) {
-    return { ...DEFAULT_RAW_STYLE, ...raw };
+    return { ...DEFAULT_RAW_STYLE, ...Object.fromEntries(Object.entries(raw).filter(([,value]) => value != null)) };
   }
 
   function formatEntryMap(richDoc) {
@@ -233,6 +234,29 @@
     return runs;
   }
 
+  // TI Notes mixes prose and r2d expression trees in the same rich-text line.
+  // Reading only 1word leaves loses both the formula and its saved CAS answer.
+  function nativeMathSource(node) {
+    if (!node) return "";
+    if (node.nodeType === Node.TEXT_NODE) return node.nodeValue || "";
+    if (node.nodeType !== Node.ELEMENT_NODE || ["mbox", "cursor"].includes(node.localName)) return "";
+    return Array.from(node.childNodes).map(nativeMathSource).join("");
+  }
+
+  function parseNativeRun(node, entries) {
+    if (node.localName === "leaf" && node.getAttribute("name") === "1word") return parseLeaf(node, entries);
+    if (node.localName === "leaf" && node.getAttribute("name") === "1keyword") {
+      return parseLeaf(node, entries).map(run => ({ ...run, keyword: true }));
+    }
+    const box = Array.from(node.children || []).find(child => child.localName === "mbox");
+    const input = box ? Array.from(node.children).find(child => child.localName === "node") : node;
+    const source = nativeMathSource(input);
+    const output = box ? byLocalName(box, "full")[0]?.textContent || "" : "";
+    return [{ text: source, kind: "native", nativeXml: new XMLSerializer().serializeToString(node),
+      source, output, outputOnly: box?.querySelector("attr")?.getAttribute("iomode") === "2",
+      style: parseRunStyle(node, 0, entries) }];
+  }
+
   function parseNotepadRichText(rawXml = "") {
     const outerDoc = parseXml(rawXml);
     const fmtxt = findFmtxt(outerDoc);
@@ -249,13 +273,11 @@
         const lines = Array.from(para.children)
           .filter(node => node.localName === "node" && node.getAttribute("name") === "1rtline")
           .map(line => ({
-            runs: Array.from(line.children)
-              .filter(node => node.localName === "leaf" && node.getAttribute("name") === "1word")
-              .flatMap(leaf => parseLeaf(leaf, entries))
+            runs: Array.from(line.children).flatMap(node => parseNativeRun(node, entries))
           }));
         const effectiveLines = lines.length ? lines : [{
           runs: byLocalName(para, "leaf")
-            .filter(leaf => leaf.getAttribute("name") === "1word")
+            .filter(leaf => ["1word", "1keyword"].includes(leaf.getAttribute("name")))
             .flatMap(leaf => parseLeaf(leaf, entries))
         }];
         return { lines: effectiveLines };
@@ -291,10 +313,49 @@
     }
   }
 
-  function renderRun(run) {
+  function safeNoteExpression(source, mathSession) {
+    if (!mathSession?.expression) return null;
+    let expression = String(source || "").trim();
+    const meval = expression.match(/^meval\(([\s\S]*)\)$/i);
+    if (meval) {
+      expression = meval[1].trim();
+      if (/^"[\s\S]*"$/.test(expression)) expression = expression.slice(1, -1).replace(/""/g, '"');
+    }
+    if (!expression || expression.length > 2048 || /:=|→|\b(?:Define|Prgm|Func|DelVar|Request)\b/i.test(expression)) return null;
+    // Opening a note must never invoke a stored program as a side effect.
+    const allowed = new Set("abs sqrt root sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh log ln exp floor ceiling ceil round int ip fp min max sum mean median dim determinant det identity newmat diag transpose approx exact string".split(" "));
+    for (const match of expression.matchAll(/([\p{L}_][\p{L}\p{N}_]*(?:\\[\p{L}_][\p{L}\p{N}_]*)*)\s*\(/gu)) {
+      if (!allowed.has(match[1].toLowerCase())) return null;
+    }
+    try {
+      const value = mathSession.expression(expression);
+      if (typeof value === "number") return Number.isFinite(value) ? String(Number(value.toPrecision(12))) : null;
+      if (typeof value === "boolean" || typeof value === "string") return String(value);
+      if (Array.isArray(value)) return value.every(Array.isArray) ? `[${value.map(row => `[${row.join(",")}]`).join("")}]` : `{${value.join(",")}}`;
+    } catch (_) { /* Retain the native saved symbolic result when the bounded CAS cannot evaluate it. */ }
+    return null;
+  }
+
+  function renderRun(run, options = {}) {
     const span = document.createElement("span");
     span.className = "ti-note-run";
-    span.textContent = run.text;
+    if (run.kind === "native") {
+      span.classList.add("ti-note-math");
+      span.contentEditable = "false";
+      span.dataset.tiNative = encodeURIComponent(run.nativeXml);
+      span.dataset.tiSource = run.source;
+      span.dataset.tiOutput = run.output;
+      span.dataset.tiOutputOnly = String(run.outputOnly);
+      const result = options.recalculate ? safeNoteExpression(run.source, options.mathSession) : null;
+      const output = result ?? run.output;
+      const source = run.outputOnly && output ? output : run.source;
+      if (window.TnsMathTypeset) span.innerHTML = window.TnsMathTypeset.render(source);
+      else span.textContent = source;
+      span.title = run.source;
+    } else {
+      span.textContent = run.text;
+      if (run.keyword) span.dataset.tiKeyword = "true";
+    }
     span.dataset.tiRaw = encodeRaw(run.style.raw);
     span.style.color = run.style.color;
     if (run.style.background) span.style.backgroundColor = run.style.background;
@@ -313,7 +374,8 @@
     return span;
   }
 
-  function renderRichModel(container, model) {
+  function renderRichModel(container, model, options = {}) {
+    container.__tiRichModel = model;
     container.replaceChildren();
     model.paragraphs.forEach((para, paraIndex) => {
       const paraEl = document.createElement("div");
@@ -321,7 +383,7 @@
       para.lines.forEach(line => {
         const lineEl = document.createElement("div");
         lineEl.className = "ti-note-line";
-        line.runs.forEach(run => lineEl.appendChild(renderRun(run)));
+        line.runs.forEach(run => lineEl.appendChild(renderRun(run, options)));
         if (!line.runs.length) lineEl.appendChild(document.createElement("br"));
         paraEl.appendChild(lineEl);
       });
@@ -329,6 +391,38 @@
       if (paraIndex === model.paragraphs.length - 1) paraEl.classList.add("ti-note-para-last");
       container.appendChild(paraEl);
     });
+  }
+
+  function noteContext(item, options) {
+    if (options.mathSession) return options;
+    try { return { ...documentCalculatorContext(item?.file), ...options }; } catch (_) { return options; }
+  }
+
+  function mount(host, item, options = {}) {
+    const model = parseNotepadRichText(item?.raw_xml || "");
+    host.classList.add("ti-note-rich-view", "ti-note-embedded-view");
+    host.contentEditable = "false";
+    if (!model) { host.textContent = item?.content || ""; return { model, refresh() {}, destroy() {} }; }
+    const context = noteContext(item, options);
+    const fingerprint = () => JSON.stringify(context.mathSession?.snapshot?.().variables || context.getVariables?.() || {});
+    let previous = fingerprint();
+    renderRichModel(host, model, context);
+    const refresh = () => {
+      const next = fingerprint(); if (next === previous) return;
+      previous = next;
+      host.querySelectorAll(".ti-note-math").forEach(span => {
+        const value = safeNoteExpression(span.dataset.tiSource, context.mathSession);
+        if (value != null && span.dataset.tiOutputOnly === "true") {
+          if (window.TnsMathTypeset) span.innerHTML = window.TnsMathTypeset.render(value);
+          else span.textContent = value;
+        }
+      });
+    };
+    const onVariables = event => {
+      if (!event.detail?.file || String(event.detail.file).replaceAll('\\','/').split('/').pop() === String(item?.file).replaceAll('\\','/').split('/').pop()) refresh();
+    };
+    window.addEventListener('tns-document-variables-change', onVariables);
+    return { model, refresh, destroy() { window.removeEventListener('tns-document-variables-change', onVariables); } };
   }
 
   function nearestRaw(node, editor) {
@@ -408,6 +502,10 @@
         return;
       }
       if (node.nodeType !== Node.ELEMENT_NODE) return;
+      if (node.dataset?.tiNative) {
+        current.runs.push({ kind: "native", text: node.dataset.tiSource || "", nativeXml: decodeURIComponent(node.dataset.tiNative), style: rawToStyle(nearestRaw(node, editor)) });
+        return;
+      }
       if (node.tagName === "BR") {
         newParagraph();
         return;
@@ -498,6 +596,11 @@
       line.setAttribute("name", "1rtline");
       const runs = paragraph.runs?.length ? paragraph.runs : [{ text: "", style: rawToStyle(DEFAULT_RAW_STYLE) }];
       runs.forEach((run, runIndex) => {
+        if (run.nativeXml) {
+          const fragment = parseXml(run.nativeXml);
+          if (fragment) line.appendChild(clone.importNode(fragment.documentElement, true));
+          return;
+        }
         const leaf = clone.createElement("leaf");
         applyStyleAttributes(leaf, run.style, cpLength(run.text));
         if (run.text) leaf.appendChild(clone.createTextNode(run.text));
@@ -745,7 +848,7 @@
     richView.setAttribute("aria-label", "TI-Nspire Notes rich editor");
     richView.setAttribute("contenteditable", "false");
     richView.spellcheck = false;
-    renderRichModel(richView, model);
+    const renderer = mount(richView, item, options);
     if (options.draft?.richNodes) richView.replaceChildren(...options.draft.richNodes.map(node => node.cloneNode(true)));
     shell.append(calculatorBar, richView);
 
@@ -765,6 +868,7 @@
     function close(afterClose = null) {
       if (closed) return;
       closed = true;
+      renderer.destroy();
       toolbar.destroy();
       if (typeof window.closeModal === "function") window.closeModal(backdrop, typeof afterClose === 'function' ? afterClose : null);
       else { backdrop.remove(); if (typeof afterClose === 'function') afterClose(); }
@@ -856,7 +960,11 @@
   };
 
   window.TiNotepadRichView = Object.freeze({
+    mount,
+    readOnlyRenderer: mount,
     parseNotepadRichText,
+    nativeMathSource,
+    safeNoteExpression,
     renderRichModel,
     extractEditableModel,
     buildRichTextFromModel,
@@ -864,4 +972,5 @@
     tiColorToCss,
     cssColorToTi
   });
+  window.TnsNotepadRichView = window.TiNotepadRichView;
 })();
