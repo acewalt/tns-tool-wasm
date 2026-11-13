@@ -21,6 +21,14 @@
     const save = modal.querySelector('[data-compound-save]'); save.textContent = t.save; save.hidden = !options.onSave;
     const status = modal.querySelector('[data-compound-status]');
     const layout = layoutFor(page, options.draft?.layout); let disposed = false;
+    let activePane = 0;
+    const panes = [];
+    function activatePane(index) {
+      activePane = index;
+      const navigation = window.TnsDocumentPreviewNavigation;
+      for (const [paneIndex, pane] of panes.entries()) pane.dataset.active = String(paneIndex === index);
+      navigation?.updateChrome(modal.querySelector('.compound-preview-chrome'), { appKind: page.previewItems?.[index]?.previewKind });
+    }
     const persist = () => options.setDraft?.({ layout: { ...layout } });
     const refresh = () => { if (!disposed) for (const controller of controllers) { controller.refresh?.(); controller.draw?.(); } };
     const reportChange = values => { options.onVariablesChange?.(values); refresh(); };
@@ -33,6 +41,10 @@
     for (const [index, app] of (page.previewItems || []).entries()) {
       const pane = document.createElement('div'); pane.className = 'compound-preview-pane'; pane.dataset.pane = index;
       pane.setAttribute('aria-label', app.previewItem?.detail?.name || app.name); pane.tabIndex = 0; stage.append(pane);
+      panes.push(pane);
+      const accent = window.TnsDocumentPreviewNavigation?.accentFor(app.previewKind);
+      if (accent) pane.style.setProperty('--document-preview-accent', accent);
+      pane.onpointerdown = pane.onfocusin = () => activatePane(index);
       const item = app.previewItem || app;
       try {
         if (app.previewKind === 'graphs' && window.TnsGraphPreview) controllers.push(window.TnsGraphPreview.mount(pane, item, { ...options, controls: false, onVariablesChange: reportChange }));
@@ -72,6 +84,7 @@
     save.onclick = async () => { save.disabled = true; try { await options.onSave({ ...layout }); status.textContent = t.saved; } catch (error) { status.textContent = error.message; } finally { save.disabled = false; } };
     if (!backdrop.isConnected) document.body.append(backdrop);
     options.mountWindow?.(backdrop);
+    activatePane(activePane);
     const previousCleanup = backdrop.__previewWindowCleanup;
     backdrop.__previewWindowCleanup = () => { dispose(); previousCleanup?.(); };
     resizeLayout();

@@ -30,3 +30,12 @@ test('qualified library calls italicize the name and typeset arguments without c
   assert.match(nested,/<mi mathvariant="normal">sin<\/mi>/);
   assert.match(nested,/<mfrac>/);
 });
+
+test('TI multiplication uses a centered dot without rewriting the stored expression',()=>{
+  const source='√(2*(√(5)+5))/4',result=math.parse(source);
+  assert.equal(result.source,source);
+  assert.equal(result.valid,true);
+  assert.match(result.markup,/<mo>·<\/mo>/);
+  assert.doesNotMatch(result.markup,/<mo>\*<\/mo>/);
+  assert.match(result.markup,/<mfrac>/);
+});

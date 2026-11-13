@@ -16,7 +16,9 @@
     tc: "1",
     fc: "268435199",
     fn: "TI-Nspire Sans",
-    fs: "9",
+    // Legacy r2dtotree documents omit font tables and inherit Notes' 11 pt
+    // default (also used by the native Notes factory). Explicit fs wins below.
+    fs: "11",
     fst: "0",
     fest: "0",
     feun: "0",
@@ -190,7 +192,7 @@
       color: tiColorToCss(raw.tc, "#111111"),
       background: tiBackgroundToCss(raw.fc),
       fontFamily: raw.fn || "TI-Nspire Sans",
-      fontSize: parseNumber(raw.fs, 9),
+      fontSize: parseNumber(raw.fs, 11),
       bold: (fst & 1) !== 0,
       italic: (fst & 2) !== 0,
       underline: parseNumber(raw.feun, 0) !== 0,
@@ -259,14 +261,17 @@
     const sourceRuns = byLocalName(input, "leaf").filter(leaf => leaf.getAttribute("name") !== "cursor").flatMap(leaf => parseLeaf(leaf, entries));
     const outputRuns = byLocalName(answer, "leaf").flatMap(leaf => parseLeaf(leaf, entries));
     const sourceStyle = parseRunStyle(input || node, 0, entries);
-    const outputStyle = parseRunStyle(answer || box || node, 0, entries);
-    if (!answer) outputStyle.color = "#008000";
+    const outputOnly = box?.querySelector("attr")?.getAttribute("iomode") === "2";
+    // The result tree keeps its evaluator color even when Notes is configured
+    // to show only the answer. That view uses the enclosing mathbox's style.
+    const outputStyle = parseRunStyle(outputOnly ? node : answer || box || node, 0, entries);
+    if (!answer && !outputOnly) outputStyle.color = "#008000";
     // Older Notes uses 1keyword for its built-in bold style, and stores inline
     // unevaluated program names without a format table at all.
     if (!input?.hasAttribute("id0") && !input?.hasAttribute("tc0") && /^[\p{L}_][\p{L}\p{N}_]*\(\)$/u.test(source)) sourceStyle.bold = true;
     return [{ text: source, kind: "native", nativeXml: new XMLSerializer().serializeToString(node),
       source, output, sourceStyle, outputStyle, sourceRuns, outputRuns,
-      outputOnly: box?.querySelector("attr")?.getAttribute("iomode") === "2",
+      outputOnly,
       style: parseRunStyle(node, 0, entries) }];
   }
 
@@ -407,6 +412,10 @@
             op.textContent = ":="; math.append(op, ...rhs.querySelector("math").childNodes);
           }
         } else part.innerHTML = window.TnsMathTypeset.render(source);
+        // TI Notes gives fractions full-size numerator and denominator glyphs.
+        // Inline MathML's default script sizing made saved results much smaller
+        // than the prose next to them, especially inside split pages.
+        part.querySelectorAll('math').forEach(math => math.setAttribute('displaystyle', 'true'));
         for (const token of part.querySelectorAll("mi,mn,mo,mtext")) {
           const native = runs.find(entry => entry.text.trim() === token.textContent.trim());
           if (!native) continue;
@@ -430,7 +439,7 @@
         arrow.className = "ti-note-math-result-arrow"; arrow.textContent = "▸"; arrow.setAttribute("aria-hidden", "true");
         span.appendChild(arrow);
       }
-      append(output, "output", run.outputStyle || { ...run.style, color: "#008000" }, run.outputRuns);
+      append(output, "output", run.outputStyle || { ...run.style, color: "#008000" }, run.outputOnly ? [] : run.outputRuns);
     }
   }
 
@@ -495,7 +504,7 @@
     return cloneRaw(DEFAULT_RAW_STYLE);
   }
 
-  function fontPxToTiSize(pxText, fallback = 9) {
+  function fontPxToTiSize(pxText, fallback = 11) {
     const px = parseFloat(String(pxText || ""));
     if (!Number.isFinite(px) || px <= 0) return fallback;
     const pt = px * 0.75;
@@ -509,7 +518,7 @@
     raw.tc = cssColorToTi(computed.color, raw.tc);
 
     const explicitSize = element.closest?.("[data-ti-fs]")?.dataset?.tiFs;
-    const size = explicitSize != null ? parseNumber(explicitSize, parseNumber(raw.fs, 9)) : fontPxToTiSize(computed.fontSize, parseNumber(raw.fs, 9));
+    const size = explicitSize != null ? parseNumber(explicitSize, parseNumber(raw.fs, 11)) : fontPxToTiSize(computed.fontSize, parseNumber(raw.fs, 11));
     raw.fs = String(size);
 
     const weight = parseInt(computed.fontWeight, 10);
@@ -851,7 +860,7 @@
         const color = cssColorToTi(computed.color, "1");
         colorInput.value = tiColorToCss(color, "#000001");
         const explicit = element.closest?.("[data-ti-fs]")?.dataset?.tiFs;
-        const size = explicit != null ? parseNumber(explicit, 9) : fontPxToTiSize(computed.fontSize, 9);
+        const size = explicit != null ? parseNumber(explicit, 11) : fontPxToTiSize(computed.fontSize, 11);
         const nearest = Array.from(sizeSelect.options).reduce((best, option) => {
           const distance = Math.abs(Number(option.value) - size);
           return !best || distance < best.distance ? { option, distance } : best;

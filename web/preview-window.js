@@ -41,7 +41,7 @@
         stage = document.createElement('div'); stage.className = 'preview-python-screen';
         const chrome = document.createElement('div'); chrome.className = 'love-preview-calculator-bar';
         const nav = modal.querySelector(':scope > .document-preview-tabs');
-        window.TnsDocumentPreviewNavigation.mountChrome(chrome, { title: options.documentName || 'documento', onClose: () => backdrop.querySelector('#py-preview-close')?.click() });
+        window.TnsDocumentPreviewNavigation.mountChrome(chrome, { appKind: 'python', title: options.documentName || 'documento', onClose: () => backdrop.querySelector('#py-preview-close')?.click() });
         if (nav) chrome.querySelector('.document-preview-chrome-pages').append(nav);
         stage.append(chrome, modal.querySelector('#py-preview-output'));
         const close = modal.querySelector('#py-preview-close'); if (close) { let actions = header.querySelector('.modal-top-actions'); if (!actions) { actions = document.createElement('div');actions.className = 'modal-top-actions';header.append(actions); } actions.append(close); }

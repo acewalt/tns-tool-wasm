@@ -1,6 +1,29 @@
 (() => {
   'use strict';
   const kinds = ['lua', 'python', 'images', 'sheets', 'notes', 'graphs', 'calculators', 'basic'];
+  // The application color belongs to the calculator chrome, independently of
+  // the website theme and of the surrounding preview controls.
+  const appAccents = Object.freeze({ notes:'#ffad32', calculators:'#89869d', graphs:'#299bbe', sheets:'#59b9a8', python:'#3c7faf', basic:'#f5656b', lua:'#299bbe', images:'#299bbe' });
+  function appKindFor(item) {
+    if (typeof item === 'string') {
+      if (kinds.includes(item)) return item;
+      return ({Notepad:'notes','TI.Notepad':'notes',Scratchpad:'calculators','TI.Scratchpad':'calculators',Graph:'graphs','TI.GeoGrapher':'graphs',Spreadsheet:'sheets',tabulator:'sheets',Python:'python',PythonShell:'python','TI.PythonEditor':'python','TI.PythonShell':'python',ProgramEditor:'basic','TI.ProgramEditor':'basic',Lua:'lua','TI.ScriptApp':'lua',Image:'images'})[item] || 'lua';
+    }
+    if (item?.previewKind === 'compound') return appKindFor(item.previewItems?.[0]);
+    if (item?.previewKind && kinds.includes(item.previewKind)) return item.previewKind;
+    return appKindFor(item?.content_label || item?.name || 'lua');
+  }
+  const accentFor = kind => appAccents[appKindFor(kind)];
+  function hostAppKind(host) {
+    const matches = selector => host?.matches?.(selector) || host?.closest?.(selector);
+    if (matches('.ti-program-editor-chrome,.ti-program-editor-modal')) return 'basic';
+    if (matches('.ti-python-chrome,.ti-python-editor-modal,.ti-python-shell-modal,.py-preview-modal')) return 'python';
+    if (matches('.prgm-preview-chrome,.prgm-preview-modal')) return 'calculators';
+    if (matches('.note-page-modal,.note-calculator-shell')) return 'notes';
+    if (matches('.spreadsheet-calc-topbar,.spreadsheet-modal')) return 'sheets';
+    if (matches('.graph-preview-chrome,.graph-preview-modal')) return 'graphs';
+    return null;
+  }
   function groups(items = []) {
     const result = Object.fromEntries(kinds.map(kind => [kind, []]));
     for (const item of items) {
@@ -61,7 +84,7 @@
     };
     render(); return tabs;
   }
-  function updateChrome(host, { title, mode } = {}) {
+  function updateChrome(host, { title, mode, appKind } = {}) {
     const parts = host?.__tnsDocumentPreviewChrome;
     if (!parts) return host;
     if (title !== undefined) {
@@ -69,9 +92,15 @@
       parts.title.title = parts.title.textContent;
     }
     if (mode !== undefined) parts.mode.textContent = String(mode || 'RAD');
+    if (appKind !== undefined) {
+      parts.appKind = appKindFor(appKind);
+      parts.accent = accentFor(parts.appKind);
+      host.setAttribute('data-preview-app-kind', parts.appKind);
+      host.style.setProperty('--document-preview-accent', parts.accent);
+    }
     return host;
   }
-  function createChrome({ items = [], selected = 0, onSelect = () => {}, title = 'documento', mode = 'RAD', onClose } = {}) {
+  function createChrome({ items = [], selected = 0, onSelect = () => {}, title = 'documento', mode = 'RAD', onClose, appKind } = {}) {
     const chrome = document.createElement('div'); chrome.className = 'document-preview-chrome';
     const labelWidth = Math.max(3, ...items.map((item, index) => pageLabel(item, index).length));
     const reserve = Math.min(150, Math.max(64, 27 + Math.min(3, items.length) * Math.max(27, labelWidth * 6 + 9)));
@@ -93,16 +122,17 @@
     close.onclick = event => { event?.preventDefault?.(); event?.stopPropagation?.(); onClose?.(); };
     status.append(angle, battery, close); chrome.append(pages, name, status);
     chrome.__tnsDocumentPreviewChrome = { title: name, mode: angle, reserve };
-    return updateChrome(chrome, { title, mode });
+    return updateChrome(chrome, { title, mode, appKind:appKind ?? appKindFor(items[selected]) });
   }
   function mountChrome(host, options = {}) {
     if (!host) return null;
-    const chrome = createChrome(options);
+    const chrome = createChrome({ ...options, appKind:options.appKind ?? hostAppKind(host) ?? appKindFor(options.items?.[options.selected || 0]) });
     host.classList.add('document-preview-chrome');
     host.replaceChildren(...chrome.childNodes);
     host.__tnsDocumentPreviewChrome = chrome.__tnsDocumentPreviewChrome;
     host.style.setProperty('--document-preview-title-reserve', `${chrome.__tnsDocumentPreviewChrome.reserve}px`);
+    updateChrome(host, { appKind:chrome.__tnsDocumentPreviewChrome.appKind });
     return host;
   }
-  globalThis.TnsDocumentPreviewNavigation = Object.freeze({ groups, windowFor, pageLabel, createTabs, createChrome, mountChrome, updateChrome });
+  globalThis.TnsDocumentPreviewNavigation = Object.freeze({ groups, windowFor, pageLabel, createTabs, createChrome, mountChrome, updateChrome, appKindFor, accentFor, appAccents });
 })();

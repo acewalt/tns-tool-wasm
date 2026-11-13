@@ -46,7 +46,7 @@
     if (!curves.length) for (const [index, expression] of expressions.entries()) curves.push({ id:expression.id,expressionId:expression.id,name:expression.lbl || `f${index+1}`,formula:expression.expr || '',color:colors[index%colors.length],visible:true,style:0,width:1 });
     const axisObjects = objects.filter(object=>object.type==='axis');
     const tick = (axis, fallback) => finite(objects.find(object=>object.type==='number'&&object.children.axistic?.ty===axis)?.num, finite(fallback));
-    return { version:1,viewport,surface,objects,curves,axesVisible:a.asho!=='0',grid:objects.some(object=>object.type==='grid'&&object.asho==='1'),xLabel:axisObjects[0]?.lbl||'x',yLabel:axisObjects[1]?.lbl||'y',tickX:tick('0',a.tivu),tickY:tick('1',a.tivv),animationAvailable:objects.some(object=>object.type==='point'&&object.kinds.includes('pton_c')),animationRunning:false };
+    return { version:1,viewport,surface,objects,curves,axesVisible:a.asho!=='0',grid:objects.some(object=>object.type==='grid'&&object.asho==='1'),xLabel:axisObjects[0]?.lbl||'x',yLabel:axisObjects[1]?.lbl||'y',tickX:tick('0',a.tivu),tickY:tick('1',a.tivv),animationAvailable:objects.some(object=>object.type==='point'&&finite(object.children.pton_c?.aani)>0),animationRunning:false };
   }
   function paperToWorld(state, x, y) {
     const s=state.surface,v=state.originalViewport || state.viewport;
@@ -114,7 +114,7 @@
       const parents=ids(obj),stored=paperToWorld(state,obj.x,obj.y);
       if(obj.children.pton_c){const circle=circleGeometry(byId.get(parents[0]),seen);if(circle){const t=finite(obj.children.pton_c.t);return{x:circle.x+circle.radius*Math.cos(t),y:circle.y+circle.radius*Math.sin(t)};}}
       if(obj.kinds.includes('point_ll')){const a=line(byId.get(parents[0]),seen),b=line(byId.get(parents[1]),seen);if(a&&b){const den=a.dx*b.dy-a.dy*b.dx;if(Math.abs(den)>1e-14){const t=((b.x-a.x)*b.dy-(b.y-a.y)*b.dx)/den;return{x:a.x+t*a.dx,y:a.y+t*a.dy};}}}
-      if(obj.children.vx_pol){const vertices=polygon(byId.get(parents[0]),seen);if(vertices.length)return vertices[(Math.max(1,finite(obj.children.vx_pol.i))-1)%vertices.length];}
+      if(obj.children.vx_pol){const vertices=polygon(byId.get(parents[0]),seen);if(vertices.length){const index=Math.trunc(finite(obj.children.vx_pol.i));return vertices[((index%vertices.length)+vertices.length)%vertices.length];}}
       const vars=variables(),x=state.objects.find(n=>n.type==='number'&&n.children.coord_p?.ty==='0'&&ids(n)[0]===id),y=state.objects.find(n=>n.type==='number'&&n.children.coord_p?.ty==='1'&&ids(n)[0]===id);
       if(x?.lbl&&y?.lbl&&Number.isFinite(vars[x.lbl])&&Number.isFinite(vars[y.lbl]))return{x:vars[x.lbl],y:vars[y.lbl]};
       if(obj.children.pton_axes)return{x:finite(obj.children.pton_axes.x),y:finite(obj.children.pton_axes.y)};
@@ -135,7 +135,15 @@
     }
     function polygon(obj,visited=new Set()) {
       if(!obj)return[];const seen=next(visited,obj.id);if(!seen)return[];const parents=ids(obj),points=parents.map(id=>point(id,seen)).filter(Boolean);
-      if(obj.children.pol_reg&&points.length>=2){const [a,b]=points,count=Math.min(360,Math.max(3,finite(obj.children.pol_reg.s,3))),rotation=2*Math.PI/count*(finite(obj.children.pol_reg.r,1)>=0?1:-1),edge={x:b.x-a.x,y:b.y-a.y},vertices=[a,b];let dx=edge.x,dy=edge.y;for(let i=2;i<count;i++){[dx,dy]=[dx*Math.cos(rotation)-dy*Math.sin(rotation),dx*Math.sin(rotation)+dy*Math.cos(rotation)];const last=vertices.at(-1);vertices.push({x:last.x+dx,y:last.y+dy});}return vertices;}
+      if(obj.children.pol_reg&&points.length>=2){
+        // Native pol_reg parents are the center and a circumference point.
+        // vx_pol i=0 is that radius point; i=1 is the next clockwise vertex.
+        // Treating the parents as an edge moves every dependent guide outside
+        // the circle, even though its saved construction is a diameter.
+        const [center,radiusPoint]=points,count=Math.min(360,Math.max(3,Math.trunc(finite(obj.children.pol_reg.s,3))));
+        const rotation=-2*Math.PI/count*(finite(obj.children.pol_reg.r,1)>=0?1:-1),dx=radiusPoint.x-center.x,dy=radiusPoint.y-center.y;
+        return Array.from({length:count},(_,i)=>{const angle=rotation*i,c=Math.cos(angle),s=Math.sin(angle);return{x:center.x+dx*c-dy*s,y:center.y+dx*s+dy*c};});
+      }
       return points;
     }
     function numberValue(obj) {
@@ -146,6 +154,21 @@
       return finite(obj?.num);
     }
     return {point,line,circle:circleGeometry,polygon,number:numberValue};
+  }
+  function nativeLineStyle(obj) {
+    return {color:color(obj.alco||obj.acol),width:1+Math.min(3,Math.max(0,finite(obj.apth))),dash:finite(obj.apst)===1?[1,3]:finite(obj.apst)===2?[5,4]:[]};
+  }
+  function nativeAxisLabels(state) {
+    const byId=new Map(state.objects.map(obj=>[obj.id,obj])),labels=[];
+    for(const obj of state.objects){
+      if(!['text','label'].includes(obj.type)||obj.asho==='0')continue;
+      for(const id of String(obj.par||'').trim().split(/\s+/)){
+        const parent=byId.get(id),bound=parent?.children.axisval,tick=parent?.children.axistic;
+        if(bound){const key={'0':'xmax','1':'xmin','2':'ymax','3':'ymin'}[bound.ty];if(key){const actual=state.viewport[key],original=state.originalViewport?.[key]??finite(parent.num,actual),range=state.viewport[`${key[0]}max`]-state.viewport[`${key[0]}min`];labels.push({kind:'bound',axis:key[0],type:bound.ty,value:Math.abs(actual-original)<range/10000?original:actual});}}
+        else if(tick){const axis=tick.ty==='0'?'x':'y',value=axis==='x'?state.tickX:state.tickY;if(value>0)labels.push({kind:'tick',axis,type:tick.ty,value});}
+      }
+    }
+    return labels;
   }
   const phrases = {
     en:{title:'Graphs',intro:'Wheel to zoom. Drag to pan; drag a point to move it.',save:'Save',close:'Close',reset:'Original window',standard:'Standard window',square:'Square scale',grid:'Grid',axes:'Axes',trace:'Trace',equations:'Equations',window:'Window settings',animate:'Play animation',pause:'Pause animation',hide:'Hide / show',select:'Select',ready:'Ready',empty:'This graph has no expressions.',apply:'Apply',badWindow:'Enter valid increasing window bounds.',error:'Graph evaluation',unsupported:'Unsupported geometry',formula:'Formula',entry:'Show entry line',hideEntry:'Hide entry line',newFunction:'New function'},
@@ -190,26 +213,33 @@
       const changed={};for(const obj of state.objects)if(obj.type==='number'&&obj.lbl){const n=numberValue(obj);if(Number.isFinite(n)){obj.num=String(n);changed[obj.lbl]=n;if(options.mathSession?.variables)options.mathSession.variables[obj.lbl]=n;}}
       options.onVariablesChange?.(changed);return changed;
     }
-    function stroke(ctx,obj){ctx.strokeStyle=color(obj.alco||obj.acol);ctx.lineWidth=1+Math.min(3,finite(obj.apth));ctx.setLineDash(finite(obj.apst)===1?[5,4]:finite(obj.apst)===2?[1,3]:[]);}
+    function stroke(ctx,obj){const style=nativeLineStyle(obj);ctx.strokeStyle=style.color;ctx.lineWidth=style.width;ctx.setLineDash(style.dash);}
     const niceStep=(range,pixels)=>{const power=Math.pow(10,Math.floor(Math.log10(range/Math.max(2,pixels/65)))),unit=range/Math.max(2,pixels/65)/power;return(unit>5?10:unit>2?5:unit>1?2:1)*power;};
     const format=n=>Math.abs(n)<1e-12?'0':Number(n.toPrecision(5)).toString();
     function drawAxes(ctx) {
       const v=state.viewport,x0=xy({x:0,y:0}).x,y0=xy({x:0,y:0}).y;
+      const nativeLabels=nativeAxisLabels(state),nativeX=nativeLabels.some(label=>label.axis==='x'),nativeY=nativeLabels.some(label=>label.axis==='y');
       const stepX=state.tickX>0?state.tickX:niceStep(v.xmax-v.xmin,width),stepY=state.tickY>0?state.tickY:niceStep(v.ymax-v.ymin,height);
       ctx.lineWidth=1;ctx.setLineDash([]);ctx.font='9px Arial';ctx.fillStyle='#111';
       const xTicks=[],yTicks=[];for(let x=Math.ceil(v.xmin/stepX)*stepX;x<=v.xmax&&xTicks.length<200;x+=stepX)xTicks.push(x);for(let y=Math.ceil(v.ymin/stepY)*stepY;y<=v.ymax&&yTicks.length<200;y+=stepY)yTicks.push(y);
       if(state.grid){ctx.strokeStyle='#dadada';ctx.beginPath();for(const x of xTicks){const p=xy({x,y:0});ctx.moveTo(p.x,0);ctx.lineTo(p.x,height);}for(const y of yTicks){const p=xy({x:0,y});ctx.moveTo(0,p.y);ctx.lineTo(width,p.y);}ctx.stroke();}
       if(!state.axesVisible)return;
       ctx.strokeStyle='#111';ctx.beginPath();if(y0>=0&&y0<=height){ctx.moveTo(0,y0);ctx.lineTo(width,y0);}if(x0>=0&&x0<=width){ctx.moveTo(x0,0);ctx.lineTo(x0,height);}ctx.stroke();
-      ctx.beginPath();ctx.textAlign='center';ctx.textBaseline='top';for(const x of xTicks){const p=xy({x,y:0});if(y0>=0&&y0<=height){ctx.moveTo(p.x,y0-2);ctx.lineTo(p.x,y0+2);if(Math.abs(x)>stepX*.001&&p.x>12&&p.x<width-12&&Math.abs(Math.round(x/stepX))%Math.max(1,Math.ceil(34/(stepX/(v.xmax-v.xmin)*width)))===0)ctx.fillText(format(x),p.x,Math.min(height-12,y0+4));}}ctx.stroke();
-      ctx.beginPath();ctx.textAlign='right';ctx.textBaseline='middle';for(const y of yTicks){const p=xy({x:0,y});if(x0>=0&&x0<=width){ctx.moveTo(x0-2,p.y);ctx.lineTo(x0+2,p.y);if(Math.abs(y)>stepY*.001&&p.y>10&&p.y<height-10&&Math.abs(Math.round(y/stepY))%Math.max(1,Math.ceil(13/(stepY/(v.ymax-v.ymin)*height)))===0)ctx.fillText(format(y),Math.max(15,x0-4),p.y);}}ctx.stroke();
+      ctx.beginPath();ctx.textAlign='center';ctx.textBaseline='top';for(const x of xTicks){const p=xy({x,y:0});if(y0>=0&&y0<=height){ctx.moveTo(p.x,y0-2);ctx.lineTo(p.x,y0+2);if(!nativeX&&Math.abs(x)>stepX*.001&&p.x>12&&p.x<width-12&&Math.abs(Math.round(x/stepX))%Math.max(1,Math.ceil(34/(stepX/(v.xmax-v.xmin)*width)))===0)ctx.fillText(format(x),p.x,Math.min(height-12,y0+4));}}ctx.stroke();
+      ctx.beginPath();ctx.textAlign='right';ctx.textBaseline='middle';for(const y of yTicks){const p=xy({x:0,y});if(x0>=0&&x0<=width){ctx.moveTo(x0-2,p.y);ctx.lineTo(x0+2,p.y);if(!nativeY&&Math.abs(y)>stepY*.001&&p.y>10&&p.y<height-10&&Math.abs(Math.round(y/stepY))%Math.max(1,Math.ceil(13/(stepY/(v.ymax-v.ymin)*height)))===0)ctx.fillText(format(y),Math.max(15,x0-4),p.y);}}ctx.stroke();
+      // TI stores endpoint values and a single tick-spacing annotation. Honor
+      // those choices instead of crowding a small split pane with extra labels.
+      for(const label of nativeLabels){
+        if(label.axis==='x'&&y0>=0&&y0<=height){ctx.textBaseline='top';ctx.textAlign=label.kind==='bound'?(label.type==='0'?'right':'left'):'center';const x=label.kind==='bound'?(label.type==='0'?width-2:2):xy({x:label.value,y:0}).x;ctx.fillText(format(label.value),x,Math.min(height-11,y0+4));}
+        else if(label.axis==='y'&&x0>=0&&x0<=width){ctx.textAlign='right';ctx.textBaseline=label.kind==='bound'?(label.type==='2'?'top':'bottom'):'middle';const y=label.kind==='bound'?(label.type==='2'?2:height-2):xy({x:0,y:label.value}).y;ctx.fillText(format(label.value),Math.max(15,Math.min(width-2,x0-4)),y);}
+      }
       ctx.font='italic 10px Arial';if(y0>0&&y0<height){ctx.textAlign='right';ctx.fillText(state.xLabel,width-3,Math.max(6,y0-7));}if(x0>0&&x0<width){ctx.textAlign='left';ctx.fillText(state.yLabel,Math.min(width-12,x0+5),7);}
     }
     function drawCurves(ctx) {
       const errors=[];for(const curve of state.curves){if(!curve.visible||!curve.formula.trim())continue;let samples;
         try{samples=sampleCurve(curve,state.viewport,Math.min(1400,Math.max(240,width*2)),evalMath,getVars());}catch(error){errors.push(`${curve.name}: ${error.message}`);continue;}
         if(samples.points.every(p=>!p)){errors.push(`${curve.name}: ${samples.errors[0]||labels.error}`);continue;}
-        ctx.strokeStyle=curve.color;ctx.lineWidth=curve===selectedCurve&&drag?.curve?2.1:curve.width||1.2;ctx.setLineDash(curve.style===1?[5,4]:curve.style===2?[1,3]:[]);ctx.beginPath();let previous=null;
+        ctx.strokeStyle=curve.color;ctx.lineWidth=curve===selectedCurve&&drag?.curve?2.1:curve.width||1.2;ctx.setLineDash(nativeLineStyle({apst:curve.style}).dash);ctx.beginPath();let previous=null;
         for(const p of samples.points){if(!p){previous=null;continue;}const screen=xy(p);if(!Number.isFinite(screen.y)||Math.abs(screen.y)>height*8){previous=null;continue;}if(previous&&Math.abs(previous.y-screen.y)<height*1.5)ctx.lineTo(screen.x,screen.y);else ctx.moveTo(screen.x,screen.y);previous=screen;}ctx.stroke();
       }
       const nativeLabel=selectedCurve&&state.objects.some(obj=>obj.kinds.includes('lbl_g')&&String(obj.par||'').trim().split(/\s+/)[0]===selectedCurve.id&&obj.asho!=='0');
@@ -235,7 +265,7 @@
         else if(['segment','vector','line','ray'].includes(obj.type)){const line=construction.line(obj);if(!line){unsupported.add(obj.type);continue;}let q=xy(line),r=xy({x:line.x+line.dx,y:line.y+line.dy});if(obj.type==='line'||obj.type==='ray'){const dx=r.x-q.x,dy=r.y-q.y,k=Math.max(width,height)*4/Math.max(1,Math.hypot(dx,dy));r={x:q.x+dx*k,y:q.y+dy*k};if(obj.type==='line')q={x:q.x-dx*k,y:q.y-dy*k};}ctx.beginPath();ctx.moveTo(q.x,q.y);ctx.lineTo(r.x,r.y);ctx.stroke();if(obj.type==='vector'){const angle=Math.atan2(r.y-q.y,r.x-q.x);ctx.beginPath();ctx.moveTo(r.x,r.y);ctx.lineTo(r.x-6*Math.cos(angle-.4),r.y-6*Math.sin(angle-.4));ctx.moveTo(r.x,r.y);ctx.lineTo(r.x-6*Math.cos(angle+.4),r.y-6*Math.sin(angle+.4));ctx.stroke();}}
         else if(obj.type==='polygon'){const vertices=construction.polygon(obj);if(vertices.length<3){unsupported.add('polygon');continue;}ctx.beginPath();for(const[i,vertex]of vertices.entries()){const q=xy(vertex);if(!i)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);}ctx.closePath();if(finite(obj.afco,268435199)<=0xffffff){ctx.fillStyle=color(obj.afco);ctx.fill();}ctx.stroke();}
         else if(obj.type==='circle_arc'){const angle=byId.get(ids[0]),parents=String(angle?.par||'').trim().split(/\s+/),a=point(parents[0]),b=point(parents[1]);if(!a||!b){unsupported.add('circle_arc');continue;}const q=xy(b),start=-Math.atan2(a.y-b.y,a.x-b.x),sweep=numberValue(angle);ctx.beginPath();ctx.arc(q.x,q.y,13,start,start-sweep,true);ctx.stroke();}
-        else if(obj.type==='point'&&p){const q=xy(p);ctx.setLineDash([]);ctx.fillStyle=color(obj.acol);ctx.beginPath();ctx.arc(q.x,q.y,finite(obj.adst)>=7?2.5:1.6,0,Math.PI*2);ctx.fill();}
+        else if(obj.type==='point'&&p){const q=xy(p);ctx.setLineDash([]);ctx.fillStyle=color(obj.acol);if(finite(obj.adst)===7)ctx.fillRect(q.x-2.5,q.y-2.5,5,5);else{ctx.beginPath();ctx.arc(q.x,q.y,1.6,0,Math.PI*2);ctx.fill();}}
         else if(['text','label'].includes(obj.type)) {
           // Axis numbers and titles are laid out with the current viewport by
           // drawAxes. Their saved paper-coordinate copies would overlap ticks.
@@ -338,5 +368,5 @@
     const cleanup=backdrop.__previewWindowCleanup;backdrop.__previewWindowCleanup=()=>{view.dispose();cleanup?.();};
     return {backdrop,view,dispose:()=>close.click()};
   }
-  globalThis.TnsGraphPreview=Object.freeze({parseXml,paperToWorld,worldToPaper,zoomViewport,expandFormula,sampleCurve,evaluateSample,fittedViewport,translatedFormula,geometry,mount,open});
+  globalThis.TnsGraphPreview=Object.freeze({parseXml,paperToWorld,worldToPaper,zoomViewport,expandFormula,sampleCurve,evaluateSample,fittedViewport,translatedFormula,geometry,nativeLineStyle,nativeAxisLabels,mount,open});
 })();
