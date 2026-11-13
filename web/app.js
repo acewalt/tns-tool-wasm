@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-12-widgets-v40";
+const SOURCE_VERSION = "2026-11-12-widgets-v41";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {

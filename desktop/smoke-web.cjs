@@ -22,7 +22,7 @@ async function checkBrowserRequirement(win,screenshot){
     if(!dialog || dialog.getBoundingClientRect().width<300 || document.querySelector('.ndless-project-dialog'))
       throw Error('Browser opened a project instead of the desktop recommendation');
     const download=dialog.querySelector('[data-desktop-download]').href;
-    if(download!=='https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.40/TNS-Tool-Portable-Windows-x64.zip')
+    if(download!=='https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.41/TNS-Tool-Portable-Windows-x64.zip')
       throw Error('Wrong desktop download destination');
     await document.fonts.ready;
     await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));

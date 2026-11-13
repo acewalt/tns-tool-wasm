@@ -42,7 +42,7 @@
     }
     if(outer(s,'[',']'))return fence(table([split(s.slice(1,-1),',').map(p=>p.text)]),'[',']');
     if(outer(s,'{','}'))return fence(row(...split(s.slice(1,-1),',').flatMap((p,i)=>[i?'<mo>,</mo>':'',expr(p.text)])),'{','}');
-    for(const ops of ['=<>≤≥≠','+-','*×·']) {const parts=split(s,ops);if(parts.length>1)return row(...parts.flatMap(p=>[expr(p.text),p.op?`<mo>${esc(p.op)}</mo>`:'']));}
+    for(const ops of ['=<>≤≥≠','+-','*×·']) {const parts=split(s,ops);if(parts.length>1)return row(...parts.flatMap(p=>[expr(p.text),p.op?`<mo>${esc(p.op==='*'?'·':p.op)}</mo>`:'']));}
     const quotient=split(s,'/',true);if(quotient.length===3&&typeof quotient[0]==='string')return `<mfrac>${expr(ungroup(quotient[0]))}${expr(ungroup(quotient[2]))}</mfrac>`;
     const powers=split(s,'^');if(powers.length>1){const cut=powers[0].index;return `<msup>${expr(s.slice(0,cut))}${expr(ungroup(s.slice(cut+1)))}</msup>`;}
     let m=s.match(/^(.+?)([₀₁₂₃₄₅₆₇₈₉]+)$/);if(m)return `<msub>${expr(m[1])}<mn>${m[2].replace(/[₀₁₂₃₄₅₆₇₈₉]/g,c=>'₀₁₂₃₄₅₆₇₈₉'.indexOf(c))}</mn></msub>`;

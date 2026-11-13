@@ -115,6 +115,25 @@ test('shared chrome shows document title and mode, exposes close, and preserves 
   assert.equal(chrome.__tnsDocumentPreviewChrome.mode.textContent, 'RAD');
 });
 
+test('application chrome accents follow native app types and update without moving the tabs', () => {
+  const nav = fixture();
+  const expected = {notes:'#ffad32',calculators:'#89869d',graphs:'#299bbe',sheets:'#59b9a8',python:'#3c7faf',basic:'#f5656b'};
+  for (const [appKind,accent] of Object.entries(expected)) {
+    const chrome = nav.createChrome({ items:[page('Problem1.xml',1)], appKind });
+    assert.equal(chrome.__tnsDocumentPreviewChrome.appKind,appKind);
+    assert.equal(chrome.__tnsDocumentPreviewChrome.accent,accent);
+    assert.equal(chrome.attributes['data-preview-app-kind'],appKind);
+    const originalChildren = [...chrome.children];
+    nav.updateChrome(chrome,{appKind:'notes'});
+    assert.deepEqual(chrome.children,originalChildren,'Changing active application must retain the existing chrome and tabs');
+    assert.equal(chrome.__tnsDocumentPreviewChrome.accent,expected.notes);
+  }
+  assert.equal(nav.appKindFor({content_label:'Notepad'}),'notes');
+  assert.equal(nav.appKindFor({previewKind:'compound',previewItems:[{previewKind:'graphs'}]}),'graphs');
+  assert.equal(nav.appKindFor({name:'TI.Scratchpad'}),'calculators');
+  assert.equal(nav.appKindFor({name:'TI.PythonShell'}),'python');
+});
+
 test('arrows reveal more than three pages and clicking a page selects the correct original index', () => {
   const nav = fixture();
   const selected = [];
