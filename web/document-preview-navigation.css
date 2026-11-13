@@ -25,3 +25,5 @@
 .document-preview-expanded-tabs{display:none}
 .prgm-preview-modal.expanded .document-preview-expanded-tabs,.love-preview-modal.document-preview-expanded .document-preview-expanded-tabs{display:inline-flex}
 .prgm-preview-top:has(.document-preview-tabs){flex-wrap:wrap;justify-content:flex-end}
+.document-preview-chrome[data-preview-app-kind]{border-bottom:3px solid var(--document-preview-accent,#299bbe)!important}
+.document-preview-chrome[data-preview-app-kind] .document-preview-tab[aria-current="page"]{border-top:1px solid var(--document-preview-accent)!important;border-left:1px solid var(--document-preview-accent)!important;border-right:1px solid var(--document-preview-accent)!important;padding-top:3px!important}
