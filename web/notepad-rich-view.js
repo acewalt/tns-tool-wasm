@@ -51,7 +51,7 @@
       insertMath: "Insertar expresión",
       updateMath: "Actualizar expresión",
       invalidMath: "Escribe una expresión con paréntesis completos.",
-      editMath: "Doble clic para editar la expresión matemática",
+      editMath: "Doble clic para editar; Enter confirma y Esc cancela",
       hint: "En Editar formato puedes seleccionar texto y cambiar negrita, cursiva, subrayado, color, tamaño, subíndice y superíndice. Los cambios se guardan dentro del r2dtotree de TI.Notepad."
     },
     en: {
@@ -73,7 +73,7 @@
       insertMath: "Insert expression",
       updateMath: "Update expression",
       invalidMath: "Enter an expression with balanced parentheses.",
-      editMath: "Double-click to edit the math expression",
+      editMath: "Double-click to edit; Enter accepts and Esc cancels",
       hint: "In Format text you can select text and change bold, italic, underline, color, size, subscript and superscript. Changes are written back into the TI.Notepad r2dtotree."
     },
     fr: {
@@ -95,7 +95,7 @@
       insertMath: "Insérer l’expression",
       updateMath: "Modifier l’expression",
       invalidMath: "Saisissez une expression avec des parenthèses complètes.",
-      editMath: "Double-cliquez pour modifier l’expression mathématique",
+      editMath: "Double-cliquez pour modifier ; Entrée valide et Échap annule",
       hint: "Dans Mettre en forme, sélectionnez du texte pour modifier le gras, l’italique, le soulignement, la couleur, la taille, l’indice et l’exposant. Les changements sont réécrits dans le r2dtotree TI.Notepad."
     }
   };
@@ -1046,119 +1046,124 @@
     const markDirty = () => { dirty = true; };
     const toolbar = createFormatToolbar(labels, richView, markDirty);
 
-    const mathComposer = document.createElement('form');
-    mathComposer.className = 'ti-note-math-composer';
-    mathComposer.hidden = true;
-    const mathLabel = document.createElement('label');
-    mathLabel.textContent = labels.mathExpression;
-    const mathSource = document.createElement('textarea');
-    mathSource.className = 'ti-note-math-source';
-    mathSource.rows = 3; mathSource.maxLength = 8192; mathSource.spellcheck = false;
-    mathSource.setAttribute('aria-label',labels.mathExpression);
-    mathLabel.append(mathSource);
-    const mathPreview = document.createElement('div');
-    mathPreview.className = 'ti-note-math-composer-preview';
-    mathPreview.setAttribute('aria-live','polite');
-    const mathError = document.createElement('div');
-    mathError.className = 'ti-note-math-error'; mathError.setAttribute('role','status');
-    const mathActions = document.createElement('div');
-    mathActions.className = 'ti-note-math-composer-actions';
-    const mathInsert = makeButton(labels.insertMath,'note-math-insert','green-tool-button');
-    mathInsert.type = 'submit';
-    const mathCancel = makeButton(labels.cancel,'note-math-cancel');
-    mathActions.append(mathInsert,mathCancel);
-    mathComposer.append(mathLabel,mathPreview,mathError,mathActions);
-    toolbar.element.append(mathComposer);
-    let editingMath = null;
     let mathInsertionRange = null;
+    let inlineMath = null;
+    let insertionId = 0;
 
-    function refreshMathPreview() {
-      const source=mathSource.value.trim();
-      const parsed=window.TnsMathTypeset?.parse(source);
-      const valid=Boolean(source && parsed?.valid);
-      mathInsert.disabled=!valid;
-      mathError.textContent=valid?'':labels.invalidMath;
-      if(valid) mathPreview.innerHTML=window.TnsMathTypeset.render(source);
-      else mathPreview.textContent='';
-      mathPreview.querySelectorAll('math').forEach(math=>math.setAttribute('displaystyle','true'));
-      return valid;
+    function selectRange(range) {
+      richView.focus({preventScroll:true});
+      const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+      toolbar.rememberSelection();
     }
 
-    function openMathComposer(source, target = null) {
-      // Only selections in Notes update the remembered Range. Focus in the
-      // template/dimension popups or the source field cannot move that caret.
-      if (!mathInsertionRange) { toolbar.rememberSelection(); mathInsertionRange=toolbar.getRange(); }
-      editingMath=target;
-      mathSource.value=source;
-      mathInsert.textContent=target?labels.updateMath:labels.insertMath;
+    function expressionRun(source, style) {
+      const xml=buildMathExpressionXml(source,style);
+      const run=parseNativeRun(parseXml(xml).documentElement,new Map())[0];
+      const span=renderRun(run);span.title=labels.editMath;
+      return span;
+    }
+
+    function replaceWithMath(range, span) {
+      selectRange(range);
+      // insertHTML keeps the browser's undo/redo transaction, unlike direct
+      // Range mutation. Only our own generated, escaped mathbox is inserted.
+      const id=String(++insertionId);span.dataset.noteInsertion=id;
+      document.execCommand('insertHTML',false,span.outerHTML);
+      const inserted=richView.querySelector('[data-note-insertion="'+id+'"]');
+      if(!inserted)return null;
+      delete inserted.dataset.noteInsertion;
+      const after=document.createRange();after.setStartAfter(inserted);after.collapse(true);
+      selectRange(after);markDirty();
+      return inserted;
+    }
+
+    function finishInlineMath(cancel=false, focus=true) {
+      const active=inlineMath;if(!active)return true;
+      const source=active.field.value.trim(),valid=Boolean(source&&window.TnsMathTypeset?.parse(source)?.valid);
+      if(!cancel&&!valid) {
+        active.field.setAttribute('aria-invalid','true');active.error.textContent=labels.invalidMath;
+        if(focus)active.field.focus({preventScroll:true});return false;
+      }
+      inlineMath=null;
+      active.ui.remove();active.target.classList.remove('is-math-editing');
+      let target=active.target;
+      if(!cancel&&source!==target.dataset.tiSource.trim()) {
+        const range=document.createRange();range.selectNode(target);
+        target=replaceWithMath(range,expressionRun(source,nearestRaw(target,richView)))||target;
+      }
+      const after=document.createRange();after.setStartAfter(target);after.collapse(true);
+      mathInsertionRange=after.cloneRange();
+      if(focus)selectRange(after);
+      return true;
+    }
+
+    function editInlineMath(target, selectPlaceholder=false) {
+      if(inlineMath?.target===target)return;
+      if(!finishInlineMath(false,false))return;
       setMode('edit');
-      mathComposer.hidden=false;
-      refreshMathPreview();
-      mathSource.focus({preventScroll:true}); mathSource.select();
+      const ui=document.createElement('span');ui.className='ti-note-math-inline';
+      const preview=document.createElement('span');preview.className='ti-note-math-inline-preview';
+      const field=document.createElement('input');field.type='text';field.className='ti-note-math-source';
+      field.value=target.dataset.tiSource||'';field.maxLength=8192;field.spellcheck=false;
+      field.setAttribute('aria-label',labels.mathExpression);
+      const error=document.createElement('span');error.className='ti-note-math-error';error.setAttribute('role','status');
+      ui.append(preview,field,error);target.classList.add('is-math-editing');target.append(ui);
+      inlineMath={target,field,error,ui};
+      const refresh=()=>{
+        const source=field.value.trim(),valid=Boolean(source&&window.TnsMathTypeset?.parse(source)?.valid);
+        field.setAttribute('aria-invalid',String(!valid));error.textContent=valid?'':labels.invalidMath;
+        preview.innerHTML=valid?window.TnsMathTypeset.render(source):'';
+        field.style.width=Math.min(30,Math.max(5,field.value.length+1))+'ch';
+      };
+      field.addEventListener('input',event=>{event.stopPropagation();refresh();});
+      field.addEventListener('paste',event=>event.stopPropagation());
+      field.addEventListener('keydown',event=>{
+        event.stopPropagation();
+        if(event.key==='Escape'){event.preventDefault();finishInlineMath(true);}
+        else if(event.key==='Enter'){event.preventDefault();finishInlineMath();}
+        else if(event.key==='Tab'){if(!finishInlineMath())event.preventDefault();}
+      });
+      field.addEventListener('blur',()=>{if(inlineMath?.field===field)finishInlineMath(false,false);});
+      refresh();field.focus({preventScroll:true});
+      const placeholder=selectPlaceholder?field.value.search(/(?<![\p{L}\p{N}_])1(?![\p{L}\p{N}_])/u):-1;
+      if(placeholder>=0)field.setSelectionRange(placeholder,placeholder+1);else field.select();
+    }
+
+    function insertMathTemplate(source) {
+      if(!finishInlineMath(false,false))return;
+      let range=mathInsertionRange?.cloneRange()||toolbar.getRange();
+      setMode('edit');
+      if(!range||!richView.contains(range.startContainer)||!richView.contains(range.endContainer)) {
+        range=document.createRange();range.selectNodeContents(richView.lastElementChild?.lastElementChild||richView);range.collapse(false);
+      }
+      const start=range.startContainer.nodeType===Node.ELEMENT_NODE?range.startContainer:range.startContainer.parentElement;
+      const enclosing=start.closest?.('[data-ti-native]');
+      if(enclosing) {range.setStartAfter(enclosing);range.collapse(true);}
+      const style=styleFromEditableTextNode(range.startContainer,richView).raw;
+      const span=replaceWithMath(range,expressionRun(source.trim(),style));
+      mathInsertionRange=null;
+      if(span)editInlineMath(span,true);
     }
 
     if(window.TnsMathTools?.openTemplates && window.TnsMathTools?.iconButton) {
       const templatesButton=window.TnsMathTools.iconButton('templates');
       templatesButton.id='note-math-templates';
       let pointerPrepared=false;
-      templatesButton.addEventListener('mousedown',event=>{event.preventDefault();toolbar.rememberSelection();mathInsertionRange=toolbar.getRange();pointerPrepared=true;});
+      templatesButton.addEventListener('mousedown',event=>{event.preventDefault();if(!finishInlineMath())return;toolbar.rememberSelection();mathInsertionRange=toolbar.getRange();pointerPrepared=true;});
       templatesButton.addEventListener('click',()=>{
+        if(!finishInlineMath())return;
         if(!pointerPrepared) {toolbar.rememberSelection();mathInsertionRange=toolbar.getRange();}
         pointerPrepared=false;
-        window.TnsMathTools.openTemplates({anchor:templatesButton,insert:source=>openMathComposer(source)});
+        window.TnsMathTools.openTemplates({anchor:templatesButton,insert:insertMathTemplate});
       });
       modeBar.append(templatesButton);
     }
 
-    function closeMathComposer() {
-      editingMath=null; mathComposer.hidden=true;
-      richView.focus({preventScroll:true});
-      if(mathInsertionRange&&richView.contains(mathInsertionRange.startContainer)) {
-        const selection=window.getSelection();selection.removeAllRanges();selection.addRange(mathInsertionRange);
-      } else toolbar.restoreSelection();
-      toolbar.rememberSelection();mathInsertionRange=null;
-    }
-
-    mathSource.addEventListener('input',refreshMathPreview);
-    mathSource.addEventListener('keydown',event=>{
-      if(event.key==='Escape') {event.preventDefault();event.stopPropagation();closeMathComposer();}
-      else if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)) {event.preventDefault();mathComposer.requestSubmit();}
-    });
-    mathCancel.addEventListener('click',closeMathComposer);
-    mathComposer.addEventListener('submit',event=>{
-      event.preventDefault();
-      if(!refreshMathPreview())return;
-      if(editingMath?.dataset.tiSource.trim()===mathSource.value.trim()) {closeMathComposer();return;}
-      let range=mathInsertionRange?.cloneRange();
-      if(editingMath?.isConnected && richView.contains(editingMath)) {
-        range=document.createRange();range.selectNode(editingMath);
-      }
-      if(!range||!richView.contains(range.startContainer)||!richView.contains(range.endContainer)) {
-        range=document.createRange();range.selectNodeContents(richView.lastElementChild?.lastElementChild||richView);range.collapse(false);
-      }
-      // Never split an existing noneditable mathbox and lose its native XML.
-      const start=range.startContainer.nodeType===Node.ELEMENT_NODE?range.startContainer:range.startContainer.parentElement;
-      const enclosing=start.closest?.('[data-ti-native]');
-      if(enclosing && !editingMath) {range.setStartAfter(enclosing);range.collapse(true);}
-      const style=editingMath ? nearestRaw(editingMath,richView) : styleFromEditableTextNode(range.startContainer,richView).raw;
-      const xml=buildMathExpressionXml(mathSource.value.trim(),style);
-      const run=parseNativeRun(parseXml(xml).documentElement,new Map())[0];
-      const span=renderRun(run);span.title=labels.editMath;
-      range.deleteContents();range.insertNode(span);
-      range.setStartAfter(span);range.collapse(true);
-      richView.focus({preventScroll:true});
-      const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
-      toolbar.rememberSelection();markDirty();
-      editingMath=null;mathInsertionRange=null;mathComposer.hidden=true;
-    });
     richView.addEventListener('dblclick',event=>{
       const target=event.target.closest?.('[data-ti-native]');
-      if(target && richView.contains(target)) {mathInsertionRange=null;openMathComposer(target.dataset.tiSource||'',target);}
+      if(target&&richView.contains(target)&&!event.target.closest('.ti-note-math-inline'))editInlineMath(target);
     });
-    const updateMathCaret=()=>{
-      if(mathComposer.hidden)return;
-      toolbar.rememberSelection();mathInsertionRange=toolbar.getRange();
-    };
+    const updateMathCaret=()=>{if(!inlineMath){toolbar.rememberSelection();mathInsertionRange=toolbar.getRange();}};
     richView.addEventListener('pointerup',updateMathCaret);
     richView.addEventListener('keyup',updateMathCaret);
 
@@ -1176,11 +1181,12 @@
       closed = true;
       renderer.destroy();
       toolbar.destroy();
-      if (mathComposer.contains(document.activeElement)) mathSource.blur();
+      if(inlineMath){const active=inlineMath;inlineMath=null;active.ui.remove();active.target.classList.remove('is-math-editing');}
       if (typeof window.closeModal === "function") window.closeModal(backdrop, typeof afterClose === 'function' ? afterClose : null);
       else { backdrop.remove(); if (typeof afterClose === 'function') afterClose(); }
     }
     window.mountDocumentPreviewTabs?.(backdrop, options, '.love-preview-calculator-bar', next => {
+      if(!finishInlineMath())return;
       options.setDraft?.({ richNodes: Array.from(richView.childNodes, node => node.cloneNode(true)) });
       close(() => options.pageNavigation.onSelect(next));
     }, true);
@@ -1197,8 +1203,7 @@
         toolbar.show();
         richView.focus();
       } else {
-        mathComposer.hidden=true;
-        editingMath=null;
+        finishInlineMath(true,false);
         mathInsertionRange=null;
         toolbar.hide();
         richView.blur();
@@ -1224,27 +1229,26 @@
     editButton.addEventListener("click", () => setMode("edit"));
     cancelButton.addEventListener("click", close);
 
-    saveButton.addEventListener("click", async () => {
+    let saving = null;
+    async function persistNoteDraft() {
+      if(saving)return saving;
+      if(!finishInlineMath())throw Error(labels.invalidMath);
       const edited = extractEditableModel(richView);
       const newText = edited.plainText;
-      if (!dirty && newText === model.plainText) {
-        close();
-        return;
-      }
+      if (!dirty && newText === model.plainText)return;
       if (typeof originalSaveNotepadWidgetToStage !== "function") {
-        console.error("TI Notes rich editor: saveNotepadWidgetToStage is unavailable.");
-        return;
+        throw Error("TI Notes rich editor: saveNotepadWidgetToStage is unavailable.");
       }
 
       const rich = buildRichTextFromParagraphRuns(model, edited.paragraphs);
       if (!rich) {
-        console.error("TI Notes rich editor: could not rebuild r2dtotree.");
-        return;
+        throw Error("TI Notes rich editor: could not rebuild r2dtotree.");
       }
 
       saveButton.disabled = true;
       cancelButton.disabled = true;
-      try {
+      saving=(async()=>{
+       try {
         pendingRichBuild = { text: newText, rich };
         const result = await originalSaveNotepadWidgetToStage(item, newText);
         item.content = newText;
@@ -1252,14 +1256,19 @@
         if (typeof window.xmlLog === "function") {
           window.xmlLog(`${labels.save}: ${newText.length} chars (WYSIWYG rich text preserved)`);
         }
-        close();
-      } catch (error) {
-        console.error(error);
-        saveButton.disabled = false;
-        cancelButton.disabled = false;
-      } finally {
+        dirty=false;model.plainText=newText;
+        return result;
+       } finally {
         pendingRichBuild = null;
-      }
+        saveButton.disabled = false;cancelButton.disabled = false;
+       }
+      })();
+      try{return await saving;}finally{saving=null;}
+    }
+    backdrop.__documentPreviewCommit=persistNoteDraft;
+    saveButton.addEventListener("click", async () => {
+      try {await persistNoteDraft();close();}
+      catch(error){console.error(error);}
     });
 
     backdrop.addEventListener("mousedown", event => {

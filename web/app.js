@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-14-page-layout-v42";
+const SOURCE_VERSION = "2026-11-14-layout-edit-v43";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -16951,7 +16951,7 @@ function evaluateSpreadsheetFormula(formula, cells, options = {}) {
         }
         ranges.push(`{${values.join(",")}}`); return `§${ranges.length - 1}§`;
       });
-      part = part.replace(/(?<![\p{L}\p{N}_])\$?[A-Za-z]+\$?\d+\b(?!\s*\()/gu, resolve);
+      part = part.replace(/(?<![\p{L}\p{N}_])\$?[A-Za-z]+\$?\d+\b(?!\s*\()/gu, reference => resolve(reference));
       return part.replace(/§(\d+)§/g, (_match, i) => ranges[Number(i)]);
     }).join("");
     expression = expression
@@ -17121,144 +17121,139 @@ async function saveSpreadsheetWidgetToStage(item, state) {
   await ensureXmlStageCopy();
   pyodide.globals.set("wasm_sheet_save_file", item?.file || "");
   pyodide.globals.set("wasm_sheet_save_path", item?.path || "");
+  pyodide.globals.set("wasm_sheet_save_snapshot", item?.raw_xml || "");
+  pyodide.globals.set("wasm_sheet_save_source", xmlDoctor.sourcePath);
+  pyodide.globals.set("wasm_sheet_save_stage", xmlDoctor.stagePath);
   pyodide.globals.set("wasm_sheet_save_cells_json", JSON.stringify(state.cells || {}));
 
   const payload = await pyodide.runPythonAsync(`
 import json
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from xml_scanner import local_name
+from xml.dom import Node
+from page_layout import PROBLEM_NS, _atomic_write, _elements, _parse, _path, _signature
 
-source_root = Path("${xmlDoctor.sourcePath}")
-stage_root = Path("${xmlDoctor.stagePath}")
-source_file = Path(wasm_sheet_save_file) if wasm_sheet_save_file else None
-xml_file = None
-if source_file:
+# The inspected file and widget are identities, never hints for a fallback.
+source_root = Path(wasm_sheet_save_source).resolve()
+stage_root = Path(wasm_sheet_save_stage).resolve()
+if not wasm_sheet_save_file or not wasm_sheet_save_path or not wasm_sheet_save_snapshot:
+    raise ValueError("An inspected spreadsheet file, path and snapshot are required.")
+source_file = Path(wasm_sheet_save_file).resolve()
+try:
+    relative = source_file.relative_to(stage_root)
+except ValueError:
     try:
-        rel = source_file.relative_to(stage_root)
+        relative = source_file.relative_to(source_root)
     except ValueError:
-        try:
-            rel = source_file.relative_to(source_root)
-        except ValueError:
-            rel = Path(source_file.name)
-    candidate = stage_root / rel
-    if candidate.exists():
-        xml_file = candidate
-if xml_file is None:
-    problem_files = sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p: p.name.lower())
-    xml_files = problem_files or sorted(stage_root.rglob("*.xml"))
-    if xml_files:
-        xml_file = xml_files[0]
-if xml_file is None:
-    raise RuntimeError("No XML file available for spreadsheet save")
-
-tree = ET.parse(xml_file)
-root = tree.getroot()
+        raise ValueError("The selected spreadsheet file is outside this document.")
+xml_file = (stage_root / relative).resolve()
+xml_file.relative_to(stage_root)
+if not xml_file.is_file() or xml_file.suffix.lower() != ".xml":
+    raise ValueError("The selected spreadsheet file no longer exists.")
+original = xml_file.read_bytes()
+document = _parse(original)
+root = document.documentElement
+if root.namespaceURI != PROBLEM_NS or root.localName != "prob":
+    raise ValueError("The selected file is not a native Problem document.")
+matches = [node for node in root.getElementsByTagNameNS(PROBLEM_NS, "wdgt")
+           if _path(node) == wasm_sheet_save_path and node.getAttribute("type") == "tabulator"]
+if len(matches) != 1:
+    raise ValueError("The selected spreadsheet no longer exists. Reopen Document Inspector.")
+wdgt = matches[0]
+expected = _parse(wasm_sheet_save_snapshot).documentElement
+if _signature(wdgt, True) != _signature(expected, True):
+    raise ValueError("The selected spreadsheet changed. Reopen Document Inspector before saving.")
 tb_ns = "urn:tabulator"
-ET.register_namespace("tb", tb_ns)
 
-def q(ns, name):
-    return f"{{{ns}}}{name}"
+def child(parent, name):
+    return next((node for node in _elements(parent)
+                 if node.namespaceURI == tb_ns and node.localName == name), None)
 
-def parse_part(part):
-    # No usar regex aquí: este Python vive dentro de un template literal JS
-    # y las barras invertidas pueden perderse antes de llegar a Pyodide.
-    text = str(part or "")
-    if text.endswith("]") and "[" in text:
-        name, raw_index = text.rsplit("[", 1)
-        raw_index = raw_index[:-1]
-        if raw_index.isdigit():
-            return name, int(raw_index)
-    return text, 1
-
-def resolve_path(root, path):
-    parts = [part for part in str(path or "").split("/") if part]
-    if parts and local_name(root.tag) == parse_part(parts[0])[0]:
-        parts = parts[1:]
-    current = root
-    for part in parts:
-        name, wanted = parse_part(part)
-        matches = [child for child in current if local_name(child.tag) == name]
-        if wanted < 1 or wanted > len(matches):
-            return None
-        current = matches[wanted - 1]
-    return current
-
-wdgt = resolve_path(root, wasm_sheet_save_path)
-if wdgt is None or local_name(wdgt.tag) != "wdgt" or wdgt.attrib.get("type") != "tabulator":
-    # Fallback: only safe when there is exactly one spreadsheet widget.
-    matches = [node for node in root.iter() if local_name(node.tag) == "wdgt" and node.attrib.get("type") == "tabulator"]
-    if len(matches) == 1:
-        wdgt = matches[0]
-    else:
-        raise RuntimeError("No se pudo identificar la hoja de cálculo seleccionada")
-
-# Get the tabulator table (not the FunctionTable table).
-table = next((child for child in wdgt if child.tag == q(tb_ns, "table")), None)
+table = child(wdgt, "table")
 if table is None:
     raise RuntimeError("La hoja TI no contiene tb:table")
-columns_node = next((child for child in table if child.tag == q(tb_ns, "columns")), None)
-if columns_node is None:
-    columns_node = ET.SubElement(table, q(tb_ns, "columns"))
 
-columns = [child for child in columns_node if child.tag == q(tb_ns, "column") and child.attrib.get("type") == "cell-column"]
-while len(columns) < 26:
-    column = ET.SubElement(columns_node, q(tb_ns, "column"), {"type": "cell-column"})
-    ET.SubElement(column, q(tb_ns, "columnWidthNative")).text = "70"
-    ET.SubElement(column, q(tb_ns, "columnWidth")).text = "70"
-    ET.SubElement(column, q(tb_ns, "columnFlags")).text = "0"
-    ET.SubElement(column, q(tb_ns, "cells"))
-    columns.append(column)
-
-# Clear and rebuild only the cell payload. Preserve all other column metadata.
-for column in columns:
-    cells_node = next((child for child in column if child.tag == q(tb_ns, "cells")), None)
-    if cells_node is None:
-        cells_node = ET.SubElement(column, q(tb_ns, "cells"))
-    for child in list(cells_node):
-        cells_node.remove(child)
+def make(name, value=None):
+    prefix = table.prefix + ":" if table.prefix else ""
+    node = document.createElementNS(tb_ns, prefix + name)
+    if value is not None:
+        node.appendChild(document.createTextNode(value))
+    return node
 
 cells = json.loads(wasm_sheet_save_cells_json or "{}")
+if not isinstance(cells, dict):
+    raise ValueError("Spreadsheet cells must be an object.")
 by_col = {}
 for key, value in cells.items():
-    try:
-        row_s, col_s = key.split(":", 1)
-        row = int(row_s)
-        col = int(col_s)
-    except Exception:
-        continue
-    if row < 0 or col < 0 or col >= len(columns):
-        continue
-    formula = str((value or {}).get("formula", ""))
-    data = str((value or {}).get("data", ""))
-    if not formula and not data:
-        continue
-    by_col.setdefault(col, []).append((row, formula, data, str((value or {}).get("rawXml", ""))))
+    parts = key.split(":")
+    if len(parts) != 2 or not all(part.isdigit() for part in parts) or not isinstance(value, dict):
+        raise ValueError("Invalid spreadsheet cell coordinates or payload.")
+    row, col = map(int, parts)
+    if row > 9998 or col > 25:
+        raise ValueError("Spreadsheet cell coordinates are outside the native sheet.")
+    formula, data = str(value.get("formula", "")), str(value.get("data", ""))
+    if formula or data:
+        by_col.setdefault(col, []).append((row, formula, data))
 
-for col, entries in by_col.items():
-    column = columns[col]
-    cells_node = next(child for child in column if child.tag == q(tb_ns, "cells"))
-    for row, formula, data, original_cell in sorted(entries, key=lambda item: item[0]):
-        try:
-            cell = ET.fromstring(original_cell) if original_cell else ET.Element(q(tb_ns, "cell"))
-            if cell.tag != q(tb_ns, "cell"):
-                cell = ET.Element(q(tb_ns, "cell"))
-        except ET.ParseError:
-            cell = ET.Element(q(tb_ns, "cell"))
-        # Preserve native globalName, cell formatting, and other cell metadata.
+columns_node = child(table, "columns")
+if columns_node is None:
+    columns_node = make("columns")
+    table.appendChild(columns_node)
+columns = [node for node in _elements(columns_node)
+           if node.namespaceURI == tb_ns and node.localName == "column" and node.getAttribute("type") == "cell-column"]
+while len(columns) <= max(by_col, default=-1):
+    column = make("column")
+    column.setAttribute("type", "cell-column")
+    for name, value in (("columnWidthNative", "70"), ("columnWidth", "70"), ("columnFlags", "0")):
+        column.appendChild(make(name, value))
+    column.appendChild(make("cells"))
+    columns_node.appendChild(column)
+    columns.append(column)
+
+# Clone actual native cells so formatting and globalName remain authoritative.
+for col, column in enumerate(columns):
+    cells_node = child(column, "cells")
+    if cells_node is None:
+        cells_node = make("cells")
+        column.appendChild(cells_node)
+    originals = {}
+    for node in list(_elements(cells_node)):
+        if node.namespaceURI != tb_ns or node.localName != "cell":
+            continue
+        row_id = child(node, "rowId")
+        text = "".join(part.data for part in row_id.childNodes if part.nodeType in (Node.TEXT_NODE, Node.CDATA_SECTION_NODE)) if row_id is not None else ""
+        if text.isdigit():
+            originals[int(text) - 1] = node
+        cells_node.removeChild(node)
+    for row, formula, data in sorted(by_col.get(col, [])):
+        cell = originals[row].cloneNode(True) if row in originals else make("cell")
         for name, value in (("rowId", str(row + 1)), ("formula", formula), ("data", data)):
-            child = cell.find(q(tb_ns, name))
-            if child is None:
-                child = ET.SubElement(cell, q(tb_ns, name))
-            child.text = value
-        cells_node.append(cell)
+            field = child(cell, name)
+            if field is None:
+                field = make(name)
+                cell.appendChild(field)
+            for part in list(field.childNodes):
+                field.removeChild(part)
+            field.appendChild(document.createTextNode(value))
+        cells_node.appendChild(cell)
 
-body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
-xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
-
+# Preserve namespaces and CR delimiters in all sibling apps, then write atomically.
+body = document.toxml(encoding="UTF-8").replace(bytes([13]), b"&#13;")
+body = body.replace(b'<?xml version="1.0" encoding="UTF-8"?>', b'<?xml version="1.0" encoding="UTF-8" ?>', 1)
+_parse(body)
+_atomic_write(xml_file, body, original)
+snapshot = wdgt.cloneNode(True)
+owner = wdgt
+bindings = {}
+while owner.nodeType == Node.ELEMENT_NODE:
+    for attribute in owner.attributes.values():
+        if attribute.namespaceURI == "http://www.w3.org/2000/xmlns/":
+            bindings.setdefault(attribute.name, attribute.value)
+    owner = owner.parentNode
+for name, value in bindings.items():
+    snapshot.setAttributeNS("http://www.w3.org/2000/xmlns/", name, value)
 json.dumps({
     "file": str(xml_file),
-    "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False),
+    "raw_xml": snapshot.toxml(),
     "saved_cells": sum(len(v) for v in by_col.values()),
 })
 `);
@@ -17391,22 +17386,66 @@ json.dumps({
   return JSON.parse(payload);
 }
 
-function showSpreadsheetModal(item, options = {}) {
+function createSpreadsheetPreviewState(item, draft) {
   const key = spreadsheetSessionKey(item);
   const xmlState = extractSpreadsheetStateFromRawXml(item?.raw_xml || "");
   const saved = spreadsheetPreviewSessions.get(key);
-  const baseState = options.draft || (saved && saved.rawXml === String(item?.raw_xml || "") ? saved : xmlState);
-  const state = {
+  const baseState = draft || (saved && saved.rawXml === String(item?.raw_xml || "") ? saved : xmlState);
+  return {
     cells: Object.fromEntries(Object.entries(baseState.cells || {}).map(([cellKey, cell]) => [cellKey, { ...cell, formula: String(cell?.formula ?? ""), data: String(cell?.data ?? "") }])),
     rows: Math.max(20, baseState.rows || 20),
     cols: Math.min(26, Math.max(12, baseState.cols || 12)),
     sourceName: baseState.sourceName || "",
-    activeRow: 0,
-    activeCol: 0,
+    activeRow: baseState.activeRow || 0,
+    activeCol: baseState.activeCol || 0,
     columnNames: baseState.columnNames || xmlState.columnNames || [],
     columnWidths: baseState.columnWidths || xmlState.columnWidths || [],
-    dirty: false,
+    dirty: Boolean(draft?.dirty),
   };
+}
+
+function spreadsheetDocumentChange(item, state, mathSession, change) {
+  recalculateSpreadsheetCells(state.cells, { mathSession, changedCellKeys: change.changedCellKeys });
+  for (const cell of Object.values(state.cells)) {
+    if (!/^[\p{L}_][\p{L}\p{N}_]*$/u.test(cell.globalName || '') || String(cell.data || '').startsWith('#')) continue;
+    try { mathSession.evaluate(`${cell.globalName}:=(${cell.data})`); } catch (_) { /* Keep unsupported native formulas explicit. */ }
+  }
+  window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: item.file, variables: mathSession.snapshot().variables } }));
+}
+
+function spreadsheetDraft(state) {
+  return { ...state, cells: Object.fromEntries(Object.entries(state.cells).map(([key, value]) => [key, { ...value }])) };
+}
+
+async function saveSpreadsheetPreview(item, state) {
+  const result = await saveSpreadsheetWidgetToStage(item, state);
+  item.raw_xml = result.raw_xml || item.raw_xml;
+  item.file = result.file || item.file;
+  state.dirty = false;
+  spreadsheetPreviewSessions.set(spreadsheetSessionKey(item), { ...spreadsheetDraft(state), rawXml: item.raw_xml || '' });
+  return result;
+}
+
+function mountDocumentSpreadsheet(host, item, options = {}) {
+  const state = createSpreadsheetPreviewState(item, options.draft);
+  const mathSession = options.mathSession || documentCalculatorContext(item.file).mathSession;
+  recalculateSpreadsheetCells(state.cells, { mathSession, preserveCached: true });
+  host.innerHTML = '<div class="spreadsheet-grid-shell"><div class="spreadsheet-grid" tabindex="0" role="grid"></div></div><div class="spreadsheet-formula-bar"><span class="spreadsheet-cell-name">A1</span><input class="spreadsheet-formula-value" spellcheck="false"/><span class="spreadsheet-nav-arrows">fx</span></div>';
+  host.querySelector('.spreadsheet-formula-value').setAttribute('aria-label', ({es:'Fórmula de celda',fr:'Formule de cellule'})[document.documentElement.lang?.slice(0,2)] || 'Cell formula');
+  const remember = () => options.setDraft?.(spreadsheetDraft(state));
+  const controller = window.TnsSpreadsheetTools.mount(host, state, {
+    evaluate: formula => evaluateSpreadsheetFormula(formula, state.cells, { mathSession }),
+    onChange: (_state, change) => { spreadsheetDocumentChange(item, state, mathSession, change); remember(); },
+  });
+  const commit = () => { controller.commit(); remember(); };
+  return { state, commit, refresh: () => controller.render(),
+    async save() { commit(); if (state.dirty) await saveSpreadsheetPreview(item, state); remember(); },
+    destroy() { commit(); controller.destroy(); },
+  };
+}
+
+function showSpreadsheetModal(item, options = {}) {
+  const state = createSpreadsheetPreviewState(item, options.draft);
   const mathSession = documentCalculatorContext(item.file).mathSession;
   recalculateSpreadsheetCells(state.cells, { mathSession, preserveCached: true });
   const sheetWords = ({
@@ -17468,15 +17507,13 @@ function showSpreadsheetModal(item, options = {}) {
   const controller = window.TnsSpreadsheetTools.mount(backdrop, state, {
     selectedLabel: sheetWords.selected,
     evaluate: formula => evaluateSpreadsheetFormula(formula, state.cells, { mathSession }),
-    onChange: (_state, change) => {
-      recalculateSpreadsheetCells(state.cells, { mathSession, changedCellKeys: change.changedCellKeys });
-      for (const cell of Object.values(state.cells)) {
-        if (!/^[\p{L}_][\p{L}\p{N}_]*$/u.test(cell.globalName || '') || String(cell.data || '').startsWith('#')) continue;
-        try { mathSession.evaluate(`${cell.globalName}:=(${cell.data})`); } catch (_) { /* Unsupported native formulas remain explicit cell errors. */ }
-      }
-      window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: item.file, variables: mathSession.snapshot().variables } }));
-    },
+    onChange: (_state, change) => spreadsheetDocumentChange(item, state, mathSession, change),
   });
+  backdrop.__documentPreviewCommit = async () => {
+    controller.commit();
+    if (state.dirty) await saveSpreadsheetPreview(item, state);
+    options.setDraft?.(spreadsheetDraft(state));
+  };
   const render = () => controller.render();
   const close = () => { controller.commit(); controller.destroy(); closeModal(backdrop); };
   const windowCleanup = backdrop.__previewWindowCleanup;
@@ -17512,18 +17549,7 @@ function showSpreadsheetModal(item, options = {}) {
     saveButton.disabled = true;
     try {
       controller.commit();
-      const result = await saveSpreadsheetWidgetToStage(item, state);
-      item.raw_xml = result.raw_xml || item.raw_xml;
-      item.file = result.file || item.file;
-      spreadsheetPreviewSessions.set(key, {
-        cells: Object.fromEntries(Object.entries(state.cells).map(([cellKey, cell]) => [cellKey, { ...cell }])),
-        rows: state.rows,
-        cols: state.cols,
-        sourceName: state.sourceName,
-        columnNames: state.columnNames,
-        columnWidths: state.columnWidths,
-        rawXml: item.raw_xml || "",
-      });
+      const result = await saveSpreadsheetPreview(item, state);
       xmlLog(`${t("spreadsheetSave")}: ${result.saved_cells} celdas guardadas en XML TI-Nspire`);
       close();
     } catch (error) {
@@ -17550,6 +17576,7 @@ function mountDocumentPreviewTabs(backdrop, options, selector, onSelect, chrome 
       ...options, documentName: options.documentName || documentPreviewDocumentName(),
       pageNavigation: navigation ? { ...navigation, onSelect: selectOnce } : null,
     });
+    raiseDocumentPreviewBackdrop(backdrop);
     if (options.onEditLayout && !backdrop.querySelector('[data-document-page-layout],[data-compound-edit]')) {
       const actions = backdrop.querySelector('.preview-window-header .modal-top-actions,.preview-window-header .prgm-preview-top,.modal-top-actions');
       if (actions) {
@@ -17587,7 +17614,15 @@ function documentPreviewDocumentName() {
 }
 
 function makeDocumentPreviewBackdrop(options = {}, className = 'modal-backdrop') {
-  return options.createBackdrop?.(className) || Object.assign(document.createElement('div'), { className });
+  const backdrop = options.createBackdrop?.(className) || Object.assign(document.createElement('div'), { className });
+  raiseDocumentPreviewBackdrop(backdrop);
+  return backdrop;
+}
+
+function raiseDocumentPreviewBackdrop(backdrop) {
+  const others = [...document.querySelectorAll('.modal-backdrop,.prgm-preview-overlay')].filter(node => node !== backdrop && !node.classList.contains('closing'));
+  const top = others.reduce((value,node) => Math.max(value,Number.parseInt(getComputedStyle(node).zIndex,10)||0),10049);
+  backdrop.style.setProperty('z-index', String(top+1), 'important');
 }
 
 function documentWidgetPreviewPages(items, groups) {
@@ -17704,6 +17739,101 @@ function setDocumentPythonPreviewSource(item, source) {
   return text;
 }
 
+function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
+  const item = app.previewItem || app, kind = app.previewKind;
+  if (!['basic','calculators','python'].includes(kind)) return null;
+  const drafts = options.draft || {}, initialMode = kind === 'basic' ? 'program' : kind === 'calculators' ? 'calculator' : item.name === 'TI.PythonShell' || item.content_label === 'PythonShell' ? 'shell' : 'python';
+  let instance, child, mode, disposed = false, execution, lastSource;
+  let pythonItem = kind === 'python' ? documentPythonShellEditor(item) : null;
+  let pythonData = pythonItem ? documentPythonPreviewSource(pythonItem) : {name:'',source:''};
+  const remember = () => options.setDraft?.(drafts);
+  const commit = () => {
+    if (disposed || !instance) return;
+    if (mode === 'program' && instance.getSource() !== lastSource) {lastSource=instance.getSource();setDocumentProgramPreviewSource(item,lastSource);}
+    else if (mode === 'python' && pythonItem && instance.getSource() !== lastSource) {lastSource=instance.getSource();setDocumentPythonPreviewSource(pythonItem,lastSource);}
+    remember();
+  };
+  async function save() {
+    commit();
+    if (kind === 'basic') {
+      if (mode === 'program') setDocumentProgramPreviewSource(item, instance.getSource());
+      else setDocumentProgramPreviewSource(item, documentProgramPreviewSource(item).source);
+      await embedXmlCode();
+    } else if (kind === 'calculators') {
+      const rows = instance.getRows();
+      if (JSON.stringify(rows) !== JSON.stringify(extractCalculatorRowsFromRawXml(item.raw_xml || ''))) {
+        const result = await saveCalculatorWidgetToStage(item, rows);
+        item.raw_xml = result.raw_xml || item.raw_xml; item.file = result.file || item.file;
+      }
+    }
+  }
+  function render(nextMode, data) {
+    if (disposed) return;
+    instance?.close(); mode = nextMode;
+    child = document.createElement('div'); child.className = 'document-embedded-preview'; host.append(child);
+    const common = { ...context, embedded:true, expanded:false, documentName:documentPreviewDocumentName(),
+      createBackdrop: () => child, draft:drafts[mode],
+      setDraft: value => { drafts[mode] = value; remember(); },
+    };
+    if (mode === 'program') {
+      const source = documentProgramPreviewSource(item);
+      lastSource=source.source;
+      instance = window.TnsProgramEditorPreview.open(source, { ...common,draft:common.draft?{...common.draft,source:source.source}:undefined,
+        onChange:value => {if(value!==lastSource){lastSource=value;setDocumentProgramPreviewSource(item,value);}},
+        onSyntax:value => {setDocumentProgramPreviewSource(item,value);return runXmlSyntax();},
+        onSave:async value => {setDocumentProgramPreviewSource(item,value);await embedXmlCode();},
+        onRun:source => {
+          setDocumentProgramPreviewSource(item,source.source);
+          const peer = options.findCalculator?.();
+          if (peer) peer.prepareCall(source.name+'()');
+          else { render('calculator',source); instance.setInput(source.name+'()'); child.querySelector('[data-expression]')?.focus(); }
+        },
+      });
+    } else if (mode === 'calculator') {
+      const initialRows = drafts[mode]?.rows || (kind === 'calculators' ? extractCalculatorRowsFromRawXml(item.raw_xml || '') : []);
+      initializeCalculatorHistoryAnswer(context.mathSession, initialRows);
+      instance = window.TnsPrgmPreview.open({name:'',source:'',file:item.file,path:item.path}, { ...common,
+        calculatorMode:true,initialRows,initialInput:drafts[mode]?.input || (data?.name ? data.name+'()' : ''),
+      });
+    } else {
+      if (data) pythonData = data;
+      lastSource=pythonData.source;
+      if (!execution) execution = createPythonPreviewExecutionSession();
+      const settings = { ...common, execute:execution.execute, autoRun:false,
+        onSyntax:value => analyzePythonPreviewSource(value),
+        onChange:value => {if(value!==lastSource){lastSource=value;if(pythonItem)setDocumentPythonPreviewSource(pythonItem,value);}},
+        onSave:value => {if(pythonItem)setDocumentPythonPreviewSource(pythonItem,value);},
+        onRun:source => {
+          if(pythonItem)setDocumentPythonPreviewSource(pythonItem,source.source);
+          const peer = options.findPythonShell?.();
+          if (peer) return peer.runPython(source,pythonItem);
+          render('shell',source);return instance.run();
+        },
+        onEdit:() => {const peer=options.findPythonEditor?.(pythonItem);if(peer)return peer.focusEditor();render('python',pythonItem ? documentPythonPreviewSource(pythonItem) : pythonData);},
+      };
+      instance = mode === 'python' ? window.TnsPythonPreview.openEditor(pythonData,settings) : window.TnsPythonPreview.openShell(pythonData,settings);
+    }
+    // Reuse the complete editor/runtime while keeping only its native app
+    // surface and compact actions inside the compound page's own chrome.
+    child.classList.remove('modal-backdrop','prgm-preview-overlay','ti-program-editor-preview-backdrop','ti-python-preview-backdrop');
+    child.classList.add('document-embedded-preview'); child.dataset.embeddedMode=mode;
+    const dialog = child.firstElementChild; dialog?.setAttribute('role','region'); dialog?.removeAttribute('aria-modal'); dialog?.removeAttribute('aria-labelledby'); dialog?.setAttribute('aria-label',item.name);
+    for(const [selector,text] of [['[data-ti-pe-run]','▶'],['[data-ti-py-run]','▶'],['[data-ti-py-restart]','▶'],['[data-ti-pe-syntax]','✓'],['[data-ti-py-syntax]','✓'],['[data-ti-pe-save]','💾'],['[data-ti-py-save]','💾'],['[data-ti-py-edit]','↩']]) {
+      const button = child.querySelector(selector); if(button){button.title=button.textContent;button.setAttribute('aria-label',button.textContent);button.textContent=text;}
+    }
+    instance.refresh?.(); instance.resize?.();
+  }
+  render(initialMode);
+  return { kind, item, commit, save,
+    prepareCall(call) {if(mode!=='calculator')render('calculator');instance.setInput(call);child.querySelector('[data-expression]')?.focus();},
+    runPython(data,sourceItem) {if(sourceItem)pythonItem=sourceItem;render('shell',data);return instance.run();},
+    focusEditor() {if(mode!=='python')render('python',pythonItem ? documentPythonPreviewSource(pythonItem) : pythonData);child.querySelector('textarea,[contenteditable="true"]')?.focus();},
+    getPythonItem:()=>pythonItem,
+    resize() {instance.resize?.();instance.refresh?.();},
+    destroy() {if(disposed)return;commit();instance?.close();execution?.dispose();disposed=true;child?.remove();},
+  };
+}
+
 async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) {
   const items = groups[kind] || [], page = items[selected];
   if (!page) return;
@@ -17734,6 +17864,7 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
       backdrop.onclick = null;
       delete backdrop.dataset.imageResourcePath;
       backdrop.replaceChildren();
+      raiseDocumentPreviewBackdrop(backdrop);
       session.backdrop = backdrop;
       return backdrop;
     },
@@ -17747,9 +17878,13 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   };
   if (appKind === 'compound') {
     if (!window.TnsCompoundPreview) throw new Error('Document page preview is still loading.');
+    await ensureXmlStageCopy();
     const context = documentCalculatorContext(page.file);
-    return window.TnsCompoundPreview.open(page, {
+    const appDrafts = { ...(options.draft?.applications || {}) }, appControllers = [];
+    const saveApplications = async (layoutOnly=false) => { for (const controller of appControllers) {if(layoutOnly&&controller.kind==='basic')controller.commit?.();else await controller.save?.();} };
+    const preview = window.TnsCompoundPreview.open(page, {
       ...options, ...context, storedVariables: documentStoredVariables(page.file), getVariables: () => context.mathSession.snapshot().variables,
+      setDraft: draft => options.setDraft?.({ ...draft, applications: appDrafts }),
       mountWindow: backdrop => mountDocumentPreviewTabs(backdrop, options, '.compound-preview-chrome', next => closeModal(backdrop, () => options.pageNavigation.onSelect(next)), true),
       closeBackdrop: backdrop => closeModal(backdrop),
       onVariablesChange: values => {
@@ -17757,23 +17892,22 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
         window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: page.file, variables: context.mathSession.variables } }));
       },
       mountApplication: (host, app) => {
-        if (app.previewKind !== 'sheets') return null;
-        // Layout preview reads the native cached cells. Editing stays in the
-        // individual Sheet editor; changing a layout cannot recalculate or
-        // silently save an unrelated formula.
-        const state=extractSpreadsheetStateFromRawXml((app.previewItem||app).raw_xml);
-        const shell=document.createElement('div');shell.className='spreadsheet-grid-shell';
-        const grid=document.createElement('div');grid.className='spreadsheet-grid';grid.setAttribute('role','grid');grid.setAttribute('aria-readonly','true');
-        const cols=Math.min(26,state.cols),rows=Math.min(1000,state.rows);
-        grid.style.gridTemplateColumns='28px '+Array.from({length:cols},(_,i)=>(Number(state.columnWidths[i])||70)+'px').join(' ');
-        const cell=(cls,text)=>{const el=document.createElement('div');el.className=cls;el.textContent=text;return el;};
-        grid.append(cell('sheet-corner',''));for(let c=0;c<cols;c++)grid.append(cell('sheet-col-header',String.fromCharCode(65+c)));
-        for(let r=0;r<rows;r++){grid.append(cell('sheet-row-header',r+1));for(let c=0;c<cols;c++)grid.append(cell('sheet-cell',state.cells[r+':'+c]?.data??state.cells[r+':'+c]?.formula??''));}
-        shell.append(grid);host.append(shell);return {destroy:()=>shell.remove()};
+        const sheet = app.previewItem || app, key = `${documentXmlFileIdentity(sheet.file)}::${sheet.path||sheet.name}`;
+        const settings = { mathSession: context.mathSession, draft: appDrafts[key], setDraft: draft => { appDrafts[key] = draft; },
+          findCalculator:()=>appControllers.find(controller=>controller.kind==='calculators'),
+          findPythonShell:()=>appControllers.find(controller=>controller.kind==='python'&&(controller.item.name==='TI.PythonShell'||controller.item.content_label==='PythonShell')),
+          findPythonEditor:source=>appControllers.find(controller=>controller.kind==='python'&&controller.item.name!=='TI.PythonShell'&&source&&documentPythonPreviewFile(controller.getPythonItem())===documentPythonPreviewFile(source)),
+        };
+        const controller = app.previewKind === 'sheets' ? mountDocumentSpreadsheet(host,sheet,settings) : mountDocumentEmbeddedPreview(host,app,context,settings);
+        if (!controller) return null;
+        appControllers.push(controller);
+        return controller;
       },
-      onSave: layout => saveDocumentCardLayout(page, layout),
+      onSave: async layout => { await saveApplications(); await saveDocumentCardLayout(page, layout); },
       onEditLayout: () => options.onEditLayout(),
     });
+    preview.backdrop.__documentPreviewCommit = () => saveApplications(true);
+    return preview;
   }
   if (appKind === 'basic') {
     const readSource = () => documentProgramPreviewSource(item);
@@ -17928,9 +18062,12 @@ async function applyDocumentPageLayout(change) {
 
 async function openDocumentPageLayout(selected) {
   if (!window.TnsDocumentPageLayout) throw new Error('Page layout editor is still loading.');
+  const previews = [...document.querySelectorAll('.modal-backdrop,.prgm-preview-overlay')].filter(node => node.querySelector('.preview-window') && !node.classList.contains('closing'));
+  const activePreview = previews.sort((a,b) => (Number.parseInt(getComputedStyle(a).zIndex,10)||0)-(Number.parseInt(getComputedStyle(b).zIndex,10)||0)).at(-1);
+  await activePreview?.__documentPreviewCommit?.();
   await ensureXmlStageCopy();
   let changed=false;
-  const inspector=document.querySelector('.inspector-modal')?.closest('.modal-backdrop');
+  const inspector=document.querySelector('.inspector-modal:not(.preview-window)')?.closest('.modal-backdrop');
   return window.TnsDocumentPageLayout.open({
     pages:documentLayoutCards(await inspectXmlDocument()),
     selected:selected?{file:String(xmlDoctor.stagePath).replace(/\/$/,'')+'/'+documentXmlFileIdentity(selected.file),path:documentCardPath(selected.path)}:null,

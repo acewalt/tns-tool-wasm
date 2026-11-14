@@ -29,8 +29,28 @@
       return [key,Math.max(split?1000:0,Math.min(split?9000:10000,Number.isFinite(value)?value:5000))];
     }));
   }
+  function applicationType(app) {
+    const name=String(app?.name||'');
+    if(name.startsWith('TI.')||name==='tabulator')return name;
+    return ({Notepad:'TI.Notepad',Graph:'TI.GeoGrapher',Scratchpad:'TI.Scratchpad',Python:'TI.PythonEditor',PythonShell:'TI.PythonShell',Spreadsheet:'tabulator',Lua:'TI.ScriptApp'})[app?.content_label] || name || String(app?.type||'');
+  }
+  function pageApplications(page) {
+    const types=new Map();
+    for(const app of page.apps||[]){const type=applicationType(app);types.set(type,(types.get(type)||0)+1);}
+    return [...types].map(([type,count])=>type+(count>1?' ×'+count:'')).join(' + ');
+  }
+  function visibleLayers() {
+    return [...document.querySelectorAll('.modal-backdrop,.prgm-preview-overlay,dialog[open]')].filter(layer=>{
+      const style=getComputedStyle(layer);return style.display!=='none'&&style.visibility!=='hidden'&&!layer.classList.contains('closing');
+    });
+  }
   function open(options={}) {
+    const opener=document.activeElement;
     const t=words(),backdrop=document.createElement('div');backdrop.className='modal-backdrop document-page-layout-backdrop';
+    const previousLayers=visibleLayers();
+    const previousInert=previousLayers.map(layer=>[layer,layer.inert]);
+    for(const [layer] of previousInert)layer.inert=true;
+    backdrop.style.setProperty('z-index',String(Math.max(10050,...previousLayers.map(layer=>Number(getComputedStyle(layer).zIndex)||0))+1),'important');
     backdrop.innerHTML='<section class="modal document-page-layout-modal" role="dialog" aria-modal="true" aria-labelledby="page-layout-title"><h2 id="page-layout-title"></h2><p data-layout-description></p><div class="page-layout-editor"><div class="page-layout-pages"><h3 data-layout-page-title></h3><div data-layout-pages></div><h3 data-layout-group-title></h3><div data-layout-group-list></div><button type="button" data-layout-group></button></div><div class="page-layout-details"><div class="page-layout-presets" role="group"></div><h3 data-layout-order-title></h3><ol data-layout-order></ol><p class="muted-text" data-layout-empty></p><div class="page-layout-command-row"><button type="button" data-layout-ungroup></button><button type="button" data-layout-preview></button></div></div></div><p role="status" data-layout-status></p><div class="modal-actions"><button type="button" data-layout-close></button><button type="button" class="green-tool-button" data-layout-save></button></div></section>';
     const q=s=>backdrop.querySelector(s),modal=backdrop.firstElementChild;
     q('h2').textContent=t.title;q('[data-layout-description]').textContent=t.description;q('[data-layout-page-title]').textContent=t.page;q('[data-layout-group-title]').textContent=t.join;q('[data-layout-order-title]').textContent=t.order;
@@ -38,7 +58,7 @@
     let pages=options.pages||[],selected=Math.max(0,pages.findIndex(p=>p.file===options.selected?.file&&p.path===options.selected?.path)),order=[],clay=0,ratios={},busy=false;
     const selectedGroup=new Set();
     const appLabel=app=>app.detail?.name||app.name||app.type;
-    const pageLabel=(page,index)=>`${t.page} ${window.TnsDocumentPreviewNavigation?.pageLabel(page)||index+1} · ${String(page.file).split('/').pop()} (${page.apps.length})`;
+    const pageLabel=(page,index)=>`${t.page} ${window.TnsDocumentPreviewNavigation?.pageLabel(page)||index+1} · ${pageApplications(page)||t.empty} (${page.apps.length})`;
     const status=q('[data-layout-status]');
     function resetDraft(){const page=pages[selected];order=(page?.apps||[]).map((_,i)=>i);const native=Number(page?.detail?.clay||0);clay=layouts.some(l=>l.clay===native&&l.count===order.length)?native:defaultClay(order.length);ratios=nativeRatios(page,clay,order.length);selectedGroup.clear();if(page)selectedGroup.add(page.path);}
     function button(text,action){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=action;return b;}
@@ -67,10 +87,24 @@
       finally{busy=false;draw();}
     }
     q('[data-layout-save]').onclick=()=>apply('layout');q('[data-layout-group]').onclick=()=>apply('group');q('[data-layout-ungroup]').onclick=()=>apply('ungroup');
-    const close=()=>{if(!busy){backdrop.remove();options.onClose?.();}};
+    const isTop=()=>backdrop.isConnected&&!visibleLayers().some(layer=>layer!==backdrop&&(Number(getComputedStyle(layer).zIndex)||0)>(Number(getComputedStyle(backdrop).zIndex)||0));
+    const focusables=()=>[...modal.querySelectorAll('button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),[tabindex="0"]')].filter(el=>el.getClientRects().length);
+    const keepFocus=event=>{if(isTop()&&!backdrop.contains(event.target))queueMicrotask(()=>{if(isTop()&&!backdrop.contains(document.activeElement))q('[data-layout-close]').focus({preventScroll:true});});};
+    const close=()=>{if(!busy){document.removeEventListener('focusin',keepFocus,true);backdrop.remove();for(const [layer,inert] of previousInert)layer.inert=inert;if(opener?.isConnected)opener.focus({preventScroll:true});options.onClose?.();}};
     q('[data-layout-close]').onclick=close;q('[data-layout-preview]').onclick=()=>options.onPreview?.(pages[selected]);
-    backdrop.addEventListener('keydown',event=>{if(event.key==='Escape'){event.stopPropagation();event.preventDefault();close();}});
-    resetDraft();draw();document.body.append(backdrop);q('[data-layout-close]').focus();
+    backdrop.addEventListener('keydown',event=>{
+      if(!isTop())return;
+      // Preview keyboard handlers live on document; do not run the underlying
+      // application while its layout dialog owns keyboard focus.
+      event.stopPropagation();
+      if(event.key==='Escape'){event.preventDefault();close();}
+      else if(event.key==='Tab'){
+        const items=focusables(),first=items[0],last=items.at(-1);
+        if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}
+        else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}
+      }
+    });
+    resetDraft();draw();document.body.append(backdrop);document.addEventListener('focusin',keepFocus,true);q('[data-layout-close]').focus();
     return{backdrop,modal,close,getState:()=>({pages,selected,order:order.slice(),clay,ratios:{...ratios}})};
   }
   window.TnsDocumentPageLayout=Object.freeze({open,layouts,defaultClay,words});

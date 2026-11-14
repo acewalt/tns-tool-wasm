@@ -13,7 +13,7 @@ vm.runInNewContext(source+'\nglobalThis.formula=evaluateSpreadsheetFormula;globa
 const mathSession=createMathSession();
 const cells=Object.fromEntries([1,2,3,4,5].map((n,i)=>[i+':0',{formula:String(n),data:String(n)}]));
 const cases=[
-  ['=A1+A2',3],['=A5-A2',3],['=A2*A4',8],['=A4/A2',2],
+  ['=A1+A2',3],['=A5-A2',3],['=A2*A4',8],['=A4/A2',2],['=1+B1',1],['=B1+A1',1],
   ['=A2^3',8],['=sqrt(A4)',2],['=abs(-A5)',5],
   ['=sum(A1:A5)',15],['=sum(A1:A10)',15],['=SUM($A$1:$A$5)',15],
   ['=sum({1,2,3})',6],['=mean(A1:A5)',3],['=AVERAGE(A1:A5)',3],

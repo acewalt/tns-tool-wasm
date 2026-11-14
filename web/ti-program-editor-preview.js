@@ -52,13 +52,13 @@
   }
 
   function open(initial = {}, options = {}) {
-    active?.close();
+    if (!options.embedded) active?.close();
     const language = String(document.documentElement.lang || 'en').slice(0, 2), t = WORDS[language] || WORDS.en;
     const overlay = options.createBackdrop?.('modal-backdrop ti-program-editor-preview-backdrop') || document.createElement('div');
     overlay.classList.add('modal-backdrop', 'ti-program-editor-preview-backdrop');
     const previous = document.activeElement, oldOverflow = document.body.style.overflow;
-    if (!overlay.__documentPreviewRestore) overlay.__documentPreviewRestore = () => { document.body.style.overflow = oldOverflow; if (previous?.isConnected) previous.focus({ preventScroll: true }); };
-    document.body.style.overflow = 'hidden';
+    if (!options.embedded && !overlay.__documentPreviewRestore) overlay.__documentPreviewRestore = () => { document.body.style.overflow = oldOverflow; if (previous?.isConnected) previous.focus({ preventScroll: true }); };
+    if (!options.embedded) document.body.style.overflow = 'hidden';
     overlay.innerHTML = `<section class="modal widget-preview-modal ti-program-editor-preview-modal" role="dialog" aria-modal="true" aria-labelledby="ti-pe-preview-title" tabindex="-1">
       <div class="modal-top-actions"><button type="button" data-ti-pe-close></button></div><h2 id="ti-pe-preview-title"></h2><p class="muted-text" data-ti-pe-note></p>
       <div class="preview-controls ti-program-editor-controls"><button type="button" class="green-tool-button" data-ti-pe-syntax></button><button type="button" class="green-tool-button" data-ti-pe-run></button><button type="button" data-ti-pe-save></button><div class="ti-program-editor-tools" data-ti-pe-tools></div></div>
@@ -175,7 +175,7 @@
       mathEditor?.flush(); saveDraft(); const actionSource = source.value; busy = true; host.inert = true; source.readOnly = true; $('[data-ti-pe-status]').classList.remove('ti-pe-status-error');
       const buttons = ['syntax', 'save', 'run'].map(name => $(`[data-ti-pe-${name}]`)); const enabled = buttons.map(button => !button.disabled); buttons.forEach(button => { button.disabled = true; });
       try {
-        if (kind === 'run') { const latest = latestData(), state = { expanded }; close({ switching: typeof options.createBackdrop === 'function' }); return await callback(latest, state); }
+        if (kind === 'run') { const latest = latestData(), state = { expanded }; if (!options.embedded) close({ switching: typeof options.createBackdrop === 'function' }); return await callback(latest, state); }
         $('[data-ti-pe-status]').textContent = kind === 'save' ? t.saving : t.checking;
         const value = await callback(actionSource);
         if (closed) return value;
@@ -206,9 +206,9 @@
       if (active?.close === close) active = null;
     }
     function keys(event) {
-      if (closed || event.target.closest?.('.ti-math-tool-popup')) return;
+      if (closed || !overlay.contains(event.target) || event.target.closest?.('.ti-math-tool-popup')) return;
       if ((event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey && !event.repeat && ['b', 'r'].includes(event.key.toLowerCase())) { event.preventDefault(); event.stopImmediatePropagation(); action(event.key.toLowerCase() === 'b' ? 'syntax' : 'run'); }
-      else if (event.key === 'Escape' && !event.target.closest?.('.ti-math-source-input')) { event.preventDefault(); event.stopImmediatePropagation(); close(); }
+      else if (event.key === 'Escape' && !options.embedded && !event.target.closest?.('.ti-math-source-input')) { event.preventDefault(); event.stopImmediatePropagation(); close(); }
       else if (event.key === 'Tab' && event.target === source) { event.preventDefault(); source.setRangeText('  ', source.selectionStart, source.selectionEnd, 'end'); sourceChanged(); }
     }
     const navigation = { ...(options.pageNavigation || { items: [{ file: data.file, path: data.path, name: data.name }], selected: 0 }), onSelect: next => { if (closed || busy) return; close({ switching: true }); return options.pageNavigation?.onSelect(next, { expanded }); } };
@@ -226,12 +226,12 @@
     }
     $('[data-ti-pe-close]').onclick = () => close(); $('[data-ti-pe-syntax]').onclick = () => action('syntax'); $('[data-ti-pe-run]').onclick = () => action('run'); $('[data-ti-pe-save]').onclick = () => action('save');
     overlay.onclick = event => { if (event.target === overlay) close(); };
-    if (!overlay.isConnected) document.body.append(overlay);
-    window.TnsPreviewWindow?.mount(overlay, { ...options, pageNavigation: navigation, expanded, setExpanded: value => { expanded = value; options.setExpanded?.(value); }, onResize: size => { options.onResize?.(size); } });
+    if (!overlay.isConnected && !options.embedded) document.body.append(overlay);
+    if (!options.embedded) window.TnsPreviewWindow?.mount(overlay, { ...options, pageNavigation: navigation, expanded, setExpanded: value => { expanded = value; options.setExpanded?.(value); }, onResize: size => { options.onResize?.(size); } });
     document.addEventListener('keydown', keys, true); renderSource(); source.setSelectionRange(Math.min(source.value.length, sourceDraft?.selectionStart || 0), Math.min(source.value.length, sourceDraft?.selectionEnd || 0)); setMathView(false, false); scroll.scrollTop = sourceDraft?.scrollTop || 0; renderHeader(); $('[data-ti-pe-status]').textContent = dirty ? t.changed : t.ready;
-    active = { close, getSource: () => source.value, setSource, insertText, setMathView, checkSyntax: () => action('syntax'), run: () => action('run'), save: () => action('save'), showError, getSnapshot: () => ({ source: source.value, declaration: declaration(data), name: data.name, dirty, busy, expanded, mathView: Boolean(mathEditor?.active), report, selectionStart: source.selectionStart, selectionEnd: source.selectionEnd }), refresh: next => { if (closed) return; if (next) data = { ...data, ...next }; renderHeader(); } };
-    if (mathEditor?.active) mathEditor.focusSelection?.(); else source.focus({ preventScroll: true });
-    return active;
+    const instance = { close, getSource: () => source.value, setSource, insertText, setMathView, checkSyntax: () => action('syntax'), run: () => action('run'), save: () => action('save'), showError, getSnapshot: () => ({ source: source.value, declaration: declaration(data), name: data.name, dirty, busy, expanded, mathView: Boolean(mathEditor?.active), report, selectionStart: source.selectionStart, selectionEnd: source.selectionEnd }), refresh: next => { if (closed) return; if (next) data = { ...data, ...next }; renderHeader(); } };
+    if (!options.embedded) { active = instance; if (mathEditor?.active) mathEditor.focusSelection?.(); else source.focus({ preventScroll: true }); }
+    return instance;
   }
   window.TnsProgramEditorPreview = Object.freeze({ open, close: state => active?.close(state), getSource: () => active?.getSource() ?? '', setMathView: value => active?.setMathView(value), getSnapshot: () => active?.getSnapshot() ?? null, formatDeclaration: declaration, highlightLine, stripDeclaration, lineCounter, quotedLiteralFor });
 })();

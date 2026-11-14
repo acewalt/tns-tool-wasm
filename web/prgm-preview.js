@@ -12,7 +12,7 @@ const HISTORY_COPY={es:'Limpiar historial',en:'Clear history',fr:'Effacer l’hi
 const GRAPHICS_COPY={es:{show:'Ver dibujo',hint:'Pulsa una tecla para volver a la calculadora',running:'Ejecutando…',finished:'Terminado',stopped:'Detenido'},en:{show:'Show drawing',hint:'Press any key to return to Calculator',running:'Running…',finished:'Finished',stopped:'Stopped'},fr:{show:'Voir le dessin',hint:'Appuyez sur une touche pour revenir à Calculs',running:'En cours…',finished:'Terminé',stopped:'Arrêté'}};
 const KEYBOARD_COPY={es:{title:'Teclado del programa',hint:'Usa tu teclado · T, números, Enter y Esc se envían al programa.',waiting:'Esperando tecla'},en:{title:'Program keyboard',hint:'Use your keyboard · T, digits, Enter and Esc are sent to the program.',waiting:'Waiting for a key'},fr:{title:'Clavier du programme',hint:'Utilisez le clavier · T, chiffres, Entrée et Échap sont transmis au programme.',waiting:'Touche attendue'}};
 function open(initial,options={}) {
-  active?.close();
+  if(!options.embedded)active?.close();
   const language=document.documentElement.lang?.slice(0,2),t=COPY[language]||COPY.es,g=GRAPHICS_COPY[language]||GRAPHICS_COPY.es,k=KEYBOARD_COPY[language]||KEYBOARD_COPY.es;
   const previous=document.activeElement;
   const overlay=options.createBackdrop?.('prgm-preview-overlay')||document.createElement('div');overlay.classList.add('prgm-preview-overlay');
@@ -40,9 +40,9 @@ function open(initial,options={}) {
   keyboard.append(keyboardPad);$('.prgm-preview-controls').append(keyboard);
   $('[data-show-graphics]').textContent=g.show;$('[data-graphics]').setAttribute('aria-label',g.hint);$('[data-graphics]').title=g.hint;
   $('[data-request]').setAttribute('aria-label',t.request);
-  document.body.append(overlay);const oldOverflow=document.body.style.overflow;
-  if(!overlay.__documentPreviewRestore)overlay.__documentPreviewRestore=()=>{document.body.style.overflow=oldOverflow;previous?.focus();};
-  document.body.style.overflow='hidden';
+  if(!options.embedded)document.body.append(overlay);const oldOverflow=document.body.style.overflow;
+  if(!options.embedded&&!overlay.__documentPreviewRestore)overlay.__documentPreviewRestore=()=>{document.body.style.overflow=oldOverflow;previous?.focus();};
+  if(!options.embedded)document.body.style.overflow='hidden';
   let runtime=null, snapshot=null, timer=null, automatic=false, expanded=Boolean(options.expanded), closed=false, requestToken='', renderedText='', inputResolved=false, data=initial,graphicsDismissed=false,graphicsRevision=-1;
   let submitting=false,showingProgram=false,currentCall='';
   const calc=createCalculatorSession({...options,language,runtimeOptions:{...options.runtimeOptions,maxDrawingOperations:1000,rasterizeGraphics},getAngleMode:()=>$('[data-angle]').value,getPrograms:()=>{
@@ -161,8 +161,8 @@ function open(initial,options={}) {
   function layout(){
     const shared=window.TnsPreviewWindow?.geometry(modal);
     const available=shared?.width||$('.prgm-preview-center').clientWidth;
-    const width=Math.max(1,Math.min(expanded?800:320,available));
-    const height=shared?.height||(expanded?width*3/4:240);
+    const width=options.embedded?Math.max(1,available):Math.max(1,Math.min(expanded?800:320,available));
+    const height=options.embedded?Math.max(1,$('.prgm-preview-center').clientHeight):shared?.height||(expanded?width*3/4:240);
     const bottom=history.scrollHeight-history.clientHeight-history.scrollTop<2;
     shell.style.width=width+'px';shell.style.height=height+'px';
     shell.style.setProperty('--prgm-graphics-scale',String(Math.min(width/320,height/240)));
@@ -237,6 +237,7 @@ function open(initial,options={}) {
   function answer(cancel=false){if(!runtime?.pending)return;const state=runtime.answer($('[data-input]').value,{cancel});if(state.inputError){render(state,state.inputError);$('[data-input]').focus({preventScroll:true});return;}inputResolved=true;run();}
   function scroll(direction){$('.prgm-preview-history').scrollBy({top:direction*48,behavior:'smooth'});}
   function keys(event){
+    if(!overlay.contains(event.target)||event.target.closest?.('.ti-math-tool-popup'))return;
     if(!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.target.closest?.('input,select,textarea,summary')&&!(event.target.closest?.('button:not([data-program-key])')&&event.key==='Enter')){
       const name=({Escape:'esc',Enter:'enter',ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right',Backspace:'del',Delete:'del',' ':'space'})[event.key]||(event.key.length===1?event.key.toLowerCase():null);
       if(name&&sendProgramKey(name)){event.preventDefault();event.stopImmediatePropagation();return;}
@@ -244,7 +245,7 @@ function open(initial,options={}) {
     if(event.key!=='Tab'&&!event.ctrlKey&&!event.altKey&&!event.metaKey&&!event.target.closest?.('button,select,summary')&&dismissGraphics()){event.preventDefault();event.stopImmediatePropagation();return;}
     if(event.key==='Escape'&&dismissGraphics()){event.preventDefault();event.stopImmediatePropagation();return;}
     if(event.key==='Tab'){const controls=[...modal.querySelectorAll('button:not(:disabled),input:not([hidden]),select,summary,[tabindex="0"]')].filter(el=>el.getClientRects().length);const first=controls[0],last=controls.at(-1);if(event.shiftKey&&document.activeElement===first){event.preventDefault();last?.focus();}else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first?.focus();}return;}
-    if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();if(runtime?.pending)answer(true);else if(event.target===expression){expression.value='';refreshExpression();saveDraft();}else close();}
+    if(event.key==='Escape'){event.preventDefault();event.stopImmediatePropagation();if(runtime?.pending)answer(true);else if(event.target===expression){expression.value='';refreshExpression();saveDraft();}else if(!options.embedded)close();}
     else if(['ArrowUp','ArrowDown'].includes(event.key)&&!['INPUT','SELECT','TEXTAREA'].includes(event.target.tagName)){event.preventDefault();event.stopImmediatePropagation();scroll(event.key==='ArrowUp'?-1:1);}
     else if(event.key==='Enter'&&runtime?.pending&&!['BUTTON','SELECT'].includes(event.target.tagName)){event.preventDefault();event.stopImmediatePropagation();answer();}
     else if(event.key==='Enter'&&!entryForm.hidden&&!event.shiftKey&&!event.ctrlKey&&!event.metaKey&&!['BUTTON','SELECT'].includes(event.target.tagName)){event.preventDefault();event.stopImmediatePropagation();submitInput();}
@@ -262,8 +263,8 @@ function open(initial,options={}) {
   overlay.querySelectorAll('[data-scroll]').forEach(b=>b.onclick=()=>{if(!sendProgramKey(Number(b.dataset.scroll)<0?'up':'down'))scroll(Number(b.dataset.scroll));});
   $('[data-copy]').onclick=async()=>{try{await navigator.clipboard.writeText(calc.getRows().map(row=>row.entry+'\n'+row.display).join('\n')+(runtime&&!['done','error','stopped'].includes(snapshot.status)?'\n'+snapshot.text:''));$('[data-status]').textContent=t.copied;}catch(error){$('[data-error]').hidden=false;$('[data-error]').textContent=error.message;}};
   $('[data-line]').onclick=()=>options.revealLine?.(snapshot.error?.line||snapshot.pending?.line||snapshot.line);
-  window.TnsPreviewWindow?.mount(overlay,{...options,pageNavigation:tabOptions,onResize:()=>layout()});
+  if(!options.embedded)window.TnsPreviewWindow?.mount(overlay,{...options,pageNavigation:tabOptions,onResize:()=>layout()});
   entryForm.onsubmit=event=>{event.preventDefault();submitInput();};expression.oninput=()=>{refreshExpression();saveDraft();};
-  document.addEventListener('keydown',keys,true);modal.focus();active={close,getSnapshot:()=>runtime?.snapshot()||idleState(),sendKey:sendProgramKey,getVariables:()=>calc.getVariables(),getRows:()=>calc.getRows(),getInput:()=>expression.value,setInput:value=>{expression.value=String(value);refreshExpression();saveDraft();},submit:async value=>submitInput(value??expression.value),getMathSession:()=>calc.math};layout();expression.value=options.initialInput??(data.name?data.name+'()':'');refreshExpression();render(idleState());expression.focus({preventScroll:true});return active;
+  document.addEventListener('keydown',keys,true);const instance={close,getSnapshot:()=>runtime?.snapshot()||idleState(),sendKey:sendProgramKey,getVariables:()=>calc.getVariables(),getRows:()=>calc.getRows(),getInput:()=>expression.value,setInput:value=>{expression.value=String(value);refreshExpression();saveDraft();},submit:async value=>submitInput(value??expression.value),getMathSession:()=>calc.math,resize:layout};if(!options.embedded){modal.focus();active=instance;}layout();expression.value=options.initialInput??(data.name?data.name+'()':'');refreshExpression();render(idleState());if(!options.embedded)expression.focus({preventScroll:true});return instance;
 }
 window.TnsPrgmPreview=Object.freeze({open,close:()=>active?.close(),getSnapshot:()=>active?.getSnapshot()||null,getVariables:()=>active?.getVariables()||[],getRows:()=>active?.getRows()||[],getInput:()=>active?.getInput()||'',getMathSession:()=>active?.getMathSession()||null});

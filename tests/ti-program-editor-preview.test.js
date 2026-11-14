@@ -44,3 +44,17 @@ test('mathematical editor strings recover their literal quotes from source witho
   assert.equal(editor.quotedLiteralFor('Disp hola','hola'),null);
   assert.equal(editor.quotedLiteralFor('Disp "other"','hola'),null);
 });
+
+test('embedded Program Editor shortcuts stay in their pane and Escape preserves its surface', () => {
+  const code = fs.readFileSync(new URL('../web/ti-program-editor-preview.js', import.meta.url), 'utf8');
+  const start = code.indexOf('    function keys(event) {'), end = code.indexOf('    const navigation =', start);
+  const calls = [], options = {embedded:true};
+  const ctx = {closed:false, options, overlay:{contains:target=>target.owned}, source:{}, action:kind=>calls.push(kind), close:()=>calls.push('close')};
+  vm.runInNewContext(code.slice(start,end)+'\nglobalThis.keys=keys;',ctx);
+  const press = (key, target, extra={}) => ctx.keys({key,target,preventDefault(){calls.push('prevent');},stopImmediatePropagation(){calls.push('stop');},...extra});
+  const own = {owned:true,closest:()=>null}, peer = {owned:false,closest:()=>null}, popup = {owned:true,closest:()=>({})};
+  press('Escape',own); assert.deepEqual(calls,[]);
+  press('r',peer,{ctrlKey:true}); press('r',popup,{ctrlKey:true}); assert.deepEqual(calls,[]);
+  press('r',own,{ctrlKey:true}); assert.deepEqual(calls,['prevent','stop','run']);
+  calls.length=0; options.embedded=false; press('Escape',own); assert.deepEqual(calls,['prevent','stop','close']);
+});

@@ -58,7 +58,7 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.42/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.42)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.43/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.43)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
@@ -66,7 +66,7 @@ Close any older version, extract the entire ZIP into a new folder, and open **TN
 
 ## What's new
 
-**0.1.42:** Document Inspector starts with **+ Cards** for page navigation. **Page layout** groups and ungroups applications within one problem, offers eight native layouts and changes the application order. Drag the preview dividers to adjust their sizes. Notes now includes Math Templates with editable formulas and native XML roundtrips. Mixed pages preview Graphs, Notes and cached Spreadsheet cells; other embedded application previews remain partial. This is not a full TI-Nspire emulator.
+**0.1.43:** Page layout opens above the active preview and labels pages by their applications. Mixed pages now include editable Sheets, Program Editor, Calculator and Python editor/shell alongside Graphs and Notes. Sheets supports cell/range picking while entering formulas and preserves required parentheses. Notes templates insert directly at the caret with inline editing and native XML roundtrips. This is not a full TI-Nspire emulator.
 
 **0.1.38:** Expanded view disables the magnifier and displays the preview without additional zoom. Returning to Calculator view restores the session's previous zoom setting.
 
