@@ -47,7 +47,15 @@ async function check(inputs) {
  must(state.cells['1:0'].data==='√(5)/4-1/4','Opening sheet changed cached exact output');must(sheet.querySelector('.sheet-column-name').textContent==='x','Native column name missing');
  controller.select(0,0);controller.select(0,1,true);const clipboard=new DataTransfer();grid.dispatchEvent(new ClipboardEvent('copy',{bubbles:true,clipboardData:clipboard}));must(clipboard.getData('text/plain')==='1\t2','Range copy did not include both cells');
  controller.select(2,0);const paste=new DataTransfer();paste.setData('text/plain','4\t5\n6\t7');grid.dispatchEvent(new ClipboardEvent('paste',{bubbles:true,clipboardData:paste}));must(state.cells['3:1'].data==='7','Rectangular paste failed');
- const formula=sheet.querySelector('.spreadsheet-formula-value');controller.select(0,0);formula.focus();formula.value='=A1+B1';formula.dispatchEvent(new Event('change',{bubbles:true}));must(state.cells['0:0'].formula==='=A1+B1','Formula bar failed to commit source');
+ const formula=sheet.querySelector('.spreadsheet-formula-value');controller.select(0,0);formula.focus();formula.value='=A1+B1';formula.dispatchEvent(new Event('input',{bubbles:true}));controller.commit();must(state.cells['0:0'].formula==='=A1+B1','Formula bar failed to commit source');
+ controller.select(5,1);formula.focus();formula.value='=sum()';formula.setSelectionRange(5,5);formula.dispatchEvent(new Event('input',{bubbles:true}));
+ grid.querySelector('[data-row="0"][data-col="0"].sheet-cell').dispatchEvent(new PointerEvent('pointerdown',{bubbles:true}));
+ grid.querySelector('[data-row="4"][data-col="0"].sheet-cell').dispatchEvent(new PointerEvent('pointerover',{bubbles:true}));
+ window.dispatchEvent(new PointerEvent('pointerup',{bubbles:true}));
+ must(formula.value==='=sum(A1:A5)','Drag selecting a range did not insert a formula reference');
+ must(state.activeRow===5&&state.activeCol===1,'Inserting formula references changed the destination cell');
+ controller.commit();
+ must(state.cells['5:1'].formula==='=sum(A1:A5)','Formula range did not commit');
  controller.select(2,0);controller.select(3,1,true);sheet.querySelector('[data-sheet-tool=clear]').click();must(!state.cells['2:0']&&!state.cells['3:1'],'Range clear failed');controller.destroy();
  return{ok:true,nativeNotes:reports,sheet:{copy:true,paste:true,formula:true,clear:true,cachedExact:true},mathboxes:{render:true,roundtrip:true,refresh:true}};
 }
