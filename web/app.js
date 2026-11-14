@@ -17778,8 +17778,8 @@ function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
     if (mode === 'program') {
       const source = documentProgramPreviewSource(item);
       lastSource=source.source;
-      instance = window.TnsProgramEditorPreview.open(source, { ...common,
-        onChange:value => {lastSource=value;setDocumentProgramPreviewSource(item,value);},
+      instance = window.TnsProgramEditorPreview.open(source, { ...common,draft:common.draft?{...common.draft,source:source.source}:undefined,
+        onChange:value => {if(value!==lastSource){lastSource=value;setDocumentProgramPreviewSource(item,value);}},
         onSyntax:value => {setDocumentProgramPreviewSource(item,value);return runXmlSyntax();},
         onSave:async value => {setDocumentProgramPreviewSource(item,value);await embedXmlCode();},
         onRun:source => {
@@ -17801,7 +17801,7 @@ function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
       if (!execution) execution = createPythonPreviewExecutionSession();
       const settings = { ...common, execute:execution.execute, autoRun:false,
         onSyntax:value => analyzePythonPreviewSource(value),
-        onChange:value => {lastSource=value;if(pythonItem)setDocumentPythonPreviewSource(pythonItem,value);},
+        onChange:value => {if(value!==lastSource){lastSource=value;if(pythonItem)setDocumentPythonPreviewSource(pythonItem,value);}},
         onSave:value => {if(pythonItem)setDocumentPythonPreviewSource(pythonItem,value);},
         onRun:source => {
           if(pythonItem)setDocumentPythonPreviewSource(pythonItem,source.source);
@@ -17892,7 +17892,7 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
         window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: page.file, variables: context.mathSession.variables } }));
       },
       mountApplication: (host, app) => {
-        const sheet = app.previewItem || app, key = spreadsheetSessionKey(sheet);
+        const sheet = app.previewItem || app, key = `${documentXmlFileIdentity(sheet.file)}::${sheet.path||sheet.name}`;
         const settings = { mathSession: context.mathSession, draft: appDrafts[key], setDraft: draft => { appDrafts[key] = draft; },
           findCalculator:()=>appControllers.find(controller=>controller.kind==='calculators'),
           findPythonShell:()=>appControllers.find(controller=>controller.kind==='python'&&(controller.item.name==='TI.PythonShell'||controller.item.content_label==='PythonShell')),

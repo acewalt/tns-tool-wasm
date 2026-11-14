@@ -82,5 +82,20 @@ async function check(){
  await pause(500);
  const zoom=reopened.backdrop.querySelector('.preview-window-header [data-preview-window-zoom]');must(zoom,'Compound header borrowed a hidden child zoom control');zoom.click();await pause(50);
  for(const kind of ['basic','python']){const p=reopened.backdrop.querySelector('[data-app-kind='+kind+']');const source=p.querySelector(kind==='basic'?'.ti-program-editor-scroll':'.ti-python-source-scroll');must(source.getBoundingClientRect().height>40,'Embedded source hidden by diagnostics: '+kind);}
+ const history=reopened.backdrop.querySelector('.prgm-preview-history');key(history,'Escape');must(history.isConnected,'Escape removed the embedded Calculator');
+ const originalSource=reopened.backdrop.querySelector('[data-ti-pe-source]');originalSource.value='Prgm\nDisp 44\nEndPrgm';originalSource.dispatchEvent(new InputEvent('input',{bubbles:true}));
+ const stackedLayout=await openDocumentPageLayout(groups.widgets[0]);stackedLayout.modal.querySelector('[data-layout-preview]').click();
+ await wait(()=>document.querySelectorAll('.compound-preview-modal').length===2,'preview above layout');
+ const topPreview=[...document.querySelectorAll('.compound-preview-modal')].at(-1),topSource=topPreview.querySelector('[data-ti-pe-source]');must(topSource.value.includes('Disp 44'),'Nested preview ignored current BASIC draft');topSource.value='Prgm\nDisp 45\nEndPrgm';topSource.dispatchEvent(new InputEvent('input',{bubbles:true}));topPreview.querySelector('[data-widget-close]').click();await pause(250);
+ stackedLayout.modal.querySelector('[data-layout-save]').click();await wait(()=>stackedLayout.modal.querySelector('[data-layout-status]').textContent.includes('Changes saved'),'apply layout after editing newer preview');
+ must(xmlDoctor.candidates.some(c=>c.code.includes('Disp 45')),'Disposing old preview overwrote the newer BASIC draft');stackedLayout.close();await pause(250);
+ // A source-file identity may become its staged identity after native saving.
+ // Further unsaved edits still belong to the same app when navigating back.
+ groups=await groupsNow();const sheetApp=groups.widgets[0].previewItems.find(a=>a.previewKind==='sheets');sheetApp.previewItem.file=xmlDoctor.sourcePath+'/'+documentXmlFileIdentity(sheetApp.previewItem.file);
+ const draftSession={},firstDraft=await openDocumentAppPreview(groups,'widgets',0,draftSession);await firstDraft.backdrop.__documentPreviewCommit();
+ let target=firstDraft.backdrop.querySelector('[data-app-kind=sheets]'),cell=target.querySelector('[data-row="2"][data-col="2"].sheet-cell');point(cell);point(window,'pointerup');const f=target.querySelector('.spreadsheet-formula-value');f.focus();f.value='99';f.dispatchEvent(new InputEvent('input',{bubbles:true}));key(f,'Enter');firstDraft.backdrop.querySelector('[data-widget-close]').click();await pause(250);
+ groups=await groupsNow();const final=await openDocumentAppPreview(groups,'widgets',0,draftSession);window.qaCompound=final;await pause(50);
+ must(final.backdrop.querySelector('[data-app-kind=sheets] [data-row="2"][data-col="2"].sheet-cell').textContent==='99','Stage file transition lost unsaved sheet draft');
+ must(final.backdrop.querySelector('[data-ti-pe-source]').value.includes('Disp 45'),'Remount used an obsolete BASIC draft');
  return{ok:true,offline:true,apps:['TI.ProgramEditor','TI.Scratchpad','tabulator','TI.PythonEditor','TI.PythonShell'],basicPeerExecution:true,pythonExecution:true,pythonShellPeer:true,escapePreservesApps:true,shellEditorReplacement:true,sheetFormulas:true,draftBeforeLayout:true,layoutOnTop:true,nativeSaveReopen:true,widths};
 }

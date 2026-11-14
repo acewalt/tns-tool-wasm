@@ -20,7 +20,9 @@ from __future__ import annotations
 
 import os
 import re
+import sys
 import tempfile
+import time
 from pathlib import Path
 from xml.dom import Node, minidom
 
@@ -229,7 +231,19 @@ def _atomic_write(path, content, original):
         if path.read_bytes() != original:
             raise ValueError("The Problem changed while saving its layout. Reopen Document Inspector.")
         os.chmod(name, path.stat().st_mode)
-        os.replace(name, path)
+        # Windows scanners can briefly hold a file after a previous save. Keep
+        # retries short and retain the concurrent-editor guard on every attempt.
+        for attempt in range(4):
+            if path.read_bytes() != original:
+                raise ValueError("The Problem changed while saving its layout. Reopen Document Inspector.")
+            try:
+                os.replace(name, path)
+                break
+            except PermissionError as error:
+                if (sys.platform != "win32" or getattr(error, "winerror", None) not in (5, 32, 33)
+                        or attempt == 3):
+                    raise
+                time.sleep(0.02 * (attempt + 1))
         name = None
     finally:
         if name is not None:

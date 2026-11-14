@@ -12,6 +12,7 @@ import xml.etree.ElementTree as ET
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "editor_XML"))
 from page_layout import LAYOUT_COUNTS, update_page_layout
+import page_layout
 
 P = "urn:TI.Problem"
 AUTH = '&lt;r2dtotree&gt;&lt;node name="0el"&gt;keep&lt;/node&gt;&lt;/r2dtotree&gt;'
@@ -230,6 +231,62 @@ class PageLayoutTests(unittest.TestCase):
         with patch('page_layout.os.replace', side_effect=OSError('simulated write failure')):
             with self.assertRaises(OSError):
                 update_page_layout(self.file, operation)
+        self.assertEqual(self.file.read_bytes(), before)
+        self.assertFalse(list(self.directory.glob('.tns-layout-*')))
+
+    def test_windows_transient_sharing_failure_retries_and_saves(self):
+        original_replace = page_layout.os.replace
+        calls = []
+        error = PermissionError('temporarily locked')
+        error.winerror = 32
+
+        def replace(source, target):
+            calls.append(target)
+            if len(calls) == 1:
+                raise error
+            return original_replace(source, target)
+
+        with patch('page_layout.sys.platform', 'win32'), patch('page_layout.os.replace', side_effect=replace), patch('page_layout.time.sleep') as sleep:
+            result = self.transaction('group', 0, 1)
+        self.assertTrue(result['changed'])
+        self.assertEqual(self.markers(), [['app-0', 'app-1'], ['app-2'], ['app-3']])
+        self.assertEqual(len(calls), 2)
+        sleep.assert_called_once_with(0.02)
+        self.assertFalse(list(self.directory.glob('.tns-layout-*')))
+
+    def test_windows_persistent_access_failure_is_bounded_and_cleans_temporary_file(self):
+        before = self.file.read_bytes()
+        error = PermissionError('still locked')
+        error.winerror = 5
+        with patch('page_layout.sys.platform', 'win32'), patch('page_layout.os.replace', side_effect=error) as replace, patch('page_layout.time.sleep') as sleep:
+            with self.assertRaisesRegex(PermissionError, 'still locked'):
+                self.transaction('group', 0, 1)
+        self.assertEqual(replace.call_count, 4)
+        self.assertEqual(sleep.call_count, 3)
+        self.assertLessEqual(sum(call.args[0] for call in sleep.call_args_list), 0.2)
+        self.assertEqual(self.file.read_bytes(), before)
+        self.assertFalse(list(self.directory.glob('.tns-layout-*')))
+
+    def test_editor_update_during_windows_retry_is_preserved(self):
+        changed = self.file.read_bytes().replace(b'keep-resource', b'new-editor-resource')
+        error = PermissionError('temporarily locked')
+        error.winerror = 32
+        with patch('page_layout.sys.platform', 'win32'), patch('page_layout.os.replace', side_effect=error) as replace, patch('page_layout.time.sleep', side_effect=lambda delay: self.file.write_bytes(changed)):
+            with self.assertRaisesRegex(ValueError, 'changed'):
+                self.transaction('group', 0, 1)
+        replace.assert_called_once()
+        self.assertEqual(self.file.read_bytes(), changed)
+        self.assertFalse(list(self.directory.glob('.tns-layout-*')))
+
+    def test_non_windows_permission_failure_is_not_retried(self):
+        before = self.file.read_bytes()
+        error = PermissionError('access denied')
+        error.winerror = 5
+        with patch('page_layout.sys.platform', 'linux'), patch('page_layout.os.replace', side_effect=error) as replace, patch('page_layout.time.sleep') as sleep:
+            with self.assertRaises(PermissionError):
+                self.transaction('group', 0, 1)
+        replace.assert_called_once()
+        sleep.assert_not_called()
         self.assertEqual(self.file.read_bytes(), before)
         self.assertFalse(list(self.directory.glob('.tns-layout-*')))
 
