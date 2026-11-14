@@ -52,14 +52,16 @@ async function check(fixtures){
  const choose=async id=>{
   const button=document.querySelector('#note-math-templates');
   button.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}));button.click();
-  await wait(()=>document.querySelector(`[data-template-id="${id}"]`),'template grid');
+  await wait(()=>document.querySelector(`[data-template-id="${id}"]`),'template grid '+id+' / '+(document.querySelector('.ti-note-math-source')?.value||''));
   document.querySelector(`[data-template-id="${id}"]`).click();
  };
- const submit=source=>{const field=document.querySelector('.ti-note-math-source');field.value=source;field.dispatchEvent(new Event('input',{bubbles:true}));field.closest('form').requestSubmit();};
+ const submit=source=>{const field=document.querySelector('.ti-note-math-source');field.value=source;field.dispatchEvent(new Event('input',{bubbles:true}));field.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));};
  document.querySelector('#note-edit-view').click();
  const first=view.querySelector('.ti-note-run');caret(first.firstChild,2);
  await choose('fraction');
- must(view.contentEditable==='true'&&!document.querySelector('.ti-note-math-composer').hidden,'Template must open editable Notes composer');
+ must(view.contentEditable==='true'&&view.querySelector('[data-ti-native] .ti-note-math-source')&&!document.querySelector('.ti-note-math-composer'),'Template must insert directly with editing on the Notes line');
+ must(view.querySelector('[data-ti-source="((1)/(1))"]'),'Template insertion must not need an Insert confirmation');
+ const icon=document.querySelector('#note-math-templates .ti-math-tool-icon');must(Math.abs(icon.getBoundingClientRect().width-25)<1,'Notes template icon must keep the shared 25px size');
  submit('((x+2)/(3))');
  const fraction=[...view.querySelectorAll('[data-ti-native]')].find(node=>node.dataset.tiSource.includes('x+2'));
  must(fraction&&fraction.previousSibling.textContent==='AL'&&fraction.nextSibling.textContent==='PHA','First template missed the live caret');
@@ -68,7 +70,7 @@ async function check(fixtures){
  await choose('matrixN');
  let dims=document.querySelector('.ti-math-dimensions');
  must(dims,'Matrix dimensions prompt missing');dims.elements.rows.value='2';dims.elements.columns.value='3';dims.requestSubmit();
- must(document.querySelector('.ti-note-math-source').value==='[[1,1,1][1,1,1]]','Matrix dimensions did not reach Notes composer');
+ must(document.querySelector('.ti-note-math-source').value==='[[1,1,1][1,1,1]]','Matrix dimensions did not reach inline Notes insertion');
  submit('[[2,3,4][5,6,7]]');
  const matrix=[...view.querySelectorAll('[data-ti-native]')].find(node=>node.dataset.tiSource==='[[2,3,4][5,6,7]]');
  must(matrix&&matrix.previousSibling.textContent==='B'&&matrix.nextSibling.textContent==='A','Second template reused an old caret or failed to replace selection');
@@ -76,14 +78,18 @@ async function check(fixtures){
  await choose('systemN');dims=document.querySelector('.ti-math-dimensions');dims.elements.rows.value='4';dims.requestSubmit();
  must(document.querySelector('.ti-note-math-source').value==='system(1,1,1,1)','System dimensions did not reach Notes');
  submit('system(x=1,y=2,x+y=3,x-y=-1)');
- const original=fraction.dataset.tiNative;
- fraction.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));
+ const editableFraction=[...view.querySelectorAll('[data-ti-native]')].find(node=>node.dataset.tiSource==='((x+2)/(3))');const original=editableFraction.dataset.tiNative;
+ editableFraction.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));
  const sourceField=document.querySelector('.ti-note-math-source');
  sourceField.value='((x+2)/(3)';sourceField.dispatchEvent(new Event('input',{bubbles:true}));
- must(document.querySelector('#note-math-insert').disabled,'Incomplete expression must not replace native math');
- must(fraction.dataset.tiNative===original,'Invalid edit changed the authoritative native XML');
+ must(sourceField.getAttribute('aria-invalid')==='true','Incomplete inline expression must be marked invalid');
+ must(editableFraction.dataset.tiNative===original,'Invalid edit changed the authoritative native XML');
  submit('((x+4)/(7))');
- must(!view.contains(fraction)&&view.querySelector('mfrac'),'Native formula is not editable or lost its 2D preview');
+ const editedFormula=()=>[...view.querySelectorAll('[data-ti-native]')].find(node=>node.dataset.tiSource==='((x+4)/(7))');
+ must(editedFormula(),'Edited formula missing before undo');document.querySelector('[data-command="undo"]').click();
+ must([...view.querySelectorAll('[data-ti-native]')].some(node=>node.dataset.tiSource==='((x+2)/(3))'),'Inline edit must be undoable');document.querySelector('[data-command="redo"]').click();
+ must(editedFormula(),'Inline edit must be redoable');
+ must(!view.contains(editableFraction)&&view.querySelector('mfrac'),'Native formula is not editable or lost its 2D preview');
  const cachedRun=()=>[...view.querySelectorAll('[data-ti-native]')].find(node=>node.dataset.tiSource==='cos(a)');
  must(decodeURIComponent(cachedRun().dataset.tiNative)===serialize(parse(cached).documentElement),'Editing changed existing native cached answer');
  document.querySelector('#note-save').click();await wait(()=>savedNotes.length,'native Notes save');
@@ -92,7 +98,7 @@ async function check(fixtures){
  must(savedModel.richSource.includes('name="0matrix"'),'Save flattened matrix into prose');
  must(!savedModel.richSource.includes('<math')&&!savedModel.richSource.includes('ti-note'),'Save leaked visual HTML into native XML');
  must(savedModel.plainText.includes('AL((x+4)/(7))PHA')&&savedModel.plainText.includes('B[[2,3,4][5,6,7]]system('),'Saved expression/caret order changed');
- showNotepadModal(item);view=editor();
+ await wait(()=>!document.querySelector('#note-save'),'previous Notes closed');showNotepadModal(item);view=editor();
  must(view.querySelectorAll('[data-ti-native]').length===4,'Save/reopen lost Notes mathboxes');
  must(view.querySelectorAll('mfrac').length>=3&&view.querySelector('mtable'),'Save/reopen lost mathematical display');
  must(getComputedStyle(view.querySelector('.ti-note-run')).fontWeight==='700','Save/reopen changed author bold style');
@@ -114,5 +120,5 @@ async function check(fixtures){
   }
  }
  showNotepadModal(item);
- return {ok:true,templates:native.length,caret:{firstInsertion:true,movedCaret:true,replacedSelection:true},dimensions:{matrix:[2,3],system:4},editableFormula:true,invalidEditRetainsXml:true,saveReopen:true,authorStyle:true,preservedNativeBoxes:preserved,newFormulaCache:false,savedRawXml:item.raw_xml};
+ return {ok:true,templates:native.length,caret:{firstInsertion:true,movedCaret:true,replacedSelection:true},dimensions:{matrix:[2,3],system:4},directInsertion:true,inlineEditor:true,undoRedo:true,editableFormula:true,invalidEditRetainsXml:true,saveReopen:true,authorStyle:true,preservedNativeBoxes:preserved,newFormulaCache:false,savedRawXml:item.raw_xml};
 }

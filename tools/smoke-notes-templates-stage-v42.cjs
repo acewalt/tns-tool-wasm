@@ -43,8 +43,10 @@ async function check(){
  const templates=document.querySelector('#note-math-templates');must(templates,'Notes Templates button missing in real app');
  templates.dispatchEvent(new MouseEvent('mousedown',{bubbles:true,cancelable:true}));templates.click();
  await wait(()=>document.querySelector('[data-template-id="fraction"]'),'offline template assets');document.querySelector('[data-template-id="fraction"]').click();
- const source=document.querySelector('.ti-note-math-source');source.value='((√(5)+1)/(4))';source.dispatchEvent(new Event('input',{bubbles:true}));source.closest('form').requestSubmit();
+ const source=document.querySelector('.ti-note-math-source');source.value='((√(5)+1)/(4))';source.dispatchEvent(new Event('input',{bubbles:true}));source.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
  must(editor.querySelector('mfrac msqrt'),'Real Notes insertion does not render fraction/root');
+ await document.querySelector('.modal-backdrop:has(.ti-note-rich-modal)').__documentPreviewCommit();
+ must(document.querySelector('.ti-note-rich-modal'),'Layout commit hook must preserve the active Notes preview');
  document.querySelector('#note-save').click();await wait(()=>!document.querySelector('.ti-note-rich-modal'),'real Notes stage save');
  inspected=await inspectXmlDocument();item=inspected.items.find(x=>x.name==='TI.Notepad');
  must(item?.raw_xml.includes('0fraction')&&item.raw_xml.includes('0sqrt'),'Real staging flattened native operators');
@@ -69,5 +71,5 @@ len(_qa_notes_out.read_bytes())`);
  must(getComputedStyle(reopened.querySelector('.ti-note-run')).fontWeight==='700','Native TNS roundtrip lost author bold');
  formula.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));
  must(document.querySelector('.ti-note-math-source').value==='((√(5)+1)/(4))','Reopened native formula cannot be edited');
- return{ok:true,offline:true,sharedTemplates:true,realStageSave:true,nativeTnsBytes:Number(native),decodeReopen:true,operatorTree:true,stylePreserved:true,formulaEditable:true};
+ return{ok:true,offline:true,sharedTemplates:true,realStageSave:true,layoutCommitWithoutClose:true,directInsertion:true,nativeTnsBytes:Number(native),decodeReopen:true,operatorTree:true,stylePreserved:true,formulaEditable:true};
 }

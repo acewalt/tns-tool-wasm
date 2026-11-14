@@ -1,8 +1,23 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import vm from 'node:vm';
 import {createPrgmPreview,runPrgmPreview,evaluatePrgmExpression as ev} from '../src/prgm/runtime.js';
 const physics=fs.readFileSync(new URL('../examples/physics-prgm.tib',import.meta.url),'utf8');
+
+test('embedded Calculator Escape preserves its pane while retaining clear and input cancellation',()=>{
+  const code=fs.readFileSync(new URL('../web/prgm-preview.js',import.meta.url),'utf8');
+  const start=code.indexOf('  function keys(event){'),end=code.indexOf("  $('[data-close]').onclick=",start);
+  const calls=[],options={embedded:true},expression={owned:true,tagName:'TEXTAREA',value:'demo()',closest:selector=>selector.includes('textarea')?{}:null};
+  const ctx={options,expression,runtime:null,overlay:{contains:target=>target.owned},sendProgramKey:()=>false,dismissGraphics:()=>false,answer:cancel=>calls.push(['answer',cancel]),close:()=>calls.push('close'),refreshExpression:()=>calls.push('refresh'),saveDraft:()=>calls.push('draft')};
+  vm.runInNewContext(code.slice(start,end)+'\nglobalThis.keys=keys;',ctx);
+  const press=target=>ctx.keys({key:'Escape',target,preventDefault(){},stopImmediatePropagation(){}});
+  const history={owned:true,tagName:'DIV',closest:()=>null};
+  press(history);assert.deepEqual(calls,[],'Escape from embedded history must not remove the application');
+  press(expression);assert.equal(expression.value,'');assert.deepEqual(calls,['refresh','draft']);
+  calls.length=0;ctx.runtime={pending:{}};press(history);assert.deepEqual(calls,[['answer',true]]);
+  calls.length=0;ctx.runtime=null;options.embedded=false;press(history);assert.deepEqual(calls,['close']);
+});
 test('real 602-line physics program waits for menus and accepts calculator expressions',()=>{
   const p=createPrgmPreview(physics,{name:'phy'});let s=p.run();
   assert.equal(s.status,'waiting');assert.equal(s.pending.variable,'opcion');assert.match(s.text,/MENU PRINCIPAL/);

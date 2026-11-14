@@ -33,9 +33,9 @@
   const V="20261029-syntax-doctor-general-v1";
   const RUNTIME_V="20261029-startup-loader-v4";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
-  const NOTES_V="20261114-page-layout-v42";
+  const NOTES_V="20261114-layout-edit-v43";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
-  const NOTES_SAVE_FIX_V="20261114-page-layout-v42";
+  const NOTES_SAVE_FIX_V="20261114-layout-edit-v43";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
   const LOVE_PREVIEW_SIDE_V="20261106-preview-frame-fix-v32";
   const LOVE_PREVIEW_MATH_V="20261105-preview-tools-v31";
@@ -109,7 +109,7 @@
     .then(() => loadScript('script[data-rom-gb-preview="true"]', `./web/rom-gb-preview.js?v=20261029-usb-rom-v21`, "romGbPreview"))
     .then(() => loadScript('script[data-rom-web-converter="true"]', `./web/rom-web-converter.js?v=${V}`, "romWebConverter"))
     .then(() => loadScript('script[data-rom-converter-view="true"]', `./web/rom-converter-view.js?v=20261029-usb-rom-v21`, "romConverterView"))
-    .then(() => loadScript('script[data-rom-converter="true"]', `./web/rom-converter.js?v=20261114-desktop-download-v42`, "romConverter"));
+    .then(() => loadScript('script[data-rom-converter="true"]', `./web/rom-converter.js?v=20261114-desktop-download-v43`, "romConverter"));
   window.TnsRuntimeReady = tnsChain;
   window.NdlessRuntimeReady = tnsChain;
   tnsChain.catch(error => console.error("TNS runtime loader:", error));

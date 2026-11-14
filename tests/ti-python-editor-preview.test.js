@@ -85,3 +85,38 @@ test('full Python Syntax Doctor autosaves draft changes without resetting the ch
   ctx.persist();assert.equal(written.text,'x = 7');assert.equal(ctx.pyDoctor.lastOriginal,'x = 1');
   box.disabled=true;written=null;ctx.persist();assert.equal(written,null);
 });
+
+test('embedded Python shortcuts stay in their pane and Escape preserves its surface', () => {
+  const code = fs.readFileSync(new URL('../web/ti-python-editor-preview.js', import.meta.url), 'utf8');
+  const start = code.indexOf('    function keys(event) {'), end = code.indexOf('    const navigation =', start);
+  const calls = [], options = {embedded:true};
+  const ctx = {closed:false,isEditor:false,options,overlay:{contains:target=>target.owned},source:{},runShell:()=>calls.push('run'),close:()=>calls.push('close')};
+  vm.runInNewContext(code.slice(start,end)+'\nglobalThis.keys=keys;',ctx);
+  const press = (key,target,extra={}) => ctx.keys({key,target,preventDefault(){calls.push('prevent');},stopImmediatePropagation(){calls.push('stop');},...extra});
+  const own = {owned:true,closest:()=>null}, peer = {owned:false,closest:()=>null}, popup = {owned:true,closest:()=>({})};
+  press('Escape',own); assert.deepEqual(calls,[]);
+  press('r',peer,{ctrlKey:true}); press('r',popup,{ctrlKey:true}); assert.deepEqual(calls,[]);
+  press('r',own,{ctrlKey:true}); assert.deepEqual(calls,['prevent','stop','run']);
+  calls.length=0; options.embedded=false; press('Escape',own); assert.deepEqual(calls,['prevent','stop','close']);
+});
+
+test('embedded Python shell Edit leaves replacement cleanup to its owner', () => {
+  const code = fs.readFileSync(new URL('../web/ti-python-editor-preview.js', import.meta.url), 'utf8');
+  const callback = code.match(/\$\('\[data-ti-py-edit\]'\)\.onclick = (.*);/)[1];
+  const calls = [], options = {embedded:true,createBackdrop(){},onEdit:()=>{calls.push('edit');ctx.close();}};
+  const ctx = {closed:false,busy:false,expanded:false,options,close:state=>calls.push(state?.switching?'switch':'remove')};
+  vm.runInNewContext('globalThis.edit='+callback+';',ctx);
+  ctx.edit(); assert.deepEqual(calls,['edit','remove'],'The owner must get a still-open shell to remove before mounting its replacement');
+  calls.length=0; options.embedded=false; ctx.edit(); assert.deepEqual(calls,['switch','edit','remove']);
+});
+
+test('a background embedded Python execution does not steal focus when it requests input', async () => {
+  const code = fs.readFileSync(new URL('../web/ti-python-editor-preview.js', import.meta.url), 'utf8');
+  const start = code.indexOf('    async function executeEntry(entry) {'), end = code.indexOf('    function runShell()',start);
+  const calls = [], options = {embedded:true,execute:async()=>({waitingForInput:true})};
+  const ctx = {closed:false,busy:false,options,result:null,initialSource:'input()',inputText:()=>'',setBusy(){},renderShell(){},overlay:{contains:target=>target.owned},document:{activeElement:{owned:false}},input:{focus:()=>calls.push('focus')}};
+  vm.runInNewContext(code.slice(start,end)+'\nglobalThis.execute=executeEntry;',ctx);
+  await ctx.execute({kind:'script',inputs:[]}); assert.deepEqual(calls,[]);
+  ctx.document.activeElement={owned:true}; await ctx.execute({kind:'script',inputs:[]}); assert.deepEqual(calls,['focus']);
+  calls.length=0; options.embedded=false; ctx.document.activeElement={owned:false}; await ctx.execute({kind:'script',inputs:[]}); assert.deepEqual(calls,['focus']);
+});
