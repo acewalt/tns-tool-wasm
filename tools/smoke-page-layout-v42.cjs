@@ -104,7 +104,7 @@ async function check() {
   const sheetPane = embedded.backdrop.querySelector('[data-app-kind=sheets]');
   must(adapterCalls === 1 && sheetPane.querySelectorAll('.sheet-cell').length === 240, 'Embedded sheet did not use the spreadsheet controller');
   must(!sheetPane.querySelector('.compound-preview-unavailable'), 'Embedded sheet displays unavailable despite a live adapter');
-  const formula = sheetPane.querySelector('.spreadsheet-formula-value'); formula.value = '42'; formula.dispatchEvent(new Event('change', { bubbles: true }));
+  const formula = sheetPane.querySelector('.spreadsheet-formula-value'); formula.focus();formula.value = '42';formula.dispatchEvent(new Event('input', {bubbles:true}));formula.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true,cancelable:true}));
   must(sheetState.cells['0:0'].formula === '42' && sheetState.cells['0:0'].data === '42' && changedCells.includes('0:0'), 'Embedded sheet editing did not update its source state');
   must(sheetPane.querySelector('[data-row="0"][data-col="0"].sheet-cell').textContent === '42', 'Edited sheet did not repaint');
   embedded.backdrop.querySelector('[data-widget-close]').click();
