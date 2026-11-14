@@ -56,13 +56,13 @@
   function inputText(inputs) { return inputs.length ? inputs.join('\n') + '\n' : ''; }
 
   function open(mode, initial = {}, options = {}) {
-    active?.close();
+    if (!options.embedded) active?.close();
     const language = String(document.documentElement.lang || 'en').slice(0, 2), t = WORDS[language] || WORDS.en;
     const isEditor = mode === 'editor', overlay = options.createBackdrop?.('modal-backdrop ti-python-preview-backdrop') || document.createElement('div');
     overlay.classList.add('modal-backdrop', 'ti-python-preview-backdrop');
     const focus = document.activeElement, overflow = document.body.style.overflow;
-    if (!overlay.__documentPreviewRestore) overlay.__documentPreviewRestore = () => { document.body.style.overflow = overflow; if (focus?.isConnected) focus.focus({ preventScroll: true }); };
-    document.body.style.overflow = 'hidden';
+    if (!options.embedded && !overlay.__documentPreviewRestore) overlay.__documentPreviewRestore = () => { document.body.style.overflow = overflow; if (focus?.isConnected) focus.focus({ preventScroll: true }); };
+    if (!options.embedded) document.body.style.overflow = 'hidden';
     overlay.innerHTML = `<section class="modal widget-preview-modal ti-python-preview-modal ti-python-${mode}-modal" role="dialog" aria-modal="true" aria-labelledby="ti-py-title" tabindex="-1">
       <div class="modal-top-actions"><button type="button" data-ti-py-close></button></div><h2 id="ti-py-title"></h2><p class="muted-text" data-ti-py-note></p>
       <div class="preview-controls ti-python-controls">${isEditor ? '<button type="button" class="green-tool-button" data-ti-py-syntax></button><button type="button" class="green-tool-button" data-ti-py-run></button><button type="button" data-ti-py-save></button>' : '<button type="button" class="green-tool-button" data-ti-py-restart></button><button type="button" data-ti-py-send></button><button type="button" data-ti-py-edit></button>'}</div>
@@ -126,7 +126,7 @@
       const callback = kind === 'syntax' ? options.onSyntax : kind === 'save' ? options.onSave : options.onRun;
       if (typeof callback !== 'function') return;
       const text = source.value; saveDraft();
-      if (kind === 'run') { close({ switching: typeof options.createBackdrop === 'function' }); return callback({ ...initial, source: text, name: scriptName(initial) }, { expanded }); }
+      if (kind === 'run') { if (!options.embedded) close({ switching: typeof options.createBackdrop === 'function' }); return callback({ ...initial, source: text, name: scriptName(initial) }, { expanded }); }
       setBusy(true); $('[data-ti-py-status]').textContent = kind === 'syntax' ? t.checking : t.saving;
       try {
         const value = await callback(text); if (closed) return value;
@@ -158,7 +158,7 @@
         if (!closed) { entry.result = result = next; options.onResult?.(next); }
       }
       catch (error) { if (!closed) entry.result = result = { success: false, stdout: '', stderr: '', waitingForInput: false, error: { type: error?.name || 'Error', message: error?.message || String(error) } }; }
-      finally { if (!closed) { setBusy(false); renderShell(); if (result?.waitingForInput) input.focus({ preventScroll: true }); } }
+      finally { if (!closed) { setBusy(false); renderShell(); if (result?.waitingForInput && (!options.embedded || overlay.contains(document.activeElement))) input.focus({ preventScroll: true }); } }
       return result;
     }
     function runShell() {
@@ -181,14 +181,14 @@
       if (active?.close === close) active = null;
     }
     function keys(event) {
-      if (closed) return;
+      if (closed || !overlay.contains(event.target) || event.target.closest?.('.ti-math-tool-popup')) return;
       if ((event.ctrlKey || event.metaKey) && !event.shiftKey && !event.altKey && !event.repeat && ['b', 'r'].includes(event.key.toLowerCase())) {
         event.preventDefault(); event.stopImmediatePropagation();
         if (isEditor) Promise.resolve(editorAction(event.key.toLowerCase() === 'b' ? 'syntax' : 'run')).catch(showError);
         else if (event.key.toLowerCase() === 'r') runShell();
         else if (typeof options.onSyntax === 'function') Promise.resolve(options.onSyntax(initialSource)).then(value => { if (!closed) renderReport(value); }).catch(showError);
       } else if (event.key === 'Tab' && event.target === source) { event.preventDefault(); source.setRangeText('    ', source.selectionStart, source.selectionEnd, 'end'); sourceChanged(); }
-      else if (event.key === 'Escape') { event.preventDefault(); event.stopImmediatePropagation(); close(); }
+      else if (event.key === 'Escape' && !options.embedded) { event.preventDefault(); event.stopImmediatePropagation(); close(); }
     }
     const navigation = { ...(options.pageNavigation || { items: [{ file: initial.file, path: initial.path, name: scriptName(initial) }], selected: 0 }), onSelect: next => { if (closed || busy) return; close({ switching: true }); return options.pageNavigation?.onSelect(next, { expanded, pythonRun: false }); } };
     window.TnsDocumentPreviewNavigation?.mountChrome($('.ti-python-chrome'), { ...navigation, title: options.documentName || initial.documentName || 'documento', mode: 'RAD', onClose: () => close() });
@@ -200,17 +200,18 @@
     } else {
       $('[data-ti-py-form]').onsubmit = event => { event.preventDefault(); sendInput(); };
       $('[data-ti-py-send]').onclick = () => sendInput(); $('[data-ti-py-restart]').onclick = () => runShell();
-      $('[data-ti-py-edit]').onclick = () => { if (closed || busy) return; close({ switching: typeof options.createBackdrop === 'function' }); return options.onEdit?.({ expanded }); };
+      $('[data-ti-py-edit]').onclick = () => { if (closed || busy) return; if (!options.embedded) close({ switching: typeof options.createBackdrop === 'function' }); return options.onEdit?.({ expanded }); };
       input.oninput = saveDraft;
     }
     scroll.addEventListener('scroll', saveDraft); overlay.onclick = event => { if (event.target === overlay) close(); };
-    if (!overlay.isConnected) document.body.append(overlay);
-    window.TnsPreviewWindow?.mount(overlay, { ...options, pageNavigation: navigation, expanded, setExpanded: value => { expanded = value; options.setExpanded?.(value); } });
+    if (!overlay.isConnected && !options.embedded) document.body.append(overlay);
+    if (!options.embedded) window.TnsPreviewWindow?.mount(overlay, { ...options, pageNavigation: navigation, expanded, setExpanded: value => { expanded = value; options.setExpanded?.(value); } });
     document.addEventListener('keydown', keys, true);
-    active = { close, getSource, setSource: text => { if (source && !busy) { source.value = String(text ?? ''); sourceChanged(); } }, checkSyntax: () => editorAction('syntax'), save: () => editorAction('save'), run: () => isEditor ? editorAction('run') : runShell(), sendInput: value => { if (input && !busy) { input.value = String(value ?? ''); return sendInput(); } }, getSnapshot: () => ({ mode, name: scriptName(initial), source: getSource(), dirty, busy, expanded, report, result, entries: entries.map(entry => ({ ...entry, inputs: [...entry.inputs] })), output: source ? '' : $('[data-ti-py-output]').textContent }) };
-    if (source) { source.setSelectionRange(Math.min(source.value.length, draft?.selectionStart || 0), Math.min(source.value.length, draft?.selectionEnd || 0)); renderSource(); $('[data-ti-py-status]').textContent = t.ready; scroll.scrollTop = draft?.scrollTop || 0; source.focus({ preventScroll: true }); }
+    const instance = { close, getSource, setSource: text => { if (source && !busy) { source.value = String(text ?? ''); sourceChanged(); } }, checkSyntax: () => editorAction('syntax'), save: () => editorAction('save'), run: () => isEditor ? editorAction('run') : runShell(), sendInput: value => { if (input && !busy) { input.value = String(value ?? ''); return sendInput(); } }, getSnapshot: () => ({ mode, name: scriptName(initial), source: getSource(), dirty, busy, expanded, report, result, entries: entries.map(entry => ({ ...entry, inputs: [...entry.inputs] })), output: source ? '' : $('[data-ti-py-output]').textContent }) };
+    if (source) { source.setSelectionRange(Math.min(source.value.length, draft?.selectionStart || 0), Math.min(source.value.length, draft?.selectionEnd || 0)); renderSource(); $('[data-ti-py-status]').textContent = t.ready; scroll.scrollTop = draft?.scrollTop || 0; if (!options.embedded) source.focus({ preventScroll: true }); }
     else { setBusy(false); renderShell(); if (options.autoRun === true) runShell(); }
-    return active;
+    if (!options.embedded) active = instance;
+    return instance;
   }
   window.TnsPythonPreview = Object.freeze({ openEditor: (data, options) => open('editor', data, options), openShell: (data, options) => open('shell', data, options), close: state => active?.close(state), getSnapshot: () => active?.getSnapshot() ?? null, getSource: () => active?.getSource() ?? '', setSource: text => active?.setSource(text), checkSyntax: () => active?.checkSyntax(), save: () => active?.save(), run: () => active?.run(), sendInput: value => active?.sendInput(value), highlightSource, lineCounter, scriptName, shellText, inputText });
 })();

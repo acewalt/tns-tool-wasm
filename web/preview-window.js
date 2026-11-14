@@ -19,7 +19,7 @@
     }
     document.body.style.overflow = 'hidden';
     const prgm = modal.classList.contains('prgm-preview-modal');
-    const nativeToggle = modal.querySelector('[data-expand],#love-preview-size-toggle,#image-expand');
+    const nativeToggle = [...modal.querySelectorAll('[data-expand],#love-preview-size-toggle,#image-expand')].find(button=>!button.closest('.document-embedded-preview'));
     let stage = modal.querySelector('.prgm-preview-screen-shell,#love-preview-stage,.lua-preview-calculator,.note-calculator-shell,.spreadsheet-calc,.document-image-calculator,.widget-preview-calculator');
     let header, body, center, left, right, footer;
     modal.classList.add('preview-window'); backdrop.classList.add('preview-window-backdrop');
