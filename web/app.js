@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-12-widgets-v41";
+const SOURCE_VERSION = "2026-11-14-page-layout-v42";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -1213,6 +1213,7 @@ const PYTHON_FILES = [
   "editor_XML/ti_serializer.py",
   "editor_XML/xml_scanner.py",
   "editor_XML/xml_updater.py",
+  "editor_XML/page_layout.py",
   "editor_XML/calculator_history.py",
 ];
 
@@ -9468,6 +9469,7 @@ json.dumps({
 }
 
 async function saveNotepadWidgetToStage(item, text) {
+  await ensureXmlStageCopy();
   const currentFile = item?.file || "";
   pyodide.globals.set("wasm_note_save_file", currentFile);
   pyodide.globals.set("wasm_note_save_path", item?.path || "");
@@ -9489,9 +9491,6 @@ if source_file:
         except ValueError: rel = Path(source_file.name)
     candidate = stage_root / rel
     if candidate.exists(): xml_file = candidate
-if xml_file is None:
-    problems = sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p: p.name.lower())
-    if problems: xml_file = problems[0]
 if xml_file is None: raise RuntimeError("No XML file available for Notes save")
 
 def parse_part(part):
@@ -9515,17 +9514,14 @@ def resolve_path(root, path):
 tree = ET.parse(xml_file); root = tree.getroot()
 wdgt = resolve_path(root, wasm_note_save_path)
 if wdgt is None or wdgt.attrib.get("type") != "TI.Notepad":
-    matches = [node for node in root.iter() if local_name(node.tag) == "wdgt" and node.attrib.get("type") == "TI.Notepad"]
-    if not matches: raise RuntimeError("TI.Notepad widget not found")
-    wdgt = matches[-1]
+    raise RuntimeError("The Notes page changed. Reopen it before saving.")
 fmtxt = next((node for node in wdgt.iter() if local_name(node.tag) == "fmtxt"), None)
 if fmtxt is None: raise RuntimeError("np:fmtxt not found")
 fmtxt.text = wasm_note_save_rich
-body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False)
+body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False).replace(b'\\r', b'&#13;')
 xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
 json.dumps({"file": str(xml_file), "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False)})
 `);
-  xmlDoctor.embedded = true;
   xmlDoctor.stagePrepared = true;
   return JSON.parse(payload);
 }
@@ -17537,10 +17533,21 @@ function mountDocumentPreviewTabs(backdrop, options, selector, onSelect, chrome 
     if (!backdrop.isConnected || !host.isConnected || backdrop.classList.contains('closing') || backdrop.dataset.previewSwitching === 'true') return;
     backdrop.dataset.previewSwitching = 'true'; onSelect(next);
   };
-  const mountWindow = () => window.TnsPreviewWindow?.mount(backdrop, {
-    ...options, documentName: options.documentName || documentPreviewDocumentName(),
-    pageNavigation: navigation ? { ...navigation, onSelect: selectOnce } : null,
-  });
+  const mountWindow = () => {
+    const mounted = window.TnsPreviewWindow?.mount(backdrop, {
+      ...options, documentName: options.documentName || documentPreviewDocumentName(),
+      pageNavigation: navigation ? { ...navigation, onSelect: selectOnce } : null,
+    });
+    if (options.onEditLayout && !backdrop.querySelector('[data-document-page-layout],[data-compound-edit]')) {
+      const actions = backdrop.querySelector('.preview-window-header .modal-top-actions,.preview-window-header .prgm-preview-top,.modal-top-actions');
+      if (actions) {
+        const button = document.createElement('button'); button.type = 'button'; button.dataset.documentPageLayout = '';
+        button.textContent = window.TnsDocumentPageLayout?.words?.().title || ({es:'Distribución',fr:'Disposition'})[document.documentElement.lang?.slice(0,2)] || 'Page layout';
+        button.onclick = () => options.onEditLayout(); actions.prepend(button);
+      }
+    }
+    return mounted;
+  };
   if (chrome) {
     window.TnsDocumentPreviewNavigation.mountChrome(host, {
       ...navigation, items: navigation?.items || [options.item || {}],
@@ -17697,6 +17704,7 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   const draftKey = appKind === 'python' ? `${selected}:python-${session.pythonRun || item.content_label === 'PythonShell' || item.name === 'TI.PythonShell' ? 'run' : 'editor'}` : `${selected}:${session.programRun ? 'run' : 'editor'}`;
   const options = {
     item, documentName: documentPreviewDocumentName(),
+    onEditLayout: () => openDocumentPageLayout(page).catch(error => xmlLog(`ERROR Layout: ${error.message}`)),
     expanded: session.expanded || false,
     setExpanded: value => { session.expanded = value; },
     draft: session.drafts.get(draftKey),
@@ -17736,7 +17744,23 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
         Object.assign(context.mathSession.variables, values);
         window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: page.file, variables: context.mathSession.variables } }));
       },
+      mountApplication: (host, app) => {
+        if (app.previewKind !== 'sheets') return null;
+        // Layout preview reads the native cached cells. Editing stays in the
+        // individual Sheet editor; changing a layout cannot recalculate or
+        // silently save an unrelated formula.
+        const state=extractSpreadsheetStateFromRawXml((app.previewItem||app).raw_xml);
+        const shell=document.createElement('div');shell.className='spreadsheet-grid-shell';
+        const grid=document.createElement('div');grid.className='spreadsheet-grid';grid.setAttribute('role','grid');grid.setAttribute('aria-readonly','true');
+        const cols=Math.min(26,state.cols),rows=Math.min(1000,state.rows);
+        grid.style.gridTemplateColumns='28px '+Array.from({length:cols},(_,i)=>(Number(state.columnWidths[i])||70)+'px').join(' ');
+        const cell=(cls,text)=>{const el=document.createElement('div');el.className=cls;el.textContent=text;return el;};
+        grid.append(cell('sheet-corner',''));for(let c=0;c<cols;c++)grid.append(cell('sheet-col-header',String.fromCharCode(65+c)));
+        for(let r=0;r<rows;r++){grid.append(cell('sheet-row-header',r+1));for(let c=0;c<cols;c++)grid.append(cell('sheet-cell',state.cells[r+':'+c]?.data??state.cells[r+':'+c]?.formula??''));}
+        shell.append(grid);host.append(shell);return {destroy:()=>shell.remove()};
+      },
       onSave: layout => saveDocumentCardLayout(page, layout),
+      onEditLayout: () => options.onEditLayout(),
     });
   }
   if (appKind === 'basic') {
@@ -17827,21 +17851,93 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
 
 async function saveDocumentCardLayout(page, layout) {
   await ensureXmlStageCopy();
-  const file = String(xmlDoctor.stagePath).replace(/\/$/, '') + '/' + documentXmlFileIdentity(page.file);
-  const xml = pyodide.FS.readFile(file, { encoding: 'utf8' });
-  const parsed = new DOMParser().parseFromString(xml, 'application/xml');
-  if (parsed.querySelector('parsererror')) throw new Error('Invalid document XML.');
-  const cardIndex = Number(/\/card\[(\d+)\]/.exec(page.path)?.[1] || 1) - 1;
-  const card = [...parsed.documentElement.children].filter(node => node.localName === 'card')[cardIndex];
+  const cards = documentLayoutCards(await inspectXmlDocument());
+  const card = cards.find(card => documentPreviewFileKey(card.file) === documentPreviewFileKey(page.file) && card.path === documentCardPath(page.path));
   if (!card) throw new Error('The document page no longer exists.');
-  for (const key of ['w1', 'h1']) {
-    const value = Math.round(Math.max(1000, Math.min(9000, Number(layout[key]))));
-    if (!Number.isFinite(value)) continue;
-    card.setAttribute(key, String(value));
-    page.detail[key] = String(value);
-  }
-  pyodide.FS.writeFile(file, new XMLSerializer().serializeToString(parsed));
+  await writeDocumentPageLayout({action:'arrange',file:card.file,cards:[card],layout});
+  Object.assign(page.detail, layout);
   xmlDoctor.stagePrepared = true;
+}
+
+function documentCardPath(path) {
+  return String(path || '').replace(/\/wdgt(?:\[\d+\])?(?:\/.*)?$/, '');
+}
+
+function documentLayoutCards(data) {
+  const items = data.items || [];
+  return items.filter(item => item.type === 'Card' && /^\/[^/]+\/card(?:\[\d+\])?$/.test(item.path))
+    .sort((a,b) => String(a.file).localeCompare(String(b.file),undefined,{numeric:true}) || a.path.localeCompare(b.path,undefined,{numeric:true}))
+    .map(card => ({...card,apps:items.filter(item => item.type === 'Widget' && item.file === card.file && documentCardPath(item.path) === card.path && !/\/wdgt(?:\[\d+\])?\//.test(item.path)).sort((a,b)=>a.path.localeCompare(b.path,undefined,{numeric:true}))}));
+}
+
+async function writeDocumentPageLayout(change) {
+  await ensureXmlStageCopy();
+  const relative = documentXmlFileIdentity(change.file);
+  if (!relative || relative.startsWith('/') || relative.split('/').includes('..')) throw new Error('Invalid document file.');
+  const operation={action:change.action,cards:change.cards.map(card=>({path:card.path,xml:card.raw_xml}))};
+  if(change.action==='group')operation.destination=change.path;
+  if(change.action!=='ungroup'){
+    operation.layout=Object.fromEntries(['clay','w1','h1','w2','h2'].filter(key=>change.layout?.[key]!==undefined).map(key=>[key,change.layout[key]]));
+    if(operation.layout.clay===0)for(const key of ['w1','h1','w2','h2'])operation.layout[key]=10000;
+    if(change.order!==undefined)operation.order=change.order;
+  }
+  pyodide.globals.set('wasm_page_layout', JSON.stringify({file:relative,operation}));
+  pyodide.globals.set('wasm_page_layout_stage', xmlDoctor.stagePath);
+  return JSON.parse(await pyodide.runPythonAsync(`
+import json
+from pathlib import Path
+from page_layout import update_page_layout
+change=json.loads(wasm_page_layout)
+stage=Path(wasm_page_layout_stage).resolve()
+target=(stage/change['file']).resolve()
+target.relative_to(stage)
+json.dumps(update_page_layout(target,change['operation']))
+`));
+}
+
+async function applyDocumentPageLayout(change) {
+  tiMathEditor?.flush();
+  const current=xmlDoctor.current;
+  const keyOf=c=>JSON.stringify([documentXmlFileIdentity(c.file),c.program_name,c.document_type]);
+  const currentKey=current?keyOf(current):null;
+  const drafts=new Map(xmlDoctor.candidates.map(c=>[keyOf(c),c===current?document.querySelector('#xml-code').value:c.code]));
+  const result=await writeDocumentPageLayout({...change,action:change.action==='layout'?'arrange':change.action,layout:change.layout||{clay:change.clay,w1:5000,h1:5000,w2:5000,h2:5000},order:change.action==='group'?undefined:change.order});
+  // Layouts move app containers, never their stored program symbols. Preserve
+  // unfinished source buffers through the rescan without requiring validation.
+  xmlDoctor.previewItems=[];xmlDoctor.previewFile='';
+  await scanXmlPrograms();
+  for(const c of xmlDoctor.candidates)if(drafts.has(keyOf(c)))c.code=drafts.get(keyOf(c));
+  const selected=xmlDoctor.candidates.find(c=>keyOf(c)===currentKey)||xmlDoctor.candidates[0];
+  xmlDoctor.current=null;if(selected)selectXmlProgram(selected.index);
+  xmlDoctor.embedded=!selected;xmlDoctor.stagePrepared=true;
+  const data=await inspectXmlDocument();
+  return {result,pages:documentLayoutCards(data),path:result.destination_path||change.path};
+}
+
+async function openDocumentPageLayout(selected) {
+  if (!window.TnsDocumentPageLayout) throw new Error('Page layout editor is still loading.');
+  await ensureXmlStageCopy();
+  let changed=false;
+  const inspector=document.querySelector('.inspector-modal')?.closest('.modal-backdrop');
+  return window.TnsDocumentPageLayout.open({
+    pages:documentLayoutCards(await inspectXmlDocument()),
+    selected:selected?{file:String(xmlDoctor.stagePath).replace(/\/$/,'')+'/'+documentXmlFileIdentity(selected.file),path:documentCardPath(selected.path)}:null,
+    onApply:async change=>{
+      const result=await applyDocumentPageLayout(change);changed=true;
+      for(const backdrop of document.querySelectorAll('.modal-backdrop'))if(backdrop.querySelector('.preview-window'))closeModal(backdrop);
+      if(inspector?.isConnected)closeModal(inspector);
+      return result;
+    },
+    onPreview:async card=>{
+      try {
+        const data=await inspectXmlDocument(),groups=window.TnsDocumentPreviewNavigation.groups(data.items);
+        groups.widgets=documentWidgetPreviewPages(data.items,groups);
+        const index=groups.widgets.findIndex(page=>documentPreviewFileKey(page.file)===documentPreviewFileKey(card.file)&&documentCardPath(page.path)===card.path);
+        if(index>=0)await openDocumentAppPreview(groups,'widgets',index,{});
+      }catch(error){xmlLog(`ERROR Preview: ${error.message}`);}
+    },
+    onClose:()=>{if(changed&&inspector)openDocumentInspector().catch(error=>xmlLog(`ERROR: ${error.message}`));},
+  });
 }
 
 function programEditorVisibilityWords() {
@@ -17969,7 +18065,7 @@ async function openDocumentInspector() {
   const visibilityWords=programEditorVisibilityWords();
   previewGroups.widgets = documentWidgetPreviewPages(data.items || [], previewGroups);
   const summaryHtml = [
-    ['Widgets', summary.widgets ?? previewGroups.widgets.length, (summary.widgets ?? previewGroups.widgets.length) > 1 ? 'widgets' : null], ['XML', summary.files], ['Cards', summary.cards],
+    ['Cards', summary.cards ?? previewGroups.widgets.length, 'widgets'], ['XML', summary.files], ['Widgets', summary.widgets],
     ['Lua', previewGroups.lua.length, 'lua'], ['Python', previewGroups.python.filter(item => item.content_label === 'Python').length || previewGroups.python.length, 'python'],
     ['Resources', summary.resources], ['Images', previewGroups.images.length, 'images'],
     ['Sheets', previewGroups.sheets.length, 'sheets'], ['Notes', previewGroups.notes.length, 'notes'],
@@ -18009,6 +18105,7 @@ async function openDocumentInspector() {
       contentAction = `<button type="button" class="mini-action view-action" data-index="${index}">${escapeHtml(t("viewValue"))}</button>`;
     }
     const xmlAction = item.raw_xml ? `<button type="button" class="mini-action xml-action" data-index="${index}">${escapeHtml(t("viewXml"))}</button>` : "";
+    const layoutAction = item.type === 'Card' ? `<button type="button" class="mini-action green-mini-action inspector-layout-action" data-index="${index}">${escapeHtml(({es:'Distribución',fr:'Disposition'})[document.documentElement.lang?.slice(0,2)]||'Page layout')}</button>` : '';
     const programName=item.content_label==='ProgramEditor'?item.detail?.name:item.name;
     const candidate=xmlDoctor.candidates.find(c=>c.program_name===programName&&documentXmlFileIdentity(c.file)===documentXmlFileIdentity(item.file)&&isTiBasicProgramCandidate(c));
     const editorVisible=(data.items||[]).some(w=>w.content_label==='ProgramEditor'&&w.file===item.file&&w.detail?.name===programName);
@@ -18016,7 +18113,7 @@ async function openDocumentInspector() {
     const visibilityAction=canToggle?`<button type="button" class="mini-action program-editor-visibility" data-index="${index}" data-visible="${editorVisible}" aria-pressed="${editorVisible}" aria-label="${escapeHtml(editorVisible?visibilityWords.hide:visibilityWords.show)}" title="${escapeHtml(editorVisible?visibilityWords.hide:visibilityWords.show)}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>${editorVisible?'':'<path d="M3 3l18 18"/>'}</svg></button>`:'';
     const deleteWords=inspectorElementDeleteWords(item);
     const deleteAction=`<button type="button" class="mini-action inspector-delete-action" data-delete-element="${index}" title="${escapeHtml(deleteWords.button)}" aria-label="${escapeHtml(deleteWords.button+': '+(item.detail?.name||item.name))}">×</button>`;
-    const action = `${contentAction}${visibilityAction}${xmlAction}${deleteAction}`;
+    const action = `${contentAction}${layoutAction}${visibilityAction}${xmlAction}${deleteAction}`;
     return `<tr data-inspector-element="${index}"><td>${escapeHtml(item.name)}</td><td><div class="inspector-actions">${action}</div></td><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.file.split("/").pop())}</td><td>${escapeHtml(item.path)}</td><td>${escapeHtml(detail)}</td></tr>`;
   }).join("");
   backdrop.innerHTML = `
@@ -18027,7 +18124,7 @@ async function openDocumentInspector() {
         ${summaryHtml}
       </div>
       <h3>${escapeHtml(t("documentElements"))}</h3>
-      <p class="program-editor-visibility-note">${escapeHtml(visibilityWords.note)}</p>
+      ${(data.items||[]).some(item=>item.content_label==='ProgramEditor'||['Prgm','Func'].includes(item.type))?`<p class="program-editor-visibility-note">${escapeHtml(visibilityWords.note)}</p>`:''}
       <div class="inspector-table-wrap">
         <table class="problem-table inspector-table">
           <thead><tr>${['name','actions','type','file','path','detail'].map(key=>`<th>${escapeHtml(words[key])}</th>`).join('')}</tr></thead>
@@ -18035,6 +18132,7 @@ async function openDocumentInspector() {
         </table>
       </div>
       <div class="modal-actions inspector-modal-actions">
+        <button type="button" id="inspector-layout">${escapeHtml(({es:'Distribución de páginas',fr:'Disposition des pages'})[document.documentElement.lang?.slice(0,2)]||'Page layout')}</button>
         <div class="tool-menu inspector-page-menu">
           <button type="button" id="inspector-page-trigger" class="menu-trigger green-menu-trigger"><span>${escapeHtml(t("addPage"))}</span></button>
           <div class="menu-panel">
@@ -18052,6 +18150,8 @@ async function openDocumentInspector() {
       </div>
     </div>`;
   document.body.append(backdrop);
+  backdrop.querySelector('#inspector-layout').onclick=()=>openDocumentPageLayout().catch(error=>xmlLog(`ERROR Layout: ${error.message}`));
+  for(const button of backdrop.querySelectorAll('.inspector-layout-action'))button.onclick=()=>openDocumentPageLayout(sortedItems[Number(button.dataset.index)]).catch(error=>xmlLog(`ERROR Layout: ${error.message}`));
   // Size only Actions to its buttons. Fixed widths keep long XML paths/details
   // from changing the other columns or pushing them off the table entirely.
   const inspectorTable = backdrop.querySelector('.inspector-table');
