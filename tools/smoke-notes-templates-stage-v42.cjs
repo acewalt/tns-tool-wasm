@@ -15,6 +15,7 @@ app.whenReady().then(async()=>{
  win.webContents.on('console-message',(_event,level,message)=>messages.push({level,message}));
  await win.loadURL(origin);
  const result=await win.webContents.executeJavaScript(`(${check.toString()})()`);
+ await win.webContents.executeJavaScript(`new Promise(resolve=>setTimeout(resolve,500))`);
  await win.webContents.executeJavaScript('document.fonts.ready.then(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))))');
  fs.mkdirSync(path.dirname(reportPath),{recursive:true});fs.writeFileSync(reportPath,JSON.stringify(result,null,2));
  fs.writeFileSync(reportPath+'.png',(await win.webContents.capturePage()).toPNG());

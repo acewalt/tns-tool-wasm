@@ -21,6 +21,14 @@
     return icon;
   };
   const defaultClay=count=>({1:0,2:1,3:3,4:7})[count] ?? 0;
+  function nativeRatios(page,clay,count) {
+    const active=[[],['w1'],['h1'],['w1','h1'],['w1','h1'],['w1','h1'],['w1','h2'],['w1','h1','h2']][clay] || [];
+    return Object.fromEntries(['w1','h1','w2','h2'].map(key=>{
+      if(count===1)return [key,10000];
+      const value=Number(page?.detail?.[key]),split=active.includes(key);
+      return [key,Math.max(split?1000:0,Math.min(split?9000:10000,Number.isFinite(value)?value:5000))];
+    }));
+  }
   function open(options={}) {
     const t=words(),backdrop=document.createElement('div');backdrop.className='modal-backdrop document-page-layout-backdrop';
     backdrop.innerHTML='<section class="modal document-page-layout-modal" role="dialog" aria-modal="true" aria-labelledby="page-layout-title"><h2 id="page-layout-title"></h2><p data-layout-description></p><div class="page-layout-editor"><div class="page-layout-pages"><h3 data-layout-page-title></h3><div data-layout-pages></div><h3 data-layout-group-title></h3><div data-layout-group-list></div><button type="button" data-layout-group></button></div><div class="page-layout-details"><div class="page-layout-presets" role="group"></div><h3 data-layout-order-title></h3><ol data-layout-order></ol><p class="muted-text" data-layout-empty></p><div class="page-layout-command-row"><button type="button" data-layout-ungroup></button><button type="button" data-layout-preview></button></div></div></div><p role="status" data-layout-status></p><div class="modal-actions"><button type="button" data-layout-close></button><button type="button" class="green-tool-button" data-layout-save></button></div></section>';
@@ -32,7 +40,7 @@
     const appLabel=app=>app.detail?.name||app.name||app.type;
     const pageLabel=(page,index)=>`${t.page} ${window.TnsDocumentPreviewNavigation?.pageLabel(page)||index+1} · ${String(page.file).split('/').pop()} (${page.apps.length})`;
     const status=q('[data-layout-status]');
-    function resetDraft(){const page=pages[selected];order=(page?.apps||[]).map((_,i)=>i);const native=Number(page?.detail?.clay||0);clay=layouts.some(l=>l.clay===native&&l.count===order.length)?native:defaultClay(order.length);ratios=Object.fromEntries(['w1','h1','w2','h2'].map(key=>[key,order.length===1?10000:Math.max(1000,Math.min(9000,Number(page?.detail?.[key])||5000))]));selectedGroup.clear();if(page)selectedGroup.add(page.path);}
+    function resetDraft(){const page=pages[selected];order=(page?.apps||[]).map((_,i)=>i);const native=Number(page?.detail?.clay||0);clay=layouts.some(l=>l.clay===native&&l.count===order.length)?native:defaultClay(order.length);ratios=nativeRatios(page,clay,order.length);selectedGroup.clear();if(page)selectedGroup.add(page.path);}
     function button(text,action){const b=document.createElement('button');b.type='button';b.textContent=text;b.onclick=action;return b;}
     function draw(){
       const page=pages[selected],list=q('[data-layout-pages]');list.replaceChildren();
