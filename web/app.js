@@ -16950,7 +16950,16 @@ function evaluateSpreadsheetFormula(formula, cells, options = {}) {
       part = part.replace(/(?<![\p{L}\p{N}_])\$?[A-Za-z]+\$?\d+\b(?!\s*\()/gu, resolve);
       return part.replace(/§(\d+)§/g, (_match, i) => ranges[Number(i)]);
     }).join("");
-    expression = expression.replace(/\bAVERAGE\s*\(/gi, "mean(").replace(/\bCOUNT\s*\(/gi, "dim(");
+    expression = expression
+      .replace(/\\bAVERAGE\\s*\\(/gi, "mean(")
+      .replace(/\\bCOUNT\\s*\\(/gi, "dim(")
+      .replace(/\\bIF\\s*\\(/gi, "when(")
+      .replace(/\\bSTDEV\\.S\\s*\\(/gi, "stDevSamp(")
+      .replace(/\\bSTDEV\\.P\\s*\\(/gi, "stDevPop(")
+      .replace(/\\bSTDEV\\s*\\(/gi, "stDevSamp(")
+      .replace(/\\bVAR\\.S\\s*\\(/gi, "varSamp(")
+      .replace(/\\bVAR\\.P\\s*\\(/gi, "varPop(")
+      .replace(/\\bVAR\\s*\\(/gi, "varSamp(");
     const math = options.mathSession || window.TnsTiBasicMath?.createSession();
     if (!math) return "#LOADING!";
     const result = math.expression(expression);
