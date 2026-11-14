@@ -16913,11 +16913,11 @@ function evaluateSpreadsheetFormula(formula, cells, options = {}) {
   if (!raw.startsWith("=")) return raw;
   const visited = options.visited || new Set();
   const literal = value => typeof value === "number" || typeof value === "boolean" ? String(value) : JSON.stringify(String(value ?? ""));
-  const resolve = ref => {
+  const resolve = (ref, inRange = false) => {
     const coords = spreadsheetCellRefToCoords(ref.replace(/\$/g, ""));
     if (!coords || coords.row > 9999 || coords.col > 25) throw Error("#REF!");
     const id = `${coords.row}:${coords.col}`, cell = cells[id];
-    if (!cell || !spreadsheetCellFormula(cell).trim()) return "0";
+    if (!cell || !spreadsheetCellFormula(cell).trim()) return inRange ? null : "0";
     if (visited.has(id)) throw Error("#CIRC!");
     if (visited.size > 256) throw Error("#LIMIT!");
     let value = spreadsheetCellDisplay(cell);
@@ -16926,6 +16926,7 @@ function evaluateSpreadsheetFormula(formula, cells, options = {}) {
       if (String(value).startsWith("#")) throw Error(value);
     }
     if (String(value).startsWith("#")) throw Error(value);
+    if (inRange && (String(value).trim() === "" || String(value).trim() === "_")) return null;
     const number = Number(value);
     if (String(value).trim() && Number.isFinite(number)) return String(number);
     // Cached native symbolic values (sqrt, pi, fractions) are expressions too.
@@ -16943,14 +16944,25 @@ function evaluateSpreadsheetFormula(formula, cells, options = {}) {
         if (!first || !last || (Math.abs(first.row - last.row) + 1) * (Math.abs(first.col - last.col) + 1) > 10000) throw Error("#REF!");
         const values = [];
         for (let row = Math.min(first.row, last.row); row <= Math.max(first.row, last.row); row++) {
-          for (let col = Math.min(first.col, last.col); col <= Math.max(first.col, last.col); col++) values.push(resolve(spreadsheetColumnName(col) + (row + 1)));
+          for (let col = Math.min(first.col, last.col); col <= Math.max(first.col, last.col); col++) {
+            const value = resolve(spreadsheetColumnName(col) + (row + 1), true);
+            if (value !== null) values.push(value);
+          }
         }
         ranges.push(`{${values.join(",")}}`); return `§${ranges.length - 1}§`;
       });
       part = part.replace(/(?<![\p{L}\p{N}_])\$?[A-Za-z]+\$?\d+\b(?!\s*\()/gu, resolve);
       return part.replace(/§(\d+)§/g, (_match, i) => ranges[Number(i)]);
     }).join("");
-    expression = expression.replace(/\bAVERAGE\s*\(/gi, "mean(").replace(/\bCOUNT\s*\(/gi, "dim(");
+    expression = expression
+      .replace(/\bAVERAGE\s*\(/gi, "mean(")
+      .replace(/\bIF\s*\(/gi, "when(")
+      .replace(/\bSTDEV\.S\s*\(/gi, "stDevSamp(")
+      .replace(/\bSTDEV\.P\s*\(/gi, "stDevPop(")
+      .replace(/\bSTDEV\s*\(/gi, "stDevSamp(")
+      .replace(/\bVAR\.S\s*\(/gi, "varSamp(")
+      .replace(/\bVAR\.P\s*\(/gi, "varPop(")
+      .replace(/\bVAR\s*\(/gi, "varSamp(");
     const math = options.mathSession || window.TnsTiBasicMath?.createSession();
     if (!math) return "#LOADING!";
     const result = math.expression(expression);
