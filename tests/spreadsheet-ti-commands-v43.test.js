@@ -15,15 +15,15 @@ const cells=Object.fromEntries([1,2,3,4,5].map((n,i)=>[i+':0',{formula:String(n)
 const cases=[
   ['=A1+A2',3],['=A5-A2',3],['=A2*A4',8],['=A4/A2',2],
   ['=A2^3',8],['=sqrt(A4)',2],['=abs(-A5)',5],
-  ['=sum(A1:A5)',15],['=SUM($A$1:$A$5)',15],
+  ['=sum(A1:A5)',15],['=sum(A1:A10)',15],['=SUM($A$1:$A$5)',15],
   ['=sum({1,2,3})',6],['=mean(A1:A5)',3],['=AVERAGE(A1:A5)',3],
-  ['=median(A1:A5)',3],['=product(A1:A5)',120],
+  ['=mean(A1:A10)',3],['=median(A1:A5)',3],['=product(A1:A5)',120],
   ['=min(A1:A5)',1],['=max(A1:A5)',5],
   ['=varPop(A1:A5)',2],['=varSamp(A1:A5)',2.5],
   ['=stDevPop(A1:A5)',Math.sqrt(2)],['=stDevSamp(A1:A5)',Math.sqrt(2.5)],
   ['=round(1.234,2)',1.23],['=sin(π/2)',1],
   ['=when(A1>2,10,20)',20],['=IF(A5>2,10,20)',10],
-  ['=count(A1:A5)',5],['=A1>0','true'],['="A1"','A1'],
+  ['=count(A1:A5)',5],['=count(A1:A10)',5],['=count(2,4,6)',3],['=count({1,"text",3})',2],['=A1>0','true'],['="A1"','A1'],
 ];
 for(const [formula,expected] of cases)test('formula: '+formula,()=>{
  const actual=context.formula(formula,cells,{mathSession});
