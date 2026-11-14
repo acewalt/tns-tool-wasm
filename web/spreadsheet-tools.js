@@ -9,7 +9,7 @@
   function mount(host, state, options={}) {
     const grid=host.querySelector('.spreadsheet-grid'), formula=host.querySelector('.spreadsheet-formula-value'), name=host.querySelector('.spreadsheet-cell-name'), info=host.querySelector('.spreadsheet-selection-info');
     const selection={anchorRow:state.activeRow||0,anchorCol:state.activeCol||0,row:state.activeRow||0,col:state.activeCol||0};
-    let dragging=false,editing=null,destroyed=false;
+    let dragging=false,editing=null,destroyed=false,formulaRange=null;
     const changedCellKeys=new Set();
     const cleanups=[];
     const listen=(node,event,handler,opts)=>{node.addEventListener(event,handler,opts);cleanups.push(()=>node.removeEventListener(event,handler,opts));};
@@ -74,9 +74,39 @@
     }
     const activeCell=()=>grid.querySelector(`[data-row="${state.activeRow}"][data-col="${state.activeCol}"].sheet-cell`);
     function move(drow,dcol,extend=false){select(state.activeRow+drow,state.activeCol+dcol,extend);if(!activeCell())render();activeCell()?.scrollIntoView({block:'nearest',inline:'nearest'});grid.focus();}
-    listen(grid,'pointerdown',event=>{const cell=event.target.closest('.sheet-cell');if(!cell||editing===cell)return;commitEdit();event.preventDefault();select(Number(cell.dataset.row),Number(cell.dataset.col),event.shiftKey);dragging=true;grid.focus();});
-    listen(grid,'pointerover',event=>{const cell=event.target.closest('.sheet-cell');if(dragging&&cell)select(Number(cell.dataset.row),Number(cell.dataset.col),true);});
-    listen(window,'pointerup',()=>{dragging=false;});
+    // In TI-Nspire, selecting a cell while editing a formula inserts its reference.
+    // Preserve the destination cell and the formula-bar caret while dragging a range.
+    listen(grid,'pointerdown',event=>{
+      const cell=event.target.closest('.sheet-cell');
+      if(!cell||editing===cell)return;
+      if(document.activeElement===formula&&formula.value.trimStart().startsWith('=')){
+        event.preventDefault();
+        const row=Number(cell.dataset.row),col=Number(cell.dataset.col);
+        const start=formula.selectionStart??formula.value.length,end=formula.selectionEnd??start;
+        const reference=ref(row,col);
+        formula.setRangeText(reference,start,end,'end');
+        formulaRange={row,col,start,end:start+reference.length};
+        formula.dispatchEvent(new Event('input',{bubbles:true}));
+        dragging=true;
+        return;
+      }
+      commitEdit();event.preventDefault();
+      select(Number(cell.dataset.row),Number(cell.dataset.col),event.shiftKey);
+      dragging=true;grid.focus();
+    });
+    listen(grid,'pointerover',event=>{
+      const cell=event.target.closest('.sheet-cell');if(!dragging||!cell)return;
+      if(formulaRange){
+        const row=Number(cell.dataset.row),col=Number(cell.dataset.col);
+        const reference=ref(formulaRange.row,formulaRange.col);
+        const endpoint=ref(row,col);
+        const range=row===formulaRange.row&&col===formulaRange.col?reference:reference+':'+endpoint;
+        formula.setRangeText(range,formulaRange.start,formulaRange.end,'end');
+        formulaRange.end=formulaRange.start+range.length;
+        formula.dispatchEvent(new Event('input',{bubbles:true}));
+      }else select(Number(cell.dataset.row),Number(cell.dataset.col),true);
+    });
+    listen(window,'pointerup',()=>{dragging=false;formulaRange=null;});
     listen(grid,'dblclick',event=>beginEdit(event.target.closest('.sheet-cell')));
     listen(grid,'focusout',event=>{if(event.target===editing)commitEdit();});
     listen(grid,'keydown',event=>{
