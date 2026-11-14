@@ -20,6 +20,8 @@ on:
       - 'web/multi-image-upload.js'
       - 'index.html'
       - 'web/app.js'
+      - 'web/spreadsheet-tools.js'
+      - 'tests/spreadsheet-ti-commands-v43.test.js'
       - 'web/prgm-preview.*'
       - 'web/ti-program-editor-preview.*'
       - 'src/prgm/**'
@@ -54,6 +56,8 @@ on:
       - 'web/multi-image-upload.js'
       - 'index.html'
       - 'web/app.js'
+      - 'web/spreadsheet-tools.js'
+      - 'tests/spreadsheet-ti-commands-v43.test.js'
       - 'web/prgm-preview.*'
       - 'web/ti-program-editor-preview.*'
       - 'src/prgm/**'
@@ -172,5 +176,10 @@ jobs:
           python -m unittest discover -s tests -p 'test_calculator_history.py'
           python -m unittest discover -s tests -p 'test_ti_parser_comments.py'
           python -m unittest discover -s tests -p 'test_ti_library_syntax.py'
+      - name: TI spreadsheet formula compatibility
+        run: |
+          node --check web/app.js
+          node --check web/spreadsheet-tools.js
+          node --test tests/spreadsheet-ti-commands-v43.test.js tests/spreadsheet-recalculation-v40.test.js tests/notes-sheets-v39.test.js
       - name: CLI e2e tests
         run: node tests/e2e.test.js
