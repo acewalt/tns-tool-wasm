@@ -47,6 +47,11 @@
       fontSize: "Tamaño",
       undo: "Deshacer",
       redo: "Rehacer",
+      mathExpression: "Expresión matemática",
+      insertMath: "Insertar expresión",
+      updateMath: "Actualizar expresión",
+      invalidMath: "Escribe una expresión con paréntesis completos.",
+      editMath: "Doble clic para editar la expresión matemática",
       hint: "En Editar formato puedes seleccionar texto y cambiar negrita, cursiva, subrayado, color, tamaño, subíndice y superíndice. Los cambios se guardan dentro del r2dtotree de TI.Notepad."
     },
     en: {
@@ -64,6 +69,11 @@
       fontSize: "Size",
       undo: "Undo",
       redo: "Redo",
+      mathExpression: "Math expression",
+      insertMath: "Insert expression",
+      updateMath: "Update expression",
+      invalidMath: "Enter an expression with balanced parentheses.",
+      editMath: "Double-click to edit the math expression",
       hint: "In Format text you can select text and change bold, italic, underline, color, size, subscript and superscript. Changes are written back into the TI.Notepad r2dtotree."
     },
     fr: {
@@ -81,6 +91,11 @@
       fontSize: "Taille",
       undo: "Annuler",
       redo: "Rétablir",
+      mathExpression: "Expression mathématique",
+      insertMath: "Insérer l’expression",
+      updateMath: "Modifier l’expression",
+      invalidMath: "Saisissez une expression avec des parenthèses complètes.",
+      editMath: "Double-cliquez pour modifier l’expression mathématique",
       hint: "Dans Mettre en forme, sélectionnez du texte pour modifier le gras, l’italique, le soulignement, la couleur, la taille, l’indice et l’exposant. Les changements sont réécrits dans le r2dtotree TI.Notepad."
     }
   };
@@ -710,6 +725,109 @@
     return button;
   }
 
+  // A Notes formula is a native r2dtotree mathbox, not HTML or a picture. New
+  // expressions have no manufactured answer cache. Existing boxes are copied
+  // verbatim by buildRichTextFromParagraphRuns unless explicitly edited.
+  function buildMathExpressionXml(source, rawStyle = DEFAULT_RAW_STYLE) {
+    const doc = document.implementation.createDocument(null, "node");
+    const raw = cloneRaw(rawStyle), box = doc.documentElement;
+    box.setAttribute("name", "0el"); box.setAttribute("flags", "8");
+    for (const key of STYLE_ATTRS) box.setAttribute(key, String(raw[key]));
+    const make = (name, parent, text = null, attrs = {}) => {
+      const node = doc.createElement(name);
+      Object.entries(attrs).forEach(([key,value]) => node.setAttribute(key,String(value)));
+      if (text != null) node.append(doc.createTextNode(text));
+      parent.append(node); return node;
+    };
+    const mbox = make("mbox",box);
+    make("attr",mbox,null,{iomode:1,digits:0,angle:0,symbol:1,wrap:true,warn:true,comp:2,active:true});
+    const leaf = (parent,text) => make("leaf",parent,text,{name:"0text",...Object.fromEntries(STYLE_ATTRS.map(key=>[key,String(raw[key])]))});
+    const expression = parent => make("node",parent,null,{name:"0el",flags:0});
+    // Only emit structural operators whose r2dtotree representation is shared
+    // with native Notes and Calculator documents. Other TI tokens remain in
+    // the math input's 0text leaf rather than guessing undocumented node names.
+    const topParts = (text, operators) => {
+      let depth=0, quoted=false, start=0; const parts=[];
+      for (let i=0;i<text.length;i++) {
+        const ch=text[i];
+        if (ch==='"') { if (quoted&&text[i+1]==='"') { i++;continue; } quoted=!quoted; }
+        if (quoted) continue;
+        if ('([{'.includes(ch)) depth++;
+        else if (')]}'.includes(ch)) depth--;
+        else if (!depth && operators.includes(ch) && (i>start || ch===',')) {
+          if ('+-−'.includes(ch) && (i===0 || /[+\-−*/^(=,]/.test(text[i-1]))) continue;
+          parts.push(text.slice(start,i),ch); start=i+1;
+        }
+      }
+      parts.push(text.slice(start)); return parts;
+    };
+    const wraps = text => {
+      if (!text.startsWith('(')||!text.endsWith(')')) return false;
+      let depth=0,quoted=false;
+      for (let i=0;i<text.length;i++) {
+        if(text[i]==='"') quoted=!quoted;
+        if(quoted) continue;
+        if(text[i]==='(')depth++;
+        if(text[i]===')'&&--depth===0&&i<text.length-1)return false;
+      }
+      return depth===0;
+    };
+    const unwrap = text => wraps(text) ? text.slice(1,-1) : text;
+    function appendMath(parent, text, depth=0) {
+      text=String(text).trim();
+      if(depth>28) { leaf(parent,text);return; }
+      if(wraps(text)) {
+        // The native fraction node already serializes its own ((a)/(b))
+        // delimiters. Do not add a visible parenthesis pair around a template.
+        if(topParts(text.slice(1,-1),'/').length===3) {appendMath(parent,text.slice(1,-1),depth+1);return;}
+        make('leaf',parent,'(',{name:'0paren',data:0});
+        appendMath(parent,text.slice(1,-1),depth+1);
+        make('leaf',parent,')',{name:'0paren',data:2147483648});return;
+      }
+      const sum=topParts(text,'+-−=<>');
+      if(sum.length>1) { sum.forEach((part,index)=>index%2?leaf(parent,part):appendMath(parent,part,depth+1));return; }
+      const product=topParts(text,'*×·');
+      if(product.length>1) { product.forEach((part,index)=>index%2?leaf(parent,part):appendMath(parent,part,depth+1));return; }
+      const fraction=topParts(text,'/');
+      if(fraction.length===3) {
+        const node=make('node',parent,'((',{name:'0fraction'});
+        appendMath(expression(node),unwrap(fraction[0]),depth+1);node.append(doc.createTextNode(')/('));
+        appendMath(expression(node),unwrap(fraction[2]),depth+1);node.append(doc.createTextNode('))'));return;
+      }
+      const power=topParts(text,'^');
+      if(power.length===3) {
+        appendMath(parent,power[0],depth+1);
+        const node=make('node',parent,'^(',{name:'0power'});
+        appendMath(expression(node),unwrap(power[2]),depth+1);node.append(doc.createTextNode(')'));return;
+      }
+      const sqrt=text.match(/^(?:√|sqrt)\(([\s\S]*)\)$/i);
+      if(sqrt) {
+        const node=make('node',parent,'√(',{name:'0sqrt'});
+        appendMath(expression(node),sqrt[1],depth+1);node.append(doc.createTextNode(')'));return;
+      }
+      if(text.startsWith('[[')&&text.endsWith(']]')) {
+        const rows=[];let level=0,start=2,quoted=false;
+        for(let i=2;i<text.length-2;i++) {
+          const ch=text[i];if(ch==='"')quoted=!quoted;if(quoted)continue;
+          if(!level&&text.slice(i,i+2)==='][') { rows.push(text.slice(start,i));start=i+2;i++;continue; }
+          if('([{'.includes(ch))level++;else if(')]}'.includes(ch))level--;
+        }
+        rows.push(text.slice(start,-2));
+        const cells=rows.map(row=>topParts(row,',').filter((_,index)=>!(index%2)));
+        if(cells[0].length&&cells.every(row=>row.length===cells[0].length)) {
+          leaf(parent,'');const node=make('node',parent,'[[',{name:'0matrix',data:cells[0].length});
+          cells.forEach((row,r)=>row.forEach((cell,c)=>{appendMath(expression(node),cell,depth+1);node.append(doc.createTextNode(c<row.length-1?',':r<cells.length-1?'][':']]'));}));
+          leaf(parent,'');return;
+        }
+      }
+      leaf(parent,text);
+    }
+    const input = expression(box);
+    for (const key of STYLE_ATTRS) input.setAttribute(key,String(raw[key]));
+    appendMath(input,source);
+    return new XMLSerializer().serializeToString(box);
+  }
+
   function insertPlainTextWithBreaks(editor, text) {
     const lines = String(text ?? "").replace(/\r\n?/g, "\n").split("\n");
     lines.forEach((line, index) => {
@@ -745,7 +863,7 @@
     }
 
     function restoreSelection() {
-      if (!savedRange) return false;
+      if (!savedRange || !editor.contains(savedRange.startContainer) || !editor.contains(savedRange.endContainer)) return false;
       const selection = window.getSelection();
       selection.removeAllRanges();
       selection.addRange(savedRange);
@@ -875,6 +993,7 @@
       hide() { toolbar.hidden = true; },
       rememberSelection,
       restoreSelection,
+      getRange() { return savedRange?.cloneRange() || null; },
       destroy() { document.removeEventListener("selectionchange", selectionListener); }
     };
   }
@@ -927,6 +1046,122 @@
     const markDirty = () => { dirty = true; };
     const toolbar = createFormatToolbar(labels, richView, markDirty);
 
+    const mathComposer = document.createElement('form');
+    mathComposer.className = 'ti-note-math-composer';
+    mathComposer.hidden = true;
+    const mathLabel = document.createElement('label');
+    mathLabel.textContent = labels.mathExpression;
+    const mathSource = document.createElement('textarea');
+    mathSource.className = 'ti-note-math-source';
+    mathSource.rows = 3; mathSource.maxLength = 8192; mathSource.spellcheck = false;
+    mathSource.setAttribute('aria-label',labels.mathExpression);
+    mathLabel.append(mathSource);
+    const mathPreview = document.createElement('div');
+    mathPreview.className = 'ti-note-math-composer-preview';
+    mathPreview.setAttribute('aria-live','polite');
+    const mathError = document.createElement('div');
+    mathError.className = 'ti-note-math-error'; mathError.setAttribute('role','status');
+    const mathActions = document.createElement('div');
+    mathActions.className = 'ti-note-math-composer-actions';
+    const mathInsert = makeButton(labels.insertMath,'note-math-insert','green-tool-button');
+    mathInsert.type = 'submit';
+    const mathCancel = makeButton(labels.cancel,'note-math-cancel');
+    mathActions.append(mathInsert,mathCancel);
+    mathComposer.append(mathLabel,mathPreview,mathError,mathActions);
+    toolbar.element.append(mathComposer);
+    let editingMath = null;
+    let mathInsertionRange = null;
+
+    function refreshMathPreview() {
+      const source=mathSource.value.trim();
+      const parsed=window.TnsMathTypeset?.parse(source);
+      const valid=Boolean(source && parsed?.valid);
+      mathInsert.disabled=!valid;
+      mathError.textContent=valid?'':labels.invalidMath;
+      if(valid) mathPreview.innerHTML=window.TnsMathTypeset.render(source);
+      else mathPreview.textContent='';
+      mathPreview.querySelectorAll('math').forEach(math=>math.setAttribute('displaystyle','true'));
+      return valid;
+    }
+
+    function openMathComposer(source, target = null) {
+      // Only selections in Notes update the remembered Range. Focus in the
+      // template/dimension popups or the source field cannot move that caret.
+      if (!mathInsertionRange) { toolbar.rememberSelection(); mathInsertionRange=toolbar.getRange(); }
+      editingMath=target;
+      mathSource.value=source;
+      mathInsert.textContent=target?labels.updateMath:labels.insertMath;
+      setMode('edit');
+      mathComposer.hidden=false;
+      refreshMathPreview();
+      mathSource.focus({preventScroll:true}); mathSource.select();
+    }
+
+    if(window.TnsMathTools?.openTemplates && window.TnsMathTools?.iconButton) {
+      const templatesButton=window.TnsMathTools.iconButton('templates');
+      templatesButton.id='note-math-templates';
+      let pointerPrepared=false;
+      templatesButton.addEventListener('mousedown',event=>{event.preventDefault();toolbar.rememberSelection();mathInsertionRange=toolbar.getRange();pointerPrepared=true;});
+      templatesButton.addEventListener('click',()=>{
+        if(!pointerPrepared) {toolbar.rememberSelection();mathInsertionRange=toolbar.getRange();}
+        pointerPrepared=false;
+        window.TnsMathTools.openTemplates({anchor:templatesButton,insert:source=>openMathComposer(source)});
+      });
+      modeBar.append(templatesButton);
+    }
+
+    function closeMathComposer() {
+      editingMath=null; mathComposer.hidden=true;
+      richView.focus({preventScroll:true});
+      if(mathInsertionRange&&richView.contains(mathInsertionRange.startContainer)) {
+        const selection=window.getSelection();selection.removeAllRanges();selection.addRange(mathInsertionRange);
+      } else toolbar.restoreSelection();
+      toolbar.rememberSelection();mathInsertionRange=null;
+    }
+
+    mathSource.addEventListener('input',refreshMathPreview);
+    mathSource.addEventListener('keydown',event=>{
+      if(event.key==='Escape') {event.preventDefault();event.stopPropagation();closeMathComposer();}
+      else if(event.key==='Enter'&&(event.ctrlKey||event.metaKey)) {event.preventDefault();mathComposer.requestSubmit();}
+    });
+    mathCancel.addEventListener('click',closeMathComposer);
+    mathComposer.addEventListener('submit',event=>{
+      event.preventDefault();
+      if(!refreshMathPreview())return;
+      if(editingMath?.dataset.tiSource.trim()===mathSource.value.trim()) {closeMathComposer();return;}
+      let range=mathInsertionRange?.cloneRange();
+      if(editingMath?.isConnected && richView.contains(editingMath)) {
+        range=document.createRange();range.selectNode(editingMath);
+      }
+      if(!range||!richView.contains(range.startContainer)||!richView.contains(range.endContainer)) {
+        range=document.createRange();range.selectNodeContents(richView.lastElementChild?.lastElementChild||richView);range.collapse(false);
+      }
+      // Never split an existing noneditable mathbox and lose its native XML.
+      const start=range.startContainer.nodeType===Node.ELEMENT_NODE?range.startContainer:range.startContainer.parentElement;
+      const enclosing=start.closest?.('[data-ti-native]');
+      if(enclosing && !editingMath) {range.setStartAfter(enclosing);range.collapse(true);}
+      const style=editingMath ? nearestRaw(editingMath,richView) : styleFromEditableTextNode(range.startContainer,richView).raw;
+      const xml=buildMathExpressionXml(mathSource.value.trim(),style);
+      const run=parseNativeRun(parseXml(xml).documentElement,new Map())[0];
+      const span=renderRun(run);span.title=labels.editMath;
+      range.deleteContents();range.insertNode(span);
+      range.setStartAfter(span);range.collapse(true);
+      richView.focus({preventScroll:true});
+      const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+      toolbar.rememberSelection();markDirty();
+      editingMath=null;mathInsertionRange=null;mathComposer.hidden=true;
+    });
+    richView.addEventListener('dblclick',event=>{
+      const target=event.target.closest?.('[data-ti-native]');
+      if(target && richView.contains(target)) {mathInsertionRange=null;openMathComposer(target.dataset.tiSource||'',target);}
+    });
+    const updateMathCaret=()=>{
+      if(mathComposer.hidden)return;
+      toolbar.rememberSelection();mathInsertionRange=toolbar.getRange();
+    };
+    richView.addEventListener('pointerup',updateMathCaret);
+    richView.addEventListener('keyup',updateMathCaret);
+
     const hint = document.createElement("div");
     hint.className = "ti-note-rich-hint";
     hint.textContent = labels.hint;
@@ -941,6 +1176,7 @@
       closed = true;
       renderer.destroy();
       toolbar.destroy();
+      if (mathComposer.contains(document.activeElement)) mathSource.blur();
       if (typeof window.closeModal === "function") window.closeModal(backdrop, typeof afterClose === 'function' ? afterClose : null);
       else { backdrop.remove(); if (typeof afterClose === 'function') afterClose(); }
     }
@@ -961,6 +1197,9 @@
         toolbar.show();
         richView.focus();
       } else {
+        mathComposer.hidden=true;
+        editingMath=null;
+        mathInsertionRange=null;
         toolbar.hide();
         richView.blur();
       }
@@ -1040,6 +1279,7 @@
     extractEditableModel,
     buildRichTextFromModel,
     buildRichTextFromParagraphRuns,
+    buildMathExpressionXml,
     tiColorToCss,
     cssColorToTi
   });

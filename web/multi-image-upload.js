@@ -33,9 +33,9 @@
   const V="20261029-syntax-doctor-general-v1";
   const RUNTIME_V="20261029-startup-loader-v4";
   const TNS_PROGRESS_V="20261015-import-dialog-lifecycle-v4";
-  const NOTES_V="20261112-widgets-v41";
+  const NOTES_V="20261114-page-layout-v42";
   const NOTES_SIZE_FIX_V="20260904-notepad-size-fix-v1";
-  const NOTES_SAVE_FIX_V="20261112-widgets-v41";
+  const NOTES_SAVE_FIX_V="20261114-page-layout-v42";
   const LUA_GUIDE_CAS_V="20260903-lua-guide-cas-v1";
   const LOVE_PREVIEW_SIDE_V="20261106-preview-frame-fix-v32";
   const LOVE_PREVIEW_MATH_V="20261105-preview-tools-v31";

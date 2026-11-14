@@ -26,6 +26,69 @@
   border-color: color-mix(in srgb, var(--lime) 70%, #5f7f20);
 }
 
+.ti-note-modebar .ti-math-icon-button {
+  flex: 0 0 auto;
+  width: 36px;
+  min-width: 36px;
+  padding: 5px;
+}
+
+.ti-note-math-composer {
+  flex: 1 0 100%;
+  min-width: 0;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+}
+
+.ti-note-math-composer[hidden] { display: none; }
+.ti-note-math-composer > label {
+  display: block;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+}
+.ti-note-math-source {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 64px;
+  margin-block: 6px;
+  padding: 7px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--text);
+  font: 12px/1.4 Consolas, monospace;
+}
+.ti-note-math-composer-preview {
+  min-height: 44px;
+  max-height: 160px;
+  padding: 8px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: white;
+  color: #111;
+  font: 18px 'Cambria Math', 'Times New Roman', serif;
+}
+.ti-note-math-composer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.ti-note-math-composer-actions button {
+  padding: 6px 9px;
+  font-size: 11px;
+}
+.ti-note-math-error {
+  margin-top: 4px;
+  color: #d85d46;
+  font-size: 11px;
+}
+.ti-note-rich-view.is-editing .ti-note-math { cursor: text; }
+
 .ti-note-formatbar {
   width: min(660px, 100%);
   margin: 0 auto 10px;
