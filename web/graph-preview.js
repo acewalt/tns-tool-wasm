@@ -98,10 +98,84 @@
     const span = (viewport.ymax - viewport.ymin) * fromAspect / toAspect;
     return {...viewport, ymin:center-span/2, ymax:center+span/2};
   }
+  const graphNumber = n => Math.abs(n)<1e-10 ? '0' : Number(n.toPrecision(6)).toString();
+  function ungroupFormula(source) {
+    let text=String(source).trim();
+    while(text[0]==='('&&text.at(-1)===')'){
+      let depth=0,whole=true;for(let i=0;i<text.length;i++){if(text[i]==='(')depth++;else if(text[i]===')')depth--;if(!depth&&i<text.length-1){whole=false;break;}}
+      if(!whole)break;text=text.slice(1,-1).trim();
+    }
+    return text;
+  }
+  function formulaParts(source, operators) {
+    const parts=[];let depth=0,start=0,op='+';
+    for(let i=0;i<source.length;i++){
+      const c=source[i];if(c==='(')depth++;else if(c===')')depth--;
+      if(depth||!operators.includes(c)||!source.slice(start,i).trim()||/[+*/^(\-]$/.test(source.slice(0,i).trim())||/[\d.]e$/i.test(source.slice(0,i)))continue;
+      parts.push({source:source.slice(start,i),op});op=c;start=i+1;
+    }
+    parts.push({source:source.slice(start),op});return parts;
+  }
+  // Only arithmetic with a constant and x is accepted here. This recognizer
+  // never evaluates arbitrary code; non-affine/custom functions keep their
+  // original source and use ordinary translation instead of guessed scaling.
+  function affineFormula(source, variables={}) {
+    const text=String(source).trim().replace(/[−–]/g,'-').replace(/[×·]/g,'*'),tokens=[];
+    const pattern=/\s*(?:(\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?|([\p{L}_π][\p{L}\p{N}_]*)|([+*/^()\-]))/uy;
+    let end=0;while(end<text.length){pattern.lastIndex=end;const match=pattern.exec(text);if(!match)return null;tokens.push(match[0].trim());end=pattern.lastIndex;}
+    let index=0;
+    function primary(){const token=tokens[index++];if(token==='+'||token==='-'){const n=primary();return token==='-'?{a:-n.a,b:-n.b}:n;}if(token==='('){const n=expression();if(tokens[index++]!==')')throw Error();return n;}if(token?.toLowerCase()==='x')return{a:1,b:0};const n=/^(?:\d|\.)/.test(token||'')?Number(token):token==='π'||token?.toLowerCase()==='pi'?Math.PI:token==='e'?Math.E:variables[token];if(typeof n!=='number'||!Number.isFinite(n))throw Error();return{a:0,b:n};}
+    function power(){let left=primary();if(tokens[index]==='^'){index++;const right=primary();if(right.a)throw Error();if(right.b===1)return left;if(right.b===0)return{a:0,b:1};if(left.a)throw Error();left={a:0,b:Math.pow(left.b,right.b)};}return left;}
+    function product(){let left=power();while(tokens[index]==='*'||tokens[index]==='/'){const op=tokens[index++],right=power();if(op==='/'){if(right.a||!right.b)throw Error();left={a:left.a/right.b,b:left.b/right.b};}else{if(left.a&&right.a)throw Error();left={a:left.a*right.b+right.a*left.b,b:left.b*right.b};}}return left;}
+    function expression(){let left=product();while(tokens[index]==='+'||tokens[index]==='-'){const sign=tokens[index++]==='+'?1:-1,right=product();left={a:left.a+sign*right.a,b:left.b+sign*right.b};}return left;}
+    try{const result=expression();return index===tokens.length&&Number.isFinite(result.a)&&Number.isFinite(result.b)?result:null;}catch{return null;}
+  }
+  function waveTransform(formula, variables={}) {
+    const text=ungroupFormula(formula).replace(/[−–]/g,'-').replace(/[×·]/g,'*');
+    let wave=null,offset=0;
+    for(const term of formulaParts(text,'+-')){
+      let amplitude=term.op==='-'?-1:1,found=null;
+      for(const [index,factor] of formulaParts(ungroupFormula(term.source),'*/').entries()){
+        let source=ungroupFormula(factor.source);if(index===0&&source[0]==='-'){amplitude*=-1;source=ungroupFormula(source.slice(1));}
+        const match=source.match(/^(sin|cos)\(([\s\S]*)\)$/i);
+        if(match){if(found||factor.op==='/')return null;const linear=affineFormula(match[2],variables);if(!linear||!linear.a)return null;found={kind:'wave',fn:match[1].toLowerCase(),frequency:linear.a,phase:linear.b};}
+        else{const constant=affineFormula(source,variables);if(!constant||constant.a)return null;amplitude=factor.op==='/'?amplitude/constant.b:amplitude*constant.b;}
+      }
+      if(found){if(wave||!Number.isFinite(amplitude))return null;wave={...found,amplitude};}
+      else offset+=amplitude;
+    }
+    return wave?{...wave,offset}:null;
+  }
+  function transformFormula(model, number=graphNumber) {
+    if(model.kind==='wave'){
+      const multiply=(n,source)=>Math.abs(n-1)<1e-10?source:Math.abs(n+1)<1e-10?'-'+source:number(n)+'*'+source;
+      const add=(source,n)=>Math.abs(n)<1e-10?source:source+(n<0?'-':'+')+number(Math.abs(n));
+      return add(multiply(model.amplitude,model.fn+'('+add(multiply(model.frequency,'x'),model.phase)+')'),model.offset);
+    }
+    const shifted=Math.abs(model.dx)<1e-10?model.base:String(model.base).replace(/\bx\b/gi,`(x${model.dx<0?'+':'-'}${graphNumber(Math.abs(model.dx))})`);
+    return Math.abs(model.dy)<1e-10?shifted:`(${shifted})${model.dy<0?'-':'+'}${graphNumber(Math.abs(model.dy))}`;
+  }
+  function translatedTransform(model, dx, dy) {
+    return model.kind==='wave'?{...model,phase:model.phase-model.frequency*dx,offset:model.offset+dy}:{...model,dx:model.dx+dx,dy:model.dy+dy};
+  }
   function translatedFormula(formula, dx, dy) {
-    const number = n => Number(n.toPrecision(6)).toString();
-    const shifted = Math.abs(dx)<1e-10 ? formula : String(formula).replace(/\bx\b/gi, `(x${dx<0?'+':'-'}${number(Math.abs(dx))})`);
-    return Math.abs(dy)<1e-10 ? shifted : `(${shifted})${dy<0?'-':'+'}${number(Math.abs(dy))}`;
+    return transformFormula(translatedTransform(waveTransform(formula)||{kind:'translation',base:formula,dx:0,dy:0},dx,dy));
+  }
+  const angleFactor=mode=>mode==='DEG'?Math.PI/180:mode==='GRAD'?Math.PI/200:1;
+  function waveDragAnchor(model, point, mode='RAD') {
+    if(model?.kind!=='wave'||Math.abs(model.amplitude)<1e-12)return null;
+    const factor=angleFactor(mode),cosShift=model.fn==='cos'?Math.PI/2:0,theta=(model.frequency*point.x+model.phase)*factor+cosShift;
+    // A grab near a crest/trough stretches the wave about its adjacent zero.
+    // Grabs on its slopes translate it, matching the two native hand modes.
+    if(Math.abs(Math.cos(theta))>.4)return null;
+    const originTheta=Math.floor(theta/Math.PI)*Math.PI,originPhase=(originTheta-cosShift)/factor;
+    return{model:{...model},point:{x:point.x,y:model.offset+model.amplitude*Math.sin(theta)},originX:(originPhase-model.phase)/model.frequency,originPhase,argument:model.frequency*point.x+model.phase-originPhase,sine:Math.sin(theta),mode};
+  }
+  function reshapeWave(anchor, point) {
+    const model={...anchor.model},distance=point.x-anchor.originX;
+    if(Math.abs(distance)>1e-10){const frequency=anchor.argument/distance;if(Number.isFinite(frequency)&&Math.abs(frequency)>1e-9&&Math.abs(frequency/model.frequency)<1000){model.frequency=frequency;model.phase=anchor.originPhase-frequency*anchor.originX;}}
+    model.amplitude=(point.y-model.offset)/anchor.sine;
+    return Number.isFinite(model.amplitude)?model:{...anchor.model};
   }
   // Native constructions retain their dependency graph. Recompute points and
   // measurements when a constrained point moves instead of animating a bitmap.
@@ -176,6 +250,9 @@
     fr:{title:'Graphiques',intro:'Molette pour zoomer. Faites glisser la vue ou un point.',save:'Enregistrer',close:'Fermer',reset:'Fenêtre originale',standard:'Fenêtre standard',square:'Échelle orthonormée',grid:'Grille',axes:'Axes',trace:'Trace',equations:'Équations',window:'Réglages de fenêtre',animate:'Lancer l’animation',pause:'Pause de l’animation',hide:'Masquer / afficher',select:'Sélectionner',ready:'Prêt',empty:'Ce graphique ne contient aucune expression.',apply:'Appliquer',badWindow:'Saisissez des limites valides et croissantes.',error:'Évaluation du graphique',unsupported:'Géométrie non prise en charge',formula:'Formule',entry:'Afficher la ligne de saisie',hideEntry:'Masquer la ligne de saisie',newFunction:'Nouvelle fonction'}
   };
   const language = () => phrases[String(globalThis.document?.documentElement?.lang||'en').slice(0,2)] || phrases.en;
+  Object.assign(phrases.en,{translateCurve:'Drag to move the curve',reshapeCurve:'Drag to change amplitude and period'});
+  Object.assign(phrases.es,{translateCurve:'Arrastra para mover la curva',reshapeCurve:'Arrastra para cambiar amplitud y período'});
+  Object.assign(phrases.fr,{translateCurve:'Glissez pour déplacer la courbe',reshapeCurve:'Glissez pour modifier amplitude et période'});
   const copy = state => JSON.parse(JSON.stringify(state));
   const button = (label, action, className='') => { const element=document.createElement('button');element.type='button';element.textContent=label;element.className=className;element.addEventListener('click',action);return element; };
   function mount(host, item, options = {}) {
@@ -184,6 +261,8 @@
     if (!state.curves.length && !state.objects.length && item?.detail?.expression) state.curves.push({id:'',name:item.detail.function||'f1',formula:item.detail.expression,color:colors[0],visible:true});
     const root=document.createElement('div');root.className='ti-graph-root';root.tabIndex=0;
     const canvas=document.createElement('canvas');canvas.className='ti-graph-canvas';canvas.setAttribute('aria-label',labels.title);root.append(canvas);host.replaceChildren(root);
+    const curveLabels=document.createElement('div');curveLabels.className='ti-graph-curve-labels';root.append(curveLabels);
+    const hint=document.createElement('div');hint.className='ti-graph-drag-hint';hint.hidden=true;root.append(hint);
     const menu=document.createElement('div');menu.className='ti-graph-context';menu.hidden=true;root.append(menu);
     const entry=document.createElement('form');entry.className='ti-graph-entry';
     const entryCheck=document.createElement('input');entryCheck.type='checkbox';entryCheck.checked=true;
@@ -194,7 +273,7 @@
     entry.append(entryCheck,entryName,entryField,entryList);root.append(entry);
     const status=document.createElement('div');status.className='ti-graph-status';status.setAttribute('role','status');
     const controls=options.controls===false?null:document.createElement('div');if(controls){controls.className='ti-graph-controls';options.controlsHost?.append(controls);}
-    let width=320,height=214,disposed=false,trace=false,hover=null,drag=null,animation=0,lastTime=0,renderPending=false,lastError='',entryCurve=null,selectedCurve=null;
+    let width=320,height=214,disposed=false,trace=false,hover=null,drag=null,animation=0,lastTime=0,renderPending=false,lastError='',entryCurve=null,selectedCurve=null,hoveredCurve=null;
     let currentAspect=state.displayAspect || (state.surface.width/state.surface.height) || 320/214;
     const byId=new Map(state.objects.map(object=>[object.id,object]));
     const storedNumbers=new Map(state.objects.filter(object=>object.type==='number').map(object=>[object.id,finite(object.num)]));
@@ -209,6 +288,10 @@
     const xy=point=>({x:(point.x-state.viewport.xmin)/(state.viewport.xmax-state.viewport.xmin)*width,y:(state.viewport.ymax-point.y)/(state.viewport.ymax-state.viewport.ymin)*height});
     const world=(x,y)=>({x:state.viewport.xmin+x/width*(state.viewport.xmax-state.viewport.xmin),y:state.viewport.ymax-y/height*(state.viewport.ymax-state.viewport.ymin)});
     const construction=geometry(state,getVars),point=construction.point,circleGeometry=construction.circle,numberValue=construction.number;
+    const angleMode=()=>({2:'DEG',3:'GRAD'})[options.mathSession?.context?.modes?.[2]]||options.mathSession?.angleMode||options.angleMode||'RAD';
+    function curveModel(curve){if(curve.transform&&transformFormula(curve.transform)===curve.formula)return copy(curve.transform);const variables=getVars(),formula=expandFormula(curve.formula,variables);return waveTransform(formula,variables)||{kind:'translation',base:formula,dx:0,dy:0};}
+    function changeCurve(curve,model){curve.transform=model;curve.formula=transformFormula(model);if(entryCurve===curve)entryField.value=curve.formula;}
+    function curveAt(at,pos){const vars=getVars();return[...state.curves].reverse().find(curve=>{if(!curve.visible||!curve.formula.trim())return false;try{return Math.abs(xy({x:at.x,y:evalMath(expandFormula(curve.formula,vars),{...vars,x:at.x})}).y-pos.y)<7;}catch{return false;}});}
     function updateVariables() {
       const changed={};for(const obj of state.objects)if(obj.type==='number'&&obj.lbl){const n=numberValue(obj);if(Number.isFinite(n)){obj.num=String(n);changed[obj.lbl]=n;if(options.mathSession?.variables)options.mathSession.variables[obj.lbl]=n;}}
       options.onVariablesChange?.(changed);return changed;
@@ -239,12 +322,29 @@
       const errors=[];for(const curve of state.curves){if(!curve.visible||!curve.formula.trim())continue;let samples;
         try{samples=sampleCurve(curve,state.viewport,Math.min(1400,Math.max(240,width*2)),evalMath,getVars());}catch(error){errors.push(`${curve.name}: ${error.message}`);continue;}
         if(samples.points.every(p=>!p)){errors.push(`${curve.name}: ${samples.errors[0]||labels.error}`);continue;}
-        ctx.strokeStyle=curve.color;ctx.lineWidth=curve===selectedCurve&&drag?.curve?2.1:curve.width||1.2;ctx.setLineDash(nativeLineStyle({apst:curve.style}).dash);ctx.beginPath();let previous=null;
+        ctx.strokeStyle=curve.color;ctx.lineWidth=curve===drag?.curve||curve===hoveredCurve?2.1:curve.width||1.2;ctx.setLineDash(nativeLineStyle({apst:curve.style}).dash);ctx.beginPath();let previous=null;
         for(const p of samples.points){if(!p){previous=null;continue;}const screen=xy(p);if(!Number.isFinite(screen.y)||Math.abs(screen.y)>height*8){previous=null;continue;}if(previous&&Math.abs(previous.y-screen.y)<height*1.5)ctx.lineTo(screen.x,screen.y);else ctx.moveTo(screen.x,screen.y);previous=screen;}ctx.stroke();
       }
-      const nativeLabel=selectedCurve&&state.objects.some(obj=>obj.kinds.includes('lbl_g')&&String(obj.par||'').trim().split(/\s+/)[0]===selectedCurve.id&&obj.asho!=='0');
-      if(selectedCurve?.formula.trim()&&!nativeLabel) {ctx.fillStyle=selectedCurve.color;ctx.font='12px Times New Roman';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(`${selectedCurve.name}(x)=${selectedCurve.formula}`,4,entry.hidden?14:43);}
       return errors;
+    }
+    function drawCurveLabels(){
+      const entries=[];
+      for(const curve of state.curves){
+        if(!curve.visible||!curve.formula.trim())continue;
+        const native=state.objects.find(obj=>obj.kinds.includes('lbl_g')&&String(obj.par||'').trim().split(/\s+/)[0]===curve.id&&obj.asho!=='0');
+        if(!native&&curve!==selectedCurve)continue;
+        const pos=native?xy(paperToWorld(state,native.x,native.y)):{x:4,y:entry.hidden?14:43};
+        if(pos.x>=width||pos.y>=height||pos.x<-width||pos.y<-height)continue;
+        entries.push({curve,pos});
+      }
+      while(curveLabels.children.length>entries.length)curveLabels.lastElementChild.remove();
+      entries.forEach(({curve,pos},index)=>{
+        let label=curveLabels.children[index];if(!label){label=document.createElement('span');label.className='ti-graph-curve-label';curveLabels.append(label);}
+        const formula=curve.transform?.kind==='wave'?transformFormula(curve.transform,n=>Math.abs(n)<1e-10?'0':Number(n.toPrecision(3)).toString()):curve.formula;
+        const source=`${curve.name}(x)=${formula}`;
+        if(label.dataset.source!==source){label.dataset.source=source;label.dataset.curve=curve.name;if(globalThis.TnsMathTypeset)label.innerHTML=globalThis.TnsMathTypeset.render(source);else label.textContent=source.replaceAll('*','·');}
+        label.style.left=pos.x+'px';label.style.top=pos.y+'px';label.style.maxWidth=Math.max(0,width-Math.max(0,pos.x)-3)+'px';label.style.color=curve.color;label.title=`${curve.name}(x)=${curve.formula}`;
+      });
     }
     function textForObject(obj) {
       const ids=String(obj.par||'').trim().split(/\s+/).map(id=>byId.get(id)).filter(parent=>parent?.type==='number');
@@ -271,7 +371,7 @@
           // drawAxes. Their saved paper-coordinate copies would overlap ticks.
           if(obj.kinds.includes('lbl_a') || ids.some(id=>byId.get(id)?.children.axisval || byId.get(id)?.children.axistic))continue;
           const curve=obj.kinds.includes('lbl_g')&&state.curves.find(curve=>curve.id===ids[0]);
-          if(curve&&(!curve.visible||!curve.formula.trim()))continue;
+          if(curve)continue; // Mathematical labels are rendered as 2D MathML.
           const label=curve?`${curve.name}(x)=${curve.formula}`:textForObject(obj);if(!label)continue;let q=paperToWorld(state,obj.x,obj.y);if(obj.children.lbl_p){const parent=point(ids[0]);if(parent){q={x:parent.x+finite(obj.children.lbl_p.dx)/state.surface.width*(state.originalViewport.xmax-state.originalViewport.xmin),y:parent.y+finite(obj.children.lbl_p.dy)/state.surface.height*(state.originalViewport.ymax-state.originalViewport.ymin)};}}
           const pos=xy(q);ctx.fillStyle=color(obj.atco||obj.acol);ctx.font='11px Arial';ctx.textAlign='left';ctx.textBaseline='top';ctx.fillText(label,pos.x,pos.y);}
         else if(['conic','locus','implicit','surface','image'].includes(obj.type))unsupported.add(obj.type);
@@ -281,7 +381,7 @@
     function draw() {
       if(disposed)return;const ctx=canvas.getContext('2d');if(!ctx)return;
       ctx.setTransform(canvas.width/width,0,0,canvas.height/height,0,0);ctx.clearRect(0,0,width,height);ctx.fillStyle='#fff';ctx.fillRect(0,0,width,height);ctx.save();ctx.beginPath();ctx.rect(0,0,width,height);ctx.clip();
-      drawAxes(ctx);const errors=drawCurves(ctx),unsupported=drawObjects(ctx);ctx.restore();
+      drawAxes(ctx);const errors=drawCurves(ctx),unsupported=drawObjects(ctx);ctx.restore();drawCurveLabels();
       if(trace&&hover&&state.curves.some(c=>c.visible)){const curve=state.curves.find(c=>c.visible);try{const x=world(hover.x,hover.y).x,y=evalMath(expandFormula(curve.formula,getVars()),{...getVars(),x});if(Number.isFinite(y)){const p=xy({x,y});ctx.fillStyle=curve.color;ctx.beginPath();ctx.arc(p.x,p.y,3,0,Math.PI*2);ctx.fill();ctx.fillStyle='#111';ctx.font='10px Arial';ctx.textAlign='left';ctx.textBaseline='bottom';ctx.fillText(`x=${format(x)}  y=${format(y)}`,5,height-5);}}catch(error){errors.push(error.message);}}
       if(state.animationAvailable){ctx.fillStyle='#eee';ctx.fillRect(2,height-20,24,18);ctx.fillStyle='#333';ctx.font='12px Arial';ctx.textBaseline='middle';ctx.textAlign='center';ctx.fillText(state.animationRunning?'Ⅱ':'▶',14,height-11);}
       const message=[...errors,unsupported.length?`${labels.unsupported}: ${unsupported.join(', ')}`:''].filter(Boolean).join(' · ');if(message!==lastError){lastError=message;status.textContent=message;status.hidden=!message;root.dataset.error=message;options.onStatus?.(message);}
@@ -306,7 +406,7 @@
     const reset=()=>{state.viewport=fittedViewport(initial.viewport,initial.displayAspect || initial.surface.width/initial.surface.height || 320/214,currentAspect);state.grid=initial.grid;state.axesVisible=initial.axesVisible;schedule();};
     function settings(){menu.replaceChildren();menu.hidden=false;menu.style.left='4px';menu.style.top='4px';const form=document.createElement('form');for(const key of ['xmin','xmax','ymin','ymax']){const label=document.createElement('label');label.textContent=key;const field=document.createElement('input');field.type='number';field.step='any';field.name=key;field.value=state.viewport[key];label.append(field);form.append(label);}const apply=button(labels.apply,()=>{});apply.type='submit';form.append(apply);form.addEventListener('submit',event=>{event.preventDefault();try{setViewport(Object.fromEntries(Array.from(new FormData(form),([k,v])=>[k,Number(v)])));menu.hidden=true;}catch(error){status.textContent=error.message;status.hidden=false;}});menu.append(form);}
     function showEntry(curve=null,focus=true) {
-      entryCurve=curve;entryName.textContent=(curve?.name || nextFunctionName())+'(x)=';entryField.value=curve?.formula || '';entryCheck.checked=curve?.visible!==false;entry.hidden=false;
+      entryCurve=curve?(state.curves.find(existing=>existing===curve||existing.name===curve.name||(curve.id&&existing.id===curve.id))||curve):null;entryName.textContent=(entryCurve?.name || nextFunctionName())+'(x)=';entryField.value=entryCurve?.formula || '';entryCheck.checked=entryCurve?.visible!==false;entry.hidden=false;
       if(focus)entryField.focus();schedule();
     }
     function nextFunctionName(){let i=1;while(state.curves.some(curve=>curve.name.toLowerCase()==='f'+i))i++;return'f'+i;}
@@ -318,7 +418,7 @@
     entry.addEventListener('submit',event=>{
       event.preventDefault();const formula=entryField.value.trim();if(!formula)return;
       if(!entryCurve){const index=state.curves.length;entryCurve={id:'',expressionId:'',name:nextFunctionName(),formula,color:colors[index%colors.length],visible:entryCheck.checked,width:1,style:0};state.curves.push(entryCurve);}
-      else{entryCurve.formula=formula;entryCurve.visible=entryCheck.checked;}
+      else{entryCurve.formula=formula;entryCurve.visible=entryCheck.checked;delete entryCurve.transform;}
       selectedCurve=entryCurve;entry.hidden=true;root.focus();schedule();
     });
     entryCheck.addEventListener('change',()=>{if(entryCurve){entryCurve.visible=entryCheck.checked;schedule();}});
@@ -329,24 +429,29 @@
       if(event.button!==0)return;const pos=location(event);menu.hidden=true;
       if(state.animationAvailable&&pos.x<28&&pos.y>height-22){toggleAnimation();return;}
       const target=state.objects.filter(o=>o.type==='point'&&o.asho!=='0'&&o.pin!=='1').map(o=>({object:o,p:point(o.id)})).filter(entry=>entry.p).find(entry=>{const q=xy(entry.p);return Math.hypot(q.x-pos.x,q.y-pos.y)<9;});
-      const at=world(pos.x,pos.y),vars=getVars();
-      const curve=!target&&[...state.curves].reverse().find(curve=>{if(!curve.visible||!curve.formula.trim())return false;try{return Math.abs(xy({x:at.x,y:evalMath(expandFormula(curve.formula,vars),{...vars,x:at.x})}).y-pos.y)<7;}catch{return false;}});
+      const at=world(pos.x,pos.y),curve=!target&&curveAt(at,pos),model=curve?curveModel(curve):null;
       if(curve)selectedCurve=curve;
-      drag={start:pos,viewport:{...state.viewport},target:target?.object,curve,formula:curve?expandFormula(curve.formula,vars):''};
+      drag={start:pos,viewport:{...state.viewport},target:target?.object,curve,model,shape:curve?waveDragAnchor(model,at,angleMode()):null};
+      root.dataset.curveInteraction=drag.shape?'reshape':curve?'translate':target?'point':'pan';
+      hint.textContent=drag.shape?labels.reshapeCurve:curve?labels.translateCurve:'';hint.hidden=!hint.textContent;
       root.classList.add('dragging');canvas.setPointerCapture?.(event.pointerId);event.preventDefault();root.focus();
     }
-    function move(event){hover=location(event);if(drag){if(drag.target){const p=world(hover.x,hover.y),obj=drag.target,c=circleGeometry(byId.get(String(obj.par||'').trim().split(/\s+/)[0]));if(c&&obj.children.pton_c)obj.children.pton_c.t=String(Math.atan2(p.y-c.y,p.x-c.x));else{const paper=worldToPaper(state,p.x,p.y);obj.x=String(paper.x);obj.y=String(paper.y);if(obj.children.pton_axes){obj.children.pton_axes.x=String(p.x);obj.children.pton_axes.y=String(p.y);}}updateVariables();}else{const dx=(hover.x-drag.start.x)/width*(drag.viewport.xmax-drag.viewport.xmin),dy=(hover.y-drag.start.y)/height*(drag.viewport.ymax-drag.viewport.ymin);if(drag.curve)drag.curve.formula=translatedFormula(drag.formula,dx,-dy);else state.viewport={xmin:drag.viewport.xmin-dx,xmax:drag.viewport.xmax-dx,ymin:drag.viewport.ymin+dy,ymax:drag.viewport.ymax+dy};}schedule();}else if(trace)schedule();}
+    function move(event){hover=location(event);if(drag){if(drag.target){const p=world(hover.x,hover.y),obj=drag.target,c=circleGeometry(byId.get(String(obj.par||'').trim().split(/\s+/)[0]));if(c&&obj.children.pton_c)obj.children.pton_c.t=String(Math.atan2(p.y-c.y,p.x-c.x));else{const paper=worldToPaper(state,p.x,p.y);obj.x=String(paper.x);obj.y=String(paper.y);if(obj.children.pton_axes){obj.children.pton_axes.x=String(p.x);obj.children.pton_axes.y=String(p.y);}}updateVariables();}else{const dx=(hover.x-drag.start.x)/width*(drag.viewport.xmax-drag.viewport.xmin),dy=(hover.y-drag.start.y)/height*(drag.viewport.ymax-drag.viewport.ymin);if(drag.curve)changeCurve(drag.curve,drag.shape?reshapeWave(drag.shape,{x:drag.shape.point.x+dx,y:drag.shape.point.y-dy}):translatedTransform(drag.model,dx,-dy));else state.viewport={xmin:drag.viewport.xmin-dx,xmax:drag.viewport.xmax-dx,ymin:drag.viewport.ymin+dy,ymax:drag.viewport.ymax+dy};}schedule();}else{
+      const before=hoveredCurve,mode=root.dataset.curveInteraction;hoveredCurve=curveAt(world(hover.x,hover.y),hover);const shape=hoveredCurve&&waveDragAnchor(curveModel(hoveredCurve),world(hover.x,hover.y),angleMode());
+      root.dataset.curveInteraction=shape?'reshape':hoveredCurve?'translate':'pan';hint.textContent=shape?labels.reshapeCurve:hoveredCurve?labels.translateCurve:'';hint.hidden=!hint.textContent;
+      if(trace||before!==hoveredCurve||mode!==root.dataset.curveInteraction)schedule();
+    }}
     function up(){drag=null;root.classList.remove('dragging');}
     canvas.addEventListener('pointerdown',down);canvas.addEventListener('pointermove',move);canvas.addEventListener('pointerup',up);canvas.addEventListener('pointercancel',up);canvas.addEventListener('contextmenu',openMenu);
     canvas.addEventListener('wheel',event=>{event.preventDefault();const pos=location(event);setViewport(zoomViewport(state.viewport,Math.exp(Math.max(-1,Math.min(1,event.deltaY*.0015))),pos.x/width,pos.y/height));},{passive:false});
-    root.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.hidden=true;entry.hidden=true;root.focus();schedule();return;}if(event.target!==root&&event.target!==canvas)return;if(event.key==='Tab'){event.preventDefault();showEntry();}else if(['+','=','-'].includes(event.key)){event.preventDefault();setViewport(zoomViewport(state.viewport,event.key==='-'?1.25:.8));}});
+    root.addEventListener('keydown',event=>{if(event.key==='Escape'){menu.hidden=true;if(state.curves.some(curve=>curve.formula.trim()))entry.hidden=true;root.focus();schedule();return;}if(event.target!==root&&event.target!==canvas)return;if(event.key==='Tab'){event.preventDefault();showEntry();}else if(['+','=','-'].includes(event.key)){event.preventDefault();setViewport(zoomViewport(state.viewport,event.key==='-'?1.25:.8));}});
     const variablesChanged=event=>{if(!event.detail?.file||event.detail.file===item?.file)schedule();};
     globalThis.addEventListener?.('tns-document-variables-change',variablesChanged);
     const observer=new ResizeObserver(()=>resize());observer.observe(host);
     const displayObserver=new MutationObserver(()=>requestAnimationFrame(()=>resize()));
     const modal=host.closest('.preview-window,.widget-preview-modal,.compound-preview-modal');if(modal)displayObserver.observe(modal,{attributes:true,attributeFilter:['class']});
     renderControls();
-    if(state.curves.length===1&&['','0'].includes(state.curves[0].formula.trim())){state.curves[0].formula='';showEntry(state.curves[0],false);}
+    if(state.curves.length===1&&!state.curves[0].formula.trim())showEntry(state.curves[0],false);
     else if(!state.curves.length&&!state.objects.some(object=>['circle','point','line','segment','polygon','conic'].includes(object.type)))showEntry(null,false);
     else entry.hidden=true;
     selectedCurve=state.curves[0]||null;resize();
@@ -368,5 +473,5 @@
     const cleanup=backdrop.__previewWindowCleanup;backdrop.__previewWindowCleanup=()=>{view.dispose();cleanup?.();};
     return {backdrop,view,dispose:()=>close.click()};
   }
-  globalThis.TnsGraphPreview=Object.freeze({parseXml,paperToWorld,worldToPaper,zoomViewport,expandFormula,sampleCurve,evaluateSample,fittedViewport,translatedFormula,geometry,nativeLineStyle,nativeAxisLabels,mount,open});
+  globalThis.TnsGraphPreview=Object.freeze({parseXml,paperToWorld,worldToPaper,zoomViewport,expandFormula,sampleCurve,evaluateSample,fittedViewport,translatedFormula,affineFormula,waveTransform,transformFormula,translatedTransform,waveDragAnchor,reshapeWave,geometry,nativeLineStyle,nativeAxisLabels,mount,open});
 })();

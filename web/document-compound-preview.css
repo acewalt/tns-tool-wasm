@@ -27,3 +27,12 @@
 .document-embedded-preview .prgm-calculator-entry [data-expression]{font-size:13px!important;line-height:1.3!important;min-height:18px!important}
 .compound-preview-pane .document-embedded-preview .ti-program-editor-report,.compound-preview-pane .document-embedded-preview .ti-python-report{display:none!important}
 .compound-preview-pane .document-embedded-preview>.modal{animation:none!important;transform:none!important}
+.document-embedded-preview .ti-note-rich-shell{display:flex!important;flex:1!important;min-height:0!important;width:100%!important;height:auto!important;margin:0!important;border:0!important;border-radius:0!important;overflow:hidden!important}
+.document-embedded-preview .ti-note-rich-view{flex:1;width:100%;height:100%;min-height:0;padding:4px;font-size:14.6667px}
+.compound-preview-pane .document-embedded-preview .note-calculator-shell .ti-note-rich-view{height:100%!important;min-height:0!important}
+.document-embedded-preview .love-preview-calculator-bar,.document-embedded-preview .ti-note-rich-hint{display:none!important}
+.document-embedded-preview .ti-note-modebar{width:100%;max-width:none}
+.document-embedded-preview .ti-note-modebar [hidden]{display:none!important}
+.document-embedded-preview .ti-note-modebar .ti-math-icon-button{min-width:24px;min-height:20px}
+.document-embedded-preview .ti-note-modebar .ti-math-tool-icon{width:18px;height:18px;flex-basis:18px}
+.document-embedded-preview .ti-note-formatbar{position:absolute;left:0;bottom:24px;z-index:8;width:100%;max-height:calc(100% - 24px);box-sizing:border-box;overflow:auto;margin:0;padding:3px;gap:3px;background:#f3f5f7}

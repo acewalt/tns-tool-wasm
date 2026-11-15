@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-14-layout-edit-v43";
+const SOURCE_VERSION = "2026-11-14-persistence-graph-v44";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -9468,59 +9468,57 @@ json.dumps({
   return item;
 }
 
-async function saveNotepadWidgetToStage(item, text) {
+async function saveNotepadWidgetToStage(item, text, richText = null) {
   await ensureXmlStageCopy();
   const currentFile = item?.file || "";
   pyodide.globals.set("wasm_note_save_file", currentFile);
   pyodide.globals.set("wasm_note_save_path", item?.path || "");
-  pyodide.globals.set("wasm_note_save_rich", buildTiNotepadRichText(text));
+  pyodide.globals.set("wasm_note_save_snapshot", item?.raw_xml || "");
+  pyodide.globals.set("wasm_note_save_rich", richText ?? buildTiNotepadRichText(text));
   const payload = await pyodide.runPythonAsync(`
 import json
-import xml.etree.ElementTree as ET
 from pathlib import Path
-from xml_scanner import local_name
+from xml.dom import Node
+from page_layout import PROBLEM_NS, _atomic_write, _parse, _path, _signature
 
 source_root = Path("${xmlDoctor.sourcePath}")
 stage_root = Path("${xmlDoctor.stagePath}")
-source_file = Path(wasm_note_save_file) if wasm_note_save_file else None
-xml_file = None
-if source_file:
-    try: rel = source_file.relative_to(stage_root)
-    except ValueError:
-        try: rel = source_file.relative_to(source_root)
-        except ValueError: rel = Path(source_file.name)
-    candidate = stage_root / rel
-    if candidate.exists(): xml_file = candidate
-if xml_file is None: raise RuntimeError("No XML file available for Notes save")
-
-def parse_part(part):
-    text = str(part or "")
-    if text.endswith("]") and "[" in text:
-        name, raw_index = text.rsplit("[", 1); raw_index = raw_index[:-1]
-        if raw_index.isdigit(): return name, int(raw_index)
-    return text, 1
-
-def resolve_path(root, path):
-    parts = [part for part in str(path or "").split("/") if part]
-    if parts and parse_part(parts[0])[0] == local_name(root.tag): parts = parts[1:]
-    current = root
-    for part in parts:
-        name, index = parse_part(part)
-        matches = [child for child in current if local_name(child.tag) == name]
-        if index < 1 or index > len(matches): return None
-        current = matches[index - 1]
-    return current
-
-tree = ET.parse(xml_file); root = tree.getroot()
-wdgt = resolve_path(root, wasm_note_save_path)
-if wdgt is None or wdgt.attrib.get("type") != "TI.Notepad":
-    raise RuntimeError("The Notes page changed. Reopen it before saving.")
-fmtxt = next((node for node in wdgt.iter() if local_name(node.tag) == "fmtxt"), None)
-if fmtxt is None: raise RuntimeError("np:fmtxt not found")
-fmtxt.text = wasm_note_save_rich
-body = ET.tostring(root, encoding="UTF-8", short_empty_elements=False).replace(b'\\r', b'&#13;')
-xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>' + body)
-json.dumps({"file": str(xml_file), "raw_xml": ET.tostring(wdgt, encoding="unicode", short_empty_elements=False)})
+source_root = source_root.resolve(); stage_root = stage_root.resolve()
+if not wasm_note_save_file or not wasm_note_save_path or not wasm_note_save_snapshot:
+    raise ValueError("An inspected Notes file, path and snapshot are required.")
+source_file = Path(wasm_note_save_file).resolve()
+try: rel = source_file.relative_to(stage_root)
+except ValueError:
+    try: rel = source_file.relative_to(source_root)
+    except ValueError: raise ValueError("The selected Notes is outside this document.")
+xml_file = (stage_root / rel).resolve(); xml_file.relative_to(stage_root)
+if not xml_file.is_file() or xml_file.suffix.lower() != ".xml":
+    raise ValueError("The selected Notes file no longer exists.")
+original = xml_file.read_bytes(); document = _parse(original); root = document.documentElement
+if root.namespaceURI != PROBLEM_NS or root.localName != "prob":
+    raise ValueError("The selected file is not a native Problem document.")
+matches = [node for node in root.getElementsByTagNameNS(PROBLEM_NS, "wdgt")
+           if _path(node) == wasm_note_save_path and node.getAttribute("type") == "TI.Notepad"]
+if len(matches) != 1: raise ValueError("The selected Notes no longer exists. Reopen Document Inspector.")
+wdgt = matches[0]; expected = _parse(wasm_note_save_snapshot).documentElement
+if _signature(wdgt, True) != _signature(expected, True):
+    raise ValueError("The selected Notes changed. Reopen Document Inspector before saving.")
+formats = wdgt.getElementsByTagNameNS("urn:TI.Notepad", "fmtxt")
+if len(formats) != 1: raise ValueError("A native np:fmtxt is required.")
+_parse(wasm_note_save_rich)
+fmtxt = formats[0]
+for child in list(fmtxt.childNodes): fmtxt.removeChild(child)
+fmtxt.appendChild(document.createTextNode(wasm_note_save_rich))
+body = document.toxml(encoding="UTF-8").replace(bytes([13]), b"&#13;")
+body = body.replace(b'<?xml version="1.0" encoding="UTF-8"?>', b'<?xml version="1.0" encoding="UTF-8" ?>', 1)
+_parse(body); _atomic_write(xml_file, body, original)
+snapshot = wdgt.cloneNode(True); owner = wdgt; bindings = {}
+while owner.nodeType == Node.ELEMENT_NODE:
+    for attribute in owner.attributes.values():
+        if attribute.namespaceURI == "http://www.w3.org/2000/xmlns/": bindings.setdefault(attribute.name, attribute.value)
+    owner = owner.parentNode
+for name, value in bindings.items(): snapshot.setAttributeNS("http://www.w3.org/2000/xmlns/", name, value)
+json.dumps({"file": str(xml_file), "raw_xml": snapshot.toxml()})
 `);
   xmlDoctor.stagePrepared = true;
   return JSON.parse(payload);
@@ -10172,48 +10170,62 @@ def q(ns,n): return f"{{{ns}}}{n}" if ns else n
 card=ET.Element(q(pns,"card"),{"clay":"0","h1":"10000","h2":"10000","w1":"10000","w2":"10000"});ET.SubElement(card,q(pns,"isDummyCard")).text="0";ET.SubElement(card,q(pns,"flag")).text="0";w=ET.SubElement(card,q(pns,"wdgt"),{"type":"TI.Scratchpad","ver":"1.0"});ET.SubElement(w,q(sns,"mFlags")).text="0";ET.SubElement(w,q(sns,"value")).text="0";ET.SubElement(w,q(sns,"auth")).text=base64.b64decode(wasm_calc_auth_b64).decode();root.append(card);xf.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+ET.tostring(root,encoding="UTF-8",short_empty_elements=False));cards=[x for x in root if local_name(x.tag)=="card"];i=cards.index(card)+1
 json.dumps({"type":"Widget","name":"TI.Scratchpad","file":str(xf),"path":f"/prob/card[{i}]/wdgt","detail":{"rows":[],"rowCount":0},"content":"","content_label":"Scratchpad","raw_xml":ET.tostring(w,encoding="unicode",short_empty_elements=False)})
 `);xmlDoctor.embedded=true;xmlDoctor.stagePrepared=true;const item=JSON.parse(payload);xmlLog(t("calculatorWidgetAdded"));return item;}
-async function saveCalculatorWidgetToStage(item,rows){await ensureXmlStageCopy();pyodide.globals.set("wasm_calc_save_file",item?.file||"");pyodide.globals.set("wasm_calc_save_path",item?.path||"");pyodide.globals.set("wasm_calc_rows_json",JSON.stringify(rows||[]));const payload=await pyodide.runPythonAsync(`
-import json,xml.etree.ElementTree as ET
+async function saveCalculatorWidgetToStage(item,rows){
+  await ensureXmlStageCopy();
+  pyodide.globals.set('wasm_calc_save_file',item?.file||'');
+  pyodide.globals.set('wasm_calc_save_path',item?.path||'');
+  pyodide.globals.set('wasm_calc_save_snapshot',item?.raw_xml||'');
+  pyodide.globals.set('wasm_calc_rows_json',JSON.stringify(rows||[]));
+  const payload=await pyodide.runPythonAsync(`
+import json, xml.etree.ElementTree as ET
 from pathlib import Path
-sr=Path("${xmlDoctor.sourcePath}");st=Path("${xmlDoctor.stagePath}");sf=Path(wasm_calc_save_file) if wasm_calc_save_file else None;xf=None
-if sf:
-    try: rel=sf.relative_to(st)
-    except ValueError:
-        try: rel=sf.relative_to(sr)
-        except ValueError: rel=Path(sf.name)
-    c=st/rel
-    if c.exists(): xf=c
-if xf is None:
-    ps=sorted([p for p in st.rglob("*.xml") if p.name.lower().startswith("problem")],key=lambda p:p.name.lower())
-    if ps: xf=ps[0]
-if xf is None: raise RuntimeError("No XML file available for Calculator Save")
-t=ET.parse(xf);root=t.getroot();sns="urn:TI.Scratchpad";ET.register_namespace("sp",sns)
-def loc(tag): return tag.rsplit("}",1)[-1]
-def pp(part):
-    txt=str(part or "")
-    if txt.endswith("]") and "[" in txt:
-        n,i=txt.rsplit("[",1);i=i[:-1]
-        if i.isdigit(): return n,int(i)
-    return txt,1
-def resolve(root,path):
-    parts=[p for p in str(path or "").split("/") if p]
-    if parts and loc(root.tag)==pp(parts[0])[0]: parts=parts[1:]
-    cur=root
-    for part in parts:
-        n,i=pp(part);ms=[c for c in cur if loc(c.tag)==n]
-        if len(ms)<i:return None
-        cur=ms[i-1]
-    return cur
-w=resolve(root,wasm_calc_save_path)
-if w is None or w.attrib.get("type")!="TI.Scratchpad":
-    ss=[e for e in root.iter() if loc(e.tag)=="wdgt" and e.attrib.get("type")=="TI.Scratchpad"]
-    if not ss:raise RuntimeError("TI.Scratchpad widget not found")
-    w=ss[-1]
+from xml.dom import Node
+from page_layout import PROBLEM_NS, _atomic_write, _elements, _parse, _path, _signature
+from calculator_history import SP_NS, write_calculator_rows
+sr=Path("${xmlDoctor.sourcePath}").resolve(); st=Path("${xmlDoctor.stagePath}").resolve()
+if not wasm_calc_save_file or not wasm_calc_save_path or not wasm_calc_save_snapshot:
+    raise ValueError("An inspected Calculator file, path and snapshot are required.")
+sf=Path(wasm_calc_save_file).resolve()
+try: rel=sf.relative_to(st)
+except ValueError:
+    try: rel=sf.relative_to(sr)
+    except ValueError: raise ValueError("The selected Calculator is outside this document.")
+xf=(st/rel).resolve(); xf.relative_to(st)
+if not xf.is_file() or xf.suffix.lower()!=".xml":
+    raise ValueError("The selected Calculator file no longer exists.")
+original=xf.read_bytes(); document=_parse(original); root=document.documentElement
+if root.namespaceURI!=PROBLEM_NS or root.localName!="prob":
+    raise ValueError("The selected file is not a native Problem document.")
+matches=[node for node in root.getElementsByTagNameNS(PROBLEM_NS,"wdgt")
+         if _path(node)==wasm_calc_save_path and node.getAttribute("type")=="TI.Scratchpad"]
+if len(matches)!=1: raise ValueError("The selected Calculator no longer exists. Reopen Document Inspector.")
+w=matches[0]; expected=_parse(wasm_calc_save_snapshot).documentElement
+if _signature(w,True)!=_signature(expected,True):
+    raise ValueError("The selected Calculator changed. Reopen Document Inspector before saving.")
 rows=json.loads(wasm_calc_rows_json or "[]")
-from calculator_history import write_calculator_rows
-write_calculator_rows(w,rows)
-xf.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+ET.tostring(root,encoding="UTF-8",short_empty_elements=False));json.dumps({"file":str(xf),"saved_rows":len(rows),"raw_xml":ET.tostring(w,encoding="unicode",short_empty_elements=False)})
-`);xmlDoctor.embedded=true;xmlDoctor.stagePrepared=true;return JSON.parse(payload);}
+if not isinstance(rows,list) or not all(isinstance(row,dict) for row in rows):
+    raise ValueError("Calculator history must contain rows.")
+# Replace only native history rows, preserving authoring data and sibling apps.
+temporary=ET.Element("wdgt"); write_calculator_rows(temporary,rows)
+for node in list(_elements(w)):
+    if node.namespaceURI==SP_NS and node.localName=="erow": w.removeChild(node)
+for row in temporary:
+    native=_parse(ET.tostring(row,encoding="unicode",short_empty_elements=False)).documentElement
+    w.appendChild(document.importNode(native,True))
+body=document.toxml(encoding="UTF-8").replace(bytes([13]),b"&#13;")
+body=body.replace(b'<?xml version="1.0" encoding="UTF-8"?>',b'<?xml version="1.0" encoding="UTF-8" ?>',1)
+_parse(body); _atomic_write(xf,body,original)
+snapshot=w.cloneNode(True); owner=w; bindings={}
+while owner.nodeType==Node.ELEMENT_NODE:
+    for attribute in owner.attributes.values():
+        if attribute.namespaceURI=="http://www.w3.org/2000/xmlns/": bindings.setdefault(attribute.name,attribute.value)
+    owner=owner.parentNode
+for name,value in bindings.items(): snapshot.setAttributeNS("http://www.w3.org/2000/xmlns/",name,value)
+json.dumps({"file":str(xf),"saved_rows":len(rows),"raw_xml":snapshot.toxml()})
+`);
+  xmlDoctor.stagePrepared=true;
+  return JSON.parse(payload);
+}
 function documentCalculatorFile(file = '') {
   return documentPreviewFileKey(file || xmlDoctor.previewFile || xmlDoctor.current?.file || xmlDoctor.candidates[0]?.file || 'Problem1.xml');
 }
@@ -10317,27 +10329,50 @@ window.TnsOpenDocumentLibrary = async file => {
   await inspectXmlDocument();
   xmlLog(`TNS: ${file.name}`);
 };
+function documentCalculatorHistoryDraft(item, fallback, onDraft) {
+  const mathSession=documentCalculatorMathSession(item.file), scope=documentCalculatorSessions.get(documentCalculatorFile(item.file));
+  const drafts=scope.historyDrafts||(scope.historyDrafts=new Map()), key=String(item.path||'');
+  const nativeRows=extractCalculatorRowsFromRawXml(item.raw_xml||''),signature=JSON.stringify(nativeRows.map(({rawXml,...row})=>row));
+  const previous=drafts.get(key), token={};
+  const copy=value=>structuredClone(value||{rows:[],input:''});
+  const record={signature,token,draft:copy(previous?(previous.signature===signature?previous.draft:{rows:nativeRows,input:''}):fallback)};
+  drafts.set(key,record);
+  return {mathSession,draft:record.draft,
+    remember(value){if(drafts.get(key)?.token!==token)return;record.draft=copy(value);onDraft?.(copy(value));},
+    saved(value){if(drafts.get(key)?.token!==token)return;record.signature=JSON.stringify(extractCalculatorRowsFromRawXml(value.raw_xml||'').map(({rawXml,...row})=>row));},
+  };
+}
 async function openCalculatorInLovePreview(item, options = {}) {
   if(!window.TnsPrgmPreview)throw Error('Calculator preview is still loading.');
   tiMathEditor?.flush();
-  await inspectXmlDocument();
+  item=await readStoredDocumentWidget(item,'TI.Scratchpad');
   xmlDoctor.previewFile=item.file;
   const a=extractCalculatorRowsFromRawXml(item?.raw_xml||''),b=Array.isArray(item?.detail?.rows)?item.detail.rows:[];
-  const draft=options.draft||{},initialRows=(draft.rows||(a.length?a:b)).map(row=>({...row}));
+  const historyDraft=documentCalculatorHistoryDraft(item,options.draft||{rows:a.length?a:b,input:''},options.setDraft);
+  const draft=historyDraft.draft,initialRows=(draft.rows||(a.length?a:b)).map(row=>({...row}));
   const context=documentCalculatorContext(item.file);initializeCalculatorHistoryAnswer(context.mathSession,initialRows);
-  return window.TnsPrgmPreview.open({name:'',source:'',documentName:documentPreviewDocumentName(),file:item.file,path:item.path},{
+  let preview;
+  const save=async rows=>{
+    const result=await saveCalculatorWidgetToStage(item,rows);
+    item.raw_xml=result.raw_xml||item.raw_xml;item.file=result.file||item.file;
+    item.detail={...(item.detail||{}),rows:rows.map(row=>({...row})),rowCount:rows.length};
+    historyDraft.saved(result);
+    xmlLog(`${t('calculatorSave')}: ${result.saved_rows} entradas guardadas en TI.Scratchpad`);
+  };
+  preview=window.TnsPrgmPreview.open({name:'',source:'',documentName:documentPreviewDocumentName(),file:item.file,path:item.path},{
     ...options,...context,calculatorMode:true,initialInput:draft.input||'',initialRows,
-    onRowsChange:rows=>options.setDraft?.({rows,input:window.TnsPrgmPreview.getInput?.()||''}),
-    onSave:async rows=>{
-      const result=await saveCalculatorWidgetToStage(item,rows);
-      item.raw_xml=result.raw_xml||item.raw_xml;item.file=result.file||item.file;
-      item.detail={...(item.detail||{}),rows:rows.map(row=>({...row})),rowCount:rows.length};
-      xmlLog(`${t('calculatorSave')}: ${result.saved_rows} entradas guardadas en TI.Scratchpad`);
-    },
+    setDraft:value=>historyDraft.remember(value),
+    onRowsChange:rows=>historyDraft.remember({rows,input:preview?.getInput()||''}),onSave:save,
   });
+  // Layout takes a fresh native snapshot. Store this page's live history before
+  // its widget moves to another card/path; reopening it must never run calls.
+  const overlay=document.querySelector('.prgm-preview-overlay:not(.document-embedded-preview)');
+  if(overlay)overlay.__documentPreviewCommit=()=>save(preview.getRows());
+  return preview;
 }
-function openGraphInLovePreview(item, options = {}) {
+async function openGraphInLovePreview(item, options = {}) {
   if (!window.TnsGraphPreview) throw new Error('Graph preview is still loading.');
+  item=await readStoredDocumentWidget(item,'TI.GeoGrapher');
   const mathSession = documentCalculatorMathSession(item.file);
   const notify = variables => {
     Object.assign(mathSession.variables, variables);
@@ -10430,7 +10465,7 @@ for entry in sym:
     if name: used.add(name)
 idx=1
 while f"f{idx}" in used: idx+=1
-fname=f"f{idx}"; formula="sin(x)"
+fname=f"f{idx}"; formula=""
 card=ET.fromstring(base64.b64decode(wasm_graph_card_b64).decode("utf-8"))
 entry=ET.fromstring(base64.b64decode(wasm_graph_sym_b64).decode("utf-8"))
 old_raw="3*cos(2*x+π/2)+1"; old_norm="3*cos(2*x+((π)/(2)))+1"
@@ -10441,7 +10476,17 @@ for node in entry.iter():
     if local_name(node.tag)=="n": node.text=fname
     elif local_name(node.tag)=="p": node.text="x"
     elif local_name(node.tag)=="v": node.text=formula
-sym.append(entry); root.append(card)
+# A new Graphs page has no function until the user submits its entry line.
+# Keep the native axes/window/tool data, but remove the sample curve and label.
+objects=next((node for node in card.iter() if local_name(node.tag)=="objs"),None)
+if objects is not None:
+    sample=[node for node in objects if local_name(node.tag) in ("expression","graph")]
+    sample_ids={next(((child.text or "").strip() for child in node if local_name(child.tag)=="id"),"") for node in sample}
+    for node in list(objects):
+        parents=next(((child.text or "").split() for child in node if local_name(child.tag)=="par"),[])
+        if node in sample or (local_name(node.tag)=="label" and any(parent in sample_ids for parent in parents)):
+            objects.remove(node)
+root.append(card)
 body=ET.tostring(root,encoding="UTF-8",short_empty_elements=False)
 xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+body)
 card_index=len([x for x in root if local_name(x.tag)=="card"])
@@ -10457,10 +10502,11 @@ async function saveGraphWidgetToStage(item, formula) {
   const state=extractGraphStateFromRawXml(item?.raw_xml || "");
   const fname=item?.detail?.function || state.name || "f1";
   const graphState = formula && typeof formula === 'object' ? formula : state;
-  const clean=normalizeGraphFormulaInput(typeof formula === 'string' ? formula : graphState.curves?.[0]?.formula || state.formula);
+  const clean=typeof formula==='object' && Array.isArray(graphState.curves) && !graphState.curves.length ? '' : normalizeGraphFormulaInput(typeof formula === 'string' ? formula : graphState.curves?.[0]?.formula || state.formula);
   if (typeof formula === 'string' && graphState.curves?.length) graphState.curves[0].formula = clean;
   pyodide.globals.set("wasm_graph_save_file", item?.file || "");
   pyodide.globals.set("wasm_graph_save_path", item?.path || "");
+  pyodide.globals.set("wasm_graph_save_snapshot", item?.raw_xml || "");
   pyodide.globals.set("wasm_graph_save_name", fname);
   pyodide.globals.set("wasm_graph_save_formula", clean);
   pyodide.globals.set('wasm_graph_save_state', JSON.stringify(graphState));
@@ -10470,45 +10516,39 @@ import xml.etree.ElementTree as ET
 from copy import deepcopy
 from pathlib import Path
 from xml_scanner import local_name, namespace_uri
-source_root=Path("${xmlDoctor.sourcePath}"); stage_root=Path("${xmlDoctor.stagePath}")
-source_file=Path(wasm_graph_save_file) if wasm_graph_save_file else None
-xml_file=None
-if source_file:
-    try: rel=source_file.relative_to(stage_root)
-    except ValueError:
-        try: rel=source_file.relative_to(source_root)
-        except ValueError: rel=Path(source_file.name)
-    candidate=stage_root/rel
-    if candidate.exists(): xml_file=candidate
-if xml_file is None:
-    problems=sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p:p.name.lower())
-    if problems: xml_file=problems[0]
-if xml_file is None: raise RuntimeError("No XML file available for Graph save")
-
-def parse_part(part):
-    text=str(part or "")
-    if text.endswith("]") and "[" in text:
-        name,raw=text.rsplit("[",1); raw=raw[:-1]
-        if raw.isdigit(): return name,int(raw)
-    return text,1
-
-def resolve_path(root,path):
-    parts=[p for p in str(path or "").split("/") if p]
-    if parts and parse_part(parts[0])[0]==local_name(root.tag): parts=parts[1:]
-    cur=root
-    for part in parts:
-        name,index=parse_part(part); matches=[c for c in cur if local_name(c.tag)==name]
-        if index<1 or index>len(matches): return None
-        cur=matches[index-1]
-    return cur
-
-tree=ET.parse(xml_file); root=tree.getroot(); gg_ns="urn:TI.GeoGrapher"
-wdgt=resolve_path(root,wasm_graph_save_path)
-if wdgt is None or wdgt.attrib.get("type")!="TI.GeoGrapher":
-    matches=[n for n in root.iter() if local_name(n.tag)=="wdgt" and n.attrib.get("type")=="TI.GeoGrapher"]
-    if not matches: raise RuntimeError("TI.GeoGrapher widget not found")
-    wdgt=matches[-1]
-fname=str(wasm_graph_save_name or "f1"); formula=str(wasm_graph_save_formula or "0")
+from page_layout import PROBLEM_NS, _atomic_write, _parse, _path, _signature, _retain_namespace_context
+from xml.dom import Node
+source_root=Path("${xmlDoctor.sourcePath}").resolve(); stage_root=Path("${xmlDoctor.stagePath}").resolve()
+if not wasm_graph_save_file or not wasm_graph_save_path or not wasm_graph_save_snapshot:
+    raise ValueError("An inspected Graphs file, path and snapshot are required.")
+source_file=Path(wasm_graph_save_file).resolve()
+try: rel=source_file.relative_to(stage_root)
+except ValueError:
+    try: rel=source_file.relative_to(source_root)
+    except ValueError: raise ValueError("The selected Graphs is outside this document.")
+xml_file=(stage_root/rel).resolve(); xml_file.relative_to(stage_root)
+if not xml_file.is_file() or xml_file.suffix.lower() != ".xml":
+    raise ValueError("The selected Graphs file no longer exists.")
+original=xml_file.read_bytes(); document=_parse(original); native_root=document.documentElement
+if native_root.namespaceURI != PROBLEM_NS or native_root.localName != "prob":
+    raise ValueError("The selected file is not a native Problem document.")
+matches=[node for node in native_root.getElementsByTagNameNS(PROBLEM_NS,"wdgt")
+         if _path(node)==wasm_graph_save_path and node.getAttribute("type")=="TI.GeoGrapher"]
+if len(matches)!=1: raise ValueError("The selected Graphs no longer exists. Reopen Document Inspector.")
+native_widget=matches[0]; expected=_parse(wasm_graph_save_snapshot).documentElement
+if _signature(native_widget,True)!=_signature(expected,True):
+    raise ValueError("The selected Graphs changed. Reopen Document Inspector before saving.")
+# Work only on the selected graph. Retain sibling applications, symbols, CRs,
+# namespace bindings and opaque document metadata in the native DOM.
+snapshot=native_widget.cloneNode(True)
+bindings={}; owner=native_widget
+while owner.nodeType==Node.ELEMENT_NODE:
+    for attribute in owner.attributes.values():
+        if attribute.namespaceURI=="http://www.w3.org/2000/xmlns/": bindings.setdefault(attribute.name,attribute.value)
+    owner=owner.parentNode
+for name,value in bindings.items(): snapshot.setAttributeNS("http://www.w3.org/2000/xmlns/",name,value)
+wdgt=ET.fromstring(snapshot.toxml().replace(chr(13),"&#13;")); gg_ns="urn:TI.GeoGrapher"
+fname=str(wasm_graph_save_name or "f1"); formula=str(wasm_graph_save_formula or "")
 state=json.loads(wasm_graph_save_state)
 def child(node,name): return next((c for c in node if local_name(c.tag)==name),None)
 def read(node,name,default=""):
@@ -10521,7 +10561,7 @@ def write(node,name,value):
 objects=next((n for n in wdgt.iter() if namespace_uri(n.tag)==gg_ns and local_name(n.tag)=="objs"),None)
 by_id={read(n,"id"):n for n in objects} if objects is not None else {}
 curves=state.get("curves",[])
-if not curves:
+if not curves and "curves" not in state:
     first=next((n for n in by_id.values() if local_name(n.tag)=="expression"),None)
     if first is not None: curves=[{"expressionId":read(first,"id"),"name":fname,"formula":formula}]
 updates={}
@@ -10586,20 +10626,35 @@ if view:
         if axisval is not None:
             key={"0":"xmax","1":"xmin","2":"ymax","3":"ymin"}.get(read(axisval,"ty"))
             if key: write(node,"num",view[key])
-sym=next((x for x in root if local_name(x.tag)=="sym"),None)
-if sym is not None:
-    ns=namespace_uri(root.tag)
+native_sym=next((node for node in native_root.childNodes if node.nodeType==Node.ELEMENT_NODE and node.namespaceURI==PROBLEM_NS and node.localName=="sym"),None)
+def native_child(node,name):
+    return next((child for child in node.childNodes if child.nodeType==Node.ELEMENT_NODE and child.namespaceURI==PROBLEM_NS and child.localName==name),None)
+def native_text(node):
+    return "".join(child.data for child in node.childNodes if child.nodeType in (Node.TEXT_NODE,Node.CDATA_SECTION_NODE)) if node is not None else ""
+def native_element(name):
+    prefix=native_root.prefix
+    return document.createElementNS(PROBLEM_NS,(prefix+":" if prefix else "")+name)
+if native_sym is not None:
     for name,text in updates.items():
-        entry=next((n for n in sym if local_name(n.tag)=="e" and read(n,"n")==name),None)
+        entry=next((node for node in native_sym.childNodes if node.nodeType==Node.ELEMENT_NODE and node.namespaceURI==PROBLEM_NS and node.localName=="e" and native_text(native_child(node,"n"))==name),None)
         if entry is None:
-            entry=ET.SubElement(sym,f"{{{ns}}}e" if ns else "e",{"t":"6","f":"0","c":"255"})
-            for key,data in [("n",name),("p","x"),("v",text)]: ET.SubElement(entry,f"{{{ns}}}{key}" if ns else key).text=data
+            entry=native_element("e")
+            for key,value in {"t":"6","f":"0","c":"255"}.items(): entry.setAttribute(key,value)
+            for key,value in [("n",name),("p","x"),("v",text)]:
+                node=native_element(key); node.appendChild(document.createTextNode(value)); entry.appendChild(node)
+            native_sym.appendChild(entry)
         else:
-            v=child(entry,"v")
-            if v is not None: v.text=text
-body=ET.tostring(root,encoding="UTF-8",short_empty_elements=False)
-xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+body)
-json.dumps({"file":str(xml_file),"formula":formula,"function":fname,"raw_xml":ET.tostring(wdgt,encoding="unicode",short_empty_elements=False)})
+            value=native_child(entry,"v")
+            if value is not None:
+                for child_node in list(value.childNodes): value.removeChild(child_node)
+                value.appendChild(document.createTextNode(text))
+replacement=_parse(ET.tostring(wdgt,encoding="unicode",short_empty_elements=False).replace(chr(13),"&#13;")).documentElement
+replacement=document.importNode(replacement,True); native_widget.parentNode.replaceChild(replacement,native_widget)
+body=document.toxml(encoding="UTF-8").replace(bytes([13]),b"&#13;")
+body=body.replace(b'<?xml version="1.0" encoding="UTF-8"?>',b'<?xml version="1.0" encoding="UTF-8" ?>',1)
+_parse(body); _atomic_write(xml_file,body,original)
+_retain_namespace_context(replacement)
+json.dumps({"file":str(xml_file),"formula":formula,"function":fname,"raw_xml":replacement.toxml()})
 `);
   xmlDoctor.stagePrepared=true; return JSON.parse(payload);
 }
@@ -13379,6 +13434,15 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       log(`ERROR click LuaJS ${x},${y}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
     }
   }
+  function pointerEvent(name, x, y) {
+    if (!['mouseDown', 'mouseMove', 'mouseUp'].includes(name)) return;
+    try {
+      global.callEvent(name, x, y);
+      repaint(false);
+    } catch (error) {
+      log(`ERROR ${name} LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+    }
+  }
   function close() {
     if (timerId) window.clearInterval(timerId);
     window.removeEventListener('tns-document-variables-change', onDocumentVariablesChange);
@@ -13390,7 +13454,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     if (editorText) return editorText;
     return formatLuaPreviewScreenText(screenText);
   }
-  return { boot, callEvent, charIn, mouseClick, resize, close, getScreenText };
+  return { boot, callEvent, charIn, mouseClick, pointerEvent, repaint, resize, close, getScreenText };
 }
 
 async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) {
@@ -17386,6 +17450,26 @@ json.dumps({
   return JSON.parse(payload);
 }
 
+async function readStoredDocumentWidget(item, expectedType = item?.name) {
+  // Inspector buttons can remain open while a sibling preview saves. Refresh
+  // at preview entry, not during Save: an already-open editor must still
+  // reject genuine concurrent changes to its original snapshot.
+  const relative = documentXmlFileIdentity(item?.file);
+  const widgetPath = String(item?.path || '');
+  if (!relative || relative.startsWith('/') || relative.includes(':') || relative.split('/').some(part => part === '..' || part === '.')
+      || !/^\/prob\/card(?:\[[1-9]\d*\])?\/wdgt(?:\[[1-9]\d*\])?$/.test(widgetPath)) {
+    throw new Error('Invalid document application identity. Reopen Document Inspector.');
+  }
+  const matches = (await inspectXmlDocument()).items.filter(candidate => candidate.type === 'Widget'
+    && candidate.name === expectedType && documentXmlFileIdentity(candidate.file) === relative && candidate.path === widgetPath);
+  if (matches.length !== 1) throw new Error('The document application no longer exists. Reopen Document Inspector.');
+  const current = matches[0], xml = new DOMParser().parseFromString(current.raw_xml || '', 'application/xml').documentElement;
+  if (xml.namespaceURI !== 'urn:TI.Problem' || xml.localName !== 'wdgt' || xml.getAttribute('type') !== expectedType) {
+    throw new Error('The selected application is not a native document widget.');
+  }
+  return { ...current, detail: { ...(current.detail || {}) } };
+}
+
 function createSpreadsheetPreviewState(item, draft) {
   const key = spreadsheetSessionKey(item);
   const xmlState = extractSpreadsheetStateFromRawXml(item?.raw_xml || "");
@@ -17444,7 +17528,8 @@ function mountDocumentSpreadsheet(host, item, options = {}) {
   };
 }
 
-function showSpreadsheetModal(item, options = {}) {
+async function showSpreadsheetModal(item, options = {}) {
+  item = await readStoredDocumentWidget(item, 'tabulator');
   const state = createSpreadsheetPreviewState(item, options.draft);
   const mathSession = documentCalculatorContext(item.file).mathSession;
   recalculateSpreadsheetCells(state.cells, { mathSession, preserveCached: true });
@@ -17739,11 +17824,92 @@ function setDocumentPythonPreviewSource(item, source) {
   return text;
 }
 
+function mountDocumentNotes(host,item,options={}) {
+  if(!window.TiNotepadRichView?.mountEditor)return null;
+  const controller=window.TiNotepadRichView.mountEditor(host,item,{...options,onSaveRich:(text,rich)=>saveNotepadWidgetToStage(item,text,rich)});
+  return controller?{...controller,kind:'notes',item}:null;
+}
+
+function mountDocumentGraph(host,item,options={}) {
+  const view=window.TnsGraphPreview.mount(host,item,{...options,controls:false,onStateChange:state=>options.setDraft?.(state)});
+  let saving=null;
+  const save=()=>saving||(saving=(async()=>{
+    // A Save may share the document bridge with other pane saves. Keep the
+    // last successful snapshot and flush gestures made while it was pending.
+    for(;;){
+      const state=view.getState(),signature=JSON.stringify(state);
+      const result=await saveGraphWidgetToStage(item,state);
+      item.file=result.file; item.raw_xml=result.raw_xml; item.content=result.formula;
+      item.detail={...item.detail,function:result.function,expression:result.formula};
+      if(JSON.stringify(view.getState())===signature)break;
+    }
+  })().finally(()=>{saving=null;}));
+  return {...view,kind:'graphs',item,save};
+}
+
+function mountDocumentLuaPreview(host, app, context, options = {}) {
+  // LuaJS resolves generated globals through window. A dedicated realm per
+  // ScriptApp preserves each app's handlers, timers and D2Editors when several
+  // ScriptApps share a page (or a standalone preview is also open).
+  const item = app.previewItem || app, frame = document.createElement('iframe');
+  frame.className = 'document-embedded-lua-preview';
+  frame.title = item.detail?.name || 'TI.ScriptApp';
+  frame.style.cssText = 'display:block;width:100%;height:100%;border:0;background:white;';
+  let disposed = false, runtime = null;
+  const finish = () => { if (disposed) return; host.dispatchEvent(new FocusEvent('focusin', { bubbles: true })); };
+  const variablesChanged = event => {
+    if (disposed || !runtime || documentPreviewFileKey(event.detail?.file) !== documentPreviewFileKey(item.file)) return;
+    runtime.variablesChanged(event.detail);
+  };
+  const loaded = new Promise((resolve, reject) => {
+    frame.onload = async () => {
+      if (disposed) { resolve(); return; }
+      try {
+        const child = frame.contentWindow;
+        if (!child?.TnsLuaLayoutFrame) throw new Error('The Lua layout runtime did not load.');
+        runtime = await child.TnsLuaLayoutFrame.start({
+          code: decodeXmlTextEntities(item.content || ''), symbols: options.luaSymbols || {},
+          language, mathSession: context.mathSession, onFocus: finish,
+          onVariablesChange: detail => {
+            if (!disposed) window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail }));
+          },
+        });
+        if (disposed) runtime.close();
+        else { frame.dataset.ready = 'true'; runtime.resize(); }
+        resolve();
+      } catch (error) {
+        if (!disposed) {
+          const message = document.createElement('p'); message.className = 'compound-preview-error';
+          message.setAttribute('role', 'alert'); message.textContent = `Lua: ${error.message}`;
+          host.replaceChildren(message); frame.dataset.error = error.message;
+        }
+        reject(error);
+      }
+    };
+    frame.onerror = () => reject(new Error('The Lua layout runtime could not be loaded.'));
+  });
+  // Report boot errors inside the pane while keeping a failed async boot from
+  // becoming an unhandled rejection when the user immediately changes cards.
+  loaded.catch(error => { if (!disposed) xmlLog(`ERROR Lua layout: ${error.message}`); });
+  frame.src = `./web/lua-layout-frame.html?v=${SOURCE_VERSION}`;
+  host.append(frame);
+  window.addEventListener('tns-document-variables-change', variablesChanged);
+  return { kind: 'lua', item, ready: loaded,
+    resize() { if (!disposed) runtime?.resize(); },
+    async save() { await loaded; },
+    destroy() {
+      if (disposed) return; disposed = true;
+      window.removeEventListener('tns-document-variables-change', variablesChanged);
+      frame.onload = frame.onerror = null; runtime?.close(); frame.contentWindow?.TnsLuaLayoutFrame?.close(); frame.remove();
+    },
+  };
+}
+
 function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
   const item = app.previewItem || app, kind = app.previewKind;
   if (!['basic','calculators','python'].includes(kind)) return null;
   const drafts = options.draft || {}, initialMode = kind === 'basic' ? 'program' : kind === 'calculators' ? 'calculator' : item.name === 'TI.PythonShell' || item.content_label === 'PythonShell' ? 'shell' : 'python';
-  let instance, child, mode, disposed = false, execution, lastSource;
+  let instance, child, mode, disposed = false, execution, lastSource, calculatorDraft;
   let pythonItem = kind === 'python' ? documentPythonShellEditor(item) : null;
   let pythonData = pythonItem ? documentPythonPreviewSource(pythonItem) : {name:'',source:''};
   const remember = () => options.setDraft?.(drafts);
@@ -17764,6 +17930,7 @@ function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
       if (JSON.stringify(rows) !== JSON.stringify(extractCalculatorRowsFromRawXml(item.raw_xml || ''))) {
         const result = await saveCalculatorWidgetToStage(item, rows);
         item.raw_xml = result.raw_xml || item.raw_xml; item.file = result.file || item.file;
+        calculatorDraft?.saved(result);
       }
     }
   }
@@ -17774,6 +17941,9 @@ function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
     const common = { ...context, embedded:true, expanded:false, documentName:documentPreviewDocumentName(),
       createBackdrop: () => child, draft:drafts[mode],
       setDraft: value => { drafts[mode] = value; remember(); },
+      onSessionChange: () => window.dispatchEvent(new CustomEvent('tns-document-variables-change', {
+        detail: { file:item.file, variables:context.mathSession.snapshot().variables },
+      })),
     };
     if (mode === 'program') {
       const source = documentProgramPreviewSource(item);
@@ -17790,10 +17960,14 @@ function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
         },
       });
     } else if (mode === 'calculator') {
-      const initialRows = drafts[mode]?.rows || (kind === 'calculators' ? extractCalculatorRowsFromRawXml(item.raw_xml || '') : []);
+      const fallback=drafts[mode]||{rows:kind==='calculators'?extractCalculatorRowsFromRawXml(item.raw_xml||''):[],input:data?.name?data.name+'()':''};
+      calculatorDraft=kind==='calculators'?documentCalculatorHistoryDraft(item,fallback,common.setDraft):null;
+      const binding=calculatorDraft,calculatorState=binding?.draft||fallback,initialRows=calculatorState.rows||[];
       initializeCalculatorHistoryAnswer(context.mathSession, initialRows);
       instance = window.TnsPrgmPreview.open({name:'',source:'',file:item.file,path:item.path}, { ...common,
-        calculatorMode:true,initialRows,initialInput:drafts[mode]?.input || (data?.name ? data.name+'()' : ''),
+        calculatorMode:true,initialRows,initialInput:calculatorState.input||'',
+        setDraft:binding?value=>binding.remember(value):common.setDraft,
+        onRowsChange:binding?rows=>binding.remember({rows,input:instance?.getInput()||''}):undefined,
       });
     } else {
       if (data) pythonData = data;
@@ -17835,7 +18009,8 @@ function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
 }
 
 async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) {
-  const items = groups[kind] || [], page = items[selected];
+  const items = groups[kind] || [];
+  let page = items[selected];
   if (!page) return;
   const item = page.previewItem || page;
   const appKind = page.previewKind || kind;
@@ -17878,8 +18053,25 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
   };
   if (appKind === 'compound') {
     if (!window.TnsCompoundPreview) throw new Error('Document page preview is still loading.');
+    const currentData = await inspectXmlDocument();
+    const currentGroups = window.TnsDocumentPreviewNavigation.groups(currentData.items);
+    const currentPages = documentWidgetPreviewPages(currentData.items, currentGroups);
+    const relative = documentXmlFileIdentity(page.file);
+    if (!relative || relative.startsWith('/') || relative.includes(':') || relative.split('/').some(part => part === '..' || part === '.')) throw new Error('Invalid document page identity.');
+    const currentPage = currentPages.find(candidate => documentXmlFileIdentity(candidate.file) === relative && candidate.path === page.path);
+    if (!currentPage || currentPage.previewKind !== 'compound') throw new Error('The document page changed. Reopen Document Inspector.');
+    // Use fresh widget snapshots for every pane; never update snapshots of an
+    // older live preview, whose unsaved edits still require conflict checking.
+    page = currentPage;
     await ensureXmlStageCopy();
     const context = documentCalculatorContext(page.file);
+    // These reads share the Pyodide staging globals. Resolve them sequentially
+    // before mounting independent Lua realms, never race two symbol/resource
+    // inspections against each other.
+    const luaSymbols = new Map();
+    for (const app of page.previewItems || []) if (app.previewKind === 'lua') {
+      luaSymbols.set(app, await loadLuaPreviewSymbols(app.previewItem || app));
+    }
     const appDrafts = { ...(options.draft?.applications || {}) }, appControllers = [];
     const saveApplications = async (layoutOnly=false) => { for (const controller of appControllers) {if(layoutOnly&&controller.kind==='basic')controller.commit?.();else await controller.save?.();} };
     const preview = window.TnsCompoundPreview.open(page, {
@@ -17891,14 +18083,14 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
         Object.assign(context.mathSession.variables, values);
         window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: page.file, variables: context.mathSession.variables } }));
       },
-      mountApplication: (host, app) => {
+      mountApplication: (host, app, paneOptions = {}) => {
         const sheet = app.previewItem || app, key = `${documentXmlFileIdentity(sheet.file)}::${sheet.path||sheet.name}`;
-        const settings = { mathSession: context.mathSession, draft: appDrafts[key], setDraft: draft => { appDrafts[key] = draft; },
+        const settings = { mathSession: context.mathSession, luaSymbols: luaSymbols.get(app), draft: appDrafts[key], setDraft: draft => { appDrafts[key] = draft; },
           findCalculator:()=>appControllers.find(controller=>controller.kind==='calculators'),
           findPythonShell:()=>appControllers.find(controller=>controller.kind==='python'&&(controller.item.name==='TI.PythonShell'||controller.item.content_label==='PythonShell')),
           findPythonEditor:source=>appControllers.find(controller=>controller.kind==='python'&&controller.item.name!=='TI.PythonShell'&&source&&documentPythonPreviewFile(controller.getPythonItem())===documentPythonPreviewFile(source)),
         };
-        const controller = app.previewKind === 'sheets' ? mountDocumentSpreadsheet(host,sheet,settings) : mountDocumentEmbeddedPreview(host,app,context,settings);
+        const controller = app.previewKind === 'graphs' ? mountDocumentGraph(host,sheet,{...paneOptions,...settings}) : app.previewKind === 'lua' ? mountDocumentLuaPreview(host,app,context,settings) : app.previewKind === 'sheets' ? mountDocumentSpreadsheet(host,sheet,settings) : app.previewKind === 'notes' ? mountDocumentNotes(host,sheet,settings) : mountDocumentEmbeddedPreview(host,app,context,settings);
         if (!controller) return null;
         appControllers.push(controller);
         return controller;
@@ -18047,7 +18239,7 @@ async function applyDocumentPageLayout(change) {
   const keyOf=c=>JSON.stringify([documentXmlFileIdentity(c.file),c.program_name,c.document_type]);
   const currentKey=current?keyOf(current):null;
   const drafts=new Map(xmlDoctor.candidates.map(c=>[keyOf(c),c===current?document.querySelector('#xml-code').value:c.code]));
-  const result=await writeDocumentPageLayout({...change,action:change.action==='layout'?'arrange':change.action,layout:change.layout||{clay:change.clay,w1:5000,h1:5000,w2:5000,h2:5000},order:change.action==='group'?undefined:change.order});
+  const result=await writeDocumentPageLayout({...change,action:change.action==='layout'?'arrange':change.action,layout:change.layout||{clay:change.clay,w1:5000,h1:5000,w2:5000,h2:5000},order:change.order});
   // Layouts move app containers, never their stored program symbols. Preserve
   // unfinished source buffers through the rescan without requiring validation.
   xmlDoctor.previewItems=[];xmlDoctor.previewFile='';
@@ -19711,13 +19903,18 @@ function wireEvents() {
   wireClickBurst();
 }
 
-applyLanguage(language);
-applyTheme(theme);
-initializeStaticCodeEditors();
-wireEvents();
-void loadSiteStats();
-void recordTodayVisit();
-initPyodideRuntime().catch((err) => {
-  setRuntimeStatus("Error", "error");
-  log(`ERROR inicializando WASM: ${err.stack || err.message}`);
-});
+// Embedded Lua panes reuse the full, tested LuaJS bindings in an isolated
+// window. They share their owner's maths session and never start a second
+// Python VM, application UI, visitor request or background stats timer.
+if (!window.__TNS_LUA_LAYOUT_FRAME__) {
+  applyLanguage(language);
+  applyTheme(theme);
+  initializeStaticCodeEditors();
+  wireEvents();
+  void loadSiteStats();
+  void recordTodayVisit();
+  initPyodideRuntime().catch((err) => {
+    setRuntimeStatus("Error", "error");
+    log(`ERROR inicializando WASM: ${err.stack || err.message}`);
+  });
+}

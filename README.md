@@ -17,7 +17,7 @@ Work with **TI-BASIC programs, Lua ScriptApps, Python pages, XML documents and m
 - **Lua ScriptApp tools:** Create, edit and preview Lua applications with calculator-style rendering.
 - **Python support:** Work with supported TI-Nspire Python pages.
 - **XML editing:** Inspect and modify the underlying document structure.
-- **Page layouts:** Group up to four applications on a page, ungroup them, select one of eight native layouts and reorder the applications. Document Inspector's **+ Cards** button previews actual pages; **Widgets** counts the applications inside them.
+- **Page layouts:** Group up to four applications on a page, ungroup them, select one of eight native layouts and drag the colored diagram to reorder applications. Document Inspector's **+ Cards** button previews actual pages; **Widgets** counts the applications inside them.
 - **Notes math templates:** Insert mathematical expressions at the current caret, choose matrix dimensions, edit a formula and save it in the native Notes XML.
 - **Math and CAS preview:** Display 2D mathematical expressions and evaluate supported calculations.
 - **USB calculator manager:** Browse folders and transfer files using compatible browsers or the Windows desktop integration.
@@ -58,7 +58,7 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.43/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.43)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.44/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.44)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
@@ -66,7 +66,7 @@ Close any older version, extract the entire ZIP into a new folder, and open **TN
 
 ## What's new
 
-**0.1.43:** Page layout opens above the active preview and labels pages by their applications. Mixed pages now include editable Sheets, Program Editor, Calculator and Python editor/shell alongside Graphs and Notes. Sheets supports cell/range picking while entering formulas and preserves required parentheses. Notes templates insert directly at the caret with inline editing and native XML roundtrips. This is not a full TI-Nspire emulator.
+**0.1.44:** Saved Sheets and Calculator data reopen from current XML even if Document Inspector was already open. Notes is editable inside layouts, including mathematical templates. New Graphs pages start empty; sine/cosine curves can be translated or stretched directly, with concise mathematical formula labels. The page organizer has multiple selection, designs filtered by app count and a live colored arrangement diagram. Mixed pages support Graphs, Notes, Sheets, Program Editor, Calculator, Python editor/shell and isolated Lua ScriptApps. This is not a full TI-Nspire emulator.
 
 **0.1.38:** Expanded view disables the magnifier and displays the preview without additional zoom. Returning to Calculator view restores the session's previous zoom setting.
 
