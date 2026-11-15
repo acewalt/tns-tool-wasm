@@ -84,10 +84,13 @@ async function check(){
  for(const kind of ['basic','python']){const p=reopened.backdrop.querySelector('[data-app-kind='+kind+']');const source=p.querySelector(kind==='basic'?'.ti-program-editor-scroll':'.ti-python-source-scroll');must(source.getBoundingClientRect().height>40,'Embedded source hidden by diagnostics: '+kind);}
  const history=reopened.backdrop.querySelector('.prgm-preview-history');key(history,'Escape');must(history.isConnected,'Escape removed the embedded Calculator');
  const originalSource=reopened.backdrop.querySelector('[data-ti-pe-source]');originalSource.value='Prgm\nDisp 44\nEndPrgm';originalSource.dispatchEvent(new InputEvent('input',{bubbles:true}));
- const stackedLayout=await openDocumentPageLayout(groups.widgets[0]);stackedLayout.modal.querySelector('[data-layout-preview]').click();
+ const stackedLayout=await openDocumentPageLayout(groups.widgets[0]);
+ // Page layout now contains an immediate symbolic preview. Exercise a newer
+ // live preview explicitly to retain the stale-draft/stacking regression.
+ groups=await groupsNow();await openDocumentAppPreview(groups,'widgets',0,{});
  await wait(()=>document.querySelectorAll('.compound-preview-modal').length===2,'preview above layout');
  const topPreview=[...document.querySelectorAll('.compound-preview-modal')].at(-1),topSource=topPreview.querySelector('[data-ti-pe-source]');must(topSource.value.includes('Disp 44'),'Nested preview ignored current BASIC draft');topSource.value='Prgm\nDisp 45\nEndPrgm';topSource.dispatchEvent(new InputEvent('input',{bubbles:true}));topPreview.querySelector('[data-widget-close]').click();await pause(250);
- stackedLayout.modal.querySelector('[data-layout-save]').click();await wait(()=>stackedLayout.modal.querySelector('[data-layout-status]').textContent.includes('Changes saved'),'apply layout after editing newer preview');
+ stackedLayout.modal.querySelector('[data-layout-save]').click();await wait(()=>!stackedLayout.backdrop.isConnected,'apply layout and close after editing newer preview');
  must(xmlDoctor.candidates.some(c=>c.code.includes('Disp 45')),'Disposing old preview overwrote the newer BASIC draft');stackedLayout.close();await pause(250);
  // A source-file identity may become its staged identity after native saving.
  // Further unsaved edits still belong to the same app when navigating back.

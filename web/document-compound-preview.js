@@ -88,7 +88,7 @@
       const item = app.previewItem || app;
       try {
         if (app.previewKind === 'graphs' && window.TnsGraphPreview) controllers.push(window.TnsGraphPreview.mount(pane, item, { ...options, controls: false, onVariablesChange: reportChange }));
-        else if (app.previewKind === 'notes' && window.TiNotepadRichView) controllers.push(window.TiNotepadRichView.mount(pane, item, options));
+        else if (app.previewKind === 'notes' && window.TiNotepadRichView) controllers.push(options.mountApplication?.(pane,app,{...options,onVariablesChange:reportChange}) || window.TiNotepadRichView.mount(pane,item,options));
         else {
           // The document owner supplies adapters that need staged XML or its
           // shared maths session (for example Lists & Spreadsheet). Keeping

@@ -998,7 +998,7 @@
     };
   }
 
-  window.showNotepadModal = function showRichNotepadModal(item, options = {}) {
+  function showRichNotepadModal(item, options = {}) {
     const model = parseNotepadRichText(item?.raw_xml || "");
     if (!model) return originalShowNotepadModal(item, options);
 
@@ -1042,8 +1042,10 @@
     if (options.draft?.richNodes) richView.replaceChildren(...options.draft.richNodes.map(node => node.cloneNode(true)));
     shell.append(calculatorBar, richView);
 
-    let dirty = Boolean(options.draft?.richNodes);
-    const markDirty = () => { dirty = true; };
+    let dirty = options.draft?.dirty ?? Boolean(options.draft?.richNodes);
+    let editRevision = 0;
+    const rememberDraft = () => options.setDraft?.({ richNodes: Array.from(richView.childNodes, node => node.cloneNode(true)), dirty, sourceXml:item.raw_xml });
+    const markDirty = () => { ++editRevision; dirty = true; if(!inlineMath)rememberDraft(); };
     const toolbar = createFormatToolbar(labels, richView, markDirty);
 
     let mathInsertionRange = null;
@@ -1173,19 +1175,22 @@
 
     modal.append(topActions, title, modeBar, toolbar.element, shell, hint);
     backdrop.appendChild(modal);
-    document.body.appendChild(backdrop);
+    if (!options.embedded && !backdrop.isConnected) document.body.appendChild(backdrop);
 
     let closed = false;
     function close(afterClose = null) {
       if (closed) return;
+      if (!finishInlineMath(false,false))finishInlineMath(true,false);
+      rememberDraft();
       closed = true;
       renderer.destroy();
       toolbar.destroy();
       if(inlineMath){const active=inlineMath;inlineMath=null;active.ui.remove();active.target.classList.remove('is-math-editing');}
-      if (typeof window.closeModal === "function") window.closeModal(backdrop, typeof afterClose === 'function' ? afterClose : null);
+      if (options.embedded) { backdrop.remove(); if(typeof afterClose==='function')afterClose(); }
+      else if (typeof window.closeModal === "function") window.closeModal(backdrop, typeof afterClose === 'function' ? afterClose : null);
       else { backdrop.remove(); if (typeof afterClose === 'function') afterClose(); }
     }
-    window.mountDocumentPreviewTabs?.(backdrop, options, '.love-preview-calculator-bar', next => {
+    if (!options.embedded) window.mountDocumentPreviewTabs?.(backdrop, options, '.love-preview-calculator-bar', next => {
       if(!finishInlineMath())return;
       options.setDraft?.({ richNodes: Array.from(richView.childNodes, node => node.cloneNode(true)) });
       close(() => options.pageNavigation.onSelect(next));
@@ -1200,8 +1205,8 @@
       faithfulButton.setAttribute("aria-pressed", editing ? "false" : "true");
       editButton.setAttribute("aria-pressed", editing ? "true" : "false");
       if (editing) {
-        toolbar.show();
-        richView.focus();
+        if(!options.embedded)toolbar.show();
+        if(!options.embedded)richView.focus();
       } else {
         finishInlineMath(true,false);
         mathInsertionRange=null;
@@ -1212,6 +1217,7 @@
 
     richView.addEventListener("input", markDirty);
     richView.addEventListener("keydown", event => {
+      if(options.embedded)event.stopPropagation();
       if (event.key === "Enter") {
         event.preventDefault();
         document.execCommand("insertLineBreak", false);
@@ -1226,37 +1232,45 @@
     });
 
     faithfulButton.addEventListener("click", () => setMode("faithful"));
-    editButton.addEventListener("click", () => setMode("edit"));
+    let formatVisible=false;
+    editButton.addEventListener("click", () => {
+      if(!options.embedded)return setMode('edit');
+      formatVisible=!formatVisible;editButton.setAttribute('aria-pressed',String(formatVisible));
+      if(formatVisible)toolbar.show();else toolbar.hide();
+    });
     cancelButton.addEventListener("click", close);
 
     let saving = null;
     async function persistNoteDraft() {
       if(saving)return saving;
       if(!finishInlineMath())throw Error(labels.invalidMath);
-      const edited = extractEditableModel(richView);
-      const newText = edited.plainText;
-      if (!dirty && newText === model.plainText)return;
+      if (!dirty && extractEditableModel(richView).plainText === model.plainText)return;
       if (typeof originalSaveNotepadWidgetToStage !== "function") {
         throw Error("TI Notes rich editor: saveNotepadWidgetToStage is unavailable.");
-      }
-
-      const rich = buildRichTextFromParagraphRuns(model, edited.paragraphs);
-      if (!rich) {
-        throw Error("TI Notes rich editor: could not rebuild r2dtotree.");
       }
 
       saveButton.disabled = true;
       cancelButton.disabled = true;
       saving=(async()=>{
        try {
+        let result;
+        do {
+        if(!finishInlineMath(false,false))throw Error(labels.invalidMath);
+        const revision = editRevision, edited = extractEditableModel(richView), newText = edited.plainText;
+        const rich = buildRichTextFromParagraphRuns(model, edited.paragraphs);
+        if(!rich)throw Error("TI Notes rich editor: could not rebuild r2dtotree.");
         pendingRichBuild = { text: newText, rich };
-        const result = await originalSaveNotepadWidgetToStage(item, newText);
+        result = options.onSaveRich ? await options.onSaveRich(newText,rich) : await originalSaveNotepadWidgetToStage(item, newText, rich);
         item.content = newText;
         item.raw_xml = result?.raw_xml || item.raw_xml;
+        item.file = result?.file || item.file;
         if (typeof window.xmlLog === "function") {
           window.xmlLog(`${labels.save}: ${newText.length} chars (WYSIWYG rich text preserved)`);
         }
-        dirty=false;model.plainText=newText;
+        // A user can continue typing or formatting while the XML bridge saves.
+        // Flush those edits too before reporting success or closing the editor.
+        dirty=editRevision!==revision;model.plainText=newText;rememberDraft();
+        } while(dirty && !closed);
         return result;
        } finally {
         pendingRichBuild = null;
@@ -1267,7 +1281,7 @@
     }
     backdrop.__documentPreviewCommit=persistNoteDraft;
     saveButton.addEventListener("click", async () => {
-      try {await persistNoteDraft();close();}
+      try {await persistNoteDraft();if(!options.embedded)close();}
       catch(error){console.error(error);}
     });
 
@@ -1275,11 +1289,35 @@
       if (event.target === backdrop) close();
     });
 
-    setMode("faithful");
+    if(options.embedded) {
+      backdrop.classList.remove('modal-backdrop');backdrop.classList.add('document-embedded-preview');
+      modal.setAttribute('role','region');modal.setAttribute('aria-label','TI.Notepad');
+      modeBar.classList.add('preview-controls');
+      faithfulButton.hidden=true;editButton.textContent='B';editButton.title=labels.edit;editButton.setAttribute('aria-label',labels.edit);
+      editButton.addEventListener('mousedown',event=>{event.preventDefault();toolbar.rememberSelection();});
+      saveButton.title=labels.save;saveButton.setAttribute('aria-label',labels.save);saveButton.textContent='💾';modeBar.append(saveButton);
+      cancelButton.hidden=true;
+      setMode('edit');toolbar.hide();
+    } else setMode("faithful");
+    return { model, editor:richView, refresh:renderer.refresh,
+      commit() {if(!finishInlineMath(false,false))throw Error(labels.invalidMath);rememberDraft();},
+      save:persistNoteDraft, destroy:close };
+  }
+
+  window.showNotepadModal = async function showCurrentNotepadModal(item, options = {}) {
+    if(typeof window.readStoredDocumentWidget==='function') item=await window.readStoredDocumentWidget(item,'TI.Notepad');
+    return showRichNotepadModal(item,options);
   };
+
+  function mountEditor(host,item,options={}) {
+    const child=document.createElement('div');host.append(child);
+    const draft=options.draft?.sourceXml&&options.draft.sourceXml!==item.raw_xml?undefined:options.draft;
+    return showRichNotepadModal(item,{...options,draft,embedded:true,createBackdrop:()=>child});
+  }
 
   window.TiNotepadRichView = Object.freeze({
     mount,
+    mountEditor,
     readOnlyRenderer: mount,
     parseNotepadRichText,
     nativeMathSource,
