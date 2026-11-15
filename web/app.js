@@ -10506,6 +10506,7 @@ async function saveGraphWidgetToStage(item, formula) {
   if (typeof formula === 'string' && graphState.curves?.length) graphState.curves[0].formula = clean;
   pyodide.globals.set("wasm_graph_save_file", item?.file || "");
   pyodide.globals.set("wasm_graph_save_path", item?.path || "");
+  pyodide.globals.set("wasm_graph_save_snapshot", item?.raw_xml || "");
   pyodide.globals.set("wasm_graph_save_name", fname);
   pyodide.globals.set("wasm_graph_save_formula", clean);
   pyodide.globals.set('wasm_graph_save_state', JSON.stringify(graphState));
@@ -10515,44 +10516,38 @@ import xml.etree.ElementTree as ET
 from copy import deepcopy
 from pathlib import Path
 from xml_scanner import local_name, namespace_uri
-source_root=Path("${xmlDoctor.sourcePath}"); stage_root=Path("${xmlDoctor.stagePath}")
-source_file=Path(wasm_graph_save_file) if wasm_graph_save_file else None
-xml_file=None
-if source_file:
-    try: rel=source_file.relative_to(stage_root)
-    except ValueError:
-        try: rel=source_file.relative_to(source_root)
-        except ValueError: rel=Path(source_file.name)
-    candidate=stage_root/rel
-    if candidate.exists(): xml_file=candidate
-if xml_file is None:
-    problems=sorted([p for p in stage_root.rglob("*.xml") if p.name.lower().startswith("problem")], key=lambda p:p.name.lower())
-    if problems: xml_file=problems[0]
-if xml_file is None: raise RuntimeError("No XML file available for Graph save")
-
-def parse_part(part):
-    text=str(part or "")
-    if text.endswith("]") and "[" in text:
-        name,raw=text.rsplit("[",1); raw=raw[:-1]
-        if raw.isdigit(): return name,int(raw)
-    return text,1
-
-def resolve_path(root,path):
-    parts=[p for p in str(path or "").split("/") if p]
-    if parts and parse_part(parts[0])[0]==local_name(root.tag): parts=parts[1:]
-    cur=root
-    for part in parts:
-        name,index=parse_part(part); matches=[c for c in cur if local_name(c.tag)==name]
-        if index<1 or index>len(matches): return None
-        cur=matches[index-1]
-    return cur
-
-tree=ET.parse(xml_file); root=tree.getroot(); gg_ns="urn:TI.GeoGrapher"
-wdgt=resolve_path(root,wasm_graph_save_path)
-if wdgt is None or wdgt.attrib.get("type")!="TI.GeoGrapher":
-    matches=[n for n in root.iter() if local_name(n.tag)=="wdgt" and n.attrib.get("type")=="TI.GeoGrapher"]
-    if not matches: raise RuntimeError("TI.GeoGrapher widget not found")
-    wdgt=matches[-1]
+from page_layout import PROBLEM_NS, _atomic_write, _parse, _path, _signature, _retain_namespace_context
+from xml.dom import Node
+source_root=Path("${xmlDoctor.sourcePath}").resolve(); stage_root=Path("${xmlDoctor.stagePath}").resolve()
+if not wasm_graph_save_file or not wasm_graph_save_path or not wasm_graph_save_snapshot:
+    raise ValueError("An inspected Graphs file, path and snapshot are required.")
+source_file=Path(wasm_graph_save_file).resolve()
+try: rel=source_file.relative_to(stage_root)
+except ValueError:
+    try: rel=source_file.relative_to(source_root)
+    except ValueError: raise ValueError("The selected Graphs is outside this document.")
+xml_file=(stage_root/rel).resolve(); xml_file.relative_to(stage_root)
+if not xml_file.is_file() or xml_file.suffix.lower() != ".xml":
+    raise ValueError("The selected Graphs file no longer exists.")
+original=xml_file.read_bytes(); document=_parse(original); native_root=document.documentElement
+if native_root.namespaceURI != PROBLEM_NS or native_root.localName != "prob":
+    raise ValueError("The selected file is not a native Problem document.")
+matches=[node for node in native_root.getElementsByTagNameNS(PROBLEM_NS,"wdgt")
+         if _path(node)==wasm_graph_save_path and node.getAttribute("type")=="TI.GeoGrapher"]
+if len(matches)!=1: raise ValueError("The selected Graphs no longer exists. Reopen Document Inspector.")
+native_widget=matches[0]; expected=_parse(wasm_graph_save_snapshot).documentElement
+if _signature(native_widget,True)!=_signature(expected,True):
+    raise ValueError("The selected Graphs changed. Reopen Document Inspector before saving.")
+# Work only on the selected graph. Retain sibling applications, symbols, CRs,
+# namespace bindings and opaque document metadata in the native DOM.
+snapshot=native_widget.cloneNode(True)
+bindings={}; owner=native_widget
+while owner.nodeType==Node.ELEMENT_NODE:
+    for attribute in owner.attributes.values():
+        if attribute.namespaceURI=="http://www.w3.org/2000/xmlns/": bindings.setdefault(attribute.name,attribute.value)
+    owner=owner.parentNode
+for name,value in bindings.items(): snapshot.setAttributeNS("http://www.w3.org/2000/xmlns/",name,value)
+wdgt=ET.fromstring(snapshot.toxml().replace(chr(13),"&#13;")); gg_ns="urn:TI.GeoGrapher"
 fname=str(wasm_graph_save_name or "f1"); formula=str(wasm_graph_save_formula or "")
 state=json.loads(wasm_graph_save_state)
 def child(node,name): return next((c for c in node if local_name(c.tag)==name),None)
@@ -10631,20 +10626,35 @@ if view:
         if axisval is not None:
             key={"0":"xmax","1":"xmin","2":"ymax","3":"ymin"}.get(read(axisval,"ty"))
             if key: write(node,"num",view[key])
-sym=next((x for x in root if local_name(x.tag)=="sym"),None)
-if sym is not None:
-    ns=namespace_uri(root.tag)
+native_sym=next((node for node in native_root.childNodes if node.nodeType==Node.ELEMENT_NODE and node.namespaceURI==PROBLEM_NS and node.localName=="sym"),None)
+def native_child(node,name):
+    return next((child for child in node.childNodes if child.nodeType==Node.ELEMENT_NODE and child.namespaceURI==PROBLEM_NS and child.localName==name),None)
+def native_text(node):
+    return "".join(child.data for child in node.childNodes if child.nodeType in (Node.TEXT_NODE,Node.CDATA_SECTION_NODE)) if node is not None else ""
+def native_element(name):
+    prefix=native_root.prefix
+    return document.createElementNS(PROBLEM_NS,(prefix+":" if prefix else "")+name)
+if native_sym is not None:
     for name,text in updates.items():
-        entry=next((n for n in sym if local_name(n.tag)=="e" and read(n,"n")==name),None)
+        entry=next((node for node in native_sym.childNodes if node.nodeType==Node.ELEMENT_NODE and node.namespaceURI==PROBLEM_NS and node.localName=="e" and native_text(native_child(node,"n"))==name),None)
         if entry is None:
-            entry=ET.SubElement(sym,f"{{{ns}}}e" if ns else "e",{"t":"6","f":"0","c":"255"})
-            for key,data in [("n",name),("p","x"),("v",text)]: ET.SubElement(entry,f"{{{ns}}}{key}" if ns else key).text=data
+            entry=native_element("e")
+            for key,value in {"t":"6","f":"0","c":"255"}.items(): entry.setAttribute(key,value)
+            for key,value in [("n",name),("p","x"),("v",text)]:
+                node=native_element(key); node.appendChild(document.createTextNode(value)); entry.appendChild(node)
+            native_sym.appendChild(entry)
         else:
-            v=child(entry,"v")
-            if v is not None: v.text=text
-body=ET.tostring(root,encoding="UTF-8",short_empty_elements=False)
-xml_file.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+body)
-json.dumps({"file":str(xml_file),"formula":formula,"function":fname,"raw_xml":ET.tostring(wdgt,encoding="unicode",short_empty_elements=False)})
+            value=native_child(entry,"v")
+            if value is not None:
+                for child_node in list(value.childNodes): value.removeChild(child_node)
+                value.appendChild(document.createTextNode(text))
+replacement=_parse(ET.tostring(wdgt,encoding="unicode",short_empty_elements=False).replace(chr(13),"&#13;")).documentElement
+replacement=document.importNode(replacement,True); native_widget.parentNode.replaceChild(replacement,native_widget)
+body=document.toxml(encoding="UTF-8").replace(bytes([13]),b"&#13;")
+body=body.replace(b'<?xml version="1.0" encoding="UTF-8"?>',b'<?xml version="1.0" encoding="UTF-8" ?>',1)
+_parse(body); _atomic_write(xml_file,body,original)
+_retain_namespace_context(replacement)
+json.dumps({"file":str(xml_file),"formula":formula,"function":fname,"raw_xml":replacement.toxml()})
 `);
   xmlDoctor.stagePrepared=true; return JSON.parse(payload);
 }
@@ -17820,6 +17830,23 @@ function mountDocumentNotes(host,item,options={}) {
   return controller?{...controller,kind:'notes',item}:null;
 }
 
+function mountDocumentGraph(host,item,options={}) {
+  const view=window.TnsGraphPreview.mount(host,item,{...options,controls:false,onStateChange:state=>options.setDraft?.(state)});
+  let saving=null;
+  const save=()=>saving||(saving=(async()=>{
+    // A Save may share the document bridge with other pane saves. Keep the
+    // last successful snapshot and flush gestures made while it was pending.
+    for(;;){
+      const state=view.getState(),signature=JSON.stringify(state);
+      const result=await saveGraphWidgetToStage(item,state);
+      item.file=result.file; item.raw_xml=result.raw_xml; item.content=result.formula;
+      item.detail={...item.detail,function:result.function,expression:result.formula};
+      if(JSON.stringify(view.getState())===signature)break;
+    }
+  })().finally(()=>{saving=null;}));
+  return {...view,kind:'graphs',item,save};
+}
+
 function mountDocumentLuaPreview(host, app, context, options = {}) {
   // LuaJS resolves generated globals through window. A dedicated realm per
   // ScriptApp preserves each app's handlers, timers and D2Editors when several
@@ -18056,14 +18083,14 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
         Object.assign(context.mathSession.variables, values);
         window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail: { file: page.file, variables: context.mathSession.variables } }));
       },
-      mountApplication: (host, app) => {
+      mountApplication: (host, app, paneOptions = {}) => {
         const sheet = app.previewItem || app, key = `${documentXmlFileIdentity(sheet.file)}::${sheet.path||sheet.name}`;
         const settings = { mathSession: context.mathSession, luaSymbols: luaSymbols.get(app), draft: appDrafts[key], setDraft: draft => { appDrafts[key] = draft; },
           findCalculator:()=>appControllers.find(controller=>controller.kind==='calculators'),
           findPythonShell:()=>appControllers.find(controller=>controller.kind==='python'&&(controller.item.name==='TI.PythonShell'||controller.item.content_label==='PythonShell')),
           findPythonEditor:source=>appControllers.find(controller=>controller.kind==='python'&&controller.item.name!=='TI.PythonShell'&&source&&documentPythonPreviewFile(controller.getPythonItem())===documentPythonPreviewFile(source)),
         };
-        const controller = app.previewKind === 'lua' ? mountDocumentLuaPreview(host,app,context,settings) : app.previewKind === 'sheets' ? mountDocumentSpreadsheet(host,sheet,settings) : app.previewKind === 'notes' ? mountDocumentNotes(host,sheet,settings) : mountDocumentEmbeddedPreview(host,app,context,settings);
+        const controller = app.previewKind === 'graphs' ? mountDocumentGraph(host,sheet,{...paneOptions,...settings}) : app.previewKind === 'lua' ? mountDocumentLuaPreview(host,app,context,settings) : app.previewKind === 'sheets' ? mountDocumentSpreadsheet(host,sheet,settings) : app.previewKind === 'notes' ? mountDocumentNotes(host,sheet,settings) : mountDocumentEmbeddedPreview(host,app,context,settings);
         if (!controller) return null;
         appControllers.push(controller);
         return controller;

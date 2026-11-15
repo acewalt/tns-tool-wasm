@@ -49,5 +49,36 @@ async function check(){
  must(view.getState().curves[0].formula==='2*sin(0.5*x-0.25)+0.25','translation after native reopen nested/lost coefficients');
  view.showEntry(view.getState().curves[0]);submit('0');await pause(20);must(entry().hidden&&view.getState().curves[0].formula==='0','a user-entered zero was treated as an empty graph');
  view.showEntry(view.getState().curves[0]);submit(shaped);await pause(30);
- return{ok:true,offline:true,blankEntry:true,blankNativeSave:true,repeatedGestures:60,mathematicalLabel:true,crestReshapesAmplitudePeriod:true,nativeSaveReopen:true,repeatSaveNoDuplicates:true,zeroIsValid:true,formula:shaped};
+ // A grouped Graph must participate in the page Save/layout commit just as
+ // its Notes or Calculator siblings do; saving the divider alone loses curves.
+ opened.dispose();await pause(200);await addNotepadWidgetToStage();
+ let data=await inspectXmlDocument(),cards=documentLayoutCards(data),graphCard=cards.find(c=>c.apps.some(a=>a.name==='TI.GeoGrapher')),noteCard=cards.find(c=>c.apps.some(a=>a.name==='TI.Notepad'));
+ await applyDocumentPageLayout({action:'group',file:graphCard.file,path:graphCard.path,cards:[graphCard,noteCard],layout:{clay:1,w1:5000,h1:5000,w2:5000,h2:5000}});
+ const currentGroups=async()=>{const data=await inspectXmlDocument(),groups=TnsDocumentPreviewNavigation.groups(data.items);groups.widgets=documentWidgetPreviewPages(data.items,groups);return groups;};
+ let groups=await currentGroups(),index=groups.widgets.findIndex(page=>page.previewItems?.some(app=>app.previewKind==='graphs'));
+ let compound=await openDocumentAppPreview(groups,'widgets',index,{});await pause(80);
+ let graph=compound.controllers.find(c=>c.kind==='graphs');must(graph,'grouped Graph has no document Save adapter');
+ const editGraph=source=>{graph.showEntry(graph.getState().curves[0]);const form=graph.root.querySelector('.ti-graph-entry');form.querySelector('.ti-graph-entry-input').value=source;form.requestSubmit();};
+ editGraph('3*cos(x)');graph.setViewport({xmin:-8,xmax:8,ymin:-4,ymax:4});
+ compound.backdrop.querySelector('[data-compound-save]').click();await wait(()=>compound.backdrop.querySelector('[data-compound-status]').textContent==='Layout saved','grouped graph Save');
+ must((await inspectXmlDocument()).items.find(i=>i.name==='TI.GeoGrapher').raw_xml.includes('3*cos(x)'),'page Save omitted edited curve');
+ compound.dispose();closeModal(compound.backdrop);await pause(200);groups=await currentGroups();compound=await openDocumentAppPreview(groups,'widgets',index,{});await pause(80);graph=compound.controllers.find(c=>c.kind==='graphs');
+ must(graph.getState().curves[0].formula==='3*cos(x)'&&graph.getState().viewport.xmin===-8,'grouped Graph save/reopen lost curve or viewport');
+ documentCalculatorContext(graph.item.file).mathSession.evaluate('qa_amplitude:=4');editGraph('qa_amplitude*sin(x)');await pause(50);must(!graph.root.dataset.error,'grouped Graph lost shared maths/stored variables');
+ const before=(await inspectXmlDocument()).items.find(i=>i.name==='TI.GeoGrapher');editGraph('4*sin(x)');
+ const layout=await openDocumentPageLayout(groups.widgets[index]);must((await inspectXmlDocument()).items.find(i=>i.name==='TI.GeoGrapher').raw_xml.includes('4*sin(x)'),'layout snapshot omitted pending Graph edit');layout.close();
+ const snapshot=pyodide.FS.readFile(before.file,{encoding:'utf8'});let rejected=false;try{await saveGraphWidgetToStage(before,{...graph.getState(),curves:[{...graph.getState().curves[0],formula:'999'}]});}catch(error){rejected=/changed/.test(error.message);}
+ must(rejected&&pyodide.FS.readFile(before.file,{encoding:'utf8'})===snapshot,'stale Graph overwrote the current widget');
+ compound.dispose();closeModal(compound.backdrop);await pause(150);
+ pyodide.globals.set('qa_graph_file',before.file);
+ const native=await pyodide.runPythonAsync(`import pathlib,tnstools
+_qa_graph_file=pathlib.Path(qa_graph_file)
+_qa_graph_out=pathlib.Path('/tmp/qa-graph-v44.tns')
+tnstools.build_tns_from_xml(_qa_graph_file.parent,_qa_graph_out)
+_qa_graph_reopen=pathlib.Path('/tmp/qa-graph-v44-reopened');_qa_graph_reopen.mkdir(exist_ok=True)
+tnstools.decode_tns_file(_qa_graph_out,_qa_graph_reopen)
+len(_qa_graph_out.read_bytes())`);
+ const decoded=await pyodide.runPythonAsync("(_qa_graph_reopen/_qa_graph_file.name).read_text(encoding='utf-8')");await loadXmlDoctorFiles([new File([decoded],'Problem1.xml')],'file');groups=await currentGroups();const final=await openDocumentAppPreview(groups,'widgets',index,{});await pause(60);
+ must(final.controllers.find(c=>c.kind==='graphs').getState().curves[0].formula==='4*sin(x)','native TNS roundtrip lost grouped Graph');
+ return{ok:true,offline:true,blankEntry:true,blankNativeSave:true,repeatedGestures:60,mathematicalLabel:true,crestReshapesAmplitudePeriod:true,nativeSaveReopen:true,repeatSaveNoDuplicates:true,zeroIsValid:true,formula:shaped,groupedSaveReopen:true,groupedViewport:true,layoutCommitsGraph:true,staleGraphRejected:true,sharedMathVariables:true,nativeTnsRoundtrip:true,nativeTnsBytes:Number(native)};
 }
