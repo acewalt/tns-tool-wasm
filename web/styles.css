@@ -14,16 +14,16 @@
 }
 
 [data-theme="dark"] {
-  --bg: #0b1220;
-  --panel: #111827;
-  --line: #263244;
-  --text: #e5eefb;
-  --muted: #9fb0c6;
-  --accent: #2dd4bf;
-  --accent-strong: #14b8a6;
-  --button-bg: #1e3a5f;
-  --button-text: #bfdbfe;
-  --button-hover: #254b78;
+  --bg: #050506;
+  --panel: #111113;
+  --line: #303034;
+  --text: #f2f2f4;
+  --muted: #a6a6ae;
+  --accent: #b7f34d;
+  --accent-strong: #91cf39;
+  --button-bg: #252528;
+  --button-text: #ededf0;
+  --button-hover: #38383d;
 }
 
 * {
@@ -556,7 +556,7 @@ body.drop-target-active .click-burst-layer {
 [data-theme="dark"] .summary,
 [data-theme="dark"] .problem-table,
 [data-theme="dark"] .lua-problem-table {
-  background: #0f172a;
+  background: #171719;
   color: var(--text);
   border-color: var(--line);
 }
@@ -4303,3 +4303,12 @@ html:not([data-theme="dark"]) .monaco-code-host .monaco-editor .mtk10 {
 .code-shell.has-program-declaration>.editor-wrap{height:100%;min-height:0}
 .code-shell.has-program-declaration.monaco-enabled .program-declaration{padding-left:64px}
 [data-theme="dark"] .program-declaration{color:#dce8f8;background:#101b2d}
+
+/* Dark preview: neutral black, not navy/turquoise. */
+[data-theme="dark"] .love-preview-modal {
+  background: #0d0d0f;
+  border-color: #343439;
+}
+[data-theme="dark"] .love-preview-stage {
+  border-color: #45454a;
+}
