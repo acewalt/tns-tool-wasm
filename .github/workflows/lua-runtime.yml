@@ -16,3 +16,4 @@ jobs:
         with:
           node-version: '22'
       - run: npm run test:lua-compat
+      - run: node --test tests/layout-guide-v46.test.js

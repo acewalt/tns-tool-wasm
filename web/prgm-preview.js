@@ -1,6 +1,6 @@
 import {createPrgmPreview,formatPrgmValue} from '../src/prgm/runtime.js?v=20261110-library-runtime-v37';
 import {renderPrgmGraphics} from '../src/prgm/drawing.js?v=20261110-library-runtime-v37';
-import {createCalculatorSession} from '../src/prgm/calculator-session.js?v=20261110-library-runtime-v37';
+import {createCalculatorSession} from '../src/prgm/calculator-session.js?v=20261121-calculator-v46';
 
 const COPY={
   es:{title:'Preview Prgm',note:'Simulación TI-BASIC · entradas, texto y dibujos CX II.',run:'Ejecutar',pause:'Pausar',step:'Paso',stop:'Detener',restart:'Reiniciar / actualizar',expand:'Vista ampliada',normal:'Tamaño calculadora',close:'Cerrar',variables:'Variables',empty:'Todavía no hay valores.',copy:'Copiar salida',copied:'Salida copiada.',ok:'OK',cancel:'Cancelar',done:'Hecho',line:'Línea',ready:'Listo',waiting:'Esperando entrada',paused:'Pausado',running:'Ejecutando',stopped:'Detenido',error:'Error',support:'Cobertura del preview',help:'Calcula o llama a los programas del problema con Enter. Se simulan entradas, texto y dibujos CX II. Las operaciones no soportadas muestran su error y línea; no es un emulador completo de la calculadora.',keys:'Enter: aceptar · Esc: cancelar entrada · ↑/↓: desplazar salida',angle:'Ángulos (reinicia)',request:'Entrada del programa',viewLine:'Ver línea en editor'},

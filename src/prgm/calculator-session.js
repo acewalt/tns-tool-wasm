@@ -1,4 +1,4 @@
-import {createMathSession} from './math-api.js?v=20261110-library-runtime-v37';
+import {createMathSession} from './math-api.js?v=20261121-calculator-v46';
 import {compilePrgm,createPrgmPreview} from './runtime.js?v=20261110-library-runtime-v37';
 import {split,expressionTree,formatPrgmValue,PrgmError} from './math.js?v=20261110-library-runtime-v37';
 

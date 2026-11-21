@@ -1,0 +1,38 @@
+{
+  "ok": true,
+  "offline": true,
+  "actualAddImageInLayout": true,
+  "twoLuaRealms": true,
+  "integerDrag": 4367,
+  "saveAndReopen": true,
+  "groupedFocusStable": true,
+  "pageButtonNoHorizontalOverflow": true,
+  "calculatorCommands": [
+    "math.eval(1+2^2)",
+    "math.eval(\"1+1\")",
+    "math.evalstr(factor(x^2-1))",
+    "math.evalstr(integral(x^2,x))",
+    "math.evalstr(solve(x^2-4=0,x))",
+    "373.216-273.15"
+  ],
+  "calculatorOutputs": [
+    "math.eval(5)",
+    "math.eval(\"1+1\")",
+    "math.evalstr((x-1)*(x+1))",
+    "math.evalstr(x^3/3)",
+    "math.evalstr(x=-2 or x=2)",
+    "100.066"
+  ],
+  "guideCategories": 10,
+  "guideEntries": 79,
+  "guideEvidence": true,
+  "guideInsertAtCaret": true,
+  "guideTryIsolated": true,
+  "guideCasIntegrated": true,
+  "languages": [
+    "en",
+    "es",
+    "fr"
+  ],
+  "realMouseHoverStable": true
+}
