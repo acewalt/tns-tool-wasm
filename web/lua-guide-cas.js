@@ -316,7 +316,7 @@ end`
   }
 
   function install(categories) {
-    if (!categories || categories.getAttribute(INSTALLED) === "true") return;
+    if (!categories || categories.closest('[data-lua-guide-unified]') || categories.getAttribute(INSTALLED) === "true") return;
     const list = categories.parentElement?.querySelector(".lua-guide-list")
       || categories.parentElement?.parentElement?.querySelector(".lua-guide-list");
     if (!list) return;
@@ -440,5 +440,13 @@ end`
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();
 
-  window.TnsLuaGuideCas = { version: VERSION, scan };
+  window.TnsLuaGuideCas = { version: VERSION, scan, createPanel(language) {
+    const panel=buildPanel(TEXT[language] || TEXT.en);
+    panel.addEventListener('click', async event => {
+      const copy=event.target.closest('[data-cas-copy]');
+      if(copy){await navigator.clipboard.writeText(COPY_SNIPPETS[copy.dataset.casCopy]);copy.textContent=(TEXT[language]||TEXT.en).copied;}
+      if(event.target.closest('.cas-guide-refresh'))panel.querySelector('.cas-guide-status').innerHTML=statusHtml(TEXT[language]||TEXT.en);
+    });
+    return panel;
+  } };
 })();

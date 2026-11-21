@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-21-layout-lua-v45";
+const SOURCE_VERSION = "2026-11-21-layout-guide-v46";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -5269,532 +5269,7 @@ function highlightLuaLine(line) {
   return output || " ";
 }
 
-const LUA_GUIDE_ITEMS = [
-  {
-    name: "platform.apilevel",
-    description: {
-      es: "Define el nivel de API Lua que el documento espera usar.",
-      en: "Defines the Lua API level expected by the document.",
-      fr: "Definit le niveau d'API Lua attendu par le document.",
-    },
-  },
-  {
-    name: "platform.window:width()",
-    description: {
-      es: "Devuelve el ancho actual de la pantalla de la calculadora.",
-      en: "Returns the current calculator screen width.",
-      fr: "Renvoie la largeur actuelle de l'ecran de la calculatrice.",
-    },
-  },
-  {
-    name: "platform.window:height()",
-    description: {
-      es: "Devuelve el alto actual de la pantalla de la calculadora.",
-      en: "Returns the current calculator screen height.",
-      fr: "Renvoie la hauteur actuelle de l'ecran de la calculatrice.",
-    },
-  },
-  {
-    name: "platform.window:invalidate()",
-    description: {
-      es: "Solicita repintar la pantalla y vuelve a llamar on.paint.",
-      en: "Requests a screen redraw and calls on.paint again.",
-      fr: "Demande un rafraichissement de l'ecran et rappelle on.paint.",
-    },
-  },
-  {
-    name: "on.paint(gc)",
-    description: {
-      es: "Evento principal de dibujo. Todo lo visual se renderiza aqui.",
-      en: "Main drawing event. All visual output is rendered here.",
-      fr: "Evenement principal de dessin. Tout l'affichage visuel est rendu ici.",
-    },
-  },
-  {
-    name: "on.create()",
-    description: {
-      es: "Se ejecuta al crear/iniciar el script Lua.",
-      en: "Runs when the Lua script is created or started.",
-      fr: "S'execute lors de la creation ou du demarrage du script Lua.",
-    },
-  },
-  {
-    name: "on.timer()",
-    description: {
-      es: "Evento repetido cuando timer.start esta activo.",
-      en: "Repeated event while timer.start is active.",
-      fr: "Evenement repete lorsque timer.start est actif.",
-    },
-  },
-  {
-    name: "on.enterKey()",
-    description: {
-      es: "Evento al presionar Enter.",
-      en: "Event fired when Enter is pressed.",
-      fr: "Evenement declenche lorsque Entree est pressee.",
-    },
-  },
-  {
-    name: "on.escapeKey()",
-    description: {
-      es: "Evento al presionar Esc.",
-      en: "Event fired when Esc is pressed.",
-      fr: "Evenement declenche lorsque Echap est pressee.",
-    },
-  },
-  {
-    name: "on.arrowKey(direction)",
-    description: {
-      es: "Evento de flechas. direction suele ser up, down, left o right.",
-      en: "Arrow-key event. direction is usually up, down, left, or right.",
-      fr: "Evenement des fleches. direction vaut souvent up, down, left ou right.",
-    },
-  },
-  {
-    name: "on.charIn(ch)",
-    description: {
-      es: "Recibe caracteres escritos por teclado.",
-      en: "Receives characters typed from the keyboard.",
-      fr: "Recoit les caracteres saisis au clavier.",
-    },
-  },
-  {
-    name: "gc:setColorRGB(r,g,b)",
-    description: {
-      es: "Cambia el color para las siguientes operaciones graficas.",
-      en: "Changes the color used by the next drawing operations.",
-      fr: "Change la couleur utilisee par les prochaines operations graphiques.",
-    },
-  },
-  {
-    name: "gc:setFont(family, style, size)",
-    description: {
-      es: "Configura fuente, estilo y tamano antes de dibujar texto.",
-      en: "Sets font family, style, and size before drawing text.",
-      fr: "Definit la police, le style et la taille avant de dessiner du texte.",
-    },
-  },
-  {
-    name: "gc:drawString(text,x,y,pos)",
-    description: {
-      es: "Dibuja texto en una coordenada. pos puede ser top, middle o baseline.",
-      en: "Draws text at a coordinate. pos can be top, middle, or baseline.",
-      fr: "Dessine du texte a une coordonnee. pos peut valoir top, middle ou baseline.",
-    },
-  },
-  {
-    name: "gc:getStringWidth(text)",
-    description: {
-      es: "Calcula el ancho en pixeles de un texto con la fuente actual.",
-      en: "Calculates the pixel width of text using the current font.",
-      fr: "Calcule la largeur en pixels du texte avec la police actuelle.",
-    },
-  },
-  {
-    name: "gc:drawRect(x,y,w,h)",
-    description: {
-      es: "Dibuja el borde de un rectangulo.",
-      en: "Draws the outline of a rectangle.",
-      fr: "Dessine le contour d'un rectangle.",
-    },
-  },
-  {
-    name: "gc:fillRect(x,y,w,h)",
-    description: {
-      es: "Rellena un rectangulo.",
-      en: "Fills a rectangle.",
-      fr: "Remplit un rectangle.",
-    },
-  },
-  {
-    name: "gc:drawLine(x1,y1,x2,y2)",
-    description: {
-      es: "Dibuja una linea entre dos puntos.",
-      en: "Draws a line between two points.",
-      fr: "Dessine une ligne entre deux points.",
-    },
-  },
-  {
-    name: "gc:drawArc(x,y,w,h,start,angle)",
-    description: {
-      es: "Dibuja un arco o borde circular.",
-      en: "Draws an arc or circular outline.",
-      fr: "Dessine un arc ou un contour circulaire.",
-    },
-  },
-  {
-    name: "gc:fillArc(x,y,w,h,start,angle)",
-    description: {
-      es: "Rellena un arco o circulo parcial.",
-      en: "Fills an arc or partial circle.",
-      fr: "Remplit un arc ou un cercle partiel.",
-    },
-  },
-  {
-    name: "timer.start(seconds)",
-    description: {
-      es: "Activa eventos on.timer con intervalo aproximado.",
-      en: "Starts on.timer events at an approximate interval.",
-      fr: "Active les evenements on.timer avec un intervalle approximatif.",
-    },
-  },
-  {
-    name: "timer.stop()",
-    description: {
-      es: "Detiene el timer.",
-      en: "Stops the timer.",
-      fr: "Arrete le timer.",
-    },
-  },
-  {
-    name: "D2Editor.newRichText()",
-    description: {
-      es: "Crea un editor nativo de texto enriquecido/matematico.",
-      en: "Creates a native rich-text or math editor.",
-      fr: "Cree un editeur natif de texte enrichi ou mathematique.",
-    },
-  },
-  {
-    name: "var.store(name,value)",
-    description: {
-      es: "Guarda una variable CAS accesible desde el documento.",
-      en: "Stores a CAS variable accessible from the document.",
-      fr: "Enregistre une variable CAS accessible depuis le document.",
-    },
-  },
-  {
-    name: "var.recall(name)",
-    description: {
-      es: "Lee una variable CAS guardada en el documento.",
-      en: "Reads a CAS variable stored in the document.",
-      fr: "Lit une variable CAS enregistree dans le document.",
-    },
-  },
-  {
-    name: "love.load()",
-    category: "love",
-    description: {
-      es: "Inicializa recursos y variables del juego o animacion LÖVE.",
-      en: "Initializes resources and variables for a LÖVE game or animation.",
-      fr: "Initialise les ressources et variables d'un jeu ou d'une animation LÖVE.",
-    },
-  },
-  {
-    name: "love.update(dt)",
-    category: "love",
-    description: {
-      es: "Actualiza logica por frame. dt es el tiempo en segundos desde el frame anterior.",
-      en: "Updates per-frame logic. dt is the elapsed seconds since the previous frame.",
-      fr: "Met a jour la logique par frame. dt est le temps en secondes depuis la frame precedente.",
-    },
-  },
-  {
-    name: "love.draw()",
-    category: "love",
-    description: {
-      es: "Dibuja la escena LÖVE. En el conversor se ejecuta desde on.paint(gc).",
-      en: "Draws the LÖVE scene. In the converter it runs from on.paint(gc).",
-      fr: "Dessine la scene LÖVE. Dans le convertisseur, elle s'execute depuis on.paint(gc).",
-    },
-  },
-  {
-    name: "love.resize(w,h)",
-    category: "love",
-    description: {
-      es: "Se llama cuando cambia el tamano del preview o ventana.",
-      en: "Runs when the preview or window size changes.",
-      fr: "S'execute lorsque la taille de l'apercu ou de la fenetre change.",
-    },
-  },
-  {
-    name: "love.keypressed(key)",
-    category: "love",
-    description: {
-      es: "Recibe teclas como up, down, left, right, return, escape o space.",
-      en: "Receives keys such as up, down, left, right, return, escape, or space.",
-      fr: "Recoit les touches comme up, down, left, right, return, escape ou space.",
-    },
-  },
-  {
-    name: "love.mousepressed(x,y,button)",
-    category: "love",
-    description: {
-      es: "Recibe clicks del preview LÖVE con coordenadas del canvas.",
-      en: "Receives LÖVE preview clicks with canvas coordinates.",
-      fr: "Recoit les clics de l'apercu LÖVE avec les coordonnees du canvas.",
-    },
-  },
-  {
-    name: "love.graphics.setColor(r,g,b,a)",
-    category: "love",
-    description: {
-      es: "Define el color de dibujo. Acepta 0..1 estilo LÖVE o 0..255.",
-      en: "Sets the drawing color. Accepts LÖVE-style 0..1 or 0..255 values.",
-      fr: "Definit la couleur de dessin. Accepte les valeurs LÖVE 0..1 ou 0..255.",
-    },
-  },
-  {
-    name: "love.graphics.setBackgroundColor(r,g,b,a)",
-    category: "love",
-    description: {
-      es: "Define el color usado por love.graphics.clear y por el fondo del preview.",
-      en: "Sets the color used by love.graphics.clear and the preview background.",
-      fr: "Definit la couleur utilisee par love.graphics.clear et le fond de l'apercu.",
-    },
-  },
-  {
-    name: "love.graphics.print(text,x,y)",
-    category: "love",
-    description: {
-      es: "Dibuja texto y queda disponible en Copiar contenido.",
-      en: "Draws text and makes it available through Copy content.",
-      fr: "Dessine du texte et le rend disponible via Copier contenu.",
-    },
-  },
-  {
-    name: "love.graphics.printf(text,x,y,limit,align)",
-    category: "love",
-    description: {
-      es: "Dibuja texto alineado a izquierda, centro o derecha dentro de un ancho.",
-      en: "Draws text aligned left, center, or right inside a width.",
-      fr: "Dessine du texte aligne a gauche, centre ou droite dans une largeur.",
-    },
-  },
-  {
-    name: "love.graphics.rectangle(mode,x,y,w,h)",
-    category: "love",
-    description: {
-      es: "Dibuja o rellena rectangulos. mode suele ser fill o line.",
-      en: "Draws or fills rectangles. mode is usually fill or line.",
-      fr: "Dessine ou remplit des rectangles. mode vaut souvent fill ou line.",
-    },
-  },
-  {
-    name: "love.graphics.circle(mode,x,y,radius)",
-    category: "love",
-    description: {
-      es: "Dibuja o rellena circulos usando el canvas del preview.",
-      en: "Draws or fills circles using the preview canvas.",
-      fr: "Dessine ou remplit des cercles avec le canvas de l'apercu.",
-    },
-  },
-  {
-    name: "love.graphics.ellipse(mode,x,y,rx,ry)",
-    category: "love",
-    description: {
-      es: "Dibuja o rellena elipses. En TI-Nspire se traduce a arcos.",
-      en: "Draws or fills ellipses. On TI-Nspire it is translated to arcs.",
-      fr: "Dessine ou remplit des ellipses. Sur TI-Nspire, cela se traduit en arcs.",
-    },
-  },
-  {
-    name: "love.graphics.arc(mode,x,y,r,a1,a2)",
-    category: "love",
-    description: {
-      es: "Dibuja o rellena arcos usando angulos en radianes.",
-      en: "Draws or fills arcs using angles in radians.",
-      fr: "Dessine ou remplit des arcs avec des angles en radians.",
-    },
-  },
-  {
-    name: "love.graphics.line(...)",
-    category: "love",
-    description: {
-      es: "Dibuja segmentos entre pares x,y. Tambien acepta una tabla de puntos.",
-      en: "Draws segments between x,y pairs. It also accepts a point table.",
-      fr: "Dessine des segments entre paires x,y. Accepte aussi une table de points.",
-    },
-  },
-  {
-    name: "love.graphics.polygon(mode,...)",
-    category: "love",
-    description: {
-      es: "Dibuja o rellena poligonos con pares de coordenadas.",
-      en: "Draws or fills polygons from coordinate pairs.",
-      fr: "Dessine ou remplit des polygones avec des paires de coordonnees.",
-    },
-  },
-  {
-    name: "love.graphics.push/pop/translate/scale/rotate",
-    category: "love",
-    description: {
-      es: "Maneja transformaciones graficas. El conversor aplica transformaciones basicas.",
-      en: "Manages graphics transforms. The converter applies basic transforms.",
-      fr: "Gere les transformations graphiques. Le convertisseur applique les transformations de base.",
-    },
-  },
-  {
-    name: "love.window.setTitle(title)",
-    category: "love",
-    description: {
-      es: "Guarda el titulo de la ventana. En TI-Nspire no cambia la barra real.",
-      en: "Stores the window title. On TI-Nspire it does not change the real title bar.",
-      fr: "Enregistre le titre de la fenetre. Sur TI-Nspire, la vraie barre ne change pas.",
-    },
-  },
-  {
-    name: "love.keyboard.isDown(key)",
-    category: "love",
-    description: {
-      es: "Consulta si una tecla esta activa durante el preview o timer.",
-      en: "Checks whether a key is active during preview or timer updates.",
-      fr: "Verifie si une touche est active pendant l'apercu ou le timer.",
-    },
-  },
-  {
-    name: "love.mouse.getPosition() / love.mouse.isDown(button)",
-    category: "love",
-    description: {
-      es: "Consulta posicion y botones del mouse en el preview.",
-      en: "Reads mouse position and buttons in the preview.",
-      fr: "Lit la position et les boutons de la souris dans l'apercu.",
-    },
-  },
-  {
-    name: "love.timer.getDelta() / getTime() / getFPS()",
-    category: "love",
-    description: {
-      es: "Expone tiempo basico para animaciones y pruebas.",
-      en: "Exposes basic timing for animations and tests.",
-      fr: "Expose un temps de base pour animations et tests.",
-    },
-  },
-  {
-    name: "love.filesystem.write/read/append/lines",
-    category: "love",
-    description: {
-      es: "Emulacion virtual de texto. No lee archivos reales ni recursos binarios.",
-      en: "Virtual text emulation. It does not read real files or binary assets.",
-      fr: "Emulation virtuelle de texte. Ne lit pas de vrais fichiers ni ressources binaires.",
-    },
-  },
-  {
-    name: "os.time() / os.clock()",
-    category: "bridge",
-    description: {
-      es: "Compatibilidad para scripts LÖVE que usan tiempo o math.randomseed(os.time()). En TI-Nspire se basa en timer.getMilliSecCounter cuando existe.",
-      en: "Compatibility for LÖVE scripts that use time or math.randomseed(os.time()). On TI-Nspire it uses timer.getMilliSecCounter when available.",
-      fr: "Compatibilite pour les scripts LÖVE utilisant le temps ou math.randomseed(os.time()). Sur TI-Nspire, utilise timer.getMilliSecCounter si disponible.",
-    },
-  },
-  {
-    name: "love.system.*",
-    category: "love",
-    description: {
-      es: "Shim seguro para getOS, getProcessorCount, clipboard, openURL y vibrate. En TI-Nspire no abre recursos externos reales.",
-      en: "Safe shim for getOS, getProcessorCount, clipboard, openURL, and vibrate. On TI-Nspire it does not open real external resources.",
-      fr: "Shim sur pour getOS, getProcessorCount, clipboard, openURL et vibrate. Sur TI-Nspire, n'ouvre pas de vraies ressources externes.",
-    },
-  },
-  {
-    name: "love.audio.*",
-    category: "love",
-    description: {
-      es: "Compatibilidad no-op para Source/play/stop/pause/volume. Evita errores, pero la calculadora no reproduce audio.",
-      en: "No-op compatibility for Source/play/stop/pause/volume. It avoids errors, but the calculator does not play audio.",
-      fr: "Compatibilite no-op pour Source/play/stop/pause/volume. Evite les erreurs, mais la calculatrice ne lit pas l'audio.",
-    },
-  },
-  {
-    name: "love.image/sound/data/touch/joystick/thread",
-    category: "love",
-    description: {
-      es: "Shims de compatibilidad para scripts comunes. Devuelven objetos seguros o tablas vacias; no implementan imagen/audio/hilos reales en TI-Nspire.",
-      en: "Compatibility shims for common scripts. They return safe objects or empty tables; they do not implement real image/audio/thread support on TI-Nspire.",
-      fr: "Shims de compatibilite pour scripts courants. Retourne objets surs ou tables vides; pas de vrai support image/audio/thread sur TI-Nspire.",
-    },
-  },
-  {
-    name: "love.draw() -> on.paint(gc)",
-    category: "bridge",
-    description: {
-      es: "El conversor llama love.draw desde on.paint para que TI-Nspire repinte la pantalla.",
-      en: "The converter calls love.draw from on.paint so TI-Nspire redraws the screen.",
-      fr: "Le convertisseur appelle love.draw depuis on.paint pour repeindre l'ecran TI-Nspire.",
-    },
-  },
-  {
-    name: "love.update(dt) -> on.timer()",
-    category: "bridge",
-    description: {
-      es: "La animacion LÖVE se ejecuta con timer.start y on.timer en la calculadora.",
-      en: "LÖVE animation runs through timer.start and on.timer on the calculator.",
-      fr: "L'animation LÖVE s'execute avec timer.start et on.timer sur la calculatrice.",
-    },
-  },
-  {
-    name: "love.graphics.print() -> gc:drawString()",
-    category: "bridge",
-    description: {
-      es: "Texto LÖVE se traduce al dibujo de texto nativo de TI-Nspire.",
-      en: "LÖVE text is translated to native TI-Nspire text drawing.",
-      fr: "Le texte LÖVE est traduit en dessin de texte natif TI-Nspire.",
-    },
-  },
-  {
-    name: "love.graphics.rectangle() -> gc:drawRect/fillRect",
-    category: "bridge",
-    description: {
-      es: "Rectangulos LÖVE se traducen a drawRect o fillRect.",
-      en: "LÖVE rectangles are translated to drawRect or fillRect.",
-      fr: "Les rectangles LÖVE sont traduits en drawRect ou fillRect.",
-    },
-  },
-  {
-    name: "love.graphics.circle/ellipse/arc() -> gc:drawArc/fillArc",
-    category: "bridge",
-    description: {
-      es: "Circulos, elipses y arcos se dibujan con las primitivas de arco de TI-Nspire.",
-      en: "Circles, ellipses, and arcs are drawn with TI-Nspire arc primitives.",
-      fr: "Cercles, ellipses et arcs sont dessines avec les primitives d'arc TI-Nspire.",
-    },
-  },
-  {
-    name: "love.graphics.getWidth/Height() -> platform.window:width/height()",
-    category: "bridge",
-    description: {
-      es: "Dimensiones LÖVE se resuelven al tamano de pantalla de TI-Nspire.",
-      en: "LÖVE dimensions resolve to the TI-Nspire screen size.",
-      fr: "Les dimensions LÖVE correspondent a la taille de l'ecran TI-Nspire.",
-    },
-  },
-  {
-    name: "love.keypressed('return') -> on.enterKey()",
-    category: "bridge",
-    description: {
-      es: "Enter de LÖVE se conecta con on.enterKey en la calculadora.",
-      en: "LÖVE return is connected to on.enterKey on the calculator.",
-      fr: "La touche return de LÖVE est connectee a on.enterKey sur la calculatrice.",
-    },
-  },
-  {
-    name: "love.keypressed('escape') -> on.escapeKey()",
-    category: "bridge",
-    description: {
-      es: "Escape de LÖVE se conecta con on.escapeKey.",
-      en: "LÖVE escape is connected to on.escapeKey.",
-      fr: "La touche escape de LÖVE est connectee a on.escapeKey.",
-    },
-  },
-  {
-    name: "Variables Lua locales/globales",
-    category: "bridge",
-    description: {
-      es: "local x, pages o currentPage siguen siendo Lua normal. No se convierten; la capa solo traduce APIs graficas/eventos.",
-      en: "local x, pages, or currentPage remain normal Lua. They are not converted; only graphics/event APIs are bridged.",
-      fr: "local x, pages ou currentPage restent du Lua normal. Seules les API graphiques/evenements sont traduites.",
-    },
-  },
-  {
-    name: "Limitaciones LÖVE -> TI-Nspire",
-    category: "bridge",
-    description: {
-      es: "Shaders, fisica nativa, recursos binarios, audio real, imagenes reales y filesystem real no son portables sin reescritura especifica.",
-      en: "Shaders, native physics, binary assets, real audio, real images, and real filesystem access are not portable without specific rewrites.",
-      fr: "Shaders, physique native, ressources binaires, vrai audio, vraies images et vrai filesystem ne sont pas portables sans reecriture specifique.",
-    },
-  },
-];
+
 
 function luaString(value) {
   return String(value ?? "")
@@ -7661,65 +7136,11 @@ function convertTnsToLuaInEditor(editor, currentLuaItem = null) {
   editor.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
-function showLuaGuide() {
-  const backdrop = document.createElement("div");
-  backdrop.className = "modal-backdrop";
-  const guideItems = LUA_GUIDE_ITEMS.map((item) => ({
-    name: item.name,
-    category: item.category || "ti",
-    description: item.description?.[language] || item.description?.en || item.description?.es || "",
-  }));
-  const categories = [
-    { id: "all", label: t("luaGuideCategoryAll") },
-    { id: "ti", label: t("luaGuideCategoryTi") },
-    { id: "love", label: t("luaGuideCategoryLove") },
-    { id: "bridge", label: t("luaGuideCategoryBridge") },
-  ];
-  const categoryLabel = (id) => categories.find((category) => category.id === id)?.label || id;
-  let activeCategory = "all";
-  backdrop.innerHTML = `
-    <div class="modal lua-library-modal">
-      <h2>${escapeHtml(t("luaGuide"))}</h2>
-      <input id="lua-guide-search" class="library-search" placeholder="${escapeHtml(t("luaGuideSearch"))}">
-      <div id="lua-guide-categories" class="lua-guide-categories"></div>
-      <div id="lua-guide-list" class="lua-guide-list"></div>
-      <div class="modal-actions">
-        <button type="button" id="lua-guide-close">${escapeHtml(t("close"))}</button>
-      </div>
-    </div>`;
-  document.body.append(backdrop);
-  const list = backdrop.querySelector("#lua-guide-list");
-  const search = backdrop.querySelector("#lua-guide-search");
-  const categoryBar = backdrop.querySelector("#lua-guide-categories");
-  const render = () => {
-    const query = search.value.trim().toLowerCase();
-    categoryBar.innerHTML = categories.map((category) => `
-      <button type="button" class="${category.id === activeCategory ? "active" : ""}" data-category="${escapeHtml(category.id)}">${escapeHtml(category.label)}</button>
-    `).join("");
-    const items = guideItems.filter((item) => {
-      const categoryMatch = activeCategory === "all" || item.category === activeCategory;
-      const queryMatch = `${item.name} ${item.description} ${categoryLabel(item.category)}`.toLowerCase().includes(query);
-      return categoryMatch && queryMatch;
-    });
-    list.innerHTML = items.map((item) => `
-      <article class="lua-guide-item">
-        <div class="lua-guide-item-head">
-          <code>${escapeHtml(item.name)}</code>
-          <span class="lua-guide-category">${escapeHtml(categoryLabel(item.category))}</span>
-        </div>
-        <p>${escapeHtml(item.description)}</p>
-      </article>`).join("");
-  };
-  search.addEventListener("input", render);
-  categoryBar.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-category]");
-    if (!button) return;
-    activeCategory = button.dataset.category || "all";
-    render();
+async function showLuaGuide(editor = null, item = null) {
+  const { openLuaGuide } = await import(`./lua-guide.js?v=${SOURCE_VERSION}`);
+  return openLuaGuide({ language, editor, item, closeModal,
+    preview: code => showLovePreview(code, null, null, {}),
   });
-  backdrop.querySelector("#lua-guide-close").addEventListener("click", () => closeModal(backdrop));
-  render();
-  search.focus();
 }
 
 function buildLuaTemplatePreviewCode(template, options) {
@@ -9080,7 +8501,7 @@ function showLuaEditor(item) {
     }
     if (!editMenuPanel.contains(event.target) && !editMenuTrigger.contains(event.target)) editMenuPanel.hidden = true;
   });
-  backdrop.querySelector("#lua-guide").addEventListener("click", showLuaGuide);
+  backdrop.querySelector("#lua-guide").addEventListener("click", () => showLuaGuide(editor, item));
   backdrop.querySelector("#lua-templates").addEventListener("click", () => {
     editMenuPanel.hidden = true;
     showLuaTemplates(editor);
@@ -17676,7 +17097,8 @@ function documentWidgetPreviewPages(items, groups) {
         kind = image ? 'images' : 'lua'; target = image || script;
       }
     }
-    return { ...widget, previewKind: kind || 'unsupported', previewItem: target };
+    const luaPreviewItem = widget.name === 'TI.ScriptApp' ? groups.lua.find(item => sameFile(item, widget) && item.path.startsWith(widget.path + '/')) : null;
+    return { ...widget, previewKind: kind || 'unsupported', previewItem: target, luaPreviewItem };
   });
   const cards = new Map();
   for (const page of pages) {
@@ -17802,7 +17224,7 @@ function mountDocumentLuaPreview(host, app, context, options = {}) {
   // LuaJS resolves generated globals through window. A dedicated realm per
   // ScriptApp preserves each app's handlers, timers and D2Editors when several
   // ScriptApps share a page (or a standalone preview is also open).
-  const item = app.previewItem || app, frame = document.createElement('iframe');
+  const item = app.luaPreviewItem || app.previewItem || app, frame = document.createElement('iframe');
   frame.className = 'document-embedded-lua-preview';
   frame.title = item.detail?.name || 'TI.ScriptApp';
   frame.style.cssText = 'display:block;width:100%;height:100%;border:0;background:white;';
@@ -18020,8 +17442,8 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
     // before mounting independent Lua realms, never race two symbol/resource
     // inspections against each other.
     const luaSymbols = new Map();
-    for (const app of page.previewItems || []) if (app.previewKind === 'lua') {
-      luaSymbols.set(app, await loadLuaPreviewSymbols(app.previewItem || app));
+    for (const app of page.previewItems || []) if (app.previewKind === 'lua' || app.luaPreviewItem) {
+      luaSymbols.set(app, await loadLuaPreviewSymbols(app.luaPreviewItem || app.previewItem || app));
     }
     const appDrafts = { ...(options.draft?.applications || {}) }, appControllers = [];
     const saveApplications = async (layoutOnly=false) => { for (const controller of appControllers) {if(layoutOnly&&controller.kind==='basic')controller.commit?.();else await controller.save?.();} };
@@ -18041,7 +17463,7 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
           findPythonShell:()=>appControllers.find(controller=>controller.kind==='python'&&(controller.item.name==='TI.PythonShell'||controller.item.content_label==='PythonShell')),
           findPythonEditor:source=>appControllers.find(controller=>controller.kind==='python'&&controller.item.name!=='TI.PythonShell'&&source&&documentPythonPreviewFile(controller.getPythonItem())===documentPythonPreviewFile(source)),
         };
-        const controller = app.previewKind === 'graphs' ? mountDocumentGraph(host,sheet,{...paneOptions,...settings}) : app.previewKind === 'lua' ? mountDocumentLuaPreview(host,app,context,settings) : app.previewKind === 'sheets' ? mountDocumentSpreadsheet(host,sheet,settings) : app.previewKind === 'notes' ? mountDocumentNotes(host,sheet,settings) : mountDocumentEmbeddedPreview(host,app,context,settings);
+        const controller = app.previewKind === 'graphs' ? mountDocumentGraph(host,sheet,{...paneOptions,...settings}) : app.previewKind === 'lua' || app.luaPreviewItem ? mountDocumentLuaPreview(host,app,context,settings) : app.previewKind === 'sheets' ? mountDocumentSpreadsheet(host,sheet,settings) : app.previewKind === 'notes' ? mountDocumentNotes(host,sheet,settings) : mountDocumentEmbeddedPreview(host,app,context,settings);
         if (!controller) return null;
         appControllers.push(controller);
         return controller;

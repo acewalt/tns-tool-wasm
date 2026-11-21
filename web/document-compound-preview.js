@@ -5,7 +5,8 @@
     es: { title: 'Página del documento', note: 'Arrastra un separador para ajustar las aplicaciones de esta página.', save: 'Guardar distribución', edit: 'Diseño de página', ungroup: 'Desagrupar aplicaciones', saved: 'Distribución guardada', close: 'Cerrar', unavailable: 'Esta aplicación todavía no tiene previsualizador.', vertical: 'Ajustar columnas', horizontal: 'Ajustar filas' },
     fr: { title: 'Page du document', note: 'Faites glisser une séparation pour redimensionner les applications.', save: 'Enregistrer la disposition', edit: 'Disposition de page', ungroup: 'Dissocier les applications', saved: 'Disposition enregistrée', close: 'Fermer', unavailable: 'Aucun aperçu disponible pour cette application.', vertical: 'Redimensionner les colonnes', horizontal: 'Redimensionner les lignes' },
   })[String(document.documentElement.lang || 'en').slice(0, 2)] || { title: 'Document page', note: '', save: 'Save layout', saved: 'Layout saved', close: 'Close', unavailable: 'Preview unavailable.', vertical: 'Resize columns', horizontal: 'Resize rows' };
-  const ratio = (value, fallback = 5000) => Math.max(1000, Math.min(9000, Number.isFinite(Number(value)) ? Number(value) : fallback));
+  // Native card ratios are integers in ten-thousandths, including pointer drags.
+  const ratio = (value, fallback = 5000) => Math.round(Math.max(1000, Math.min(9000, Number.isFinite(Number(value)) ? Number(value) : fallback)));
   const capacities = [1, 2, 2, 3, 3, 3, 3, 4];
   function layoutFor(page, draft = {}) {
     const count = page.previewItems?.length || 0, source = page.detail || {};
