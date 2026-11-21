@@ -35,8 +35,7 @@ assert.equal(bridge.shouldHandle('tolower("ABC")', "eval", []), false);
 assert.equal(bridge.shouldHandle("miFuncion(2)", "evalStr", ["miFuncion"]), false);
 assert.equal(bridge.sourceNeedsCas('local r=math.evalStr("factor(x^2-1)")'), true);
 assert.equal(bridge.sourceNeedsCas('local r=math.eval("tolower(\\\"ABC\\\")")', ["tolower"]), false);
-assert.equal(bridge.luaPatternToRegExp("%S+").exec("hola mundo")[0], "hola");
-assert.equal(bridge.luaPatternToRegExp("%d+").exec("abc123")[0], "123");
+assert.equal(bridge.luaPatternToRegExp, undefined, "CAS must not provide a second pattern engine");
 
 const gmatchLog = { textContent: "", scrollTop: 0, scrollHeight: 0 };
 await windowObject.createLuaJsPreviewRuntime(
@@ -46,8 +45,8 @@ await windowObject.createLuaJsPreviewRuntime(
   gmatchLog,
   { variables: {}, basicFunctions: {} }
 );
-assert.ok(captured.code.includes("__tnsStringGmatch"));
-assert.equal(typeof captured.symbols.variables.__tnsStringGmatch, "function");
+assert.equal(captured.code, 'for word in string.gmatch("uno dos", "%S+") do print(word) end');
+assert.equal(captured.symbols.variables.__tnsStringGmatch, undefined, "Keep the runtime string.gmatch intact");
 
 const log = { textContent: "", scrollTop: 0, scrollHeight: 0 };
 const runtime = await windowObject.createLuaJsPreviewRuntime(

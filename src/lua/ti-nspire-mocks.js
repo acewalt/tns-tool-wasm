@@ -1,3 +1,5 @@
+import { luaStringFormat } from "./standard-library.js";
+
 export const TI_NSPIRE_MOCK_CAPABILITIES = {
   platform: {
     status: "partial",
@@ -67,7 +69,7 @@ export const TI_NSPIRE_MOCK_CAPABILITIES = {
   },
   string: {
     status: "partial",
-    apis: ["string.uchar", "string.len", "string.lower", "string.upper", "string.sub", "string.format", "string.find", "string.match", "string.gsub"]
+    apis: ["string.uchar", "string.len", "string.lower", "string.upper", "string.sub", "string.format", "string.find", "string.match", "string.gmatch", "string.gsub"]
   },
   math: {
     status: "partial",
@@ -166,10 +168,8 @@ export function installTiNspireMocks(global, state = {}, options = {}) {
   global.lua_tableset(stringTable, "lower", (source) => [String(source ?? "").toLowerCase()]);
   global.lua_tableset(stringTable, "upper", (source) => [String(source ?? "").toUpperCase()]);
   global.lua_tableset(stringTable, "sub", (source, start, end) => [luaStringSub(source, start, end)]);
-  global.lua_tableset(stringTable, "format", (format, ...args) => [luaStringFormat(format, args)]);
-  global.lua_tableset(stringTable, "find", (source, pattern, init, plain) => luaStringFind(global, source, pattern, init, plain));
-  global.lua_tableset(stringTable, "match", (source, pattern, init) => luaStringMatch(source, pattern, init));
-  global.lua_tableset(stringTable, "gsub", (source, pattern, replacement, limit) => luaStringGsub(global, source, pattern, replacement, limit));
+  global.lua_tableset(stringTable, "format", (format, ...args) => [luaStringFormat(format, ...args)]);
+
 
   global.lua_tableset(mathTable, "eval", (expr) => {
     const value = evaluateSimpleTiMath(expr, store);
@@ -347,22 +347,6 @@ function installD2EditorMock(global, d2EditorTable, nativeEditors) {
   global.lua_tableset(d2EditorTable, "createChemBox", () => [createEditor()]);
 }
 
-function luaStringFind(global, source, pattern, init, plain) {
-  const text = String(source ?? "");
-  const start = Math.max(0, (Number(init) || 1) - 1);
-  const needle = String(pattern ?? "");
-  if (plain === true) {
-    const index = text.indexOf(needle, start);
-    return index < 0 ? [null] : [index + 1, index + needle.length];
-  }
-  const regex = luaPatternToRegExp(needle);
-  regex.lastIndex = 0;
-  const match = regex.exec(text.slice(start));
-  if (!match) return [null];
-  const matchStart = start + match.index;
-  return [matchStart + 1, matchStart + match[0].length, ...match.slice(1).map((value) => value ?? null)];
-}
-
 function luaStringSub(source, start, end) {
   const text = String(source ?? "");
   const length = text.length;
@@ -374,117 +358,6 @@ function luaStringSub(source, start, end) {
   to = Math.min(length, to);
   if (to < from) return "";
   return text.slice(from - 1, to);
-}
-
-function luaStringFormat(format, args) {
-  let argIndex = 0;
-  return String(format ?? "").replace(/%([%+\- 0#]*)(\d*)(?:\.(\d+))?([dfs])/g, (match, flags, width, precision, type) => {
-    const value = args[argIndex++];
-    if (type === "s") return applyStringWidth(String(value ?? ""), width, flags);
-    const numeric = Number(value);
-    if (!Number.isFinite(numeric)) return match;
-    let output;
-    if (type === "d") output = String(Math.trunc(numeric));
-    else output = numeric.toFixed(precision == null ? 6 : Number(precision));
-    return applyStringWidth(output, width, flags);
-  }).replace(/%%/g, "%");
-}
-
-function applyStringWidth(text, width, flags = "") {
-  const size = Number(width) || 0;
-  if (text.length >= size) return text;
-  const pad = " ".repeat(size - text.length);
-  return flags.includes("-") ? `${text}${pad}` : `${pad}${text}`;
-}
-
-function luaStringMatch(source, pattern, init) {
-  const text = String(source ?? "");
-  const start = Math.max(0, (Number(init) || 1) - 1);
-  const regex = luaPatternToRegExp(String(pattern ?? ""));
-  regex.lastIndex = 0;
-  const match = regex.exec(text.slice(start));
-  if (!match) return [null];
-  return match.length > 1 ? match.slice(1).map((value) => value ?? null) : [match[0]];
-}
-
-function luaStringGsub(global, source, pattern, replacement, limit) {
-  const text = String(source ?? "");
-  const max = limit == null ? Infinity : Math.max(0, Number(limit) || 0);
-  if (max === 0) return [text, 0];
-  const regex = luaPatternToRegExp(String(pattern ?? ""));
-  let count = 0;
-  const output = text.replace(regex, (...args) => {
-    if (count >= max) return args[0];
-    count += 1;
-    if (typeof replacement === "function") {
-      const captures = args.slice(1, -2);
-      const result = global.lua_call(replacement, captures.length ? captures : [args[0]])[0];
-      return result == null ? args[0] : String(result);
-    }
-    if (replacement && typeof replacement === "object") {
-      const key = args[1] ?? args[0];
-      const result = global.lua_tableget(replacement, key);
-      return result == null ? args[0] : String(result);
-    }
-    return String(replacement ?? "").replace(/%(\d)/g, (_match, index) => String(args[Number(index)] ?? ""));
-  });
-  return [output, count];
-}
-
-function luaPatternToRegExp(pattern) {
-  let output = "";
-  for (let index = 0; index < pattern.length; index += 1) {
-    const char = pattern[index];
-    if (char === "%") {
-      const next = pattern[index + 1] || "";
-      index += 1;
-      if (next === "a") output += "[A-Za-z]";
-      else if (next === "d") output += "\\d";
-      else if (next === "s") output += "\\s";
-      else if (next === "w") output += "[A-Za-z0-9_]";
-      else if (next === "0") output += "0";
-      else if (next === "1") output += "1";
-      else output += escapeRegExp(next);
-    } else if (char === "[") {
-      const end = pattern.indexOf("]", index + 1);
-      if (end > index) {
-        output += luaPatternClassToRegExp(pattern.slice(index, end + 1));
-        index = end;
-      } else {
-        output += "\\[";
-      }
-    } else if (char === ".") {
-      output += "[\\s\\S]";
-    } else if (char === "(" || char === ")") {
-      output += char;
-    } else if (char === "^") {
-      output += index === 0 ? "^" : "\\^";
-    } else if (char === "$") {
-      output += index === pattern.length - 1 ? "$" : "\\$";
-    } else if (char === "*" || char === "+" || char === "?") {
-      output += char;
-    } else if (char === "-") {
-      output += "*?";
-    } else if ("^$.*+?{}|\\".includes(char)) {
-      output += `\\${char}`;
-    } else {
-      output += char;
-    }
-  }
-  return new RegExp(output, "g");
-}
-
-function luaPatternClassToRegExp(text) {
-  let inner = text.slice(1, -1);
-  inner = inner
-    .replace(/%a/g, "A-Za-z")
-    .replace(/%d/g, "\\d")
-    .replace(/%s/g, "\\s")
-    .replace(/%w/g, "A-Za-z0-9_")
-    .replace(/%0/g, "0")
-    .replace(/%1/g, "1")
-    .replace(/%([()[\].*+?^$|{}\\/+])/g, "\\$1");
-  return `[${inner}]`;
 }
 
 function evaluateSimpleTiMath(expr, store) {
@@ -532,8 +405,4 @@ function luaValueToDisplayString(global, value) {
     // Keep print robust; structured errors are handled by the caller.
   }
   return "[table]";
-}
-
-function escapeRegExp(text) {
-  return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

@@ -226,7 +226,11 @@ function open(initial,options={}) {
     for(const [name,value] of Object.entries(state.variables)){const row=document.createElement('div'),label=document.createElement('code'),result=document.createElement('span');label.textContent=name;result.textContent=formatPrgmValue(value);row.append(label,result);vars.append(row);}
     const warnings=$('[data-warnings]');warnings.replaceChildren();
     if(state.warnings.length){const row=document.createElement('li');row.textContent='ClrIO · '+state.warnings.map(w=>w.line).join(', ');warnings.append(row);}
-    if(['waiting','done','error','stopped'].includes(state.status))automatic=false;if(!entryForm.hidden)entryForm.scrollIntoView({block:'nearest'});
+    if(['waiting','done','error','stopped'].includes(state.status))automatic=false;
+    // Only the Calculator history should follow its entry. scrollIntoView
+    // also scrolls clipping ancestors in a grouped page (and the zoom frame),
+    // which can move the whole application instead of its own transcript.
+    if(!entryForm.hidden)history.scrollTop=history.scrollHeight;
   }
   function tick(){if(closed||!automatic)return;const state=runtime.run(250);if(state.status!=='paused')automatic=false;render(state);if(automatic)timer=setTimeout(tick,state.keyWaiting?100:state.waitRemainingMs?Math.min(50,state.waitRemainingMs):runtime.frameYield?16:0);}
   function run(){clearTimeout(timer);automatic=true;tick();}

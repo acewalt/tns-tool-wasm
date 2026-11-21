@@ -306,3 +306,19 @@
     padding-inline: 6px;
   }
 }
+
+/* Shared font dock sits above the page display, never within a split pane. */
+.ti-note-formatbar.ti-note-formatbar-external {
+  position: static !important;
+  box-sizing: border-box;
+  width: 100% !important;
+  max-width: 100% !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 8px !important;
+  gap: 6px !important;
+  justify-content: flex-start;
+  overflow: visible !important;
+  font: 12px Arial, sans-serif;
+}
+.ti-note-formatbar-external .ti-note-format-button { flex: 0 0 auto; }

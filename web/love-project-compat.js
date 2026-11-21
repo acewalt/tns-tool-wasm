@@ -255,45 +255,8 @@
         return [Array.from(String(value == null ? '' : value)).reverse().join('')];
       });
 
-      lua_tableset(G.str.string, 'format', function (format) {
-        var values = Array.prototype.slice.call(arguments, 1);
-        var cursor = 0;
-        var source = String(format == null ? '' : format);
-        return [source.replace(/%([-+ #0]*)(\d*)(?:\.(\d+))?([cdiouxXeEfgGqs%])/g, function (_all, flags, widthText, precisionText, type) {
-          if (type === '%') return '%';
-          var value = values[cursor++];
-          var precision = precisionText === undefined ? null : Math.max(0, Number(precisionText) || 0);
-          var out = '';
-          var number = Number(value);
-          if (type === 's') out = String(value == null ? 'nil' : value);
-          else if (type === 'q') out = JSON.stringify(String(value == null ? '' : value));
-          else if (type === 'c') out = String.fromCharCode(Number.isFinite(number) ? Math.trunc(number) : 0);
-          else if (type === 'd' || type === 'i') out = String(Number.isFinite(number) ? Math.trunc(number) : 0);
-          else if (type === 'u') out = String((Number.isFinite(number) ? Math.trunc(number) : 0) >>> 0);
-          else if (type === 'x' || type === 'X') {
-            out = ((Number.isFinite(number) ? Math.trunc(number) : 0) >>> 0).toString(16);
-            if (type === 'X') out = out.toUpperCase();
-          } else if (type === 'o') out = ((Number.isFinite(number) ? Math.trunc(number) : 0) >>> 0).toString(8);
-          else if (type === 'f') out = (Number.isFinite(number) ? number : 0).toFixed(precision == null ? 6 : precision);
-          else if (type === 'e' || type === 'E') {
-            out = (Number.isFinite(number) ? number : 0).toExponential(precision == null ? 6 : precision);
-            if (type === 'E') out = out.toUpperCase();
-          } else if (type === 'g' || type === 'G') {
-            out = (Number.isFinite(number) ? number : 0).toPrecision(precision == null ? 6 : Math.max(1, precision));
-            out = out.replace(/(?:\.0+|(?:(\.\d*?)0+))(?=e|$)/i, '$1');
-            if (type === 'G') out = out.toUpperCase();
-          }
-          if ((flags.indexOf('+') >= 0 || flags.indexOf(' ') >= 0) && Number.isFinite(number) && number >= 0 && /[diufeg]/i.test(type)) {
-            out = (flags.indexOf('+') >= 0 ? '+' : ' ') + out;
-          }
-          var width = Number(widthText) || 0;
-          if (width > out.length) {
-            var pad = new Array(width - out.length + 1).join(flags.indexOf('0') >= 0 && flags.indexOf('-') < 0 ? '0' : ' ');
-            out = flags.indexOf('-') >= 0 ? out + pad : pad + out;
-          }
-          return out;
-        })];
-      });
+      // string.format is supplied by the shared Lua standard library after
+      // this legacy compatibility layer is installed.
     }
 
     var jitTable = G.str.jit;
