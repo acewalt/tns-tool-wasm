@@ -2,7 +2,7 @@
   "use strict";
 
   const INSTALL_MARK = "__tnsNspirePreviewIsolationV8";
-  const RUNTIME_VERSION = "20260903-nspire-runtime-v8";
+  const RUNTIME_VERSION = "20261120-lua-compat-v45";
   const BASE_RUNTIME_FILES = [
     "vendor/luajs/lua.js",
     "vendor/luajs/nspire/env.js",

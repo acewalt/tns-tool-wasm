@@ -841,6 +841,7 @@
     const toolbar = document.createElement("div");
     toolbar.className = "ti-note-formatbar";
     toolbar.setAttribute("role", "toolbar");
+    toolbar.setAttribute("aria-label", labels.edit);
     toolbar.hidden = true;
 
     let savedRange = null;
@@ -871,8 +872,8 @@
     }
 
     function command(name, value = null) {
-      restoreSelection();
       editor.focus({ preventScroll: true });
+      restoreSelection();
       document.execCommand("styleWithCSS", false, true);
       document.execCommand(name, false, value);
       rememberSelection();
@@ -924,11 +925,12 @@
     sizeSelect.addEventListener("pointerdown", rememberSelection);
     sizeSelect.addEventListener("change", () => {
       const pt = parseNumber(sizeSelect.value, 9);
-      restoreSelection();
       editor.focus({ preventScroll: true });
+      restoreSelection();
       document.execCommand("styleWithCSS", false, true);
       document.execCommand("fontSize", false, "7");
-      editor.querySelectorAll('font[size="7"]').forEach(font => {
+      editor.querySelectorAll('font[size="7"],span[style]').forEach(font => {
+        if (font.getAttribute("size") !== "7" && font.style.fontSize !== "xxx-large") return;
         font.removeAttribute("size");
         font.style.fontSize = `${pt * 4 / 3}px`;
         font.dataset.tiFs = String(pt);
@@ -999,6 +1001,7 @@
   }
 
   function showRichNotepadModal(item, options = {}) {
+    options = window.documentPreviewLayoutOptions?.(item, options) || options;
     const model = parseNotepadRichText(item?.raw_xml || "");
     if (!model) return originalShowNotepadModal(item, options);
 
@@ -1047,6 +1050,17 @@
     const rememberDraft = () => options.setDraft?.({ richNodes: Array.from(richView.childNodes, node => node.cloneNode(true)), dirty, sourceXml:item.raw_xml });
     const markDirty = () => { ++editRevision; dirty = true; if(!inlineMath)rememberDraft(); };
     const toolbar = createFormatToolbar(labels, richView, markDirty);
+    // Grouped Notes owns its editor selection, but the font controls belong
+    // outside the calculator display so they never cover a small pane.
+    const formatToolbarHost = options.embedded ? options.formatToolbarHost : null;
+    let isActive = options.active !== false;
+    function refreshExternalToolbar() {
+      if (!formatToolbarHost) return;
+      const visible = isActive && formatVisible && richView.contentEditable === 'true' && !closed;
+      if (visible) toolbar.show(); else toolbar.hide();
+      editButton.setAttribute('aria-pressed', String(formatVisible));
+      formatToolbarHost.hidden = !Array.from(formatToolbarHost.querySelectorAll('.ti-note-formatbar')).some(element => !element.hidden);
+    }
 
     let mathInsertionRange = null;
     let inlineMath = null;
@@ -1185,6 +1199,7 @@
       closed = true;
       renderer.destroy();
       toolbar.destroy();
+      if (formatToolbarHost) { toolbar.element.remove(); refreshExternalToolbar(); }
       if(inlineMath){const active=inlineMath;inlineMath=null;active.ui.remove();active.target.classList.remove('is-math-editing');}
       if (options.embedded) { backdrop.remove(); if(typeof afterClose==='function')afterClose(); }
       else if (typeof window.closeModal === "function") window.closeModal(backdrop, typeof afterClose === 'function' ? afterClose : null);
@@ -1213,6 +1228,7 @@
         toolbar.hide();
         richView.blur();
       }
+      refreshExternalToolbar();
     }
 
     richView.addEventListener("input", markDirty);
@@ -1232,11 +1248,12 @@
     });
 
     faithfulButton.addEventListener("click", () => setMode("faithful"));
-    let formatVisible=false;
+    let formatVisible=Boolean(formatToolbarHost);
     editButton.addEventListener("click", () => {
       if(!options.embedded)return setMode('edit');
       formatVisible=!formatVisible;editButton.setAttribute('aria-pressed',String(formatVisible));
-      if(formatVisible)toolbar.show();else toolbar.hide();
+      if (formatToolbarHost) refreshExternalToolbar();
+      else if(formatVisible)toolbar.show();else toolbar.hide();
     });
     cancelButton.addEventListener("click", close);
 
@@ -1297,9 +1314,15 @@
       editButton.addEventListener('mousedown',event=>{event.preventDefault();toolbar.rememberSelection();});
       saveButton.title=labels.save;saveButton.setAttribute('aria-label',labels.save);saveButton.textContent='💾';modeBar.append(saveButton);
       cancelButton.hidden=true;
-      setMode('edit');toolbar.hide();
+      if (formatToolbarHost) {
+        toolbar.element.classList.add('ti-note-formatbar-external');
+        formatToolbarHost.append(toolbar.element);
+      }
+      setMode('edit');
+      if (formatToolbarHost) refreshExternalToolbar(); else toolbar.hide();
     } else setMode("faithful");
     return { model, editor:richView, refresh:renderer.refresh,
+      setActive(active) { isActive = Boolean(active); refreshExternalToolbar(); },
       commit() {if(!finishInlineMath(false,false))throw Error(labels.invalidMath);rememberDraft();},
       save:persistNoteDraft, destroy:close };
   }

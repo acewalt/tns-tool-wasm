@@ -1,0 +1,2435 @@
+{
+  "version": "0.1.45",
+  "date": "2026-11-21",
+  "network": "blocked",
+  "originalUserSourceUnchanged": true,
+  "before": {
+    "OK": 290,
+    "FALLO": 19,
+    "ERROR": 22,
+    "NO API": 10,
+    "N/A": 1,
+    "ESPERA": 1
+  },
+  "after": {
+    "OK": 327,
+    "ERROR": 7,
+    "NO API": 8,
+    "N/A": 1
+  },
+  "tests": [
+    {
+      "suite": "01 BASE LUA",
+      "name": "nil",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale nil | Esperado nil"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "booleano",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale boolean | Esperado boolean"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "numero",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale number | Esperado number"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "cadena",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale string | Esperado string"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "tabla",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale table | Esperado table"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "funcion",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale function | Esperado function"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "tostring numerico",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 23 | Esperado 23"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "tonumber",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 12.5 | Esperado 12.5"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "tonumber hexadecimal",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 16 | Esperado 16"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "logica and/or",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 5 | Esperado 5"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "concatenacion",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale abc | Esperado abc"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "operador #",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 4 | Esperado 4"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "operador modulo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "select cantidad",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "select posicion",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale B | Esperado B"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "precedencia",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 14 | Esperado 14"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "comparacion",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale true | Esperado true"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "not",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale true | Esperado true"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "ipairs iterador",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 12 | Esperado 12"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "pairs iterador",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 5 | Esperado 5"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "siguiente clave next",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale a | Esperado a"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "nil en tabla",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale nil | Esperado nil"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "assert exito",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "assert valido"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "assert error",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "assert fallo esperado"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "pcall maneja error",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "TEST-CAPTURA"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "xpcall captura",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "CAPTURADO"
+    },
+    {
+      "suite": "01 BASE LUA",
+      "name": "version Lua _VERSION",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale string | Esperado string"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "string.len",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 4 | Esperado 4"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "sub intervalo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale BCD | Esperado BCD"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "sub indice negativo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale DE | Esperado DE"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "sub fuera de rango",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale  | Esperado "
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "sub desde cero",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale a | Esperado a"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "lower",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale abz | Esperado abz"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "upper",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale ABZ | Esperado ABZ"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "reverse",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale cba | Esperado cba"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "rep",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale ababab | Esperado ababab"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "rep 0",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale  | Esperado "
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "byte ASCII",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 65 | Esperado 65"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "char ASCII",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale ABC | Esperado ABC"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "find literal inicio",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 2 | Esperado 2"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "find no coincidencia",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale nil | Esperado nil"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "concat y secuencia",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale xy | Esperado xy"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "len vacia",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 0 | Esperado 0"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "byte varios indices",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "byte devuelve multiples valores"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "find devuelve inicio y fin",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "a=3 b=4"
+    },
+    {
+      "suite": "02 CADENAS BASICAS",
+      "name": "string.dump disponible",
+      "kind": "CHECK",
+      "status": "ERROR",
+      "info": "string.dump: LuaJS compiles to JavaScript and cannot emit Lua 5.1 bytecode"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "find %d+",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 4 | Esperado 4"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match %d+",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 123 | Esperado 123"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match %a+",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale abc | Esperado abc"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match %w+",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale abc12 | Esperado abc12"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match %s+",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale     | Esperado    "
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match %p+",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale !! | Esperado !!"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match clases",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale a | Esperado a"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match ancla inicio",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale abc | Esperado abc"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match ancla fin",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 123 | Esperado 123"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match %b()",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale (x(y)) | Esperado (x(y))"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match punto literal",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale . | Esperado ."
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match captura basica",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 27 | Esperado 27"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "match sin resultado",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale nil | Esperado nil"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "find desde indice",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 4 | Esperado 4"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gmatch 3 palabras",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale UNO|DOS|TRES | Esperado UNO|DOS|TRES"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gmatch 2 capturas",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale a2,b3 | Esperado a2,b3"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gmatch 4 numeros",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 1/2/3/4 | Esperado 1/2/3/4"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gmatch sin coincidencias",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 0 | Esperado 0"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gmatch iterador manual",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale hola | Esperado hola"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gmatch cierre iterador",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale nil | Esperado nil"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gmatch captura vacia",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale a | Esperado a"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gsub literal",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale x x | Esperado x x"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gsub captura orden",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 12/A | Esperado 12/A"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gsub funcion",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale x20y40 | Esperado x20y40"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gsub tabla",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale hola HOLA | Esperado hola HOLA"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gsub limite",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale x x a | Esperado x x a"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gsub porcentual",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale a%a | Esperado a%a"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "find patron grupos",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 2 | Esperado 2"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "find 2 capturas",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "Indices+capturas"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gsub contador",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "reemplazos=3"
+    },
+    {
+      "suite": "03 PATRONES Y GMATCH",
+      "name": "gmatch frontier %f",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "abc,def"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %.2f",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 1.23 | Esperado 1.23"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %.3f",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 2.500 | Esperado 2.500"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %d",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 42 | Esperado 42"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %s",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale hola | Esperado hola"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %04d",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 0007 | Esperado 0007"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %-5s",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale a     | Esperado a    "
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %8s",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale        b | Esperado        b"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %02X",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 0F | Esperado 0F"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %x",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale ff | Esperado ff"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %c",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale A | Esperado A"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format %%",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 50% | Esperado 50%"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format varios",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale x:04 | Esperado x:04"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format signo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale +3 | Esperado +3"
+    },
+    {
+      "suite": "04 STRING.FORMAT",
+      "name": "format precision 0",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 2 | Esperado 2"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "abs",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 4 | Esperado 4"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "floor",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "floor negativo",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale -4 | Esperado -4"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "ceil",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 4 | Esperado 4"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "ceil negativo",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale -3 | Esperado -3"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "min",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 2 | Esperado 2"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "max",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 8 | Esperado 8"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "sqrt",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 9 | Esperado 9"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "potencia ^",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 32 | Esperado 32"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "fmod",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 2 | Esperado 2"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "modulo negativo",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "log natural 1",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 0 | Esperado 0"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "exp 0",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "sin 0",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 0 | Esperado 0"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "cos 0",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "atan 0",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 0 | Esperado 0"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "rad 0",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 0 | Esperado 0"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "deg 0",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 0 | Esperado 0"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "pi tipo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale number | Esperado number"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "huge tipo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale number | Esperado number"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "math.modf 3.5",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "sin pi/2",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "acos 0",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1.5707963267948966 | Esperado 1.57079632679"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "asin 1",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1.5707963267948966 | Esperado 1.57079632679"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "atan 1",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 0.7853981633974483 | Esperado 0.7853981634"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "log exp",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "sqrt 2",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1.4142135623730951 | Esperado 1.41421356237"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "rad 180",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 3.141592653589793 | Esperado 3.141592653589793"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "deg pi",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 180 | Esperado 180"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "cos pi",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale -1 | Esperado -1"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "tan pi/4",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 0.9999999999999999 | Esperado 1"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "random rango",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "random=1"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "modf 2 salidas",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "2,0.75"
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "math.atan2 existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "math.log10 existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "math.frexp existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "05 MATEMATICAS",
+      "name": "math.ldexp existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "insert al final",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale abc | Esperado abc"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "insert en posicion",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale abc | Esperado abc"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "remove ultimo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale c | Esperado c"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "remove posicion",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale b | Esperado b"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "sort ascendente",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 1,2,3 | Esperado 1,2,3"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "sort descendente",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 3,2,1 | Esperado 3,2,1"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "concat separador",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale a-b-c | Esperado a-b-c"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "concat rango",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale b,c | Esperado b,c"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "concat vacia",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale  | Esperado "
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "indice dinamico",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "nested 2D",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 5 | Esperado 5"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "ipairs para nil",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "sustituir elemento",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale z | Esperado z"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "pairs suma",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 9 | Esperado 9"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "next clave",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale foo | Esperado foo"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "rawget",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 8 | Esperado 8"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "rawset",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 9 | Esperado 9"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "rawequal mismo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale true | Esperado true"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "unpack (2 valores)",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "referencia tabla",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "referencias compartidas"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "pairs mas de 1",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "elementos=3"
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "table.maxn existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "table.foreach existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "06 TABLAS",
+      "name": "table.getn existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "metatabla __index valor",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 12 | Esperado 12"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "metatabla __index funcion",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 7 | Esperado 7"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "metatabla __add",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 15 | Esperado 15"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "metatabla __tostring",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale OBJ | Esperado OBJ"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "metatabla __call",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 12 | Esperado 12"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "metatabla __mul",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 20 | Esperado 20"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "getmetatable",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 7 | Esperado 7"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "metatabla __len 5.1",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 0 | Esperado 0"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "metatabla __eq",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale true | Esperado true"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "proteger __metatable",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "metatabla protegida"
+    },
+    {
+      "suite": "07 METATABLAS",
+      "name": "tabla y closure",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "closure conserva estado"
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine.create",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine.resume",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine.yield",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine.status",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine.wrap",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine.running",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine create/resume",
+      "kind": "CHECK",
+      "status": "ERROR",
+      "info": "coroutine.create: LuaJS cannot suspend and resume a Lua call stack"
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine yield/resume",
+      "kind": "CHECK",
+      "status": "ERROR",
+      "info": "coroutine.create: LuaJS cannot suspend and resume a Lua call stack"
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine status",
+      "kind": "CHECK",
+      "status": "ERROR",
+      "info": "coroutine.create: LuaJS cannot suspend and resume a Lua call stack"
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine wrap",
+      "kind": "CHECK",
+      "status": "ERROR",
+      "info": "coroutine.wrap: LuaJS cannot suspend and resume a Lua call stack"
+    },
+    {
+      "suite": "08 CORRUTINAS",
+      "name": "coroutine resume error",
+      "kind": "CHECK",
+      "status": "ERROR",
+      "info": "coroutine.create: LuaJS cannot suspend and resume a Lua call stack"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "funcion anonima",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 12 | Esperado 12"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "closure contador",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "recursion factorial",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 120 | Esperado 120"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "multiple returns",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 7 | Esperado 7"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "varargs suma",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 9 | Esperado 9"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "for num positivo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 15 | Esperado 15"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "for num negativo",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 6 | Esperado 6"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "while",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "repeat/until",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 4 | Esperado 4"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "do/bloque local",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 2 | Esperado 2"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "shadowing",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "short circuit",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale true | Esperado true"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "short circuit and",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale false | Esperado false"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "ternario Lua",
+      "kind": "EQ",
+      "status": "OK",
+      "info": "Sale A | Esperado A"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "pcall encadenado",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "pcall anidado"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "loadstring",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "loadstring codigo dinamico",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "codigo compilado"
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "setfenv (Lua 5.1)",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "09 FUNCIONES Y FLUJO",
+      "name": "getfenv (Lua 5.1)",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "collectgarbage",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "collectgarbage count",
+      "kind": "CHECK",
+      "status": "ERROR",
+      "info": "collectgarbage(count): LuaJS cannot control or measure the JavaScript garbage collector"
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "print",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "os.clock",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "os.time",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "os.date",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "debug.traceback",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "io.open (solo disponibilidad)",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "package.loaded (solo disponibilidad)",
+      "kind": "API",
+      "status": "NO API",
+      "info": "No expuesta. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "require",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "getfenv",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "setfenv",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "rawget",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "rawset",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "rawequal",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "unpack",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "bit32.band (opcional)",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "10 SISTEMA SEGURO",
+      "name": "os.clock lectura",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "clock=0.36299991607666016"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:setColorRGB",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: RGB aplicado. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:setFont sansserif",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Fuente aplicada. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:setFont bold",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Bold aplicado. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:drawString top",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Texto top. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:drawString baseline",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Texto baseline. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:drawString bottom",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Texto bottom. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:drawLine",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Linea. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:drawRect",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Contorno. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:fillRect",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Relleno. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:getStringWidth",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: ancho=25.998046875. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc:getStringHeight",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: alto=9. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.drawImage",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.drawArc",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.fillArc",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.drawPolyLine",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.fillPolygon",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.clipRect",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.resetClip",
+      "kind": "API",
+      "status": "NO API",
+      "info": "No expuesta. "
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.setPen",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "11 GRAFICOS BASICOS",
+      "name": "gc.copy",
+      "kind": "API",
+      "status": "NO API",
+      "info": "No expuesta. "
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "drawArc",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Arco. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "fillArc",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Arco relleno. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "drawPolyLine 4 puntos",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Polilinea. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "fillPolygon 3 puntos",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Triangulo. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "setFont serif",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Fuente serif. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "setFont italic",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Fuente italic. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "medir Unicode",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: ancho unicode=33.988861083984375. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "dibujar Unicode",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Texto UTF-8. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "linea negativo",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Coordenadas negativas. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "rectangulo fraccional",
+      "kind": "VIS",
+      "status": "OK",
+      "info": "Llamada: Float coords. Comprobar el aspecto visual por separado"
+    },
+    {
+      "suite": "12 GRAFICOS AVANZADOS",
+      "name": "text width cambia con texto",
+      "kind": "CHECK",
+      "status": "N/A",
+      "info": "Necesita gc; revisar GC basicos"
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.window.width",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.window.height",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "window:width real",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "w=320"
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "window:height real",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "h=240"
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.apilevel >= 2",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "window.invalidate",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "window.invalidateAll",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "window.setFocus",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "window.setBackgroundColor",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.gc",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.withGC",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.hw",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.isTabletModeRendering",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.isDeviceModeRendering",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform.hw resultado",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "hw=5"
+    },
+    {
+      "suite": "13 PLATAFORMA",
+      "name": "platform gc devuelve canvas",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "tipo=table"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval disponible",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.evalStr disponible",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval 2+3",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "valor=5"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.evalStr 2+3",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "valor=5"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval 2*3+4",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "valor=10"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval potencia",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "valor=32"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval fraccion simbolica",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "respuesta=0.5"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval CAS expand",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "resultado=nil"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval CAS factor",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "resultado=nil"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval sqrt(16)",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "resultado=4"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval sin(pi/2)",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "resultado=1"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.evalStr decimal",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "resultado=2"
+    },
+    {
+      "suite": "14 CAS Y MATH.EVAL",
+      "name": "math.eval variables locales",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "resultado=9"
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "var.store existe, sin escribir",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "var.recall existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "var.monitor existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "var.unmonitor existe",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "D2Editor.newRichText",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "D2Editor.newText",
+      "kind": "API",
+      "status": "NO API",
+      "info": "No expuesta. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "D2Editor.newMath",
+      "kind": "API",
+      "status": "NO API",
+      "info": "No expuesta. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "image.new",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "image.copy",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "cursor.show",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "cursor.hide",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "cursor.set",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "locale.get",
+      "kind": "API",
+      "status": "NO API",
+      "info": "No expuesta. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "locale.set",
+      "kind": "API",
+      "status": "NO API",
+      "info": "No expuesta. "
+    },
+    {
+      "suite": "15 TI VARIABLES Y APIS",
+      "name": "var.recall nombre inexistente",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "respuesta=nil"
+    },
+    {
+      "suite": "16 TEMPORIZADORES",
+      "name": "timer.start",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "16 TEMPORIZADORES",
+      "name": "timer.stop",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "16 TEMPORIZADORES",
+      "name": "timer.getMilliSecCounter",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "16 TEMPORIZADORES",
+      "name": "counter ms numerico",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "ms=1795275169472"
+    },
+    {
+      "suite": "16 TEMPORIZADORES",
+      "name": "on.timer (PULSA RELOJ)",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.mouseDown",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.mouseUp",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.mouseMove",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.enterKey",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.tabKey",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.escapeKey",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.backspaceKey",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.deleteKey",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "on.charIn",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "flecha arriba",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "flecha abajo",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "flecha izquierda",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "17 EVENTOS / CONTROLES",
+      "name": "flecha derecha",
+      "kind": "MANUAL",
+      "status": "OK",
+      "info": "Eventos recibidos: 1"
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.paint",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.timer",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.mouseDown",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.mouseUp",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.mouseMove",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.arrowKey",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.charIn",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.tabKey",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.enterKey",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.escapeKey",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.backspaceKey",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.deleteKey",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.getFocus",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.loseFocus",
+      "kind": "API",
+      "status": "OK",
+      "info": "API disponible. "
+    },
+    {
+      "suite": "18 EVENTOS EXTRA",
+      "name": "on.resize",
+      "kind": "API",
+      "status": "NO API",
+      "info": "No expuesta. "
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "sumar 1..1000",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "suma=500500"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "tabla 200 elementos",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "longitud=200"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "100 iteraciones gmatch",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "encontrados=100"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "sort 100 enteros",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "ordenados=100"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "gsub 100 sustituciones",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "n=100"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "concatenar 250 cadenas",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "longitud 250"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "recursion factor 8",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "factorial"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "pattern capturas repetidas",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "a1;b2;c3;d4"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "100 sqrt",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "suma=5050"
+    },
+    {
+      "suite": "19 PRUEBAS DE ESTRES",
+      "name": "pcall 30 errores",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "capturados=30"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Primera ley DU=500",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 500 | Esperado 500"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Compresion DU=300",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 300 | Esperado 300"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Trabajo motor W=800",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 800 | Esperado 800"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Eficiencia motor 40%",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 40 | Esperado 40"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Refrigerador COP=3",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 3 | Esperado 3"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Refrigerador Qh=800",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 800 | Esperado 800"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Entropia DS=0.5",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 0.5 | Esperado 0.5"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Carnot eta=40%",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 40 | Esperado 40"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Celsius a Kelvin",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 298.15 | Esperado 298.15"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Gas ideal P",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 1 | Esperado 1"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Calor Q=m*c*dT",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 4180 | Esperado 4180"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Entropia ln",
+      "kind": "NEAR",
+      "status": "OK",
+      "info": "Sale 13.566012957639122 | Esperado 13.566012957639122"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Delta S reversible",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "dS=0.5"
+    },
+    {
+      "suite": "20 INTEGRACION REAL",
+      "name": "Signo de trabajo",
+      "kind": "CHECK",
+      "status": "OK",
+      "info": "DU=-100"
+    }
+  ],
+  "gmatch": "Hola\nMundo\nLua",
+  "thermodynamics": {
+    "home": true,
+    "topics": true,
+    "tasks": true,
+    "example": true,
+    "procedure": true,
+    "cleared": true,
+    "manual": true,
+    "mouse": true
+  },
+  "errorRecovery": true
+}

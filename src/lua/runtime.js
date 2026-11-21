@@ -4,6 +4,8 @@ import vm from "node:vm";
 import { fileURLToPath } from "node:url";
 import { installTiNspireMocks } from "./ti-nspire-mocks.js";
 import { installLuaDocumentBindings } from "./document-symbols.js";
+import { installLuaStandardLibrary } from "./standard-library.js";
+import { installLuaStringPatterns } from "./string-patterns.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_REPO_ROOT = path.resolve(__dirname, "..", "..");
@@ -64,6 +66,8 @@ export class LuaRuntime {
 
     installLuaJsCompatibilityPatches(this.context, this.state);
     installTiNspireMocks(this.context, this.state, this.options);
+    installLuaStandardLibrary(this.context);
+    installLuaStringPatterns(this.context);
     installLuaDocumentBindings(this.context, {
       variables: this.state.store, basicFunctions: this.options.basicFunctions,
       language: this.options.language,

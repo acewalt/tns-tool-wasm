@@ -18,9 +18,11 @@
       };
     }
     document.body.style.overflow = 'hidden';
+    // Nested application controls belong to their pane, never to this window.
+    const owned = selector => [...modal.querySelectorAll(selector)].find(node => !node.closest('.document-embedded-preview'));
     const prgm = modal.classList.contains('prgm-preview-modal');
     const nativeToggle = [...modal.querySelectorAll('[data-expand],#love-preview-size-toggle,#image-expand')].find(button=>!button.closest('.document-embedded-preview'));
-    let stage = modal.querySelector('.prgm-preview-screen-shell,#love-preview-stage,.lua-preview-calculator,.note-calculator-shell,.spreadsheet-calc,.document-image-calculator,.widget-preview-calculator');
+    let stage = owned('.prgm-preview-screen-shell,#love-preview-stage,.lua-preview-calculator,.note-calculator-shell,.spreadsheet-calc,.document-image-calculator,.widget-preview-calculator');
     let header, body, center, left, right, footer;
     modal.classList.add('preview-window'); backdrop.classList.add('preview-window-backdrop');
     if (prgm) {
@@ -28,7 +30,7 @@
       center = modal.querySelector('.prgm-preview-center'); left = modal.querySelector('.prgm-preview-controls'); right = modal.querySelector('.prgm-preview-inspector');
       footer = modal.querySelector('.prgm-preview-support');
     } else {
-      header = modal.querySelector('.image-resource-modal-header,.spreadsheet-modal-header') || document.createElement('header');
+      header = owned('.image-resource-modal-header,.spreadsheet-modal-header') || document.createElement('header');
       if (!header.parentElement) {
         const heading = document.createElement('div'); heading.className = 'preview-window-heading-text';
         const title = modal.querySelector(':scope > h2'), intro = modal.querySelector(':scope > p.muted-text');
@@ -50,8 +52,8 @@
       center.append(stage);
       const toLeft = ['.preview-controls','.love-graph-editor','.love-calculator-editor','.ti-note-modebar','.document-image-controls','.spreadsheet-tools'];
       const toRight = ['.ti-note-formatbar','#love-preview-log','#lua-preview-input','#lua-preview-log','.py-preview-terminal-label'];
-      for (const selector of toLeft) { const node = modal.querySelector(selector); if (node) left.append(node); }
-      for (const selector of toRight) { const node = modal.querySelector(selector); if (node) right.append(node); }
+      for (const selector of toLeft) { const node = owned(selector); if (node) left.append(node); }
+      for (const selector of toRight) { const node = owned(selector); if (node) right.append(node); }
       const leftovers = [...modal.children];
       for (const node of leftovers) {
         if (node === header || node === body || node === stage || node.contains(stage)) continue;
@@ -71,6 +73,7 @@
     stage.before(frame); frame.append(stage);
     const actions = header.querySelector('.modal-top-actions,.prgm-preview-top,.image-resource-top-actions,.spreadsheet-header-actions') || header.appendChild(Object.assign(document.createElement('div'),{className:'modal-top-actions'}));
     actions.classList.add('preview-window-header-actions');
+    window.mountDocumentPageLayoutAction?.(backdrop, options, actions);
     let toggle = nativeToggle;
     if (!toggle) { toggle = document.createElement('button'); toggle.type='button';toggle.className='green-tool-button';actions.prepend(toggle); }
     toggle.setAttribute('data-preview-window-expand', '');

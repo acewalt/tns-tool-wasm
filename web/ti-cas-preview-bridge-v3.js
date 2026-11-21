@@ -360,59 +360,6 @@
     try { return String(state.caseval('type(' + alias + ')')).trim() === 'func'; } catch (_error) { return false; }
   }
 
-  function luaPatternToRegExp(pattern) {
-    const source = String(pattern ?? "");
-    let output = "";
-    for (let index = 0; index < source.length; index += 1) {
-      const char = source[index];
-      if (char === "%") {
-        const next = source[++index] || "";
-        const classes = {
-          a: "[A-Za-z]", A: "[^A-Za-z]",
-          d: "\\d", D: "\\D",
-          s: "\\s", S: "\\S",
-          w: "[A-Za-z0-9_]", W: "[^A-Za-z0-9_]",
-          x: "[A-Fa-f0-9]", X: "[^A-Fa-f0-9]",
-          l: "[a-z]", L: "[^a-z]",
-          u: "[A-Z]", U: "[^A-Z]",
-          c: "[\\x00-\\x1F\\x7F]", C: "[^\\x00-\\x1F\\x7F]",
-          z: "\\x00", Z: "[^\\x00]"
-        };
-        if (classes[next]) output += classes[next];
-        else output += next.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      } else if (char === ".") output += "[\\s\\S]";
-      else if (char === "-") output += "*?";
-      else if (char === "(" || char === ")" || char === "^" || char === "$" || char === "*" || char === "+" || char === "?") output += char;
-      else if (char === "[") {
-        const end = source.indexOf("]", index + 1);
-        if (end > index) {
-          let inner = source.slice(index + 1, end)
-            .replace(/%a/g, "A-Za-z")
-            .replace(/%d/g, "0-9")
-            .replace(/%s/g, "\\s")
-            .replace(/%w/g, "A-Za-z0-9_")
-            .replace(/%x/g, "A-Fa-f0-9");
-          output += `[${inner}]`;
-          index = end;
-        } else output += "\\[";
-      } else if ("{}|\\".includes(char)) output += `\\${char}`;
-      else output += char;
-    }
-    try { return new RegExp(output, "g"); } catch (_error) { return null; }
-  }
-
-  function createStringGmatch(text, pattern) {
-    const source = String(text ?? "");
-    const regex = luaPatternToRegExp(pattern);
-    if (!regex) return () => [null];
-    return () => {
-      const match = regex.exec(source);
-      if (!match) return [null];
-      if (match[0] === "") regex.lastIndex = Math.min(source.length + 1, regex.lastIndex + 1);
-      return match.length > 1 ? match.slice(1).map((value) => value ?? null) : [match[0]];
-    };
-  }
-
   function createLuaBindings(options = {}) {
     const excludedFunctions = options.excludedFunctions || [];
     return {
@@ -423,8 +370,7 @@
       __tnsCasEvalStr: (expression) => {
         const result = evaluate(expression, { mode: "evalStr", excludedFunctions });
         return [result.value, result.error, result.handled];
-      },
-      __tnsStringGmatch: (text, pattern) => [createStringGmatch(text, pattern)]
+      }
     };
   }
 
@@ -433,11 +379,6 @@
 -- TNS Tool Preview only: compatibility layer; this code is never written to the TNS.
 local __tnsOriginalMathEval = math and math.eval or nil
 local __tnsOriginalMathEvalStr = math and math.evalStr or nil
-if string and __tnsStringGmatch then
-  string.gmatch = function(text, pattern)
-    return __tnsStringGmatch(text, pattern)
-  end
-end
 if math and __tnsCasEval then
   math.eval = function(expr)
     local value, err, handled = __tnsCasEval(expr)
@@ -493,7 +434,6 @@ end
     translateGiacToTi,
     shouldHandle,
     supportsFunction,
-    luaPatternToRegExp,
     getStatus() {
       return {
         version: state.version,
@@ -516,7 +456,6 @@ end
   window.createLuaJsPreviewRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
     const excludedFunctions = Object.keys(symbols?.basicFunctions || {});
     const needsCas = sourceNeedsCas(code, excludedFunctions);
-    const needsGmatch = /\bstring\.gmatch\s*\(/.test(String(code || ""));
 
     if (needsCas) {
       appendLog(logEl, "CAS Preview v3: cargando Giac/Xcas para math.eval/math.evalStr...");
@@ -529,7 +468,7 @@ end
       }
     }
 
-    if (!needsCas && !needsGmatch) return oldCreateLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols);
+    if (!needsCas) return oldCreateLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols);
 
     const bindings = createLuaBindings({ excludedFunctions });
     const mergedSymbols = {

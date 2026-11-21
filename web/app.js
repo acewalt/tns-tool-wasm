@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-14-persistence-graph-v44";
+const SOURCE_VERSION = "2026-11-21-layout-lua-v45";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -4525,6 +4525,7 @@ function imageResourceMetaText(width, height, extra = "") {
 }
 
 function showImageModal(item, options = {}) {
+  options = documentPreviewLayoutOptions(item, options);
   const imagePath = item?.detail?.image_file || item?.file || '';
   if (!imagePath) return;
   let bytes;
@@ -9525,6 +9526,7 @@ json.dumps({"file": str(xml_file), "raw_xml": snapshot.toxml()})
 }
 
 function showNotepadModal(item, options = {}) {
+  options = documentPreviewLayoutOptions(item, options);
   const initialText = options.draft?.text ?? (item?.content || extractNotepadTextFromRawXml(item?.raw_xml || ""));
   const backdrop = makeDocumentPreviewBackdrop(options);
   backdrop.innerHTML = `
@@ -10343,6 +10345,7 @@ function documentCalculatorHistoryDraft(item, fallback, onDraft) {
   };
 }
 async function openCalculatorInLovePreview(item, options = {}) {
+  options = documentPreviewLayoutOptions(item, options);
   if(!window.TnsPrgmPreview)throw Error('Calculator preview is still loading.');
   tiMathEditor?.flush();
   item=await readStoredDocumentWidget(item,'TI.Scratchpad');
@@ -10371,6 +10374,7 @@ async function openCalculatorInLovePreview(item, options = {}) {
   return preview;
 }
 async function openGraphInLovePreview(item, options = {}) {
+  options = documentPreviewLayoutOptions(item, options);
   if (!window.TnsGraphPreview) throw new Error('Graph preview is still loading.');
   item=await readStoredDocumentWidget(item,'TI.GeoGrapher');
   const mathSession = documentCalculatorMathSession(item.file);
@@ -13092,6 +13096,10 @@ async function loadLuaJsRuntimeSources() {
 
 async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {}) {
   const { installLuaDocumentBindings, toLuaDocumentValue } = await import('../src/lua/document-symbols.js?v=20261112-widgets-v39');
+  const [{ installLuaStringPatterns }, { installLuaStandardLibrary }] = await Promise.all([
+    import('../src/lua/string-patterns.js?v=20261120-lua-compat-v45'),
+    import('../src/lua/standard-library.js?v=20261120-lua-compat-v45'),
+  ]);
   const sources = await loadLuaJsRuntimeSources();
   for (const source of sources) {
     (0, eval)(source);
@@ -13161,9 +13169,8 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   });
   global.lua_tableset(varTable, "recall", (key) => [Object.prototype.hasOwnProperty.call(store, String(key)) ? store[String(key)] : null]);
   global.lua_tableset(stringTable, "uchar", (codepoint) => [String.fromCharCode(Number(codepoint) || 0)]);
-  global.lua_tableset(stringTable, "find", luaJsStringFind);
-  global.lua_tableset(stringTable, "match", luaJsStringMatch);
-  global.lua_tableset(stringTable, "gsub", luaJsStringGsub);
+  installLuaStringPatterns(global);
+  installLuaStandardLibrary(global);
   const mathSession = symbols.problemFile ? documentCalculatorMathSession(symbols.problemFile) : null;
   const reportedMathErrors = new Set();
   const variableOrigin = Symbol('Lua preview');
@@ -13235,9 +13242,19 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   `);
 
   let timerId = null;
+  let previousRuntimeDiagnostic = '';
   function log(message) {
     logEl.textContent += `${logEl.textContent ? "\n" : ""}${message}`;
     logEl.scrollTop = logEl.scrollHeight;
+  }
+  function reportRuntimeError(phase, eventName, error) {
+    const event = String(eventName).replace(/^on\./, '');
+    const declaration = new RegExp('function\\s+on[.:]' + event + '\\s*\\(').exec(safeCode);
+    const line = declaration ? safeCode.slice(0, declaration.index).split('\n').length : null;
+    const origin = symbols.filename || symbols.name || 'ScriptApp';
+    const diagnostic = `ERROR ${phase} LuaJS: on.${event} (${origin}${line ? ':' + line : ''}): ${describeLuaJsError(error)}`;
+    if (diagnostic !== previousRuntimeDiagnostic) log(`${diagnostic}\n${compactStack(error)}`);
+    previousRuntimeDiagnostic = diagnostic;
   }
   function windowTable() {
     return global.lua_tableget(global.G.str.platform, "window");
@@ -13268,7 +13285,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       global.callEvent("resize", nextWidth, nextHeight);
       repaint(true);
     } catch (error) {
-      log(`ERROR resize LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      reportRuntimeError('resize', 'resize', error);
     }
   }
   function repaint(shouldLog = false) {
@@ -13277,9 +13294,11 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       global.callEvent("paint", gc());
       drawLuaJsNativeEditors(ctx, nativeEditors, screenText);
     } catch (error) {
-      log(`ERROR repaint LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
-      throw error;
+      reportRuntimeError('repaint', 'paint', error);
+      global.lua_tableset(windowTable(), "invalidated", false);
+      return false;
     }
+    previousRuntimeDiagnostic = '';
     global.lua_tableset(windowTable(), "invalidated", false);
     if (shouldLog) log("Snapshot actualizado con LuaJS.");
   }
@@ -13301,7 +13320,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
         repaint(false);
       }
     } catch (error) {
-      log(`ERROR timer LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      reportRuntimeError('timer', 'timer', error);
       if (timerId) window.clearInterval(timerId);
     }
   }
@@ -13311,8 +13330,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       global.callEvent("resize", canvas.width, canvas.height);
       global.callEvent("create", gc());
     } catch (error) {
-      log(`ERROR boot LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
-      throw error;
+      reportRuntimeError('boot', 'create/resize', error);
     }
     repaint(true);
     window.addEventListener('tns-document-variables-change', onDocumentVariablesChange);
@@ -13407,7 +13425,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       repaint(true);
       log(`Evento ejecutado en LuaJS: ${name}`);
     } catch (error) {
-      log(`ERROR evento LuaJS ${name}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      reportRuntimeError('evento', eventName, error);
     }
   }
   function charIn(char) {
@@ -13421,7 +13439,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       repaint(true);
       log(`Tecla enviada a LuaJS: ${char}`);
     } catch (error) {
-      log(`ERROR tecla LuaJS ${char}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      reportRuntimeError('tecla', 'charIn', error);
     }
   }
   function mouseClick(x, y) {
@@ -13431,7 +13449,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       repaint(true);
       log(`Click enviado a LuaJS: ${x},${y}`);
     } catch (error) {
-      log(`ERROR click LuaJS ${x},${y}: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      reportRuntimeError('click', 'mouseDown/mouseUp', error);
     }
   }
   function pointerEvent(name, x, y) {
@@ -13440,7 +13458,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
       global.callEvent(name, x, y);
       repaint(false);
     } catch (error) {
-      log(`ERROR ${name} LuaJS: ${describeLuaJsError(error)}\n${compactStack(error)}`);
+      reportRuntimeError(name, name, error);
     }
   }
   function close() {
@@ -13458,11 +13476,17 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
 }
 
 async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) {
+  const [{ installLuaStringPatterns }, { installLuaStandardLibrary }] = await Promise.all([
+    import('../src/lua/string-patterns.js?v=20261120-lua-compat-v45'),
+    import('../src/lua/standard-library.js?v=20261120-lua-compat-v45'),
+  ]);
   const sources = await loadLuaJsRuntimeSources();
   for (const source of sources) {
     (0, eval)(source);
   }
   hardenLuaJsPreviewRuntime();
+  installLuaStringPatterns(window);
+  installLuaStandardLibrary(window);
 
   const global = window;
   const love = global.lua_newtable();
@@ -15665,113 +15689,6 @@ function ensureLuaJsTable(name) {
   return window.G.str[name];
 }
 
-function luaJsStringFind(source, pattern, init, plain) {
-  const text = String(source ?? "");
-  const start = Math.max(0, (Number(init) || 1) - 1);
-  const needle = String(pattern ?? "");
-  if (plain === true) {
-    const index = text.indexOf(needle, start);
-    return index < 0 ? [null] : [index + 1, index + needle.length];
-  }
-  const regex = luaPatternToRegExp(needle);
-  const textFromStart = text.slice(start);
-  regex.lastIndex = 0;
-  const match = regex.exec(textFromStart);
-  if (!match) return [null];
-  const matchStart = start + match.index;
-  return [matchStart + 1, matchStart + match[0].length, ...match.slice(1)];
-}
-
-function luaJsStringMatch(source, pattern, init) {
-  const text = String(source ?? "");
-  const start = Math.max(0, (Number(init) || 1) - 1);
-  const regex = luaPatternToRegExp(String(pattern ?? ""));
-  regex.lastIndex = 0;
-  const match = regex.exec(text.slice(start));
-  if (!match) return [null];
-  return match.length > 1 ? match.slice(1) : [match[0]];
-}
-
-function luaJsStringGsub(source, pattern, replacement, limit) {
-  const text = String(source ?? "");
-  const max = limit == null ? Infinity : Math.max(0, Number(limit) || 0);
-  if (max === 0) return [text, 0];
-  const regex = luaPatternToRegExp(String(pattern ?? ""));
-  let count = 0;
-  const output = text.replace(regex, (...args) => {
-    if (count >= max) return args[0];
-    count += 1;
-    if (typeof replacement === "function") {
-      const captures = args.slice(1, -2);
-      const result = window.lua_call(replacement, captures.length ? captures : [args[0]])[0];
-      return result == null ? args[0] : String(result);
-    }
-    if (replacement && typeof replacement === "object") {
-      const key = args[1] ?? args[0];
-      const result = window.lua_tableget(replacement, key);
-      return result == null ? args[0] : String(result);
-    }
-    return String(replacement ?? "").replace(/%(\d)/g, (_match, index) => String(args[Number(index)] ?? ""));
-  });
-  return [output, count];
-}
-
-function luaPatternToRegExp(pattern) {
-  let output = "";
-  for (let index = 0; index < pattern.length; index += 1) {
-    const char = pattern[index];
-    if (char === "%") {
-      const next = pattern[index + 1] || "";
-      index += 1;
-      if (next === "a") output += "[A-Za-z]";
-      else if (next === "d") output += "\\d";
-      else if (next === "s") output += "\\s";
-      else if (next === "w") output += "[A-Za-z0-9_]";
-      else if (next === "0") output += "0";
-      else if (next === "1") output += "1";
-      else output += escapeRegExp(next);
-    } else if (char === "[") {
-      const end = pattern.indexOf("]", index + 1);
-      if (end > index) {
-        output += luaPatternClassToRegExp(pattern.slice(index, end + 1));
-        index = end;
-      } else {
-        output += "\\[";
-      }
-    } else if (char === ".") {
-      output += "[\\s\\S]";
-    } else if (char === "(" || char === ")") {
-      output += char;
-    } else if (char === "^") {
-      output += index === 0 ? "^" : "\\^";
-    } else if (char === "$") {
-      output += index === pattern.length - 1 ? "$" : "\\$";
-    } else if (char === "*" || char === "+" || char === "?") {
-      output += char;
-    } else if (char === "-") {
-      output += "*?";
-    } else if ("^$.*+?{}|\\".includes(char)) {
-      output += `\\${char}`;
-    } else {
-      output += char;
-    }
-  }
-  return new RegExp(output, "g");
-}
-
-function luaPatternClassToRegExp(text) {
-  let inner = text.slice(1, -1);
-  inner = inner
-    .replace(/%a/g, "A-Za-z")
-    .replace(/%d/g, "\\d")
-    .replace(/%s/g, "\\s")
-    .replace(/%w/g, "A-Za-z0-9_")
-    .replace(/%0/g, "0")
-    .replace(/%1/g, "1")
-    .replace(/%([()[\].*+?^$|{}\\/+])/g, "\\$1");
-  return `[${inner}]`;
-}
-
 function escapeRegExp(text) {
   return String(text).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -17529,6 +17446,7 @@ function mountDocumentSpreadsheet(host, item, options = {}) {
 }
 
 async function showSpreadsheetModal(item, options = {}) {
+  options = documentPreviewLayoutOptions(item, options);
   item = await readStoredDocumentWidget(item, 'tabulator');
   const state = createSpreadsheetPreviewState(item, options.draft);
   const mathSession = documentCalculatorContext(item.file).mathSession;
@@ -17648,6 +17566,47 @@ async function showSpreadsheetModal(item, options = {}) {
   render();
 }
 
+function documentPreviewLayoutOptions(item, options = {}) {
+  if (options.embedded || !item?.file || !item?.path) return options;
+  return { ...options, item: options.item || item,
+    onEditLayout: options.onEditLayout || (async () => {
+      let target = item;
+      // An image resource has its own file/path rather than its owning page's
+      // XML path. Resolve the ScriptApp before selecting the organizer page.
+      if (item.type === 'Resource') {
+        const data = await inspectXmlDocument(), groups = window.TnsDocumentPreviewNavigation.groups(data.items);
+        const page = documentWidgetPreviewPages(data.items, groups).flatMap(page => page.previewItems || [page]).find(page =>
+          page.previewKind === 'images' && documentPreviewFileKey(page.previewItem?.file) === documentPreviewFileKey(item.file));
+        if (page) target = page;
+      }
+      return openDocumentPageLayout(target);
+    }),
+  };
+}
+
+function mountDocumentPageLayoutAction(backdrop, options = {}, headerActions) {
+  if (options.embedded || !headerActions) return null;
+  const callback = options.onEditLayout || (options.item?.file && options.item?.path ? () => openDocumentPageLayout(options.item) : null);
+  if (!callback) return null;
+  const existing = [...backdrop.querySelectorAll('[data-document-page-layout],[data-compound-edit]')];
+  const button = existing[0] || document.createElement('button');
+  for (const duplicate of existing.slice(1)) duplicate.remove();
+  button.type = 'button'; button.dataset.documentPageLayout = ''; button.hidden = false;
+  button.textContent = window.TnsDocumentPageLayout?.words?.().title || ({es:'Distribución',fr:'Disposition'})[document.documentElement.lang?.slice(0,2)] || 'Page layout';
+  // Keep the compound command handler: it commits each pane before opening the
+  // organizer. Other previews use their own native draft/commit hook there.
+  if (!button.onclick) button.onclick = async () => {
+    if (button.disabled) return;
+    button.disabled = true;
+    try { await callback(); }
+    catch (error) { xmlLog(`ERROR Layout: ${error.message}`); }
+    finally { button.disabled = false; }
+  };
+  const tabs = headerActions.querySelector('.document-preview-expanded-tabs');
+  if (tabs) tabs.after(button); else headerActions.prepend(button);
+  return button;
+}
+
 function mountDocumentPreviewTabs(backdrop, options, selector, onSelect, chrome = false) {
   const navigation = options?.pageNavigation;
   const host = backdrop.querySelector(selector);
@@ -17662,14 +17621,6 @@ function mountDocumentPreviewTabs(backdrop, options, selector, onSelect, chrome 
       pageNavigation: navigation ? { ...navigation, onSelect: selectOnce } : null,
     });
     raiseDocumentPreviewBackdrop(backdrop);
-    if (options.onEditLayout && !backdrop.querySelector('[data-document-page-layout],[data-compound-edit]')) {
-      const actions = backdrop.querySelector('.preview-window-header .modal-top-actions,.preview-window-header .prgm-preview-top,.modal-top-actions');
-      if (actions) {
-        const button = document.createElement('button'); button.type = 'button'; button.dataset.documentPageLayout = '';
-        button.textContent = window.TnsDocumentPageLayout?.words?.().title || ({es:'Distribución',fr:'Disposition'})[document.documentElement.lang?.slice(0,2)] || 'Page layout';
-        button.onclick = () => options.onEditLayout(); actions.prepend(button);
-      }
-    }
     return mounted;
   };
   if (chrome) {
@@ -18085,7 +18036,7 @@ async function openDocumentAppPreview(groups, kind, selected = 0, session = {}) 
       },
       mountApplication: (host, app, paneOptions = {}) => {
         const sheet = app.previewItem || app, key = `${documentXmlFileIdentity(sheet.file)}::${sheet.path||sheet.name}`;
-        const settings = { mathSession: context.mathSession, luaSymbols: luaSymbols.get(app), draft: appDrafts[key], setDraft: draft => { appDrafts[key] = draft; },
+        const settings = { formatToolbarHost: paneOptions.formatToolbarHost, mathSession: context.mathSession, luaSymbols: luaSymbols.get(app), draft: appDrafts[key], setDraft: draft => { appDrafts[key] = draft; },
           findCalculator:()=>appControllers.find(controller=>controller.kind==='calculators'),
           findPythonShell:()=>appControllers.find(controller=>controller.kind==='python'&&(controller.item.name==='TI.PythonShell'||controller.item.content_label==='PythonShell')),
           findPythonEditor:source=>appControllers.find(controller=>controller.kind==='python'&&controller.item.name!=='TI.PythonShell'&&source&&documentPythonPreviewFile(controller.getPythonItem())===documentPythonPreviewFile(source)),
