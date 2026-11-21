@@ -44,6 +44,8 @@
     const ungroup = modal.querySelector('[data-compound-ungroup]'); ungroup.textContent = t.ungroup; ungroup.hidden = !options.onUngroup || (page.previewItems?.length || 0) < 2;
     const status = modal.querySelector('[data-compound-status]');
     const layout = layoutFor(page, options.draft?.layout); let disposed = false;
+    const formatToolbarHost = document.createElement('div');
+    formatToolbarHost.className = 'compound-preview-format-tools';
     let activePane = 0;
     const panes = [];
     const splitters = [];
@@ -51,6 +53,7 @@
       activePane = index;
       const navigation = window.TnsDocumentPreviewNavigation;
       for (const [paneIndex, pane] of panes.entries()) pane.dataset.active = String(paneIndex === index);
+      controllers.forEach((controller, paneIndex) => controller.setActive?.(paneIndex === index));
       navigation?.updateChrome(modal.querySelector('.compound-preview-chrome'), { appKind: page.previewItems?.[index]?.previewKind });
     }
     const persist = () => options.setDraft?.({ layout: { ...layout } });
@@ -84,16 +87,17 @@
       panes.push(pane);
       const accent = window.TnsDocumentPreviewNavigation?.accentFor(app.previewKind);
       if (accent) pane.style.setProperty('--document-preview-accent', accent);
-      pane.onpointerdown = pane.onfocusin = () => activatePane(index);
+      pane.addEventListener('pointerdown', () => activatePane(index));
+      pane.addEventListener('focusin', () => activatePane(index));
       const item = app.previewItem || app;
       try {
-        if (app.previewKind === 'graphs' && window.TnsGraphPreview) controllers.push(options.mountApplication?.(pane,app,{...options,onVariablesChange:reportChange}) || window.TnsGraphPreview.mount(pane, item, { ...options, controls: false, onVariablesChange: reportChange }));
-        else if (app.previewKind === 'notes' && window.TiNotepadRichView) controllers.push(options.mountApplication?.(pane,app,{...options,onVariablesChange:reportChange}) || window.TiNotepadRichView.mount(pane,item,options));
+        if (app.previewKind === 'graphs' && window.TnsGraphPreview) controllers.push(options.mountApplication?.(pane,app,{...options,formatToolbarHost,onVariablesChange:reportChange}) || window.TnsGraphPreview.mount(pane, item, { ...options, controls: false, onVariablesChange: reportChange }));
+        else if (app.previewKind === 'notes' && window.TiNotepadRichView) controllers.push(options.mountApplication?.(pane,app,{...options,formatToolbarHost,onVariablesChange:reportChange}) || window.TiNotepadRichView.mount(pane,item,options));
         else {
           // The document owner supplies adapters that need staged XML or its
           // shared maths session (for example Lists & Spreadsheet). Keeping
           // this hook synchronous makes controller cleanup deterministic.
-          const controller = options.mountApplication?.(pane, app, { ...options, onVariablesChange: reportChange });
+          const controller = options.mountApplication?.(pane, app, { ...options, formatToolbarHost, onVariablesChange: reportChange });
           if (controller && typeof controller.then === 'function') throw Error('The embedded app adapter must return its controller synchronously.');
           if (controller) controllers.push(controller);
           else { const text = document.createElement('p'); text.className = 'compound-preview-unavailable'; text.textContent = `${app.name}: ${t.unavailable}`; pane.append(text); }
@@ -142,9 +146,22 @@
     if (options.onEditLayout) for (const handle of splitters) handle.ondblclick = () => command(edit, options.onEditLayout);
     if (!backdrop.isConnected) document.body.append(backdrop);
     options.mountWindow?.(backdrop);
+    // Keep formatting chrome outside the scroll/zoom frame and scrolling body.
+    // It must neither clip into a pane nor change the calculator's anchor.
+    modal.append(formatToolbarHost);
+    const displayFrame = modal.querySelector('.preview-window-frame');
+    const positionFormatTools = () => {
+      if (!displayFrame || !formatToolbarHost.isConnected) return;
+      const frameRect = displayFrame.getBoundingClientRect(), modalRect = modal.getBoundingClientRect();
+      formatToolbarHost.style.left = (frameRect.left + frameRect.width / 2 - modalRect.left) + 'px';
+      formatToolbarHost.style.top = Math.max(70, frameRect.top - modalRect.top - formatToolbarHost.offsetHeight - 8) + 'px';
+    };
+    const toolsObserver = new ResizeObserver(positionFormatTools);
+    toolsObserver.observe(formatToolbarHost); if (displayFrame) toolsObserver.observe(displayFrame); toolsObserver.observe(modal);
+    positionFormatTools();
     activatePane(activePane);
     const previousCleanup = backdrop.__previewWindowCleanup;
-    backdrop.__previewWindowCleanup = () => { dispose(); previousCleanup?.(); };
+    backdrop.__previewWindowCleanup = () => { toolsObserver.disconnect(); dispose(); previousCleanup?.(); };
     resizeLayout();
     return { backdrop, controllers, layout, dispose, refresh };
   }

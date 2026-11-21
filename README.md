@@ -58,7 +58,7 @@ https://acewalt.github.io/tns-tool-wasm/
 
 ## Windows portable download
 
-[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.44/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.44)
+[Download TNS Tool Portable for Windows x64](https://github.com/acewalt/tns-tool-wasm/releases/download/tns-tool-portable-v0.1.45/TNS-Tool-Portable-Windows-x64.zip) · [Release notes and SHA256](https://github.com/acewalt/tns-tool-wasm/releases/tag/tns-tool-portable-v0.1.45)
 
 Close any older version, extract the entire ZIP into a new folder, and open **TNS Tool Portable.exe**. Check the version in the window title. The Ndless SDK is included; no separate toolchain installation is required. The web New/Open Ndless Project actions link to this same download.
 
@@ -66,7 +66,7 @@ Close any older version, extract the entire ZIP into a new folder, and open **TN
 
 ## What's new
 
-**0.1.44:** Saved Sheets and Calculator data reopen from current XML even if Document Inspector was already open. Notes is editable inside layouts, including mathematical templates. New Graphs pages start empty; sine/cosine curves can be translated or stretched directly, with concise mathematical formula labels. The page organizer has multiple selection, designs filtered by app count and a live colored arrangement diagram. Mixed pages support Graphs, Notes, Sheets, Program Editor, Calculator, Python editor/shell and isolated Lua ScriptApps. This is not a full TI-Nspire emulator.
+**0.1.45:** Grouped previews retain their own controls and Calculator scrolls locally. Notes formatting appears above the display, and Page layout is available in every preview header. Lua preview now supports Lua 5.1 string patterns (including `gmatch`), numeric formatting, local recursion and protected error handling. The original Thermodynamics app was tested without changing its Lua source. See the [compatibility results and remaining limitations](docs/lua-compatibility-v45.md). This is not a full TI-Nspire emulator.
 
 **0.1.38:** Expanded view disables the magnifier and displays the preview without additional zoom. Returning to Calculator view restores the session's previous zoom setting.
 

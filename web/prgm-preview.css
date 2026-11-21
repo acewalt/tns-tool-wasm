@@ -8,6 +8,11 @@
 .prgm-preview-heading{display:flex;justify-content:space-between;gap:20px;margin-bottom:26px}.prgm-preview-heading h2{font:700 25px Arial,sans-serif;margin:9px 0}.prgm-preview-heading p{font-size:13px;color:#a5b7cf;margin:0;line-height:1.5}.prgm-preview-eyebrow{font-size:10px;letter-spacing:1.6px;color:#a5ed32;font-weight:700}
 .prgm-preview-top{display:flex;gap:8px;align-items:start;flex-shrink:0}.prgm-preview-workspace{display:grid;grid-template-columns:165px minmax(0,1fr) 200px;gap:24px;align-items:start}.prgm-preview-controls{display:flex;flex-direction:column;gap:9px;padding-top:25px}.prgm-preview-controls>button{width:100%}.prgm-preview-pad{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:8px}.prgm-preview-pad button{border-radius:20px}.prgm-preview-angle{display:grid;gap:8px;font-size:11px;color:#adbed4;margin-top:14px}.prgm-preview-angle select{width:100%;padding:8px;background:#0b1320;color:#e2ecfc;border:1px solid #334863;border-radius:8px}.prgm-preview-controls small{font-size:11px;line-height:1.7;color:#93a7c3}
 .prgm-preview-center{min-width:0;display:flex;flex-direction:column;align-items:center;gap:10px}.prgm-preview-size-label{font:11px monospace;color:#9aabc2}
+/* Embedded workspaces use a column rather than the standalone three-column
+   grid. Stretch its display across the assigned pane instead of sizing it
+   to the intrinsic width of an empty or short Calculator entry. */
+.document-embedded-preview .prgm-preview-workspace{align-items:stretch!important}
+.document-embedded-preview .prgm-preview-center{align-self:stretch!important;width:100%!important}
 .prgm-preview-screen-shell{width:320px;height:240px;max-width:100%;flex:none;box-shadow:0 6px 30px #0007;border-radius:5px;overflow:hidden}
 .prgm-preview-screen{position:relative;width:100%;height:100%;background:#f7f7f7;color:#080808;isolation:isolate;overflow:hidden;font:14px 'Times New Roman',serif}
 .prgm-preview-chrome{height:26px}

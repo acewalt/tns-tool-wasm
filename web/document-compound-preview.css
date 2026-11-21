@@ -36,3 +36,12 @@
 .document-embedded-preview .ti-note-modebar .ti-math-icon-button{min-width:24px;min-height:20px}
 .document-embedded-preview .ti-note-modebar .ti-math-tool-icon{width:18px;height:18px;flex-basis:18px}
 .document-embedded-preview .ti-note-formatbar{position:absolute;left:0;bottom:24px;z-index:8;width:100%;max-height:calc(100% - 24px);box-sizing:border-box;overflow:auto;margin:0;padding:3px;gap:3px;background:#f3f5f7}
+
+/* Font controls are UI chrome, outside the scaled 320x240 document surface. */
+.compound-preview-modal.preview-window{position:relative}
+.compound-preview-format-tools{position:absolute;left:50%;top:106px;transform:translateX(-50%);z-index:30;width:min(560px,calc(100vw - 100px));box-sizing:border-box}
+.compound-preview-format-tools:not(:has(.ti-note-formatbar:not([hidden]))){display:none}
+.preview-window .compound-preview-format-tools .ti-note-formatbar{position:static;width:100%;max-height:80px;box-sizing:border-box;margin:0;padding:6px;justify-content:flex-start;flex-wrap:nowrap;gap:5px;overflow:auto;box-shadow:0 5px 18px #0003}
+.compound-preview-format-tools .ti-note-formatbar>*{flex-shrink:0}
+.compound-preview-format-tools .ti-note-format-field{margin:0;box-sizing:border-box}
+.compound-preview-format-tools .ti-note-format-field input{margin:0}

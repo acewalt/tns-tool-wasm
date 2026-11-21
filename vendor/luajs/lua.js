@@ -168,6 +168,13 @@ break;
 case 4:
     functionBlockAdded = false;
     inLoop = false;
+    // local function f is equivalent to local f; f=function... . Its parent
+    // scope must contain f before compiling the body, so recursion captures
+    // this local binding rather than looking up a global function of that name.
+    if ($$[$0-3] === "local" && $$[$0-2] === "function") {
+      var parentScope = stack[stack.length - 1], name = $$[$0-1];
+      locals[name] = parentScope.locals[name] = "_" + name + "_" + parentScope.blockId;
+    }
     this.$ = $$[$0];
   
 break;
@@ -484,7 +491,7 @@ case 47: this.$ = [setLocal($$[$0], "_" + $$[$0])];
 break;
 case 48: this.$ = $$[$0-2].concat([$$[$0]]); 
 break;
-case 49: this.$ = [$$[$0]]; 
+case 49: this.$ = [$$[$0]];
 break;
 case 50: this.$ = {single: $$[$0], is_number: true}; 
 break;
@@ -1627,16 +1634,15 @@ function _ipairs_next(table, index) {
 var lua_libs = {};
 var lua_core = {
   "assert": function (value, message) {
-    if (arguments.length < 1) {
-      message = "assertion failed!";
-    }
     if (value != null && value !== false) {
-      return value;
+      return slice(arguments, 0);
     } else {
-      throw new Error(message);
+      throw new Error(message == null ? "assertion failed!" : message);
     }
   },
-  "collectgarbage": function () {},// no-op
+  "collectgarbage": function (option) {
+    throw new Error("collectgarbage(" + (option == null ? "collect" : String(option)) + "): LuaJS cannot control or measure the JavaScript garbage collector");
+  },
   "dofile": function () {
     not_supported();
   },
@@ -1722,14 +1728,14 @@ var lua_core = {
   },
   "pcall": function (func) {
     try {
-      return [true].concat(func.apply(null, slice(arguments, 1)));
+      return [true].concat(lua_call(func, slice(arguments, 1)));
     } catch (e) {
       return [false, e.message];
     }
   },
   "print": lua_print,
   "rawequal": function (op1, op2) {
-    return (op1 == op2) || (op1 == null && op2 == null);
+    return [(op1 === op2) || (op1 == null && op2 == null)];
   },
   "rawget": function (table, key) {
     if (typeof table == "object" && table != null && key != null) {
@@ -1833,16 +1839,26 @@ var lua_core = {
     return list.uints.slice(i - 1, j);
   },
   "_VERSION": "Lua 5.1",
-  "xpcall": function () {
-    not_supported();
+  "xpcall": function (func, handler) {
+    try {
+      return [true].concat(lua_call(func, []));
+    } catch (error) {
+      try {
+        return [false, lua_call(handler, [error.message])[0]];
+      } catch (handlerError) {
+        return [false, "error in error handling"];
+      }
+    }
   }
 };
 
 // coroutine
 var _lua_coroutine = lua_libs["coroutine"] = {};
-_lua_coroutine["resume"] = _lua_coroutine["running"] = _lua_coroutine["status"] = _lua_coroutine["wrap"] = _lua_coroutine["yield"] = _lua_coroutine["create"] = function () {
-  not_supported();
-};
+["resume", "running", "status", "wrap", "yield", "create"].forEach(function (name) {
+  _lua_coroutine[name] = function () {
+    throw new Error("coroutine." + name + ": LuaJS cannot suspend and resume a Lua call stack");
+  };
+});
 
 // debug
 var _lua_debug = lua_libs["debug"] = {
@@ -1904,7 +1920,7 @@ lua_libs["math"] = {
     return [(Math.exp(x) + Math.exp(-x)) / 2];
   },
   "deg": function (x) {
-    return [x * (Math.PI / 180)];
+    return [x * (180 / Math.PI)];
   },
   "exp": function (x) {
     return [Math.exp(x)];
@@ -1943,7 +1959,7 @@ lua_libs["math"] = {
     return [Math.pow(x, y)];
   },
   "rad": function (x) {
-    return [x * (180 / Math.PI)];
+    return [x * (Math.PI / 180)];
   },
   "sin": function (x) {
     return [Math.sin(x)];
@@ -2002,7 +2018,7 @@ lua_libs["os"] = {
   "clock": function () {
     // This function is supposed to return the time the script has been executing
     // not the time since it started, but I don't know of a way to do this.
-    return [(((new Date()).getTime()) / 1000) - _lua_clock_script];
+    return [Math.max(0, (((new Date()).getTime()) / 1000) - _lua_clock_start)];
   },
   "date": function (format, time) {
     // TODO
@@ -2105,7 +2121,7 @@ lua_libs["string"] = {
     return [String.fromCharCode.apply(null, arguments)];
   },
   "dump": function (func) {
-    not_supported();
+    throw new Error("string.dump: LuaJS compiles to JavaScript and cannot emit Lua 5.1 bytecode");
   },
   "find": function () {
     // TODO
@@ -2192,6 +2208,25 @@ String.prototype["metatable"] = lua_newtable(null, "__index", lua_newtable2(lua_
 
 // table
 lua_libs["table"] = {
+  "getn": function (table) {
+    return [lua_len(table)];
+  },
+  "foreach": function (table, callback) {
+    var iterator = lua_core.pairs(table), entry;
+    while ((entry = lua_call(iterator[0], [table, null]))[0] != null) {
+      var result = lua_call(callback, entry)[0];
+      if (result != null) return [result];
+    }
+    return [];
+  },
+  "foreachi": function (table, callback) {
+    var index = 1, value;
+    while ((value = lua_rawget(table, index)) != null) {
+      var result = lua_call(callback, [index++, value])[0];
+      if (result != null) return [result];
+    }
+    return [];
+  },
   "concat": function (table, sep, i, j) {
     // TODO
     not_supported();

@@ -5,7 +5,7 @@
   const STYLE_ID = "tns-import-progress-style";
   const LOG_SELECTOR = "#xml-log";
   const STEPPER_SRC = "./web/import-progress-stepper.js?v=20261015-import-dialog-lifecycle-v4";
-  const COMPAT_JS = "./web/lua-compatibility-report.js?v=20260903-lua-compat-v1";
+  const COMPAT_JS = "./web/lua-compatibility-report.js?v=20261121-lua-compat-v45";
   const COMPAT_CSS = "./web/lua-compatibility-report.css?v=20261015-file-import-backdrop-fix-v3";
 
   let stepperPromise = null;

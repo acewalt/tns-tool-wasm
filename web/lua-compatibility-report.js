@@ -24,7 +24,7 @@
       noCas: "No se detectaron llamadas a math.eval/math.evalStr.",
       dynamicCas: "Hay llamadas CAS construidas dinámicamente; su expresión exacta solo se conoce en ejecución.",
       topLevelCas: "math.eval/math.evalStr parece ejecutarse durante la inicialización. En la TI real el Math Server puede no estar disponible en ese momento; ejecútalo desde un evento/callback posterior.",
-      gmatch: "string.gmatch se detectó en el archivo. El Preview LuaJS ha mostrado incompatibilidad con esta función; conviene probar esa ruta explícitamente.",
+      runtimeLimits: "LuaJS no admite suspender corrutinas, generar bytecode con string.dump ni medir/controlar la memoria Lua con collectgarbage. Revisa esas llamadas.",
       restrictedLib: "Se detectaron librerías Lua que normalmente no forman parte del entorno ScriptApp de TI-Nspire (io/os/package/require/debug). Revisa esas líneas.",
       copy: "Copiar informe",
       close: "Cerrar",
@@ -56,7 +56,7 @@
       noCas: "No math.eval/math.evalStr calls were detected.",
       dynamicCas: "Some CAS calls are built dynamically; their exact expression is only known at runtime.",
       topLevelCas: "math.eval/math.evalStr appears to run during initialization. On a real TI the Math Server may not be available then; run it from a later event/callback.",
-      gmatch: "string.gmatch was detected. Preview LuaJS has shown incompatibility with this function; explicitly test that path.",
+      runtimeLimits: "LuaJS cannot suspend coroutines, emit bytecode with string.dump or measure/control Lua memory with collectgarbage. Review these calls.",
       restrictedLib: "Lua libraries that are normally outside the TI-Nspire ScriptApp environment were detected (io/os/package/require/debug). Review those lines.",
       copy: "Copy report",
       close: "Close",
@@ -88,7 +88,7 @@
       noCas: "Aucun appel à math.eval/math.evalStr n’a été détecté.",
       dynamicCas: "Certains appels CAS sont construits dynamiquement ; leur expression exacte n’est connue qu’à l’exécution.",
       topLevelCas: "math.eval/math.evalStr semble être exécuté pendant l’initialisation. Sur la TI réelle, le Math Server peut ne pas être disponible à ce moment ; utilisez un événement/callback ultérieur.",
-      gmatch: "string.gmatch a été détecté. Preview LuaJS a montré une incompatibilité avec cette fonction ; testez explicitement ce chemin.",
+      runtimeLimits: "LuaJS ne peut pas suspendre des coroutines, générer du bytecode avec string.dump ni mesurer/contrôler la mémoire Lua avec collectgarbage. Vérifiez ces appels.",
       restrictedLib: "Des bibliothèques Lua généralement absentes de l’environnement ScriptApp TI-Nspire ont été détectées (io/os/package/require/debug). Vérifiez ces lignes.",
       copy: "Copier le rapport",
       close: "Fermer",
@@ -200,9 +200,9 @@
     const topLevelCas = topLevelCasLines(code);
     if (topLevelCas.length) warnings.push({ code: "top-level-cas", severity: "warning", lines: topLevelCas });
 
-    const gmatchLines = [];
-    for (const match of code.matchAll(/\bstring\.gmatch\b/g)) gmatchLines.push(lineNumberAt(code, match.index));
-    if (gmatchLines.length) warnings.push({ code: "string-gmatch", severity: "warning", lines: unique(gmatchLines) });
+    const runtimeLimitLines = [];
+    for (const match of code.matchAll(/\b(?:coroutine\.[A-Za-z_]+|string\.dump|collectgarbage)\s*\(/g)) runtimeLimitLines.push(lineNumberAt(code, match.index));
+    if (runtimeLimitLines.length) warnings.push({ code: "runtime-limit", severity: "warning", lines: unique(runtimeLimitLines) });
 
     const restrictedLines = [];
     for (const match of code.matchAll(/\b(?:io\.|os\.|package\.|debug\.|require\s*\()/g)) restrictedLines.push(lineNumberAt(code, match.index));
@@ -210,7 +210,7 @@
     if (casCalls.some((call) => call.kind === "dynamic")) warnings.push({ code: "dynamic-cas", severity: "info", lines: casCalls.filter(c => c.kind === "dynamic").map(c => c.line) });
 
     return {
-      version: "20260903-lua-compat-v1",
+      version: "20261121-lua-compat-v45",
       name: String(name || "Archivo Lua"),
       code,
       lines: code ? code.split(/\r?\n/).length : 0,
@@ -222,7 +222,7 @@
       warnings,
       status: {
         ti: topLevelCas.length || restrictedLines.length ? "review" : "ready",
-        preview: gmatchLines.length || restrictedLines.length ? "review" : "ready",
+        preview: runtimeLimitLines.length || restrictedLines.length ? "review" : "ready",
         cas: casCalls.length ? "hybrid" : "none"
       }
     };
@@ -231,7 +231,7 @@
   function warningText(warning, lang = language()) {
     const tx = t(lang);
     const base = warning.code === "top-level-cas" ? tx.topLevelCas
-      : warning.code === "string-gmatch" ? tx.gmatch
+      : warning.code === "runtime-limit" ? tx.runtimeLimits
       : warning.code === "restricted-lib" ? tx.restrictedLib
       : warning.code === "dynamic-cas" ? tx.dynamicCas
       : warning.code;
@@ -318,5 +318,5 @@
     return overlay;
   }
 
-  window.TnsLuaCompatibility = { version: "20260903-lua-compat-v1", analyze, showReport, reportText, formatBytes };
+  window.TnsLuaCompatibility = { version: "20261121-lua-compat-v45", analyze, showReport, reportText, formatBytes };
 })();
