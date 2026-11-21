@@ -27,7 +27,7 @@
     return Object.fromEntries(['w1','h1','w2','h2'].map(key=>{
       if(count===1)return [key,10000];
       const value=Number(page?.detail?.[key]),split=active.includes(key);
-      return [key,Math.max(split?1000:0,Math.min(split?9000:10000,Number.isFinite(value)?value:5000))];
+      return [key,Math.round(Math.max(split?1000:0,Math.min(split?9000:10000,Number.isFinite(value)?value:5000)))];
     }));
   }
   function applicationType(app) {

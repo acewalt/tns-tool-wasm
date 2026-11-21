@@ -46,6 +46,26 @@ export function createMathSession(options = {}) {
     return result;
   }
   async function calculateAsync(source) {
+    // Lua API names entered into Calculator are symbolic function names in TI,
+    // not calls into the Lua VM. Evaluate their arguments and preserve the call.
+    const luaName = /^(math\.eval(?:str)?)\s*\(([\s\S]*)\)$/i.exec(String(source).trim());
+    if (luaName) {
+      const argumentsText = [];
+      for (const argument of split(luaName[2], ',')) {
+        if (!argument.trim()) throw new PrgmError('SYNTAX_ERROR', 'La expresión está vacía.');
+        const result = await calculateAsync(argument);
+        const solved = /^solve\s*\(([\s\S]*)\)$/i.exec(argument.trim());
+        const variable = solved && split(solved[1], ',').at(-1).trim();
+        const roots = /^\[([^\[\]]*)\]$/.exec(result.display);
+        const display = variable && IDENT.test(variable) && roots
+          ? split(roots[1], ',').map(root => variable + '=' + root.trim()).join(' or ')
+          : result.display;
+        argumentsText.push(/^\s*"/.test(argument) ? JSON.stringify(result.value) : display);
+      }
+      const display = luaName[1] + '(' + argumentsText.join(',') + ')';
+      variables.ans = display;
+      return { value: display, display, kind: 'expression' };
+    }
     try{return calculate(source);}catch(error){
       if(!['UNDEFINED_VARIABLE','UNSUPPORTED_FUNCTION','TYPE_ERROR','SYNTAX_ERROR'].includes(error.code))throw error;
       // A stored TI routine may write Disp output or use private helpers. Its
