@@ -32,6 +32,10 @@ The **web edition** supports TNS/XML editing, selected program previews, ROM wor
 
 **Experimental software:** TNS Tool WASM is not a complete TI-Nspire OS emulator. Preview support, device compatibility and game compatibility vary; some calculator-specific operations require real hardware.
 
+## Lua Visual Builder
+
+Create TI-Nspire Lua applications visually from the Lua ScriptApp editor: drag components, build pages and navigation, configure formulas and events, or connect advanced logic nodes. Preview runs the generated Lua; export the project, Lua source, or a TNS document. Available locally in the web and Windows portable versions. [Builder guide](docs/lua-visual-builder.md).
+
 ## Technical overview
 
 Prgm Preview also runs stored TI-BASIC programs without a visible Program Editor page, including interactive drawing programs such as Sonar. The eye control in Document Inspector shows or hides a program's editor page while keeping it callable from Calculator; it does not encrypt or protect its source.
