@@ -8507,7 +8507,7 @@ function showLuaEditor(item) {
   const openVisualBuilder = async () => {
     editMenuPanel.hidden = true;
     try {
-      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261125-builder-v47');
+      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261126-builder-v48');
       await openLuaVisualBuilder({
         language: document.documentElement.lang, editor, item,
         draftKey: `${xmlDoctor.sourcePath}|${item.file}|${item.path}|${item.name}`,
@@ -12916,7 +12916,16 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     if (editorText) return editorText;
     return formatLuaPreviewScreenText(screenText);
   }
-  return { boot, callEvent, charIn, mouseClick, pointerEvent, repaint, resize, close, getScreenText };
+  // Optional Visual Builder diagnostics stay outside user Lua and physical TNS output.
+  function getBuilderDiagnostics() {
+    const vb=global.G.str.VB;if(!vb)return null;
+    const read=(o,k)=>global.lua_tableget(o,k);
+    const convert=(v,depth=0)=>{if(v==null||['string','number','boolean'].includes(typeof v))return v;if(depth>4||!v.str)return String(v);const out={};for(const k of Object.keys(v.str).slice(0,100))out[k]=convert(v.str[k],depth+1);for(let i=1;i<=100;i++){const item=read(v,i);if(item==null)break;out[i]=convert(item,depth+1);}return out;};
+    const array=k=>{const out=[],table=read(vb,k);if(table)for(let i=1;i<=100;i++){const v=read(table,i);if(v==null)break;out.push(convert(v));}return out;};
+    return {page:read(vb,'current'),error:read(vb,'error')||null,paused:!!read(vb,'paused'),trace:array('trace'),events:array('events'),values:convert(read(vb,'values')),variables:convert(read(vb,'vars')),queue:array('queue').length};
+  }
+  function builderControl(command){const vb=global.G.str.VB,fn=vb&&global.lua_tableget(vb,command);if(typeof fn==='function')global.lua_call(fn,[]);repaint(true);}
+  return { boot, callEvent, charIn, mouseClick, pointerEvent, repaint, resize, close, getScreenText, getBuilderDiagnostics, builderControl };
 }
 
 async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) {

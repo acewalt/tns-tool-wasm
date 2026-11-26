@@ -5,7 +5,7 @@
     async start(options) {
       active?.close();
       const canvas = document.querySelector('canvas'), log = document.querySelector('pre'), error = document.querySelector('[role=alert]');
-      let runtime, disposed = false, dimensions = '';
+      let runtime, disposed = false, dimensions = '', diagnosticTimer, lastDiagnostic='';
       document.documentElement.lang = options.language || 'en';
       // Native math/var calls run synchronously in the document owner's
       // problem session. Source, Lua globals, images and timers stay local.
@@ -31,9 +31,11 @@
           finally { if (!disposed) window.addEventListener('tns-document-variables-change', onVariablesChange); }
         },
         getScreenText: () => runtime?.getScreenText() || '',
+        getBuilderDiagnostics: () => runtime?.getBuilderDiagnostics?.(),
+        builderControl: command => runtime?.builderControl?.(command),
         close() {
           if (disposed) return; disposed = true;
-          runtime?.close(); observer.disconnect(); logObserver.disconnect();
+          clearInterval(diagnosticTimer); runtime?.close(); observer.disconnect(); logObserver.disconnect();
           window.removeEventListener('tns-document-variables-change', onVariablesChange);
           window.removeEventListener('pagehide', controller.close);
           for (const [name, handler] of handlers) canvas.removeEventListener(name, handler);
@@ -76,12 +78,16 @@
         window.TnsTiPreviewFontCalibration?.install(); window.TnsTiPreviewPerformance?.install();
         runtime = await createLuaJsPreviewRuntime(options.code, canvas.getContext('2d'), canvas, log, options.symbols);
         if (disposed) { runtime.close(); return controller; }
-        runtime.boot(); dimensions = `${canvas.width}:${canvas.height}`;
+        runtime.boot();
+        if(options.onDiagnostics)diagnosticTimer=setInterval(()=>{try{const d=runtime.getBuilderDiagnostics?.();if(d){const next=JSON.stringify(d);if(next!==lastDiagnostic){lastDiagnostic=next;options.onDiagnostics(d);}}const runtimeError=error.textContent;if(runtimeError)options.onError?.(runtimeError);}catch(failure){options.onError?.(failure.message);}},120);
+        dimensions = `${canvas.width}:${canvas.height}`;
         window.addEventListener('tns-document-variables-change', onVariablesChange);
         observer.observe(document.documentElement);
         return controller;
       } catch (failure) { controller.close(); throw failure; }
     },
+    getBuilderDiagnostics() { return active?.getBuilderDiagnostics(); },
+    builderControl(command) { return active?.builderControl(command); },
     close() { active?.close(); },
   };
 })();

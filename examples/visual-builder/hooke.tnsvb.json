@@ -1,13 +1,13 @@
 {
   "format": "tns-lua-visual",
-  "version": 1,
+  "version": 2,
   "name": "Hooke",
   "width": 320,
   "height": 212,
-  "startPage": "home",
+  "startPage": "page_2553a874",
   "pages": [
     {
-      "id": "home",
+      "id": "page_2553a874",
       "name": "Home",
       "background": "#f5f7fa",
       "components": [
@@ -26,6 +26,8 @@
           "font": 11,
           "bold": false,
           "visible": true,
+          "editorVisible": true,
+          "locked": false,
           "parent": "",
           "options": "One\nTwo\nThree",
           "min": 0,
@@ -36,8 +38,7 @@
           "shape": "rectangle",
           "rows": "A,B\n1,2\n3,4",
           "asset": "",
-          "scrollHeight": 240,
-          "events": {}
+          "scrollHeight": 240
         },
         {
           "id": "title",
@@ -54,6 +55,8 @@
           "font": 11,
           "bold": true,
           "visible": true,
+          "editorVisible": true,
+          "locked": false,
           "parent": "",
           "options": "One\nTwo\nThree",
           "min": 0,
@@ -64,8 +67,7 @@
           "shape": "rectangle",
           "rows": "A,B\n1,2\n3,4",
           "asset": "",
-          "scrollHeight": 240,
-          "events": {}
+          "scrollHeight": 240
         },
         {
           "id": "labelA",
@@ -82,6 +84,8 @@
           "font": 11,
           "bold": false,
           "visible": true,
+          "editorVisible": true,
+          "locked": false,
           "parent": "",
           "options": "One\nTwo\nThree",
           "min": 0,
@@ -92,8 +96,7 @@
           "shape": "rectangle",
           "rows": "A,B\n1,2\n3,4",
           "asset": "",
-          "scrollHeight": 240,
-          "events": {}
+          "scrollHeight": 240
         },
         {
           "id": "a",
@@ -110,6 +113,8 @@
           "font": 11,
           "bold": false,
           "visible": true,
+          "editorVisible": true,
+          "locked": false,
           "parent": "",
           "options": "One\nTwo\nThree",
           "min": 0,
@@ -120,8 +125,7 @@
           "shape": "rectangle",
           "rows": "A,B\n1,2\n3,4",
           "asset": "",
-          "scrollHeight": 240,
-          "events": {}
+          "scrollHeight": 240
         },
         {
           "id": "labelB",
@@ -138,6 +142,8 @@
           "font": 11,
           "bold": false,
           "visible": true,
+          "editorVisible": true,
+          "locked": false,
           "parent": "",
           "options": "One\nTwo\nThree",
           "min": 0,
@@ -148,8 +154,7 @@
           "shape": "rectangle",
           "rows": "A,B\n1,2\n3,4",
           "asset": "",
-          "scrollHeight": 240,
-          "events": {}
+          "scrollHeight": 240
         },
         {
           "id": "b",
@@ -166,6 +171,8 @@
           "font": 11,
           "bold": false,
           "visible": true,
+          "editorVisible": true,
+          "locked": false,
           "parent": "",
           "options": "One\nTwo\nThree",
           "min": 0,
@@ -176,8 +183,7 @@
           "shape": "rectangle",
           "rows": "A,B\n1,2\n3,4",
           "asset": "",
-          "scrollHeight": 240,
-          "events": {}
+          "scrollHeight": 240
         },
         {
           "id": "calculate",
@@ -194,6 +200,8 @@
           "font": 11,
           "bold": true,
           "visible": true,
+          "editorVisible": true,
+          "locked": false,
           "parent": "",
           "options": "One\nTwo\nThree",
           "min": 0,
@@ -204,25 +212,7 @@
           "shape": "rectangle",
           "rows": "A,B\n1,2\n3,4",
           "asset": "",
-          "scrollHeight": 240,
-          "events": {
-            "click": [
-              {
-                "type": "validate",
-                "inputs": [
-                  "a",
-                  "b"
-                ]
-              },
-              {
-                "type": "setText",
-                "target": "result",
-                "expression": "input(\"a\") * input(\"b\")",
-                "decimals": 2,
-                "suffix": " N"
-              }
-            ]
-          }
+          "scrollHeight": 240
         },
         {
           "id": "result",
@@ -239,6 +229,8 @@
           "font": 11,
           "bold": false,
           "visible": true,
+          "editorVisible": true,
+          "locked": false,
           "parent": "",
           "options": "One\nTwo\nThree",
           "min": 0,
@@ -249,17 +241,101 @@
           "shape": "rectangle",
           "rows": "A,B\n1,2\n3,4",
           "asset": "",
-          "scrollHeight": 240,
-          "events": {}
+          "scrollHeight": 240
         }
       ],
-      "events": {},
       "variables": {}
     }
   ],
   "variables": {},
   "functions": "",
-  "events": {},
-  "graphs": {},
+  "graphs": {
+    "page_2553a874:calculate:click": {
+      "nodes": [
+        {
+          "id": "event",
+          "type": "event",
+          "owner": "page_2553a874:calculate",
+          "event": "click",
+          "x": 60,
+          "y": 60,
+          "page": "page_2553a874"
+        },
+        {
+          "type": "validate",
+          "inputs": [
+            "a",
+            "b"
+          ],
+          "id": "n1",
+          "x": 340,
+          "y": 60
+        },
+        {
+          "type": "setText",
+          "target": "result",
+          "expression": "input(\"a\") * input(\"b\")",
+          "decimals": 2,
+          "suffix": " N",
+          "id": "n2",
+          "x": 620,
+          "y": 60
+        },
+        {
+          "id": "n3",
+          "type": "multiply",
+          "x": 340,
+          "y": 269
+        },
+        {
+          "target": "a",
+          "id": "n4",
+          "type": "input",
+          "x": 60,
+          "y": 269
+        },
+        {
+          "target": "b",
+          "id": "n5",
+          "type": "input",
+          "x": 60,
+          "y": 478
+        }
+      ],
+      "edges": [
+        {
+          "from": "event",
+          "out": "next",
+          "to": "n1",
+          "input": "in"
+        },
+        {
+          "from": "n1",
+          "out": "next",
+          "to": "n2",
+          "input": "in"
+        },
+        {
+          "from": "n4",
+          "out": "value",
+          "to": "n3",
+          "input": "a"
+        },
+        {
+          "from": "n5",
+          "out": "value",
+          "to": "n3",
+          "input": "b"
+        },
+        {
+          "from": "n3",
+          "out": "value",
+          "to": "n2",
+          "input": "value"
+        }
+      ]
+    }
+  },
+  "flows": {},
   "assets": {}
 }
