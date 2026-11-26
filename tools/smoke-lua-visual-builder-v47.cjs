@@ -7,7 +7,7 @@ const report=process.env.TNS_SMOKE_REPORT||path.join(root,'release/qa/builder-v4
 app.setPath('userData',fs.mkdtempSync(path.join(os.tmpdir(),'tns-builder-v47-')));
 let win,server;const logs=[];
 app.whenReady().then(async()=>{
- server=makeServer(root,path.join(desktop,'vendor'));const origin=await listen(server);
+ server=makeServer(root,process.env.TNS_SMOKE_VENDOR_ROOT||path.join(desktop,'vendor'));const origin=await listen(server);
  session.defaultSession.webRequest.onBeforeRequest({urls:['*://*/*']},(r,done)=>done({cancel:!r.url.startsWith(origin)}));
  win=new BrowserWindow({show:false,width:1600,height:1050,webPreferences:{sandbox:true,contextIsolation:true,backgroundThrottling:false,offscreen:true}});
  win.webContents.on('console-message',(_e,level,message)=>logs.push({level,message}));
@@ -46,6 +46,11 @@ async function check(){
  must(b.getProject().pages[0].components.at(-1).x===48,'Canvas drag did not move component');
  b.modal.querySelector('[data-save-component]').click();b.modal.querySelector('[data-reuse]').click();must(b.getProject().pages[0].components.length===10,'Reusable component failed');
  b.modal.querySelector('[data-command=apply]').click();await pause(100);must(model.decodeProject(applied).pages[0].components.at(-1).text==='New text','Apply / metadata roundtrip');
+ const extra=model.createProject('Formula and image');extra.assets.red={width:1,height:1,runs:[[1,255,0,0,1]]};
+ extra.pages[0].components=[{...model.component('Formula',10,10),id:'formula',expression:'1/2',w:200,h:70},{...model.component('Image',10,100),id:'image',asset:'red',w:30,h:30}];
+ b.setProject(extra);b.modal.querySelector('[data-mode=preview]').click();await wait(()=>b.modal.querySelector('[data-preview-status]')?.textContent==='Listo','Formula and image preview');
+ const extraFrame=b.modal.querySelector('iframe');must(!extraFrame.contentDocument.querySelector('pre').textContent.includes('ERROR'),'Formula/image runtime error');
+ must(extraFrame.contentDocument.querySelector('canvas').toDataURL().length>1500,'Formula/image blank');
  b.close();
  const reopen=await openLuaVisualBuilder({language:'en',editor});must(reopen.getProject().pages[0].components.at(-1).text==='New text','Reopen from Lua');
  reopen.modal.querySelector('[data-mode=logic]').click();reopen.modal.querySelector('[data-add-node]').click();must(reopen.getProject().graphs['app:start'].nodes[0].type==='event','Create event node');
@@ -66,5 +71,5 @@ async function check(){
  integrated.querySelector('[data-command=close]').click();document.querySelector('#lua-cancel').click();
  const light=await openLuaVisualBuilder({language:'fr',source:lua.content});document.documentElement.dataset.theme='light';await pause(650);
  must(light.modal.textContent.includes('Conception'),'French builder missing');
- return {ok:true,offline:true,template:true,actualLuaPreview:true,hookeResult:'15.00 N',sourcePreserved:true,inspector:true,drag:true,reusableComponents:true,undoRedo:true,applyReopen:true,nodeEditing:true,nodeConnection:true,editMenuIntegration:true,tnsStaging:true,tnsRoundtrip:true,syntaxDoctorAccepts:true,tnsBytes:qaBuilderTnsBytes.length,languages:['es','en','fr'],workspaceOpacity:getComputedStyle(light.backdrop).opacity};
+ return {ok:true,offline:true,template:true,actualLuaPreview:true,formulaAndImage:true,hookeResult:'15.00 N',sourcePreserved:true,inspector:true,drag:true,reusableComponents:true,undoRedo:true,applyReopen:true,nodeEditing:true,nodeConnection:true,editMenuIntegration:true,tnsStaging:true,tnsRoundtrip:true,syntaxDoctorAccepts:true,tnsBytes:qaBuilderTnsBytes.length,languages:['es','en','fr'],workspaceOpacity:getComputedStyle(light.backdrop).opacity};
 }
