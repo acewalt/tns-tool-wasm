@@ -2,7 +2,33 @@
 
 Open a Lua ScriptApp, then choose **Edit → Lua Visual Builder** (also available beside Preview Lua).
 
-The builder works locally in the web and portable applications. It generates a standalone Lua 5.1 ScriptApp using TI-Nspire API 2.0. The project is embedded in a Lua comment, so reopening generated Lua restores its visual model. `.tnsvb.json` exports provide an independent backup. The original Lua remains unchanged until **Apply to editor**; the Code tab can download that original source. Arbitrary handwritten Lua is not converted into a visual project, and manual changes to generated code are not merged back into the model.
+The builder works locally in the web and portable applications. It generates a standalone Lua 5.1 ScriptApp using TI-Nspire API 2.0. The project is embedded in a Lua comment, so reopening generated Lua restores its visual model. `.tnsvb.json` exports provide an independent backup. The original Lua remains unchanged until **Apply to editor**. V3 also analyzes handwritten Lua and imports the parts it can map safely; it does not promise a complete reverse conversion of arbitrary programs.
+
+## V3: import existing Lua
+
+**Current Lua File** analyzes the active ScriptApp. The start screen also imports external `.lua` and project JSON files, restores drafts and recent projects, and offers searchable templates with live thumbnails and an explicit preview. No Lua executes during analysis. Projects containing valid Visual Builder metadata restore directly.
+
+The offline [luaparse 0.3.1](https://github.com/fstirlitz/luaparse/tree/v0.3.1) parser produces a Lua 5.1 AST with source ranges and lexical scopes. The analyzer records functions, parameters, variables, tables, calls, TI events, arithmetic, conditions, loops, drawing calls and D2Editor instances. A state equality in paint code can identify a possible page. A rectangle becomes a *possible* button only when a matching mouse region provides evidence; the review requires individual confirmation. This classification never replaces the original mouse handler.
+
+- **Native:** restore the complete visual model from metadata.
+- **Hybrid:** expose recognized constant `on.paint` calls (`drawString`, `drawRect`, `fillRect`, `drawLine`) as design components. Text and geometry are editable only where bound to literal AST arguments. Line geometry stays read-only. Variable-driven expressions remain linked to their original Lua.
+- **Source only:** retain the complete script and expose its structure in Overview and read-only analysis graphs when a dependable editable drawing cannot be inferred.
+
+Hybrid generation patches individual original expression ranges. It does not hoist functions, move captured variables, reorder top-level statements, regenerate original callbacks or introduce a second event dispatcher. Unknown calls, custom functions, D2Editor lifecycle code, loops and effects stay in their original places. Analysis graphs show branches, loops and Custom Lua fragments; they are a structural view, not an alternative executable reconstruction. Tables and helper functions are inventoried but are not automatically interpreted as pages or reusable UI components. Fonts and colors can be inferred for the design thumbnail; editing these inferred styles requires editing the original source. Dynamic paint code may have no faithful static thumbnail: use the explicit original preview.
+
+Import Review shows actual AST counts, functions, scopes, warnings and individually reviewable button regions. **Original / Converted** compares both source versions, changed lines and component-to-source mappings. Each preview starts only on request, using the existing Lua runtime. Functional equivalence is explicitly **unverified**: matching syntax or a successful preview is not proof that every event or calculator behavior is identical.
+
+The editable model supports 50 pages, 200 components per page and 200 nodes per graph. Import analysis accepts source up to 1.5 MB. Scripts exceeding the visual component limit fall back to Source only. Structural graphs cover the first 100 functions with bounded statement/depth expansion; every original function remains in the retained source and function inventory. Very large structural metadata may be reduced with a visible diagnostic to stay within the 4 MB project limit. Always export the original source or JSON as an independent backup.
+
+## V3: navigation and graph workspaces
+
+Navigation pages have persistent ID-based positions, a minimap, wheel zoom, middle-button pan, Shift/marquee multiselection, snap, alignment/distribution, locks, colored collapsible frames, Fit All and Focus Selected. Drag page headers to arrange freely; positions participate in Undo/Redo and survive tab changes and Lua/JSON export. Hierarchical, horizontal, vertical, radial and grid arrangements use real transitions, handle cycles and disconnected pages, and preserve manual/locked positions. **Reset layout** explicitly replaces manual positions, while locks remain respected. This bounded built-in layout avoids adding a second offline graph dependency.
+
+Each existing transition has its own output port and event/node identity. Reconnecting it edits that specific Navigate node, including conditional branches, while retaining sibling transitions and additional actions. New transitions let you select the owner and applicable event. Page entries are separate input ports. Back links lead to a dynamic history node rather than a fabricated fixed page.
+
+Event Graph auto layout separates execution and data dependencies, places data near consumers and branches on separate rows, measures visible nodes, and supports selection-only layout. Reroutes preserve execution or data wires. Frames can be renamed, recolored and collapsed; selected nodes can be aligned, distributed or locked. Inspector edits reconcile existing nodes and retain unchanged IDs, connections, reroutes, positions, comments, breakpoints, frames and selection.
+
+**Overview** searches pages, components, events, variables, functions, reusable flows, resources, dependencies and imported fragments across the whole project. Results open the related Design, Logic or source view. Imported structural graphs remain read-only to preserve their original execution semantics.
 
 ## Design
 
@@ -50,7 +76,7 @@ const lua=generateLua(project);
 const restored=decodeProject(lua);
 ```
 
-Use the existing `tns-tool lua check`, `lua preview` and TNS CLI commands on the generated source. Regression tests: `npm run test:visual-builder`. Browser integration: `tools/smoke-lua-visual-builder-v48.cjs` (Electron).
+Use the existing `tns-tool lua check`, `lua preview` and TNS CLI commands on the generated source. Regression tests: `npm run test:visual-builder`. Browser integration: `tools/smoke-lua-visual-builder-v49.cjs` (Electron). The browser test blocks external requests and exercises the actual Lua runtime, explicit original/converted previews, import/apply/restore, movable pages, frames, typed sockets, undo/redo, debug, Syntax Doctor and TNS export.
 
 Official API references: [window size](https://education.ti.com/html/eguides/nspire/EG_Nspire/EN/content/eg_lua/m_libraries/platformlib/window/height_and_width.HTML), [graphics drawString](https://education.ti.com/html/eguides/nspire/EG_Nspire/EN/content/eg_lua/m_libraries/graphicslib/drawstring.HTML), [D2Editor](https://education.ti.com/html/webhelp/EG_TINspireLUA/EN/content/libraries/2deditorlib/newrichtext.htm).
 

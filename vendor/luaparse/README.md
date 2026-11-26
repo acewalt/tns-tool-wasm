@@ -1,0 +1,1 @@
+Vendored luaparse 0.3.1 (MIT), https://github.com/fstirlitz/luaparse/tree/v0.3.1. Original luaparse.js SHA256: 1c70940a6e46be63c84c285036925715f110bf06cbf058922372fb5c9d060b27. Only a module-local CommonJS environment and ESM exports were added. No runtime network dependency.
