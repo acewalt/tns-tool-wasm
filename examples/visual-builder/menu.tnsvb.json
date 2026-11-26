@@ -1,0 +1,445 @@
+{
+  "format": "tns-lua-visual",
+  "version": 2,
+  "name": "My app",
+  "width": 320,
+  "height": 212,
+  "startPage": "page_3b6595f8",
+  "pages": [
+    {
+      "id": "page_3b6595f8",
+      "name": "Home",
+      "background": "#f5f7fa",
+      "components": [
+        {
+          "id": "header",
+          "type": "Panel",
+          "x": 0,
+          "y": 0,
+          "w": 320,
+          "h": 32,
+          "text": "",
+          "value": "",
+          "color": "#244d78",
+          "foreground": "#172235",
+          "border": "#9aabba",
+          "font": 11,
+          "bold": false,
+          "visible": true,
+          "editorVisible": true,
+          "locked": false,
+          "parent": "",
+          "options": "One\nTwo\nThree",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "group": "choice",
+          "expression": "sin(x)",
+          "shape": "rectangle",
+          "rows": "A,B\n1,2\n3,4",
+          "asset": "",
+          "scrollHeight": 240
+        },
+        {
+          "id": "title",
+          "type": "Label",
+          "x": 12,
+          "y": 6,
+          "w": 296,
+          "h": 22,
+          "text": "menu",
+          "value": "",
+          "color": "#244d78",
+          "foreground": "#ffffff",
+          "border": "#9aabba",
+          "font": 11,
+          "bold": true,
+          "visible": true,
+          "editorVisible": true,
+          "locked": false,
+          "parent": "",
+          "options": "One\nTwo\nThree",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "group": "choice",
+          "expression": "sin(x)",
+          "shape": "rectangle",
+          "rows": "A,B\n1,2\n3,4",
+          "asset": "",
+          "scrollHeight": 240
+        },
+        {
+          "id": "go0",
+          "type": "Button",
+          "x": 48,
+          "y": 48,
+          "w": 224,
+          "h": 34,
+          "text": "Calculator",
+          "value": "",
+          "color": "#244d78",
+          "foreground": "#ffffff",
+          "border": "#9aabba",
+          "font": 11,
+          "bold": true,
+          "visible": true,
+          "editorVisible": true,
+          "locked": false,
+          "parent": "",
+          "options": "One\nTwo\nThree",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "group": "choice",
+          "expression": "sin(x)",
+          "shape": "rectangle",
+          "rows": "A,B\n1,2\n3,4",
+          "asset": "",
+          "scrollHeight": 240
+        },
+        {
+          "id": "go1",
+          "type": "Button",
+          "x": 48,
+          "y": 94,
+          "w": 224,
+          "h": 34,
+          "text": "Theory",
+          "value": "",
+          "color": "#244d78",
+          "foreground": "#ffffff",
+          "border": "#9aabba",
+          "font": 11,
+          "bold": true,
+          "visible": true,
+          "editorVisible": true,
+          "locked": false,
+          "parent": "",
+          "options": "One\nTwo\nThree",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "group": "choice",
+          "expression": "sin(x)",
+          "shape": "rectangle",
+          "rows": "A,B\n1,2\n3,4",
+          "asset": "",
+          "scrollHeight": 240
+        },
+        {
+          "id": "go2",
+          "type": "Button",
+          "x": 48,
+          "y": 140,
+          "w": 224,
+          "h": 34,
+          "text": "Exercises",
+          "value": "",
+          "color": "#244d78",
+          "foreground": "#ffffff",
+          "border": "#9aabba",
+          "font": 11,
+          "bold": true,
+          "visible": true,
+          "editorVisible": true,
+          "locked": false,
+          "parent": "",
+          "options": "One\nTwo\nThree",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "group": "choice",
+          "expression": "sin(x)",
+          "shape": "rectangle",
+          "rows": "A,B\n1,2\n3,4",
+          "asset": "",
+          "scrollHeight": 240
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "page_2551d4ea",
+      "name": "Calculator",
+      "background": "#f5f7fa",
+      "components": [
+        {
+          "id": "back0",
+          "type": "Button",
+          "x": 12,
+          "y": 170,
+          "w": 130,
+          "h": 28,
+          "text": "Back",
+          "value": "",
+          "color": "#244d78",
+          "foreground": "#ffffff",
+          "border": "#9aabba",
+          "font": 11,
+          "bold": true,
+          "visible": true,
+          "editorVisible": true,
+          "locked": false,
+          "parent": "",
+          "options": "One\nTwo\nThree",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "group": "choice",
+          "expression": "sin(x)",
+          "shape": "rectangle",
+          "rows": "A,B\n1,2\n3,4",
+          "asset": "",
+          "scrollHeight": 240
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "page_e38b118f",
+      "name": "Theory",
+      "background": "#f5f7fa",
+      "components": [
+        {
+          "id": "back1",
+          "type": "Button",
+          "x": 12,
+          "y": 170,
+          "w": 130,
+          "h": 28,
+          "text": "Back",
+          "value": "",
+          "color": "#244d78",
+          "foreground": "#ffffff",
+          "border": "#9aabba",
+          "font": 11,
+          "bold": true,
+          "visible": true,
+          "editorVisible": true,
+          "locked": false,
+          "parent": "",
+          "options": "One\nTwo\nThree",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "group": "choice",
+          "expression": "sin(x)",
+          "shape": "rectangle",
+          "rows": "A,B\n1,2\n3,4",
+          "asset": "",
+          "scrollHeight": 240
+        }
+      ],
+      "variables": {}
+    },
+    {
+      "id": "page_3c7d5a4c",
+      "name": "Exercises",
+      "background": "#f5f7fa",
+      "components": [
+        {
+          "id": "back2",
+          "type": "Button",
+          "x": 12,
+          "y": 170,
+          "w": 130,
+          "h": 28,
+          "text": "Back",
+          "value": "",
+          "color": "#244d78",
+          "foreground": "#ffffff",
+          "border": "#9aabba",
+          "font": 11,
+          "bold": true,
+          "visible": true,
+          "editorVisible": true,
+          "locked": false,
+          "parent": "",
+          "options": "One\nTwo\nThree",
+          "min": 0,
+          "max": 100,
+          "step": 1,
+          "group": "choice",
+          "expression": "sin(x)",
+          "shape": "rectangle",
+          "rows": "A,B\n1,2\n3,4",
+          "asset": "",
+          "scrollHeight": 240
+        }
+      ],
+      "variables": {}
+    }
+  ],
+  "variables": {},
+  "functions": "",
+  "graphs": {
+    "page_3b6595f8:go0:click": {
+      "nodes": [
+        {
+          "id": "event",
+          "type": "event",
+          "owner": "page_3b6595f8:go0",
+          "event": "click",
+          "x": 60,
+          "y": 60,
+          "page": "page_3b6595f8"
+        },
+        {
+          "type": "navigate",
+          "page": "page_2551d4ea",
+          "id": "n1",
+          "x": 340,
+          "y": 60
+        }
+      ],
+      "edges": [
+        {
+          "from": "event",
+          "out": "next",
+          "to": "n1",
+          "input": "in"
+        }
+      ]
+    },
+    "page_3b6595f8:go1:click": {
+      "nodes": [
+        {
+          "id": "event",
+          "type": "event",
+          "owner": "page_3b6595f8:go1",
+          "event": "click",
+          "x": 60,
+          "y": 60,
+          "page": "page_3b6595f8"
+        },
+        {
+          "type": "navigate",
+          "page": "page_e38b118f",
+          "id": "n1",
+          "x": 340,
+          "y": 60
+        }
+      ],
+      "edges": [
+        {
+          "from": "event",
+          "out": "next",
+          "to": "n1",
+          "input": "in"
+        }
+      ]
+    },
+    "page_3b6595f8:go2:click": {
+      "nodes": [
+        {
+          "id": "event",
+          "type": "event",
+          "owner": "page_3b6595f8:go2",
+          "event": "click",
+          "x": 60,
+          "y": 60,
+          "page": "page_3b6595f8"
+        },
+        {
+          "type": "navigate",
+          "page": "page_3c7d5a4c",
+          "id": "n1",
+          "x": 340,
+          "y": 60
+        }
+      ],
+      "edges": [
+        {
+          "from": "event",
+          "out": "next",
+          "to": "n1",
+          "input": "in"
+        }
+      ]
+    },
+    "page_2551d4ea:back0:click": {
+      "nodes": [
+        {
+          "id": "event",
+          "type": "event",
+          "owner": "page_2551d4ea:back0",
+          "event": "click",
+          "x": 60,
+          "y": 60,
+          "page": "page_2551d4ea"
+        },
+        {
+          "type": "back",
+          "id": "n1",
+          "x": 340,
+          "y": 60
+        }
+      ],
+      "edges": [
+        {
+          "from": "event",
+          "out": "next",
+          "to": "n1",
+          "input": "in"
+        }
+      ]
+    },
+    "page_e38b118f:back1:click": {
+      "nodes": [
+        {
+          "id": "event",
+          "type": "event",
+          "owner": "page_e38b118f:back1",
+          "event": "click",
+          "x": 60,
+          "y": 60,
+          "page": "page_e38b118f"
+        },
+        {
+          "type": "back",
+          "id": "n1",
+          "x": 340,
+          "y": 60
+        }
+      ],
+      "edges": [
+        {
+          "from": "event",
+          "out": "next",
+          "to": "n1",
+          "input": "in"
+        }
+      ]
+    },
+    "page_3c7d5a4c:back2:click": {
+      "nodes": [
+        {
+          "id": "event",
+          "type": "event",
+          "owner": "page_3c7d5a4c:back2",
+          "event": "click",
+          "x": 60,
+          "y": 60,
+          "page": "page_3c7d5a4c"
+        },
+        {
+          "type": "back",
+          "id": "n1",
+          "x": 340,
+          "y": 60
+        }
+      ],
+      "edges": [
+        {
+          "from": "event",
+          "out": "next",
+          "to": "n1",
+          "input": "in"
+        }
+      ]
+    }
+  },
+  "flows": {},
+  "assets": {}
+}

@@ -34,7 +34,7 @@ The **web edition** supports TNS/XML editing, selected program previews, ROM wor
 
 ## Lua Visual Builder
 
-Create TI-Nspire Lua applications visually from the Lua ScriptApp editor: drag components, build pages and navigation, configure formulas and events, or connect advanced logic nodes. Preview runs the generated Lua; export the project, Lua source, or a TNS document. Available locally in the web and Windows portable versions. [Builder guide](docs/lua-visual-builder.md).
+Create TI-Nspire Lua applications visually from the Lua ScriptApp editor: drag components, build pages and navigation, configure formulas and events, edit labels with a double click, and connect typed logic nodes. V2 synchronizes Design, the Widget Tree, Navigation and Lua from one event graph, with live template thumbnails and optional visual debugging. Preview runs the generated Lua; export the project, Lua source, or a TNS document. Available locally in the web and Windows portable versions. [Builder guide](docs/lua-visual-builder.md).
 
 ## Technical overview
 

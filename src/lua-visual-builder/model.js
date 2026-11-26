@@ -1,15 +1,16 @@
 // Serializable source of truth. Generated Lua carries this project as metadata.
-import {NODE_TYPES} from './logic.js';
-export const VERSION = 1;
+import {NODE_TYPES} from './logic.js?v=20261126-builder-v48';
+import {migrateProject} from './semantics.js?v=20261126-builder-v48';
+export const VERSION = 2;
 export const COMPONENTS = ['Label','Input','Button','Panel','Dropdown','Checkbox','Radio','Slider','Table','Graph','Image','Progress','Scroll','Formula','Shape'];
 export const clone = value => JSON.parse(JSON.stringify(value));
 export const uid = prefix => `${prefix}_${globalThis.crypto?.randomUUID?.().slice(0,8) || Math.random().toString(36).slice(2,10)}`;
 export function component(type, x=16, y=16) {
   if (!COMPONENTS.includes(type)) throw Error('Unknown component: '+type);
-  return {id:uid(type.toLowerCase()),type,x,y,w:['Panel','Scroll','Graph','Table'].includes(type)?200:130,h:['Panel','Scroll','Graph','Table'].includes(type)?100:28,text:type,value:type==='Slider'||type==='Progress'?'50':type==='Input'?'':type==='Checkbox'||type==='Radio'?'false':'',color:type==='Button'?'#244d78':'#ffffff',foreground:type==='Button'?'#ffffff':'#172235',border:'#9aabba',font:11,bold:type==='Button',visible:true,parent:'',options:'One\nTwo\nThree',min:0,max:100,step:1,group:'choice',expression:'sin(x)',shape:'rectangle',rows:'A,B\n1,2\n3,4',asset:'',scrollHeight:240,events:{}};
+  return {id:uid(type.toLowerCase()),type,x,y,w:['Panel','Scroll','Graph','Table'].includes(type)?200:130,h:['Panel','Scroll','Graph','Table'].includes(type)?100:28,text:type,value:type==='Slider'||type==='Progress'?'50':type==='Input'?'':type==='Checkbox'||type==='Radio'?'false':'',color:type==='Button'?'#244d78':'#ffffff',foreground:type==='Button'?'#ffffff':'#172235',border:'#9aabba',font:11,bold:type==='Button',visible:true,editorVisible:true,locked:false,parent:'',options:'One\nTwo\nThree',min:0,max:100,step:1,group:'choice',expression:'sin(x)',shape:'rectangle',rows:'A,B\n1,2\n3,4',asset:'',scrollHeight:240,events:{}};
 }
 export function page(name='Page 1') {return {id:uid('page'),name,background:'#f5f7fa',components:[],events:{},variables:{}};}
-export function createProject(name='My app') {const first=page('Home');return {format:'tns-lua-visual',version:VERSION,name,width:320,height:212,startPage:first.id,pages:[first],variables:{},functions:'',events:{},graphs:{},assets:{}};}
+export function createProject(name='My app') {const first=page('Home');return {format:'tns-lua-visual',version:VERSION,name,width:320,height:212,startPage:first.id,pages:[first],variables:{},functions:'',events:{},graphs:{},flows:{},assets:{}};}
 export function validateProject(value) {
   const errors=[];
   if(value?.format!=='tns-lua-visual'||value.version!==VERSION) return ['Unsupported visual project format or version.'];
@@ -55,9 +56,9 @@ export function validateProject(value) {
 export function decodeProject(source) {
   const match=String(source).match(/^-- @tns-visual-builder:(.+)$/m);
   if(!match)return null;
-  const value=JSON.parse(decodeURIComponent(match[1]));const errors=validateProject(value);if(errors.length)throw Error(errors.join('\n'));return value;
+  const value=migrateProject(JSON.parse(decodeURIComponent(match[1])));const errors=validateProject(value);if(errors.length)throw Error(errors.join('\n'));return value;
 }
-export function parseProject(source) {const value=JSON.parse(source),errors=validateProject(value);if(errors.length)throw Error(errors.join('\n'));return value;}
+export function parseProject(source) {const value=migrateProject(JSON.parse(source)),errors=validateProject(value);if(errors.length)throw Error(errors.join('\n'));return value;}
 export function renameComponent(project,pageId,oldId,newId) {
   if(!/^[A-Za-z_][A-Za-z0-9_]*$/.test(newId))throw Error('Use letters, numbers and underscores; start with a letter.');
   const p=project.pages.find(p=>p.id===pageId);if(p.components.some(c=>c.id===newId&&c.id!==oldId))throw Error('Component ID already exists.');
@@ -75,15 +76,23 @@ export function template(name='hooke') {
   const title=add('Label','title',12,6,296,22,name==='hooke'?'Hooke · F = k × x':name);title.color='#244d78';title.foreground='#ffffff';title.bold=true;
   if(name==='menu'){
     for(let i=0;i<3;i++){const next=page(['Calculator','Theory','Exercises'][i]);p.pages.push(next);const b=add('Button','go'+i,48,48+i*46,224,34,next.name);b.events.click=[{type:'navigate',page:next.id}];const back={...component('Button'),id:'back'+i,x:12,y:170,text:'Back',events:{click:[{type:'back'}]}};next.components.push(back);}
+  }else if(name==='wizard'){
+    p.variables.savedName='';add('Label','hint',16,48,288,30,'Your name');add('Input','name',16,80,288,28,'','Ada');const next=page('Summary');p.pages.push(next);const b=add('Button','next',16,150,130,30,'Continue');b.events.click=[{type:'setVariable',target:'savedName',expression:'value("name")'},{type:'navigate',page:next.id}];next.components.push({...component('Label',16,40),id:'summary',w:288,h:50,text:'Summary'},{...component('Button',16,150),id:'back',text:'Back',events:{click:[{type:'back'}]}});next.events.show=[{type:'setText',target:'summary',expression:'concat("Hello, ", savedName)'}];
+  }else if(name==='scientific'){
+    add('Label','hint',16,44,288,22,'TI-Nspire expression');add('Input','expression',16,70,288,28,'','sqrt(81)+sin(pi/2)');const b=add('Button','evaluate',16,112,140,30,'Evaluate');add('Label','answer',16,154,288,40,'Result');b.events.click=[{type:'setText',target:'answer',expression:'cas(value("expression"))',decimals:6}];
+  }else if(name==='physics'){
+    p.variables.phase=0;add('Graph','wave',12,42,296,130,'').expression='2*sin(x+phase)';add('Label','clock',16,178,288,26,'Wave motion');p.events.timer=[{type:'increment',target:'phase',expression:'0.2'},{type:'setText',target:'clock',expression:'phase',prefix:'Phase: ',decimals:1}];
+  }else if(name==='score'){
+    p.variables.score=0;add('Label','question',16,45,288,28,'2 + 2 = ?');add('Label','feedback',16,176,288,26,'Score: 0');for(let i=0;i<3;i++){const b=add('Button','answer'+i,16+i*98,94,90,34,String(i+3));b.events.click=[...(i===1?[{type:'increment',target:'score',expression:'1'}]:[]),{type:'setText',target:'feedback',expression:'score',prefix:'Score: ',decimals:0}];}
   }else if(name==='graph'){add('Graph','plot',16,45,288,150,'').expression='sin(x)';}
   else if(name==='study'){const c=add('Scroll','theory',12,44,296,154,'');c.scrollHeight=400;for(let i=0;i<10;i++){const l=add('Label','line'+i,8,8+i*32,260,26,'Study note '+(i+1));l.parent=c.id;}}
   else if(name==='quiz'){
     add('Label','question',16,45,288,28,'2 + 2 = ?');for(let i=0;i<3;i++){const c=add('Radio','answer'+i,20,80+i*28,200,24,String(i+3),'false');c.events.change=[{type:'setText',target:'feedback',expression:JSON.stringify(i===1?'Correct!':'Try again')}];}add('Label','feedback',16,175,288,26,'Choose an answer');
   }else{
-    add('Label','labelA',16,42,280,20,name==='hooke'?'Elastic constant (N/m)':'Number A');add('Input','a',16,64,288,28,'',name==='hooke'?'100':'2');
-    add('Label','labelB',16,100,280,20,name==='hooke'?'Displacement (m)':'Number B');add('Input','b',16,122,288,28,'',name==='hooke'?'0.15':'3');
+    add('Label','labelA',16,42,280,20,name==='hooke'?'Elastic constant (N/m)':name==='converter'?'Length (cm)':'Number A');add('Input','a',16,64,288,28,'',name==='hooke'||name==='converter'?'100':'2');
+    add('Label','labelB',16,100,280,20,name==='hooke'?'Displacement (m)':name==='converter'?'Conversion factor (cm → m)':'Number B');add('Input','b',16,122,288,28,'',name==='hooke'?'0.15':name==='converter'?'0.01':'3');
     const button=add('Button','calculate',16,158,135,30,'Calculate');add('Label','result',160,158,148,36,'Result');
-    button.events.click=[{type:'validate',inputs:['a','b']},{type:'setText',target:'result',expression:'input("a") * input("b")',decimals:2,suffix:name==='hooke'?' N':''}];
+    button.events.click=[{type:'validate',inputs:['a','b']},{type:'setText',target:'result',expression:'input("a") * input("b")',decimals:2,suffix:name==='hooke'?' N':name==='converter'?' m':''}];
   }
-  return p;
+  return migrateProject(p);
 }
