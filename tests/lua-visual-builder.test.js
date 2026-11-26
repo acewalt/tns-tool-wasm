@@ -68,6 +68,7 @@ test('rename migrates graph scope and data bindings without changing a different
   renameComponent(p,first.id,'a','constant');renameComponent(p,first.id,'calculate','run');
   assert.equal(p.graphs[first.id+':run:click'].nodes[1].target,'constant');assert.equal(p.graphs[first.id+':calculate:click'],undefined);
   assert.equal(second.components.find(c=>c.id==='calculate').events.click[1].expression,'input("a") * input("b")');
+  p.graphs[first.id+':run:click'].nodes[1].id='a" onclick="bad';assert.ok(validateProject(p).some(s=>s.includes('logic node')));
 });
 test('formula design evaluation matches generated Lua and malformed formatting is rejected',()=>{
   assert.equal(evaluateExpression('input("a")*input("b")',{input:id=>({a:100,b:0.15})[id]}),15);
