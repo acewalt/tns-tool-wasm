@@ -8507,7 +8507,7 @@ function showLuaEditor(item) {
   const openVisualBuilder = async () => {
     editMenuPanel.hidden = true;
     try {
-      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261126-builder-v48');
+      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261126-builder-v49');
       await openLuaVisualBuilder({
         language: document.documentElement.lang, editor, item,
         draftKey: `${xmlDoctor.sourcePath}|${item.file}|${item.path}|${item.name}`,

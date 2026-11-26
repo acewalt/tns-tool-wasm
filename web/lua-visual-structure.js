@@ -1,5 +1,5 @@
-import {navigationLinks,ensureEventGraph,setEventActions,getEventActions,projectDiagnostics} from '../src/lua-visual-builder/semantics.js?v=20261126-builder-v48';
-import {renderPageThumbnail} from './lua-visual-designer.js?v=20261126-builder-v48';
+import {navigationLinks,ensureEventGraph,setEventActions,getEventActions,projectDiagnostics} from '../src/lua-visual-builder/semantics.js?v=20261126-builder-v49';
+import {renderPageThumbnail} from './lua-visual-designer.js?v=20261126-builder-v49';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const collapsedTrees=new WeakMap();
 export function mountWidgetTree(host,{project,pageId,selected,lang,onSelect,onChange,onRename,onGraph,onDelete,onDuplicate}){
@@ -17,17 +17,4 @@ export function mountWidgetTree(host,{project,pageId,selected,lang,onSelect,onCh
  }
  draw();return {draw};
 }
-export function mountNavigation(host,{project,lang,onEditPage,onGraph,onChange,onError}){
- const t=(en,es,fr)=>lang==='es'?es:lang==='fr'?fr:en,links=navigationLinks(project),issues=projectDiagnostics(project),missing=issues.filter(d=>d.message.startsWith('Unreachable'));
- host.innerHTML=`<div class="lvb-navigation-help">${t('Drag a trigger socket onto a destination page. Double-click a page to edit it. Back uses navigation history.','Arrastra el conector de un botón hacia su página de destino. Doble clic en una página para editarla. Volver utiliza el historial.','Glissez un connecteur vers une page cible. Double-cliquez pour modifier une page. Retour utilise l’historique.')}${issues.length?'<ul>'+issues.map(d=>'<li class="'+(d.severity==='error'?'error':'muted')+'">'+esc(d.message)+'</li>').join('')+'</ul>':''}</div><div class="lvb-navigation-scroll"><div class="lvb-navigation"><svg class="lvb-nav-lines"></svg></div></div>`;
- const stage=host.querySelector('.lvb-navigation'),svg=stage.querySelector('svg');stage.style.width=Math.max(900,Math.min(4,project.pages.length)*310)+'px';stage.style.height=(Math.ceil(project.pages.length/4)*365+60)+'px';let pending;
- project.pages.forEach((p,i)=>{const card=document.createElement('section');card.className='lvb-navigation-page';card.dataset.navPage=p.id;card.style.left=(30+(i%4)*310)+'px';card.style.top=(30+Math.floor(i/4)*365)+'px';card.innerHTML=`<header>${p.id===project.startPage?'★ ':''}${esc(p.name)}${missing.some(d=>d.page===p.id)?' ⚠':''}</header><canvas></canvas><div>${p.components.filter(c=>['Button','Checkbox','Radio','Dropdown','Slider','Input'].includes(c.type)).map(c=>`<div class="lvb-nav-trigger"><button data-edit-event="${c.id}">${esc(c.text||c.id)}</button><button data-trigger="${c.id}" title="${t('Drag to connect','Arrastra para conectar','Glissez pour connecter')}">●</button></div>`).join('')}</div><small>${links.filter(l=>l.from===p.id).map(l=>l.type==='back'?'↶ Back (history)':l.type==='home'?'⌂ Home':l.type==='nextPage'?'→ Next':l.conditional?'◇ '+l.owner:'').filter(Boolean).map(esc).join(' · ')}</small>`;stage.append(card);renderPageThumbnail(card.querySelector('canvas'),project,p,.7);card.querySelector('header').ondblclick=()=>onEditPage(p.id);card.querySelector('canvas').ondblclick=()=>onEditPage(p.id);
-   card.querySelectorAll('[data-edit-event]').forEach(b=>b.onclick=()=>onGraph(p.id,b.dataset.editEvent,'click'));
-   card.querySelectorAll('[data-trigger]').forEach(b=>b.onpointerdown=e=>{pending={page:p.id,id:b.dataset.trigger,el:b};b.setPointerCapture(e.pointerId);e.preventDefault();});
- });
- function draw(cursor){const base=stage.getBoundingClientRect(),point=el=>{const r=el.getBoundingClientRect();return{x:r.x-base.x+r.width/2,y:r.y-base.y+r.height/2};},curve=(a,b)=>`M${a.x},${a.y} C${a.x+90},${a.y} ${b.x-90},${b.y} ${b.x},${b.y}`;
-  svg.innerHTML=links.filter(l=>l.to).map(l=>{const source=stage.querySelector(`[data-nav-page="${l.from}"] [data-trigger="${l.owner}"]`)||stage.querySelector(`[data-nav-page="${l.from}"] header`),dest=stage.querySelector(`[data-nav-page="${l.to}"] header`);if(!source||!dest)return'';return `<path class="${l.conditional?'conditional':''}" d="${curve(point(source),point(dest))}"><title>${esc(l.owner+' → '+l.type)}</title></path>`;}).join('');if(pending&&cursor)svg.innerHTML+=`<path class="pending-wire" d="${curve(point(pending.el),cursor)}"/>`;
- }
- stage.onpointermove=e=>{if(pending){const r=stage.getBoundingClientRect();draw({x:e.clientX-r.x,y:e.clientY-r.y});}};
- stage.onpointerup=e=>{if(!pending)return;const target=document.elementFromPoint(e.clientX,e.clientY)?.closest('[data-nav-page]');if(target){try{const key=pending.page+':'+pending.id+':click';ensureEventGraph(project,key);const actions=getEventActions(project,key),walk=list=>{for(const a of list){if(a.type==='navigate'){a.page=target.dataset.navPage;return true;}if(a.yes&&walk(a.yes))return true;if(a.no&&walk(a.no))return true;}return false;};if(!walk(actions))actions.push({type:'navigate',page:target.dataset.navPage});setEventActions(project,key,actions);onChange();}catch(err){onError(err);}}pending=null;draw();};requestAnimationFrame(()=>draw());
-}
+export {mountNavigation} from './lua-visual-navigation.js?v=20261126-builder-v49';

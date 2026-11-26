@@ -1,9 +1,11 @@
-import {validateProject} from './model.js?v=20261126-builder-v48';
-import {compileExpression as expr,luaString as q,luaValue} from './expressions.js?v=20261126-builder-v48';
-import {graphToActions} from './logic.js?v=20261126-builder-v48';
-import {runtimeLua} from './runtime.js?v=20261126-builder-v48';
-import {migrateProject,projectDiagnostics} from './semantics.js?v=20261126-builder-v48';
+import {validateProject} from './model.js?v=20261126-builder-v49';
+import {compileExpression as expr,luaString as q,luaValue} from './expressions.js?v=20261126-builder-v49';
+import {graphToActions} from './logic.js?v=20261126-builder-v49';
+import {runtimeLua} from './runtime.js?v=20261126-builder-v49';
+import {migrateProject,projectDiagnostics} from './semantics.js?v=20261126-builder-v49';
+import {generateImportedLua} from './importer.js?v=20261126-builder-v49';
 export function generateLua(project,{metadata=true,debug=false}={}) {
+  if(project.imported)return generateImportedLua(project,{metadata});
   project=migrateProject(project);
   const errors=validateProject(project);if(errors.length)throw Error(errors.join('\n'));
   const refs=projectDiagnostics(project).filter(d=>d.severity==='error');if(refs.length)throw Error(refs.map(d=>d.key+' / '+(d.node||'')+': '+d.message).join('\n'));
