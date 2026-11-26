@@ -2,9 +2,9 @@ name: Lua runtime compatibility
 on:
   push:
     branches: [main]
-    paths: ['src/lua/**', 'vendor/luajs/**', 'web/app.js', 'web/ti-cas-preview-bridge-v3.js', 'web/lua-compatibility-report.js', 'tests/lua-*-v45.test.js', 'tests/luajs-core-v45.test.js', '.github/workflows/lua-runtime.yml']
+    paths: ['src/lua/**', 'src/lua-visual-builder/**', 'web/lua-visual-*.js', 'tests/lua-visual-builder.test.js', 'vendor/luajs/**', 'web/app.js', 'web/ti-cas-preview-bridge-v3.js', 'web/lua-compatibility-report.js', 'tests/lua-*-v45.test.js', 'tests/luajs-core-v45.test.js', '.github/workflows/lua-runtime.yml']
   pull_request:
-    paths: ['src/lua/**', 'vendor/luajs/**', 'web/app.js', 'web/ti-cas-preview-bridge-v3.js', 'web/lua-compatibility-report.js', 'tests/lua-*-v45.test.js', 'tests/luajs-core-v45.test.js', '.github/workflows/lua-runtime.yml']
+    paths: ['src/lua/**', 'src/lua-visual-builder/**', 'web/lua-visual-*.js', 'tests/lua-visual-builder.test.js', 'vendor/luajs/**', 'web/app.js', 'web/ti-cas-preview-bridge-v3.js', 'web/lua-compatibility-report.js', 'tests/lua-*-v45.test.js', 'tests/luajs-core-v45.test.js', '.github/workflows/lua-runtime.yml']
 permissions:
   contents: read
 jobs:
@@ -15,5 +15,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - run: npm run test:visual-builder
       - run: npm run test:lua-compat
       - run: node --test tests/layout-guide-v46.test.js
