@@ -81,7 +81,7 @@ export function analyzeLuaImport(source,{filename='current.lua'}={}){
  const visualLimit=report.pages.length>50||supported.length>200;
  report.mode=supported.length&&!visualLimit?'hybrid':'source';
  if(visualLimit)report.diagnostics.push({severity:'warning',message:'Source only: the drawing exceeds the editable model limit (200 components / 50 pages). The complete Lua remains intact.'});
- report.metrics={drawingCalls:report.drawings.length,editableDrawingCalls:supported.length,reviewRegions:report.ambiguous.length,retainedDrawingCalls:report.drawings.length-supported.length,functionsRetained:report.functions.length};
+ report.metrics={drawingCalls:report.drawings.length,editableDrawingCalls:visualLimit?0:supported.length,reviewRegions:report.ambiguous.length,retainedDrawingCalls:report.drawings.length-supported.length,functionsRetained:report.functions.length};
  report.diagnostics.push({severity:'warning',message:'Original handlers, lexical scopes and side effects are preserved. Functional equivalence is not certified; use Original / Converted comparison.'});
  if(report.editors.length)report.diagnostics.push({severity:'info',message:'D2Editor instances remain native Lua; their lifecycle is not rewritten.'});
  if(!supported.length)report.diagnostics.push({severity:'info',message:'Source only: no safely editable constant drawing calls found.'});
