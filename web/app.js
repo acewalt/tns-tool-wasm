@@ -8350,11 +8350,13 @@ function showLuaEditor(item) {
         <span id="lua-line-label">Linea: 1 Col: 1 Total: 1</span>
         <button type="button" id="lua-syntax" class="yellow-tool-button">${escapeHtml(t("runLuaSyntax"))}</button>
         <button type="button" id="lua-preview" class="green-tool-button">${escapeHtml(t("previewLua"))}</button>
+        <button type="button" id="lua-visual-builder" class="green-tool-button">Visual Builder</button>
         <button type="button" id="lua-love-preview" class="green-tool-button love-preview-tool-button">${escapeHtml(t("previewLove"))}</button>
         <button type="button" id="lua-guide" class="secondary-button">${escapeHtml(t("luaGuide"))}</button>
         <div class="lua-edit-menu">
           <button type="button" id="lua-edit-menu-trigger" class="green-tool-button" data-i18n="editMenu">${escapeHtml(t("editMenu"))}</button>
           <div id="lua-edit-menu-panel" class="lua-edit-menu-panel" hidden>
+            <button type="button" id="lua-visual-builder-menu">Lua Visual Builder</button>
             <button type="button" id="lua-templates" data-i18n="luaTemplates">${escapeHtml(t("luaTemplates"))}</button>
             <button type="button" id="lua-page-editor" data-i18n="luaEditPages">${escapeHtml(t("luaEditPages"))}</button>
             <button type="button" id="lua-tns-convert" data-i18n="luaTnsConvert">${escapeHtml(t("luaTnsConvert"))}</button>
@@ -8502,6 +8504,27 @@ function showLuaEditor(item) {
     if (!editMenuPanel.contains(event.target) && !editMenuTrigger.contains(event.target)) editMenuPanel.hidden = true;
   });
   backdrop.querySelector("#lua-guide").addEventListener("click", () => showLuaGuide(editor, item));
+  const openVisualBuilder = async () => {
+    editMenuPanel.hidden = true;
+    try {
+      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261125-builder-v47');
+      await openLuaVisualBuilder({
+        language: document.documentElement.lang, editor, item,
+        draftKey: `${xmlDoctor.sourcePath}|${item.file}|${item.path}|${item.name}`,
+        mathSession: documentCalculatorMathSession(item.file),
+        preview: code => showLovePreview(code, null, null, {}),
+        apply: async code => {
+          await saveLuaScriptToStage(item, code);
+          editor.value = code;
+          item.content = code;
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+        },
+        exportTns: () => createTnsFromXmlDoctor(),
+      });
+    } catch (error) { appendLogElement(luaLogEl, 'Lua Visual Builder', error.message); }
+  };
+  backdrop.querySelector('#lua-visual-builder').addEventListener('click', openVisualBuilder);
+  backdrop.querySelector('#lua-visual-builder-menu').addEventListener('click', openVisualBuilder);
   backdrop.querySelector("#lua-templates").addEventListener("click", () => {
     editMenuPanel.hidden = true;
     showLuaTemplates(editor);
