@@ -1,5 +1,7 @@
-import {parseExpression} from './expressions.js?v=20261126-builder-v48';
+import {parseExpression} from './expressions.js?v=20261126-builder-v49';
+import {semanticGraphLayout} from './workspace.js?v=20261126-builder-v49';
 export const NODE_TYPES = {
+  rerouteExec:{category:'Control',inputs:['in'],outputs:['next']},rerouteData:{category:'Data',inputs:['value'],outputs:['value']},
   event:{category:'Events',inputs:[],outputs:['next']}, end:{category:'Control',inputs:['in'],outputs:[]}, comment:{category:'Comment',inputs:[],outputs:[]},
   input:{category:'Data',inputs:[],outputs:['value']},variable:{category:'Data',inputs:[],outputs:['value']},literal:{category:'Data',inputs:[],outputs:['value']},expression:{category:'Math',inputs:[],outputs:['value']},componentRef:{category:'Data',inputs:[],outputs:['value']},pageRef:{category:'Data',inputs:[],outputs:['value']},
   ...Object.fromEntries(['add','subtract','multiply','divide','power','equal','greater','and','or'].map(k=>[k,{category:['equal','greater','and','or'].includes(k)?'Conditions':'Math',inputs:['a','b'],outputs:['value']}])),
@@ -43,15 +45,15 @@ export function graphToActions(graph,{flows={},stack=[]}={}){
   function data(id,seen=new Set()){
     if(seen.has(id))throw Error('Data cycle: '+id);seen=new Set(seen).add(id);const n=nodes.get(id);if(!n)throw Error('Missing node');
     const get=k=>{const e=edges.find(e=>e.to===id&&e.input===k);return e?data(e.from,seen):String(n[k]??'0');};
-    if(n.type==='input')return 'input('+q(n.target)+')';if(n.type==='variable')return n.target||'value';if(['literal','expression'].includes(n.type))return n.expression||'0';
+    if(n.type==='rerouteData')return get('value');if(n.type==='input')return 'input('+q(n.target)+')';if(n.type==='variable')return n.target||'value';if(['literal','expression'].includes(n.type))return n.expression||'0';
     const op={add:'+',subtract:'-',multiply:'*',divide:'/',power:'^',equal:'==',greater:'>',and:'and',or:'or'}[n.type];if(op)return '('+get('a')+' '+op+' '+get('b')+')';if(n.type==='not')return '(not '+get('a')+')';if(['sqrt','sin','cos'].includes(n.type))return n.type+'('+get('a')+')';throw Error('Node has no expression output: '+n.type);
   }
   function walk(id,seen=new Set(),stop=null){
     if(!id||id===stop)return[];if(seen.has(id))throw Error('Execution cycle: use a Repeat or While node.');seen=new Set(seen).add(id);const n=nodes.get(id);if(!n)throw Error('Missing node');
     const next=out=>edges.find(e=>e.from===id&&e.out===out)?.to;
     const get=(k,fallback)=>{const e=edges.find(e=>e.to===id&&e.input===k);return e?data(e.from):String(n[k]??fallback);};
-    const ref=(port,kind,fallback)=>{const e=edges.find(e=>e.to===id&&e.input===port);if(!e)return fallback;const r=nodes.get(e.from);if(r.type!==kind)throw Error('Expected '+kind+' at '+n.id);return r.target;};
-    if(n.type==='event')return walk(next('next'),seen,stop);if(n.type==='end')return[];
+    const ref=(port,kind,fallback)=>{let e=edges.find(e=>e.to===id&&e.input===port);if(!e)return fallback;const seen=new Set();let r=nodes.get(e.from);while(r?.type==='rerouteData'){if(seen.has(r.id))throw Error('Reference cycle');seen.add(r.id);e=edges.find(e=>e.to===r.id&&e.input==='value');r=e&&nodes.get(e.from);}if(r?.type!==kind)throw Error('Expected '+kind+' at '+n.id);return r.target;};
+    if(n.type==='event'||n.type==='rerouteExec')return walk(next('next'),seen,stop);if(n.type==='end')return[];
     const a={...n,type:n.type,node:n.id,expression:get('value',n.expression||'0')};delete a.x;delete a.y;
     if(['setText','setValue','show','hide','setColor'].includes(n.type))a.target=ref('target','componentRef',n.target);
     if(n.type==='navigate')a.page=ref('page','pageRef',n.page);
@@ -92,8 +94,4 @@ export function graphDiagnostics(graph,context={}){
   const live=new Set();const visit=id=>{if(live.has(id))return;live.add(id);for(const e of graph.edges.filter(e=>e.from===id||e.to===id))visit(e.from===id?e.to:e.from);};graph.nodes.filter(n=>n.type==='event').forEach(n=>visit(n.id));
   for(const n of graph.nodes)if(n.type!=='comment'&&!live.has(n.id))result.push({severity:'warning',node:n.id,message:'Disconnected node: '+n.id});return result;
 }
-export function autoLayout(graph){
-  const levels=new Map(),visiting=new Set(),bottom=new Map();
-  function level(id){if(levels.has(id))return levels.get(id);if(visiting.has(id))return 0;visiting.add(id);const parents=graph.edges.filter(e=>e.to===id).map(e=>level(e.from)+1);visiting.delete(id);const result=Math.min(28,Math.max(0,...parents));levels.set(id,result);return result;}
-  for(const n of graph.nodes){let col=level(n.id);const spec=NODE_TYPES[n.type],height=150+Math.max(spec.inputs.length,spec.outputs.length)*29;while((bottom.get(col)||60)+height>9500)col=(col+1)%29;n.x=60+col*280;n.y=bottom.get(col)||60;bottom.set(col,n.y+height+30);}return graph;
-}
+export function autoLayout(graph,options){return semanticGraphLayout(graph,options);}

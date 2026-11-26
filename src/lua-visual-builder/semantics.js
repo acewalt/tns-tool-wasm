@@ -1,4 +1,4 @@
-import {actionsToGraph,graphToActions,graphDiagnostics} from './logic.js?v=20261126-builder-v48';
+import {actionsToGraph,graphToActions,graphDiagnostics} from './logic.js?v=20261126-builder-v49';
 const copy=v=>JSON.parse(JSON.stringify(v));
 export function eventOwners(project){return [{owner:project,key:'app',page:null},...project.pages.flatMap(p=>[{owner:p,key:p.id,page:p},...p.components.map(c=>({owner:c,key:p.id+':'+c.id,page:p}))])];}
 export function eventContext(project,key){const event=key.slice(key.lastIndexOf(':')+1),scope=key.slice(0,key.lastIndexOf(':'));return {...eventOwners(project).find(o=>o.key===scope),scope,event};}
@@ -20,9 +20,30 @@ export function ensureEventGraph(p,key){p.graphs||={};if(!p.graphs[key]){const c
 export function getEventActions(p,key){const c=eventContext(p,key);return p.graphs?.[key]?graphToActions(p.graphs[key],{flows:p.flows||{}}):copy(c.owner?.events?.[c.event]||[]);}
 export function setEventActions(p,key,actions){
   const c=eventContext(p,key),old=p.graphs?.[key];p.graphs||={};const next=actionsToGraph(actions,c.scope,c.event);
-  // Comments survive projection edits. All meaningful nodes are regenerated from the changed actions.
-  if(old){next.view=copy(old.view||{});const used=new Set();for(const n of next.nodes){const same=old.nodes.find(o=>o.id===n.id&&o.type===n.type)||old.nodes.find(o=>!used.has(o.id)&&o.type===n.type&&o.target===n.target&&o.expression===n.expression);if(same){used.add(same.id);n.x=same.x;n.y=same.y;if(same.comment)n.comment=same.comment;if(same.group)n.group=same.group;}}}
-  if(old)next.nodes.push(...old.nodes.filter(n=>n.type==='comment').map(copy));p.graphs[key]=next;if(c.owner?.events)delete c.owner.events[c.event];return next;
+  if(old){
+    const visual=['x','y','comment','group','breakpoint','locked','collapsed','color','width','height'],mapping=new Map(),used=new Set();
+    const pair=(id,oldId)=>{if(mapping.has(id)||used.has(oldId))return;const n=next.nodes.find(n=>n.id===id),o=old.nodes.find(n=>n.id===oldId);if(!n||!o)return;mapping.set(id,oldId);used.add(oldId);for(const k of visual)if(Object.hasOwn(o,k))n[k]=copy(o[k]);
+      for(const e of next.edges.filter(e=>e.to===id&&!['in'].includes(e.input))){let previous=old.edges.find(v=>v.to===oldId&&v.input===e.input),seen=new Set();while(previous&&old.nodes.find(n=>n.id===previous.from)?.type==='rerouteData'&&!seen.has(previous.from)){seen.add(previous.from);previous=old.edges.find(v=>v.to===previous.from&&v.input==='value');}if(previous)pair(e.from,previous.from);}};
+    for(const n of next.nodes)if(n.type==='event'||actionsContain(actions,n.id))pair(n.id,n.id);
+    // Fresh data nodes cannot steal the IDs of unrelated preserved nodes.
+    const occupied=new Set(old.nodes.map(n=>n.id));for(const n of next.nodes)if(!mapping.has(n.id)){let id=n.id,i=1;while(occupied.has(id)||[...mapping.values()].includes(id))id=n.id+'_new'+i++;mapping.set(n.id,id);occupied.add(id);}
+    for(const n of next.nodes)n.id=mapping.get(n.id);for(const e of next.edges){e.from=mapping.get(e.from);e.to=mapping.get(e.to);}
+    // An unchanged connection may run through editable reroute nodes. Restore
+    // that exact path instead of flattening it when an inspector value changes.
+    const retainedReroutes=new Set();next.edges=next.edges.flatMap(edge=>{let e=old.edges.find(e=>e.from===edge.from&&e.out===edge.out),path=[],seen=new Set();while(e&&!seen.has(e.to)){path.push(e);if(e.to===edge.to&&e.input===edge.input){for(const v of path.slice(0,-1))retainedReroutes.add(v.to);return path.map(copy);}const node=old.nodes.find(n=>n.id===e.to);if(!node||!['rerouteData','rerouteExec'].includes(node.type))break;seen.add(node.id);e=old.edges.find(v=>v.from===node.id&&v.out===(node.type==='rerouteExec'?'next':'value'));}return [edge];});
+    next.nodes.push(...old.nodes.filter(n=>retainedReroutes.has(n.id)).map(copy));for(const id of retainedReroutes)used.add(id);
+    const linked=new Set();const visit=id=>{if(linked.has(id))return;linked.add(id);for(const e of old.edges.filter(e=>e.from===id||e.to===id))visit(e.from===id?e.to:e.from);};old.nodes.filter(n=>n.type==='event').forEach(n=>visit(n.id));
+    const extras=old.nodes.filter(n=>!used.has(n.id)&&(n.type==='comment'||!linked.has(n.id)));next.nodes.push(...extras.map(copy));const keep=new Set(extras.map(n=>n.id));next.edges.push(...old.edges.filter(e=>keep.has(e.from)&&keep.has(e.to)).map(copy));
+    const nodes=next.nodes,edges=next.edges;Object.assign(next,copy(old),{nodes,edges});Object.assign(old,next);p.graphs[key]=old;
+  }else p.graphs[key]=next;
+  if(c.owner?.events)delete c.owner.events[c.event];return p.graphs[key];
+}
+function actionsContain(list,id){return list.some(a=>a.node===id||['yes','no','body'].some(k=>a[k]&&actionsContain(a[k],id)));}
+export function setNavigationTarget(project,{key,node,to,owner,page,event='click'}){
+ if(project.imported)throw Error('Imported callbacks remain in original Lua. Edit source rather than creating a second navigation handler.');
+ if(!project.pages.some(p=>p.id===to))throw Error('Missing destination page');key||=page+(owner?':'+owner:'')+':'+event;const g=ensureEventGraph(project,key);
+ if(node){const n=g.nodes.find(n=>n.id===node);if(!n||n.type!=='navigate')throw Error('Select an explicit Navigate transition');n.page=to;g.edges=g.edges.filter(e=>!(e.to===node&&e.input==='page'));return n;}
+ const actions=getEventActions(project,key);actions.push({type:'navigate',page:to});setEventActions(project,key,actions);return project.graphs[key].nodes.findLast(n=>n.type==='navigate');
 }
 export function navigationLinks(p){const links=[];for(const [key,g]of Object.entries(p.graphs||{})){const c=eventContext(p,key);let actions;try{actions=graphToActions(g,{flows:p.flows||{}});}catch{continue;}
   const visit=(list,conditional=false)=>{for(const a of list){if(['navigate','back','home','nextPage'].includes(a.type)){const from=c.page?.id||p.startPage,idx=p.pages.findIndex(pg=>pg.id===from);links.push({key,from,node:a.node,owner:c.owner?.id||'app',event:c.event,type:a.type,to:a.type==='home'?p.startPage:a.type==='nextPage'?p.pages[(idx+1)%p.pages.length]?.id:a.page,conditional});}for(const name of ['yes','no','body'])if(a[name])visit(a[name],conditional||a.type==='if');}};visit(actions);
