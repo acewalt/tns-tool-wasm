@@ -67,7 +67,7 @@ test('repository ScriptApp corpus is analyzed and reconstructed without source l
 });
 test('large drawings fall back to intact source and bounded graphs preserve elseif structure',()=>{
  const s='function on.paint(gc)\n'+Array.from({length:201},(_,i)=>'gc:drawString("Row '+i+'",10,20,"top")').join('\n')+'\nend';
- const report=analyzeLuaImport(s),p=projectFromImport(report);assert.equal(report.mode,'source');assert.ok(report.diagnostics.some(d=>d.message.includes('limit')));assert.deepEqual(validateProject(p),[]);assert.equal(generateLua(p,{metadata:false}),s);
+ const report=analyzeLuaImport(s),p=projectFromImport(report);assert.equal(report.mode,'source');assert.equal(report.metrics.editableDrawingCalls,0);assert.ok(report.diagnostics.some(d=>d.message.includes('limit')));assert.deepEqual(validateProject(p),[]);assert.equal(generateLua(p,{metadata:false}),s);
  const branches='function choose(x) if x==1 then print("one") elseif x==2 then print("two") else print("other") end end',r=analyzeLuaImport(branches),g=Object.values(projectFromImport(r).graphs)[0];assert.equal(g.nodes.filter(n=>n.type==='if').length,2);assert.equal(generateLua(projectFromImport(r),{metadata:false}),branches);
 });
 test('hierarchical layouts use actual edges, handle cycles and preserve locked/manual positions',()=>{
