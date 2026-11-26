@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createProject,template,component,page,decodeProject,validateProject,clone,renameComponent} from '../src/lua-visual-builder/model.js';
+import {migrateProject,getEventActions,setEventActions} from '../src/lua-visual-builder/semantics.js';
 import {generateLua} from '../src/lua-visual-builder/generator.js';
 import {compileExpression,evaluateExpression} from '../src/lua-visual-builder/expressions.js';
 import {connect,graphToActions} from '../src/lua-visual-builder/logic.js';
@@ -63,17 +64,17 @@ test('global and page-local variables retain scope and reset independently',asyn
   const next=await createLuaPreview(generateLua(p));try{next.call('VB.go',[p.pages[1].id]);assert.equal(next.call('VB.variable',['n']).value,10);next.call('VB.setVariable',['n',20,'global']);next.call('VB.resetVariable',['n','global']);assert.equal(next.call('VB.variable',['n']).value,10);}finally{next.close();}
 });
 test('rename migrates graph scope and data bindings without changing a different page',()=>{
-  const p=template('hooke'),first=p.pages[0],second=clone(first);second.id='another';p.pages.push(second);
+  const p=template('hooke'),first=p.pages[0],second=clone(first);second.id='another';p.pages.push(second);p.graphs[second.id+':calculate:click']=clone(p.graphs[first.id+':calculate:click']);
   p.graphs[first.id+':calculate:click']={nodes:[{id:'e',type:'event'},{id:'a',type:'input',target:'a'}],edges:[]};
   renameComponent(p,first.id,'a','constant');renameComponent(p,first.id,'calculate','run');
   assert.equal(p.graphs[first.id+':run:click'].nodes[1].target,'constant');assert.equal(p.graphs[first.id+':calculate:click'],undefined);
-  assert.equal(second.components.find(c=>c.id==='calculate').events.click[1].expression,'input("a") * input("b")');
+  assert.match(getEventActions(p,second.id+':calculate:click')[1].expression,/input\("a"\)/);assert.ok(second.components.some(c=>c.id==='a'));
   p.graphs[first.id+':run:click'].nodes[1].id='a" onclick="bad';assert.ok(validateProject(p).some(s=>s.includes('logic node')));
 });
 test('formula design evaluation matches generated Lua and malformed formatting is rejected',()=>{
   assert.equal(evaluateExpression('0 and 2'),2);assert.equal(evaluateExpression('not 0'),false);
   assert.equal(evaluateExpression('input("a")*input("b")',{input:id=>({a:100,b:0.15})[id]}),15);
-  const p=template('hooke');p.pages[0].components.find(c=>c.id==='calculate').events.click[1].decimals='bad';assert.throws(()=>generateLua(p),/Decimals/);
+  const p=template('hooke');p.graphs[p.pages[0].id+':calculate:click'].nodes.find(n=>n.type==='setText').decimals='bad';assert.throws(()=>generateLua(p),/Decimals/);
   p.pages[0].variables={'not a name':1};assert.ok(validateProject(p).some(s=>s.includes('Invalid variable')));
 });
 test('large valid page sets paint while oversized execution queues stop with a diagnosis',async()=>{
@@ -84,11 +85,11 @@ test('large valid page sets paint while oversized execution queues stop with a d
 });
 test('bounded loops, variables, delay and breakpoint queues execute and resume',async()=>{
   const p=createProject();p.variables.count=0;p.pages[0].components=[{...component('Label'),id:'out',text:'wait'}];p.events.start=[{type:'repeat',count:'3',body:[{type:'increment',target:'count',expression:'2'}]},{type:'setText',target:'out',expression:'count',breakpoint:true}];
-  const session=await createLuaPreview(generateLua(p));try{assert.ok(session.snapshot().texts.includes('wait'));session.call('VB.resume');assert.ok(session.snapshot().texts.includes('6'));}finally{session.close();}
+  const session=await createLuaPreview(generateLua(p,{debug:true}));try{assert.ok(session.snapshot().texts.includes('wait'));session.call('VB.resume');assert.ok(session.snapshot().texts.includes('6'));}finally{session.close();}
 });
 test('invalid layout parents and duplicate IDs are rejected; renaming updates bindings',()=>{
-  const p=template('hooke');renameComponent(p,p.pages[0].id,'a','constant');assert.match(p.pages[0].components.find(c=>c.id==='calculate').events.click[1].expression,/input\("constant"\)/);
-  assert.deepEqual(p.pages[0].components.find(c=>c.id==='calculate').events.click[0].inputs,['constant','b']);
+  const p=template('hooke');renameComponent(p,p.pages[0].id,'a','constant');assert.match(getEventActions(p,p.pages[0].id+':calculate:click')[1].expression,/input\("constant"\)/);
+  assert.deepEqual(getEventActions(p,p.pages[0].id+':calculate:click')[0].inputs,['constant','b']);
   p.pages[0].components[0].parent=p.pages[0].components[0].id;assert.ok(validateProject(p).length);
   assert.throws(()=>generateLua(p),/hierarchy/);
 });

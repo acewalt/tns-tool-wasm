@@ -1,6 +1,6 @@
 // This string is standalone Lua 5.1; it does not depend on the builder or HTML.
 export const runtimeLua = String.raw`
-VB={pages={},handlers={},plots={},formulas={},vars={},initial={},assets={},order={},history={},queue={},trace={},focus=nil,error=nil,clock=0,wait=0,paused=false}
+VB={pages={},handlers={},plots={},formulas={},vars={},initial={},assets={},order={},history={},queue={},trace={},events={},values={},focus=nil,error=nil,clock=0,wait=0,paused=false,epoch=0,debug=false}
 VB.mathEditors={}
 function VB.setupFormulas()
  for id,p in pairs(VB.pages) do for _,c in ipairs(p.components) do if c.type=="Formula" then
@@ -14,14 +14,16 @@ function VB.item(v,i) return v[VB.number(i)] end
 function VB.concat(a,b) return tostring(a)..tostring(b) end
 function VB.cas(s) if type(s)~="string" then error("CAS needs a string") end local value,code=math.eval(s) if value==nil and math.evalStr then value,code=math.evalStr(s) end if value==nil then error("CAS: "..tostring(code or s)) end return value end
 function VB.format(v,d,p,s) if type(v)=="number" and d>=0 then v=string.format("%."..math.min(12,math.floor(d)).."f",v) end return (p or "")..tostring(v)..(s or "") end
-function VB.get(id) local p=VB.pages[VB.current] for _,c in ipairs(p.components) do if c.id==id then return c end end error("Missing component: "..tostring(id)) end
+function VB.find(id,page) local p=VB.pages[page or VB.current] if p then for _,c in ipairs(p.components) do if c.id==id then return c end end end end
+function VB.get(id) local c=VB.find(id) if c then return c end error("Missing component: "..tostring(id).." on page "..tostring(VB.current)) end
+function VB.focused() if VB.focusPage~=VB.current then VB.focus=nil return nil end local c=VB.find(VB.focus) if not c then VB.focus=nil end return c end
 function VB.value(id) return VB.get(id).value end
 function VB.input(id) return VB.number(VB.value(id)) end
 function VB.text(id) return VB.get(id).text end
 function VB.variable(id) local p=VB.pages[VB.current] if p and p.variables and p.variables[id]~=nil then return p.variables[id] end return VB.vars[id] end
 function VB.setVariable(id,v,scope) if scope=="local" then local p=VB.pages[VB.current] p.variables=p.variables or {} p.variables[id]=v else VB.vars[id]=v end end
 function VB.resetVariable(id,scope) local p=VB.pages[VB.current] local initial=scope=="local" and p.initialVariables or VB.initial VB.setVariable(id,initial[id],scope) end
-function VB.setText(id,v) VB.get(id).text=tostring(v) end
+function VB.setText(id,v) local c=VB.get(id) c.text=tostring(v) if c.type=="Formula" then c.expression=tostring(v) VB.formulas[VB.current..":"..id]=nil local e=VB.mathEditors[VB.current..":"..id] if e then e:setExpression(tostring(v)) end end end
 function VB.setValue(id,v) local c=VB.get(id) if c.value==v then return end c.value=v VB.emit(VB.current..":"..id..":change") end
 function VB.setVisible(id,v) VB.get(id).visible=v end
 function VB.prepend(list) if #VB.queue+#list>5000 then error("Action queue limit: 5000") end for i=#list,1,-1 do table.insert(VB.queue,1,list[i]) end end
@@ -36,8 +38,10 @@ function VB.tickQueue(single)
  while #VB.queue>0 and not VB.paused and VB.wait<=0 and n<100 do
   local action=table.remove(VB.queue,1)
   if action.stop and not VB.skipBreak then table.insert(VB.queue,1,action) VB.paused=true break end
-  VB.skipBreak=false table.insert(VB.trace,action.id) if #VB.trace>100 then table.remove(VB.trace,1) end
+  VB.skipBreak=false if VB.debug then table.insert(VB.trace,action.id) if #VB.trace>100 then table.remove(VB.trace,1) end end
+  local before if VB.debug and action.target then local c=VB.find(action.target) before=c and tostring(c.value).." | "..tostring(c.text) or tostring(VB.variable(action.target)) end
   local ok,result=pcall(action.run)
+  if VB.debug then local c=action.target and VB.find(action.target) VB.values[action.id]={page=VB.current,before=before,after=c and tostring(c.value).." | "..tostring(c.text) or action.target and tostring(VB.variable(action.target)) or "",ok=ok} end
   if not ok then VB.error=action.id..": "..tostring(result) VB.queue={} break end
   if result==false then VB.queue={} break end
   if type(result)=="number" then VB.wait=result end
@@ -47,10 +51,15 @@ function VB.tickQueue(single)
 end
 function VB.resume() VB.paused=false VB.skipBreak=true VB.tickQueue() end
 function VB.step() VB.paused=false VB.skipBreak=true VB.tickQueue(true) end
-function VB.emit(key) local list=VB.handlers[key] if list then if #VB.queue+#list>5000 then VB.error="Action queue limit" VB.queue={} return end for _,a in ipairs(list) do table.insert(VB.queue,a) end if not VB.running then VB.tickQueue() end end end
-function VB.validate(ids) for _,id in ipairs(ids) do if tonumber(VB.value(id))==nil then VB.error="Enter a valid number: "..id VB.focus=id return false end end VB.error=nil return true end
-function VB.go(id) if not VB.pages[id] then error("Missing page: "..id) end table.insert(VB.history,VB.current) VB.current=id VB.focus=nil VB.error=nil VB.emit(id..":show") platform.window:invalidate() end
-function VB.back() local id=table.remove(VB.history) if id then VB.current=id VB.focus=nil VB.emit(id..":show") end platform.window:invalidate() end
+function VB.emit(key) if VB.debug then table.insert(VB.events,key) if #VB.events>40 then table.remove(VB.events,1) end end local list=VB.handlers[key] if list then if #VB.queue+#list>5000 then VB.error="Action queue limit" VB.queue={} return end for _,a in ipairs(list) do table.insert(VB.queue,a) end if not VB.running then VB.tickQueue() end end end
+function VB.validate(ids) for _,id in ipairs(ids) do if tonumber(VB.value(id))==nil then VB.error="Enter a valid number: "..id VB.focus=id VB.focusPage=VB.current return false end end VB.error=nil return true end
+function VB.changePage(id)
+ if not VB.pages[id] then error("Missing page: "..id) end
+ VB.epoch=VB.epoch+1 VB.queue={} VB.wait=0 VB.drag=nil VB.dragPage=nil VB.focus=nil VB.focusPage=nil VB.paused=false VB.skipBreak=false VB.current=id
+ VB.emit(id..":show") platform.window:invalidate()
+end
+function VB.go(id) if not VB.pages[id] then error("Missing page: "..id) end if id~=VB.current then table.insert(VB.history,VB.current) end VB.changePage(id) end
+function VB.back() local id=table.remove(VB.history) if id then VB.changePage(id) end platform.window:invalidate() end
 function VB.nextPage() for i,id in ipairs(VB.order) do if id==VB.current then VB.go(VB.order[(i % #VB.order)+1]) return end end end
 function VB.rgb(gc,c) local s=c or "#000000" gc:setColorRGB(tonumber(string.sub(s,2,3),16) or 0,tonumber(string.sub(s,4,5),16) or 0,tonumber(string.sub(s,6,7),16) or 0) end
 function VB.rect(c,seen)
@@ -115,31 +124,33 @@ function VB.hit(x,y)
  if inside then return c end end end
 end
 function VB.activate(c,x)
- if not c then VB.focus=nil return end VB.focus=c.id VB.error=nil
+ if not c then VB.focus=nil return end
+ local origin=VB.current local epoch=VB.epoch if VB.find(c.id,origin)~=c then return end
+ VB.focus=c.id VB.focusPage=origin VB.error=nil
  if c.type=="Checkbox" then c.value=not(c.value==true or c.value=="true") VB.emit(VB.current..":"..c.id..":change")
  elseif c.type=="Radio" then for _,other in ipairs(VB.pages[VB.current].components) do if other.type=="Radio" and other.group==c.group then other.value=false end end c.value=true VB.emit(VB.current..":"..c.id..":change")
  elseif c.type=="Dropdown" then local list={} for s in string.gmatch(c.options or "","[^\n]+") do table.insert(list,s) end local index=c.value=="" and 1 or 0 for i,s in ipairs(list) do if s==c.value then index=i end end if #list>0 then c.value=list[(index % #list)+1] end VB.emit(VB.current..":"..c.id..":change")
  elseif c.type=="Slider" then if x then local a=VB.rect(c) c.value=VB.round(c.min+math.max(0,math.min(1,(x-a)/c.w))*(c.max-c.min),2) else c.value=math.min(c.max,(tonumber(c.value) or c.min)+(c.step or 1)) end VB.emit(VB.current..":"..c.id..":change") end
- VB.emit(VB.current..":"..c.id..":click") platform.window:invalidate()
+ if VB.current==origin and VB.epoch==epoch and VB.find(c.id,origin)==c then VB.emit(origin..":"..c.id..":click") end platform.window:invalidate()
 end
-function on.mouseDown(x,y) x=x*320/platform.window:width() y=y*212/platform.window:height() local c=VB.hit(x,y) VB.activate(c,x) VB.drag=c and c.id end
-function on.mouseMove(x,y) if VB.drag then local c=VB.get(VB.drag) if c.type=="Slider" then VB.activate(c,x*320/platform.window:width()) end end end
-function on.mouseUp(x,y) VB.drag=nil end
+function on.mouseDown(x,y) x=x*320/platform.window:width() y=y*212/platform.window:height() local c=VB.hit(x,y) local origin=VB.current local epoch=VB.epoch VB.drag=nil VB.activate(c,x) if c and c.type=="Slider" and VB.current==origin and VB.epoch==epoch then VB.drag=c.id VB.dragPage=origin end end
+function on.mouseMove(x,y) if VB.drag then if VB.dragPage~=VB.current then VB.drag=nil return end local c=VB.find(VB.drag) if c and c.type=="Slider" then VB.activate(c,x*320/platform.window:width()) else VB.drag=nil end end end
+function on.mouseUp(x,y) VB.drag=nil VB.dragPage=nil end
 function VB.tab()
  local list={} for _,c in ipairs(VB.pages[VB.current].components) do if VB.visible(c) and (c.type=="Input" or c.type=="Button" or c.type=="Checkbox" or c.type=="Radio" or c.type=="Slider" or c.type=="Dropdown") then table.insert(list,c) end end
- local i=0 for j,c in ipairs(list) do if c.id==VB.focus then i=j end end if #list>0 then VB.focus=list[(i % #list)+1].id end platform.window:invalidate()
+ local i=0 for j,c in ipairs(list) do if c.id==VB.focus then i=j end end if #list>0 then VB.focus=list[(i % #list)+1].id VB.focusPage=VB.current end platform.window:invalidate()
 end
 function on.tabKey() VB.tab() end
 function on.charIn(s)
  if VB.paused and (s=="r" or s=="R") then VB.resume() return end
  if s=="\t" then VB.tab() return end
- if VB.focus then local c=VB.get(VB.focus) if c.type=="Input" then c.value=tostring(c.value or "")..s VB.error=nil VB.emit(VB.current..":"..c.id..":change") end end platform.window:invalidate()
+ local c=VB.focused() if c and c.type=="Input" then c.value=tostring(c.value or "")..s VB.error=nil VB.emit(VB.current..":"..c.id..":change") end platform.window:invalidate()
 end
-function on.backspaceKey() if VB.focus then local c=VB.get(VB.focus) if c.type=="Input" then local s=tostring(c.value or "") local n=#s while n>0 and string.byte(s,n)>=128 and string.byte(s,n)<192 do n=n-1 end c.value=string.sub(s,1,math.max(0,n-1)) VB.emit(VB.current..":"..c.id..":change") end end platform.window:invalidate() end
-function on.enterKey() if VB.paused then VB.step() return end if VB.focus then local c=VB.get(VB.focus) if c.type~="Input" then VB.activate(c) end VB.emit(VB.current..":"..c.id..":enter") else VB.tab() end end
+function on.backspaceKey() local c=VB.focused() if c and c.type=="Input" then local s=tostring(c.value or "") local n=#s while n>0 and string.byte(s,n)>=128 and string.byte(s,n)<192 do n=n-1 end c.value=string.sub(s,1,math.max(0,n-1)) VB.emit(VB.current..":"..c.id..":change") end platform.window:invalidate() end
+function on.enterKey() if VB.paused then VB.step() return end local c=VB.focused() if c then local origin=VB.current local epoch=VB.epoch if c.type~="Input" then VB.activate(c) end if VB.current==origin and VB.epoch==epoch and VB.find(c.id)==c then VB.emit(origin..":"..c.id..":enter") end else VB.tab() end end
 function on.escapeKey() VB.error=nil VB.back() end
 function on.arrowKey(key)
- if VB.focus then local c=VB.get(VB.focus) if c.type=="Scroll" then c.offset=math.max(0,math.min(math.max(0,(c.scrollHeight or c.h)-c.h),(c.offset or 0)+(key=="up" and -16 or 16)))
+ local c=VB.focused() if c then if c.type=="Scroll" then c.offset=math.max(0,math.min(math.max(0,(c.scrollHeight or c.h)-c.h),(c.offset or 0)+(key=="up" and -16 or 16)))
  elseif c.type=="Slider" then c.value=math.max(c.min,math.min(c.max,(tonumber(c.value) or c.min)+((key=="left" or key=="down") and -1 or 1)*(c.step or 1))) VB.emit(VB.current..":"..c.id..":change")
  else VB.tab() end else VB.tab() end platform.window:invalidate()
 end

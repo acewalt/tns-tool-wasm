@@ -1,13 +1,13 @@
-import {evaluateExpression} from '../src/lua-visual-builder/expressions.js';
+import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261126-builder-v48';
 // Design-only renderer. Run mode always executes the generated Lua in its own VM.
-export function mountDesigner(canvas,{project,page,selected,zoom=1.5,grid=true,onSelect,onMove,onDrop}) {
+export function mountDesigner(canvas,{project,page,selected,selection=[],zoom=1.5,grid=true,onSelect=()=>{},onSelection=()=>{},onMove=()=>{},onDrop=()=>{},onZoom,interactive=true}) {
   const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,W=320,H=212;
   canvas.style.width=W*zoom+'px';canvas.style.height=H*zoom+'px';canvas.width=Math.round(W*zoom*dpr);canvas.height=Math.round(H*zoom*dpr);
   const rect=c=>{let x=c.x,y=c.y,parent=c.parent,seen=new Set([c.id]);while(parent){const p=page.components.find(c=>c.id===parent);if(!p||seen.has(parent))break;seen.add(parent);x+=p.x;y+=p.y;parent=p.parent;}return{x,y,w:c.w,h:c.h};};
-  const visible=c=>{if(c.visible===false)return false;const p=page.components.find(p=>p.id===c.parent);return p?visible(p):true;};
+  const visible=c=>{if(c.editorVisible===false)return false;const p=page.components.find(p=>p.id===c.parent);return p?visible(p):true;};
   function paint(){
     ctx.setTransform(zoom*dpr,0,0,zoom*dpr,0,0);ctx.clearRect(0,0,W,H);ctx.fillStyle=page.background;ctx.fillRect(0,0,W,H);
-    for(const c of page.components){if(!visible(c))continue;ctx.save();let parent=c.parent;while(parent){const p=page.components.find(p=>p.id===parent);if(!p)break;const r=rect(p);ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();parent=p.parent;}
+    for(const c of page.components){if(!visible(c))continue;ctx.save();if(c.visible===false)ctx.globalAlpha=.4;let parent=c.parent;while(parent){const p=page.components.find(p=>p.id===parent);if(!p)break;const r=rect(p);ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();parent=p.parent;}
       const {x,y,w,h}=rect(c);ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.fillStyle=c.color;ctx.fillRect(x,y,w,h);ctx.strokeStyle=c.border;ctx.lineWidth=.7;
       if(!['Label','Formula'].includes(c.type))ctx.strokeRect(x+.5,y+.5,w-1,h-1);
       ctx.fillStyle=c.foreground;ctx.strokeStyle=c.foreground;ctx.font=`${c.bold?'bold ':''}${c.font}px Arial`;ctx.textBaseline='top';let text=c.text;
@@ -25,19 +25,44 @@ export function mountDesigner(canvas,{project,page,selected,zoom=1.5,grid=true,o
       String(text??'').split('\n').forEach((s,i)=>ctx.fillText(s,tx,ty+i*(c.font+3)));ctx.restore();
     }
     if(grid){ctx.fillStyle='#71879f66';for(let x=0;x<W;x+=8)for(let y=0;y<H;y+=8)ctx.fillRect(x,y,.7,.7);}
-    const c=page.components.find(c=>c.id===selected);if(c){const r=rect(c);ctx.strokeStyle='#148dff';ctx.lineWidth=1;ctx.setLineDash([3,2]);ctx.strokeRect(r.x-1,r.y-1,r.w+2,r.h+2);ctx.setLineDash([]);ctx.fillStyle='#fff';for(const [x,y]of [[r.x,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h],[r.x+r.w,r.y+r.h]]){ctx.fillRect(x-2,y-2,4,4);ctx.strokeRect(x-2,y-2,4,4);}}
+    for(const c of page.components.filter(c=>selection.includes(c.id)||c.id===selected)){ const r=rect(c);ctx.strokeStyle='#148dff';ctx.lineWidth=1;ctx.setLineDash([3,2]);ctx.strokeRect(r.x-1,r.y-1,r.w+2,r.h+2);ctx.setLineDash([]);ctx.fillStyle='#fff';for(const [x,y]of [[r.x,r.y],[r.x+r.w/2,r.y],[r.x+r.w,r.y],[r.x,r.y+r.h/2],[r.x+r.w,r.y+r.h/2],[r.x,r.y+r.h],[r.x+r.w/2,r.y+r.h],[r.x+r.w,r.y+r.h]]){ctx.fillRect(x-2,y-2,4,4);ctx.strokeRect(x-2,y-2,4,4);}}
   }
   const point=e=>{const b=canvas.getBoundingClientRect();return{x:(e.clientX-b.left)/b.width*W,y:(e.clientY-b.top)/b.height*H};};
-  let drag;
+  let drag,guide,pan,boxSelection;
+  const selectedIds=()=>new Set([...selection,selected].filter(Boolean));
+  const hit=p=>[...page.components].reverse().find(c=>{const r=rect(c);return visible(c)&&p.x>=r.x&&p.y>=r.y&&p.x<=r.x+r.w&&p.y<=r.y+r.h;});
+  const select=ids=>{selection=ids;selected=ids.at(-1)||null;onSelection(ids);onSelect(selected,false);};
+  if(!interactive){paint();return {paint,rect};}
   canvas.onpointerdown=e=>{
-    if(e.button!==0)return;e.preventDefault();const p=point(e);let c=page.components.find(c=>c.id===selected),resize=false;
-    if(c){const r=rect(c);resize=Math.abs(p.x-r.x-r.w)<6&&Math.abs(p.y-r.y-r.h)<6;}
-    if(!resize)c=[...page.components].reverse().find(c=>{const r=rect(c);return visible(c)&&p.x>=r.x&&p.y>=r.y&&p.x<=r.x+r.w&&p.y<=r.y+r.h;});
-    if(c){drag={id:c.id,origin:p,start:{x:c.x,y:c.y,w:c.w,h:c.h},resize};canvas.setPointerCapture(e.pointerId);onSelect(c.id,false);selected=c.id;}else{onSelect(null);selected=null;}paint();
+    if(e.button===1){const viewport=canvas.closest('.lvb-design');pan={viewport,x:e.clientX,y:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};canvas.setPointerCapture(e.pointerId);e.preventDefault();return;}
+    if(e.button!==0)return;e.preventDefault();canvas.focus();const p=point(e);let c=page.components.find(c=>c.id===selected),handle='';
+    if(c&&!c.locked){const r=rect(c);for(const [hx,hy,name]of [[0,0,'nw'],[.5,0,'n'],[1,0,'ne'],[0,.5,'w'],[1,.5,'e'],[0,1,'sw'],[.5,1,'s'],[1,1,'se']])if(Math.abs(p.x-r.x-r.w*hx)<5&&Math.abs(p.y-r.y-r.h*hy)<5)handle=name;}
+    if(!handle)c=hit(p);
+    if(c){if(e.shiftKey)select(selectedIds().has(c.id)?[...selectedIds()].filter(id=>id!==c.id):[...selectedIds(),c.id]);else if(!selectedIds().has(c.id))select([c.id]);
+      if(!c.locked)drag={id:c.id,origin:p,handle,items:page.components.filter(c=>selectedIds().has(c.id)&&!c.locked).map(c=>({c,start:{x:c.x,y:c.y,w:c.w,h:c.h}}))};
+    }else{select(e.shiftKey?[...selectedIds()]:[]);boxSelection={origin:p,end:p,base:[...selection]};}canvas.setPointerCapture(e.pointerId);paint();
   };
-  canvas.onpointermove=e=>{if(!drag)return;const c=page.components.find(c=>c.id===drag.id),p=point(e),snap=n=>grid?Math.round(n/4)*4:Math.round(n);if(drag.resize){c.w=Math.max(8,snap(drag.start.w+p.x-drag.origin.x));c.h=Math.max(8,snap(drag.start.h+p.y-drag.origin.y));}else{c.x=snap(drag.start.x+p.x-drag.origin.x);c.y=snap(drag.start.y+p.y-drag.origin.y);}paint();};
-  canvas.onpointerup=()=>{if(drag){drag=null;onMove();}};canvas.onpointercancel=canvas.onpointerup;
+  canvas.onpointermove=e=>{
+    if(pan){pan.viewport.scrollLeft=pan.left+pan.x-e.clientX;pan.viewport.scrollTop=pan.top+pan.y-e.clientY;return;}
+    const p=point(e);if(boxSelection){boxSelection.end=p;paint();ctx.strokeStyle='#148dff';ctx.fillStyle='#148dff22';ctx.fillRect(boxSelection.origin.x,boxSelection.origin.y,p.x-boxSelection.origin.x,p.y-boxSelection.origin.y);ctx.strokeRect(boxSelection.origin.x,boxSelection.origin.y,p.x-boxSelection.origin.x,p.y-boxSelection.origin.y);return;}
+    if(!drag)return;const dx=p.x-drag.origin.x,dy=p.y-drag.origin.y,snap=n=>grid?Math.round(n/4)*4:Math.round(n);guide=null;if(Math.abs(dx)+Math.abs(dy)>.5)drag.changed=true;
+    for(const {c,start}of drag.items){if(drag.handle){if(drag.handle.includes('e'))c.w=Math.max(8,snap(start.w+dx));if(drag.handle.includes('s'))c.h=Math.max(8,snap(start.h+dy));if(drag.handle.includes('w')){c.w=Math.max(8,snap(start.w-dx));c.x=start.x+start.w-c.w;}if(drag.handle.includes('n')){c.h=Math.max(8,snap(start.h-dy));c.y=start.y+start.h-c.h;}}
+      else{c.x=snap(start.x+dx);c.y=snap(start.y+dy);if(drag.items.length===1)for(const other of page.components.filter(o=>o!==c&&o.parent===c.parent)){for(const edge of [0,.5,1]){const xx=other.x+other.w*edge,yy=other.y+other.h*edge;if(Math.abs(c.x+c.w*edge-xx)<3){c.x=xx-c.w*edge;guide={axis:'x',v:rect(other).x+other.w*edge};}if(Math.abs(c.y+c.h*edge-yy)<3){c.y=yy-c.h*edge;guide={axis:'y',v:rect(other).y+other.h*edge};}}}}}
+    paint();if(guide){ctx.strokeStyle='#db3686';ctx.beginPath();ctx.moveTo(guide.axis==='x'?guide.v:0,guide.axis==='y'?guide.v:0);ctx.lineTo(guide.axis==='x'?guide.v:W,guide.axis==='y'?guide.v:H);ctx.stroke();}
+  };
+  canvas.onpointerup=()=>{if(boxSelection){const a=boxSelection.origin,b=boxSelection.end;select([...new Set([...boxSelection.base,...page.components.filter(c=>{const r=rect(c);return visible(c)&&r.x>=Math.min(a.x,b.x)&&r.y>=Math.min(a.y,b.y)&&r.x+r.w<=Math.max(a.x,b.x)&&r.y+r.h<=Math.max(a.y,b.y);}).map(c=>c.id)])]);boxSelection=null;paint();}if(drag){const changed=drag.changed;drag=null;if(changed)onMove();}pan=null;};canvas.onpointercancel=canvas.onpointerup;
+  canvas.ondblclick=e=>{
+    const c=hit(point(e));if(!c||c.locked||!['Label','Button','Input','Checkbox','Radio'].includes(c.type))return;select([c.id]);
+    canvas.parentElement.querySelector('.lvb-inline-editor')?.blur();const r=rect(c),input=document.createElement('textarea'),property=c.type==='Input'?'value':'text';input.className='lvb-inline-editor';input.value=c[property];Object.assign(input.style,{position:'absolute',left:r.x*zoom+'px',top:r.y*zoom+'px',width:Math.max(80,r.w*zoom)+'px',height:Math.max(32,r.h*zoom)+'px',fontSize:c.font*zoom+'px',lineHeight:'1.2',zIndex:5});canvas.parentElement.append(input);let done=false;
+    const finish=save=>{if(done)return;done=true;window.removeEventListener('keydown',inlineKeys,true);if(save)c[property]=input.value;input.remove();paint();if(save)onMove();};
+    // Keep calculator/editor shortcuts from consuming Enter while editing a label.
+    const inlineKeys=e=>{if(e.target!==input)return;e.stopImmediatePropagation();if(e.key==='Escape'){e.preventDefault();finish(false);}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finish(true);}};
+    window.addEventListener('keydown',inlineKeys,true);input.onblur=()=>finish(true);input.focus();input.select();
+  };
+  canvas.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();for(const c of page.components.filter(c=>selectedIds().has(c.id)&&!c.locked)){const step=e.shiftKey?10:1;c.x+=e.key==='ArrowRight'?step:e.key==='ArrowLeft'?-step:0;c.y+=e.key==='ArrowDown'?step:e.key==='ArrowUp'?-step:0;}onMove();};
+  canvas.onwheel=e=>{if(onZoom){e.preventDefault();onZoom(Math.max(.25,Math.min(4,zoom*(e.deltaY>0?.9:1.1))));}};
   canvas.ondragover=e=>{e.preventDefault();e.dataTransfer.dropEffect='copy';};canvas.ondrop=e=>{e.preventDefault();const p=point(e);onDrop(e.dataTransfer.getData('application/x-tns-component'),Math.round(p.x),Math.round(p.y));};paint();return{paint,rect};
+
 }
 export async function imageAsset(file) {
   if(!file.type.startsWith('image/')||file.size>10*1024*1024)throw Error('Choose an image under 10 MB.');
@@ -48,3 +73,6 @@ export async function imageAsset(file) {
     return{width,height,runs,name:file.name};
   }finally{bitmap.close();}
 }
+
+// Template gallery and Navigation use the exact same model renderer as Design.
+export function renderPageThumbnail(canvas,project,page,zoom=.6){return mountDesigner(canvas,{project,page,selected:null,zoom,grid:false,interactive:false});}
