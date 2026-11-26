@@ -47,7 +47,7 @@ export async function openLuaVisualBuilder(options={}) {
       const code=generateLua(project);
       if(command==='validate'){say(t.validation);return;}
       if(command==='lua'){download(project.name+'.lua',code,'text/plain');return;}
-      if(command==='full'){stopPreview();await options.preview?.(code);return;}
+      if(command==='full'){mode='design';draw();await options.preview?.(code);return;}
       if(command==='apply'||command==='tns'){await options.apply?.(code);say(t.applied);if(command==='tns')await options.exportTns?.(code);}
     }
   }catch(e){fail(e);}}

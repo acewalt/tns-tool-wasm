@@ -71,6 +71,7 @@ test('rename migrates graph scope and data bindings without changing a different
   p.graphs[first.id+':run:click'].nodes[1].id='a" onclick="bad';assert.ok(validateProject(p).some(s=>s.includes('logic node')));
 });
 test('formula design evaluation matches generated Lua and malformed formatting is rejected',()=>{
+  assert.equal(evaluateExpression('0 and 2'),2);assert.equal(evaluateExpression('not 0'),false);
   assert.equal(evaluateExpression('input("a")*input("b")',{input:id=>({a:100,b:0.15})[id]}),15);
   const p=template('hooke');p.pages[0].components.find(c=>c.id==='calculate').events.click[1].decimals='bad';assert.throws(()=>generateLua(p),/Decimals/);
   p.pages[0].variables={'not a name':1};assert.ok(validateProject(p).some(s=>s.includes('Invalid variable')));
