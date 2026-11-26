@@ -1,4 +1,5 @@
 // Serializable source of truth. Generated Lua carries this project as metadata.
+import {NODE_TYPES} from './logic.js';
 export const VERSION = 1;
 export const COMPONENTS = ['Label','Input','Button','Panel','Dropdown','Checkbox','Radio','Slider','Table','Graph','Image','Progress','Scroll','Formula','Shape'];
 export const clone = value => JSON.parse(JSON.stringify(value));
@@ -37,6 +38,12 @@ export function validateProject(value) {
   }
   if(!ids.has(value.startPage))errors.push('Start page is missing.');
   variables(value.variables,'Variables');
+  if(value.graphs&&(!value.graphs||typeof value.graphs!=='object'||Array.isArray(value.graphs)))errors.push('Logic graphs must be an object.');
+  for(const graph of Object.values(value.graphs||{})){
+    if(!graph||!Array.isArray(graph.nodes)||!Array.isArray(graph.edges)||graph.nodes.length>200||graph.edges.length>1200){errors.push('Invalid logic graph');continue;}
+    const nodes=new Set();for(const n of graph.nodes){if(!n||!ident.test(n.id)||nodes.has(n.id)||!Object.hasOwn(NODE_TYPES,n.type)){errors.push('Invalid or duplicate logic node');continue;}nodes.add(n.id);for(const k of ['x','y'])if(n[k]!==undefined&&(!Number.isFinite(n[k])||Math.abs(n[k])>10000))errors.push('Invalid node position');}
+    for(const e of graph.edges)if(!e||!nodes.has(e.from)||!nodes.has(e.to))errors.push('Logic wire references a missing node');
+  }
   if(Object.keys(value.assets||{}).length>32)errors.push('At most 32 images per project.');
   for(const a of Object.values(value.assets||{})){
     if(!Number.isInteger(a.width)||!Number.isInteger(a.height)||a.width<1||a.height<1||a.width>96||a.height>96||!Array.isArray(a.runs)||a.runs.length>9216){errors.push('Invalid image dimensions');continue;}
