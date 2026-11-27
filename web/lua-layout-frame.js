@@ -82,7 +82,7 @@
         window.TnsTiPreviewFontCalibration?.install(); window.TnsTiPreviewPerformance?.install();
         let code=options.code,capture=options.capture;
         // Attribute original source before CAS adapters prepend their own helpers.
-        if(capture){const {instrumentCaptureSource}=await import('../src/lua-visual-builder/capture.js?v=20261126-builder-v50');const prepared=instrumentCaptureSource(code);code=prepared.code;capture={...capture,prepared};}
+        if(capture){const {instrumentCaptureSource}=await import('../src/lua-visual-builder/capture.js?v=20261126-builder-v51');const prepared=instrumentCaptureSource(code);code=prepared.code;capture={...capture,prepared};}
         runtime = await createLuaJsPreviewRuntime(code, canvas.getContext('2d'), canvas, log, options.symbols, capture);
         if (disposed) { runtime.close(); return controller; }
         runtime.boot();

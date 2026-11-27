@@ -1,4 +1,4 @@
-import {actionsToGraph,graphToActions,graphDiagnostics} from './logic.js?v=20261126-builder-v50';
+import {actionsToGraph,graphToActions,graphDiagnostics} from './logic.js?v=20261126-builder-v51';
 const copy=v=>JSON.parse(JSON.stringify(v));
 export function eventOwners(project){return [{owner:project,key:'app',page:null},...project.pages.flatMap(p=>[{owner:p,key:p.id,page:p},...p.components.map(c=>({owner:c,key:p.id+':'+c.id,page:p}))])];}
 export function eventContext(project,key){const event=key.slice(key.lastIndexOf(':')+1),scope=key.slice(0,key.lastIndexOf(':'));return {...eventOwners(project).find(o=>o.key===scope),scope,event};}
