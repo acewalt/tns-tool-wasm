@@ -1,7 +1,7 @@
-import {createProject,page,component,clone,validateProject} from './model.js?v=20261126-builder-v51';
-import {reconstructScreen} from './capture.js?v=20261126-builder-v51';
-import {availableEvents} from './presentation.js?v=20261126-builder-v51';
-import {setEventActions} from './semantics.js?v=20261126-builder-v51';
+import {createProject,page,component,clone,validateProject} from './model.js?v=20261127-builder-v51';
+import {reconstructScreen} from './capture.js?v=20261127-builder-v51';
+import {availableEvents} from './presentation.js?v=20261127-builder-v51';
+import {setEventActions} from './semantics.js?v=20261127-builder-v51';
 
 // Conversion is explicit: observations remain evidence, not inferred execution.
 export function reviewCapturedScreen(screen){
