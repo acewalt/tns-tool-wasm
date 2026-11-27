@@ -65,3 +65,17 @@ test('unrelated navigation pages use bounded rows and manual anchors survive mea
  layoutPages(p,navigationLinks(p),{dimensions});assert.deepEqual(p.navigation.positions[p.startPage],{x:900,y:750,manual:true});
  for(const [i,a]of p.pages.entries())for(const b of p.pages.slice(i+1)){const x=p.navigation.positions[a.id],y=p.navigation.positions[b.id];assert.ok(!(x.x<y.x+264&&x.x+264>y.x&&x.y<y.y+410&&x.y+410>y.y));}
 });
+
+
+test('wire routing never crosses endpoint cards when the destination is below and left', async()=>{
+ const {routeWire}=await import('../src/lua-visual-builder/presentation.js');
+ const source={x:400,y:0,w:250,h:390},target={x:100,y:450,w:250,h:295};
+ const d=routeWire({x:650,y:250},{x:100,y:470},[source,target]);
+ const tokens=[...d.matchAll(/([MLQ])([^MLQ]+)/g)];let at;
+ for(const [,command,coords] of tokens){const n=coords.trim().split(/[ ,]+/).map(Number);if(command==='M'){at={x:n[0],y:n[1]};continue;}
+  const end=command==='Q'?{x:n[2],y:n[3]}:{x:n[0],y:n[1]};
+  for(let i=1;i<=100;i++){const t=i/100,u=1-t,p=command==='Q'?{x:u*u*at.x+2*u*t*n[0]+t*t*end.x,y:u*u*at.y+2*u*t*n[1]+t*t*end.y}:{x:at.x+(end.x-at.x)*t,y:at.y+(end.y-at.y)*t};
+   for(const r of [source,target])assert.ok(!(p.x>r.x+1&&p.x<r.x+r.w-1&&p.y>r.y+1&&p.y<r.y+r.h-1),'wire enters an endpoint card');
+  }at=end;
+ }
+});
