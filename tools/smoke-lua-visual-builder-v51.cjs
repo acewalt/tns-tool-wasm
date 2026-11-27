@@ -30,6 +30,7 @@ app.whenReady().then(async()=>{
   must(await js(`b.getProject().graphs[key].nodes.length===${stable.count+1}&&b.getProject().graphs[key].edges.length===1`),'create once and connect at '+zoom);
   must(await js(`!q('.wire-hit[marker-end],.wire-hit[marker-start]')`),'wire hit areas do not duplicate direction markers at '+zoom);
   must(await js(`vp().dataset.interaction==='IDLE'&&!q('.pending-wire')&&!q('.lvb-node-menu')&&!!q('.lvb-node.is-selected')`),'cleanup and selected new node at '+zoom);
+  must(await js(`(()=>{const a=rect(q('.lvb-node.is-selected')),v=rect(vp());return a.x>=v.x-1&&a.y>=v.y-1&&a.x+a.w<=v.x+v.w+1&&a.y+a.h<=v.y+v.h+1})()`),'created node remains visible after collision placement at '+zoom);
   await js(`q('[data-command=undo]').click()`);await pause(100);
   must(await js(`b.getProject().graphs[key].nodes.length===${stable.count}&&b.getProject().graphs[key].edges.length===0`),'atomic undo node plus connection at '+zoom);
   await js(`q('[data-command=redo]').click()`);await pause(80);

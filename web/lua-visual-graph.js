@@ -88,6 +88,13 @@ export function mountEventGraph(host,{graph,project,page,key,lang='en',name=x=>x
       if(origin){const input=spec(n).inputs.find(input=>!connectionError(graph,{...origin,to:n.id,input}));if(!input)throw Error(text('No compatible input.','No hay entrada compatible.','Aucune entrée compatible.'));connect(graph,{...origin,to:n.id,input});}
       pending=null;layer.querySelectorAll('.lvb-port').forEach(p=>p.classList.remove('is-compatible','is-incompatible'));delete viewport.dataset.wireType;interaction.cancel();active=n.id;selected=new Set([n.id]);graph.selection=[n.id];graph.active=n.id;render();
       const rect=dimensions().find(r=>r.id===n.id);Object.assign(n,freeNodePosition(rect,dimensions().filter(r=>r.id!==n.id),{allowOverlap:!!graph.allowOverlap}));
+      // Free placement may move a node beyond the release point. Keep the newly
+      // selected node visible without changing any existing node positions.
+      const margin=20,vw=viewport.clientWidth,vh=viewport.clientHeight;
+      view.z=Math.min(view.z,Math.max(.06,(vw-2*margin)/rect.w),Math.max(.06,(vh-2*margin)/rect.h));
+      const left=n.x*view.z+view.x,top=n.y*view.z+view.y;
+      view.x+=left<margin?margin-left:Math.min(0,vw-margin-left-rect.w*view.z);
+      view.y+=top<margin?margin-top:Math.min(0,vh-margin-top-rect.h*view.z);
       changed();render();viewport.focus();
     }catch(error){Object.assign(graph,before);cancel();render();onError(error);}
   }
