@@ -1,5 +1,5 @@
-import {parseExpression} from './expressions.js?v=20261126-builder-v49';
-import {semanticGraphLayout} from './workspace.js?v=20261126-builder-v49';
+import {parseExpression} from './expressions.js?v=20261126-builder-v50';
+import {semanticGraphLayout} from './workspace.js?v=20261126-builder-v50';
 export const NODE_TYPES = {
   rerouteExec:{category:'Control',inputs:['in'],outputs:['next']},rerouteData:{category:'Data',inputs:['value'],outputs:['value']},
   event:{category:'Events',inputs:[],outputs:['next']}, end:{category:'Control',inputs:['in'],outputs:[]}, comment:{category:'Comment',inputs:[],outputs:[]},

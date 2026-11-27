@@ -1,4 +1,4 @@
-import {actionsToGraph,graphToActions,graphDiagnostics} from './logic.js?v=20261126-builder-v49';
+import {actionsToGraph,graphToActions,graphDiagnostics} from './logic.js?v=20261126-builder-v50';
 const copy=v=>JSON.parse(JSON.stringify(v));
 export function eventOwners(project){return [{owner:project,key:'app',page:null},...project.pages.flatMap(p=>[{owner:p,key:p.id,page:p},...p.components.map(c=>({owner:c,key:p.id+':'+c.id,page:p}))])];}
 export function eventContext(project,key){const event=key.slice(key.lastIndexOf(':')+1),scope=key.slice(0,key.lastIndexOf(':'));return {...eventOwners(project).find(o=>o.key===scope),scope,event};}
@@ -21,8 +21,8 @@ export function getEventActions(p,key){const c=eventContext(p,key);return p.grap
 export function setEventActions(p,key,actions){
   const c=eventContext(p,key),old=p.graphs?.[key];p.graphs||={};const next=actionsToGraph(actions,c.scope,c.event);
   if(old){
-    const visual=['x','y','comment','group','breakpoint','locked','collapsed','color','width','height'],mapping=new Map(),used=new Set();
-    const pair=(id,oldId)=>{if(mapping.has(id)||used.has(oldId))return;const n=next.nodes.find(n=>n.id===id),o=old.nodes.find(n=>n.id===oldId);if(!n||!o)return;mapping.set(id,oldId);used.add(oldId);for(const k of visual)if(Object.hasOwn(o,k))n[k]=copy(o[k]);
+    const visual=['x','y','comment','group','breakpoint','locked','manual','collapsed','color','width','height'],mapping=new Map(),used=new Set();
+    const pair=(id,oldId)=>{if(mapping.has(id)||used.has(oldId))return;const n=next.nodes.find(n=>n.id===id),o=old.nodes.find(n=>n.id===oldId);if(!n||!o)return;mapping.set(id,oldId);used.add(oldId);for(const k of visual)if(Object.hasOwn(o,k)&&(k!=='color'||n.type!=='setColor'))n[k]=copy(o[k]);
       for(const e of next.edges.filter(e=>e.to===id&&!['in'].includes(e.input))){let previous=old.edges.find(v=>v.to===oldId&&v.input===e.input),seen=new Set();while(previous&&old.nodes.find(n=>n.id===previous.from)?.type==='rerouteData'&&!seen.has(previous.from)){seen.add(previous.from);previous=old.edges.find(v=>v.to===previous.from&&v.input==='value');}if(previous)pair(e.from,previous.from);}};
     for(const n of next.nodes)if(n.type==='event'||actionsContain(actions,n.id))pair(n.id,n.id);
     // Fresh data nodes cannot steal the IDs of unrelated preserved nodes.

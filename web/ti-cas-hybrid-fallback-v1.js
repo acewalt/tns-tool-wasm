@@ -329,7 +329,7 @@ __tns_out
     return;
   }
 
-  window.createLuaJsPreviewRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
+  window.createLuaJsPreviewRuntime = async function (code, ctx, canvas, logEl, symbols = {}, ...runtimeOptions) {
     if (codeMayNeedSympy(code)) {
       appendLog(logEl, "CAS Hybrid v2: preparando SymPy como fallback de EDO...");
       const ready = await ensureSympy();
@@ -348,7 +348,7 @@ __tns_out
     return baseCreateLuaJsPreviewRuntime(code, ctx, canvas, logEl, {
       ...(symbols || {}),
       variables
-    });
+    }, ...runtimeOptions);
   };
 
   window.__tnsCasHybridInstalled = true;
