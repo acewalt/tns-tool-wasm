@@ -1,5 +1,5 @@
-import {parseExpression} from './expressions.js?v=20261126-builder-v50';
-import {semanticGraphLayout} from './workspace.js?v=20261126-builder-v50';
+import {parseExpression} from './expressions.js?v=20261126-builder-v51';
+import {semanticGraphLayout} from './workspace.js?v=20261126-builder-v51';
 export const NODE_TYPES = {
   rerouteExec:{category:'Control',inputs:['in'],outputs:['next']},rerouteData:{category:'Data',inputs:['value'],outputs:['value']},
   event:{category:'Events',inputs:[],outputs:['next']}, end:{category:'Control',inputs:['in'],outputs:[]}, comment:{category:'Comment',inputs:[],outputs:[]},
@@ -36,7 +36,7 @@ export function connectionError(graph,edge){
   const visit=(id,seen=new Set())=>{if(id===a.id)return true;if(seen.has(id))return false;seen.add(id);return graph.edges.filter(e=>e.from===id&&e!==edge).some(e=>visit(e.to,seen));};
   if(visit(b.id))return 'Connection creates a cycle. Use Repeat or While.';return '';
 }
-export function connect(graph,edge){const error=connectionError(graph,edge);if(error)throw Error(error);graph.edges=graph.edges.filter(e=>!(e.to===edge.to&&e.input===edge.input&&portType(edge.input)!=='exec')&&!(e.from===edge.from&&e.out===edge.out&&portType(edge.out)==='exec'));graph.edges.push({...edge});return graph;}
+export function connect(graph,edge){const error=connectionError(graph,edge);if(error)throw Error(error);graph.edges=graph.edges.filter(e=>!(e.to===edge.to&&e.input===edge.input&&portType(edge.input)!=='exec')&&!(e.from===edge.from&&e.out===edge.out&&portType(edge.out)==='exec'));if(!graph.edges.some(e=>e.from===edge.from&&e.out===edge.out&&e.to===edge.to&&e.input===edge.input))graph.edges.push({...edge});return graph;}
 export function graphToActions(graph,{flows={},stack=[]}={}){
   if(!graph?.nodes?.length)return[];if(graph.nodes.length>200)throw Error('At most 200 nodes per event.');
   const nodes=new Map(graph.nodes.map(n=>[n.id,n])),edges=graph.edges||[],events=graph.nodes.filter(n=>n.type==='event');if(events.length!==1)throw Error('A logic graph needs exactly one event node.');
