@@ -361,7 +361,7 @@ end
     return;
   }
 
-  window.createLuaJsPreviewRuntime = async function (code, ctx, canvas, logEl, symbols = {}) {
+  window.createLuaJsPreviewRuntime = async function (code, ctx, canvas, logEl, symbols = {}, ...runtimeOptions) {
     const excludedFunctions = Object.keys(symbols?.basicFunctions || {});
     const needsCas = sourceNeedsCas(code, excludedFunctions);
     if (needsCas) {
@@ -380,7 +380,7 @@ end
       }
     };
     const previewCode = wrapLuaSource(code);
-    return oldCreateLuaJsPreviewRuntime(previewCode, ctx, canvas, logEl, mergedSymbols);
+    return oldCreateLuaJsPreviewRuntime(previewCode, ctx, canvas, logEl, mergedSymbols, ...runtimeOptions);
   };
 
   window.__tnsCasPreviewBridgeInstalled = true;

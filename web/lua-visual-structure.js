@@ -1,5 +1,5 @@
-import {navigationLinks,ensureEventGraph,setEventActions,getEventActions,projectDiagnostics} from '../src/lua-visual-builder/semantics.js?v=20261126-builder-v49';
-import {renderPageThumbnail} from './lua-visual-designer.js?v=20261126-builder-v49';
+import {navigationLinks,ensureEventGraph,setEventActions,getEventActions,projectDiagnostics} from '../src/lua-visual-builder/semantics.js?v=20261126-builder-v50';
+import {renderPageThumbnail} from './lua-visual-designer.js?v=20261126-builder-v50';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const collapsedTrees=new WeakMap();
 export function mountWidgetTree(host,{project,pageId,selected,lang,onSelect,onChange,onRename,onGraph,onDelete,onDuplicate}){
@@ -17,4 +17,4 @@ export function mountWidgetTree(host,{project,pageId,selected,lang,onSelect,onCh
  }
  draw();return {draw};
 }
-export {mountNavigation} from './lua-visual-navigation.js?v=20261126-builder-v49';
+export {mountNavigation} from './lua-visual-navigation.js?v=20261126-builder-v50';

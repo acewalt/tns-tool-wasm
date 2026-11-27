@@ -1,4 +1,4 @@
-import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261126-builder-v49';
+import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261126-builder-v50';
 // Design-only renderer. Run mode always executes the generated Lua in its own VM.
 export function mountDesigner(canvas,{project,page,selected,selection=[],zoom=1.5,grid=true,onSelect=()=>{},onSelection=()=>{},onMove=()=>{},onDrop=()=>{},onZoom,interactive=true}) {
   const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,W=320,H=212;
@@ -6,7 +6,7 @@ export function mountDesigner(canvas,{project,page,selected,selection=[],zoom=1.
   const rect=c=>{let x=c.x,y=c.y,parent=c.parent,seen=new Set([c.id]);while(parent){const p=page.components.find(c=>c.id===parent);if(!p||seen.has(parent))break;seen.add(parent);x+=p.x;y+=p.y;parent=p.parent;}return{x,y,w:c.w,h:c.h};};
   const visible=c=>{if(c.editorVisible===false)return false;const p=page.components.find(p=>p.id===c.parent);return p?visible(p):true;};
   function paint(){
-    ctx.setTransform(zoom*dpr,0,0,zoom*dpr,0,0);ctx.clearRect(0,0,W,H);ctx.fillStyle=page.background;ctx.fillRect(0,0,W,H);
+    ctx.setTransform(zoom*dpr,0,0,zoom*dpr,0,0);ctx.clearRect(0,0,W,H);ctx.fillStyle=page.background;ctx.fillRect(0,0,W,H);if(page.captureThumbnail){const img=new Image();img.onload=()=>{ctx.save();ctx.setTransform(1,0,0,1,0,0);ctx.drawImage(img,0,0,canvas.width,canvas.height);ctx.restore();};img.src=page.captureThumbnail;return;}
     for(const c of page.components){if(!visible(c))continue;ctx.save();if(c.visible===false)ctx.globalAlpha=.4;let parent=c.parent;while(parent){const p=page.components.find(p=>p.id===parent);if(!p)break;const r=rect(p);ctx.beginPath();ctx.rect(r.x,r.y,r.w,r.h);ctx.clip();parent=p.parent;}
       const {x,y,w,h}=rect(c);ctx.beginPath();ctx.rect(x,y,w,h);ctx.clip();ctx.fillStyle=c.color;ctx.fillRect(x,y,w,h);ctx.strokeStyle=c.border;ctx.lineWidth=.7;
       if(!['Label','Formula'].includes(c.type))ctx.strokeRect(x+.5,y+.5,w-1,h-1);

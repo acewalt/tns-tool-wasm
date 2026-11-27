@@ -30,6 +30,10 @@
           try { window.dispatchEvent(new CustomEvent('tns-document-variables-change', { detail })); }
           finally { if (!disposed) window.addEventListener('tns-document-variables-change', onVariablesChange); }
         },
+        getCapture:()=>runtime?.getCapture?.(),
+        captureScreen:()=>{const snapshot=runtime?.captureScreen?.();return snapshot?{...snapshot,thumbnail:canvas.toDataURL('image/png')}:null;},
+        pauseCapture:value=>runtime?.pauseCapture?.(value),
+        inspectAt:(x,y)=>options.onInspect?.(x,y),
         getScreenText: () => runtime?.getScreenText() || '',
         getBuilderDiagnostics: () => runtime?.getBuilderDiagnostics?.(),
         builderControl: command => runtime?.builderControl?.(command),
@@ -76,7 +80,10 @@
       active = controller;
       try {
         window.TnsTiPreviewFontCalibration?.install(); window.TnsTiPreviewPerformance?.install();
-        runtime = await createLuaJsPreviewRuntime(options.code, canvas.getContext('2d'), canvas, log, options.symbols);
+        let code=options.code,capture=options.capture;
+        // Attribute original source before CAS adapters prepend their own helpers.
+        if(capture){const {instrumentCaptureSource}=await import('../src/lua-visual-builder/capture.js?v=20261126-builder-v50');const prepared=instrumentCaptureSource(code);code=prepared.code;capture={...capture,prepared};}
+        runtime = await createLuaJsPreviewRuntime(code, canvas.getContext('2d'), canvas, log, options.symbols, capture);
         if (disposed) { runtime.close(); return controller; }
         runtime.boot();
         if(options.onDiagnostics)diagnosticTimer=setInterval(()=>{try{const d=runtime.getBuilderDiagnostics?.();if(d){const next=JSON.stringify(d);if(next!==lastDiagnostic){lastDiagnostic=next;options.onDiagnostics(d);}}const runtimeError=error.textContent;if(runtimeError)options.onError?.(runtimeError);}catch(failure){options.onError?.(failure.message);}},120);
