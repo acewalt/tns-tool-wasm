@@ -1,7 +1,9 @@
 import {parse} from '../../vendor/luaparse/index.js';
-import {createProject,component,page,decodeProject,clone} from './model.js?v=20261127-builder-v51';
-import {actionsToGraph} from './logic.js?v=20261127-builder-v51';
-import {analyzeHelperDrawings} from './extended-analysis.js?v=20261127-builder-v51';
+import {analyzeLuaIR} from './semantic-ir.js?v=20261127-builder-v6';
+import {reconstructLegacyTemplate} from './legacy-template.js?v=20261127-builder-v6';
+import {createProject,component,page,decodeProject,clone} from './model.js?v=20261127-builder-v6';
+import {actionsToGraph} from './logic.js?v=20261127-builder-v6';
+import {analyzeHelperDrawings} from './extended-analysis.js?v=20261127-builder-v6';
 
 // Analysis never evaluates Lua. Hybrid edits replace individual AST expression ranges
 // in the original chunk, so closures, upvalues, event registration and statement order stay intact.
@@ -90,6 +92,7 @@ export function analyzeLuaImport(source,{filename='current.lua',extended=false}=
  // Retain compact structural callback graphs. They are analysis, not a second execution path.
  report.structures=functions.slice(0,100).map(({node,info})=>({name:info.name,...range(node),actions:structuralActions(node.body,source,0,{remaining:60})}));
  if(functions.length>100)report.diagnostics.push({severity:'info',message:'The first 100 functions have structural graphs. All functions remain in Overview and original source.'});
+ try{const analysis=analyzeLuaIR(source);report.ir=analysis.ir;const project=reconstructLegacyTemplate(source,analysis,filename);if(project){report.diagnostics=report.diagnostics.filter(d=>!d.message.startsWith('Source only: no safely')&&!d.message.startsWith('Original handlers,'));report.project=project;report.strategy='tns-tool-legacy';report.mode='native';report.pages=project.pages.map(p=>({id:p.id,name:p.name}));report.metrics.nativeComponents=project.pages.reduce((n,p)=>n+p.components.length,0);report.metrics.nativeEvents=Object.keys(project.graphs).length;report.metrics.pendingBehavior=project.reconstruction.pending.length;report.diagnostics.push({severity:'info',message:'TNS Tool legacy templates: editable components and canonical events reconstructed. Original source retained; inspect pending behavior before replacing it.'});for(const d of project.reconstruction.pending)report.diagnostics.push({severity:'warning',line:d.line,message:d.reason});}}catch(error){report.diagnostics.push({severity:'warning',message:'Semantic analysis retained original source: '+error.message});}
  return report;
 }
 function structuralActions(nodes,source,depth=0,budget={remaining:60}){if(depth>8)return[{type:'custom',code:'-- Nested source retained'}];const out=[];for(const n of nodes){if(budget.remaining--<=0)break;

@@ -1,6 +1,6 @@
 import {parse} from '../../vendor/luaparse/index.js';
-import {component,page,createProject,clone} from './model.js?v=20261127-builder-v51';
-import {projectFromImport} from './importer.js?v=20261127-builder-v51';
+import {component,page,createProject,clone} from './model.js?v=20261127-builder-v6';
+import {projectFromImport} from './importer.js?v=20261127-builder-v6';
 const methods=new Set(['drawString','drawRect','fillRect','drawLine','drawPolyLine','drawPolygon','fillPolygon','drawArc','fillArc','drawImage','setColorRGB','setFont','clipRect','setPen']);
 const children=n=>Object.entries(n||{}).filter(([k])=>!['loc','range','comments','globals'].includes(k)).flatMap(([,v])=>Array.isArray(v)?v.filter(x=>x?.type):v?.type?[v]:[]);
 export function instrumentCaptureSource(source){

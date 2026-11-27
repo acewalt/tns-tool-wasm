@@ -1,4 +1,4 @@
-import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261127-builder-v51';
+import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261127-builder-v6';
 // Design-only renderer. Run mode always executes the generated Lua in its own VM.
 export function mountDesigner(canvas,{project,page,selected,selection=[],zoom=1.5,grid=true,onSelect=()=>{},onSelection=()=>{},onMove=()=>{},onDrop=()=>{},onZoom,interactive=true}) {
   const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,W=320,H=212;
@@ -53,10 +53,17 @@ export function mountDesigner(canvas,{project,page,selected,selection=[],zoom=1.
   canvas.onpointerup=()=>{if(boxSelection){const a=boxSelection.origin,b=boxSelection.end;select([...new Set([...boxSelection.base,...page.components.filter(c=>{const r=rect(c);return visible(c)&&r.x>=Math.min(a.x,b.x)&&r.y>=Math.min(a.y,b.y)&&r.x+r.w<=Math.max(a.x,b.x)&&r.y+r.h<=Math.max(a.y,b.y);}).map(c=>c.id)])]);boxSelection=null;paint();}if(drag){const changed=drag.changed;drag=null;if(changed)onMove();}pan=null;};canvas.onpointercancel=canvas.onpointerup;
   canvas.ondblclick=e=>{
     const c=hit(point(e));if(!c||c.locked||(c.sourceBinding&&!c.sourceBinding.args[0]?.literal)||!['Label','Button','Input','Checkbox','Radio'].includes(c.type))return;select([c.id]);
-    canvas.parentElement.querySelector('.lvb-inline-editor')?.blur();const r=rect(c),input=document.createElement('textarea'),property=c.type==='Input'?'value':'text';input.className='lvb-inline-editor';input.value=c[property];Object.assign(input.style,{position:'absolute',left:r.x*zoom+'px',top:r.y*zoom+'px',width:Math.max(80,r.w*zoom)+'px',height:Math.max(32,r.h*zoom)+'px',fontSize:c.font*zoom+'px',lineHeight:'1.2',zIndex:5});canvas.parentElement.append(input);let done=false;
-    const finish=save=>{if(done)return;done=true;window.removeEventListener('keydown',inlineKeys,true);if(save)c[property]=input.value;input.remove();paint();if(save)onMove();};
+    document.querySelector('.lvb-inline-editor')?.blur();const r=rect(c),input=document.createElement('textarea'),property=c.type==='Input'?'value':'text';input.className='lvb-inline-editor';input.value=c[property];input.setAttribute('aria-label',c.text||c.id);let done=false,inlineKeys;const observer=new ResizeObserver(()=>position());
+    // Use the actual canvas rectangle, including ancestor transforms and scroll.
+    // A body portal avoids a transformed/scrolling parent becoming the containing
+    // block. The visible text uses the same metrics as the canvas renderer.
+    const position=()=>{ctx.font=`${c.bold?'bold ':''}${c.font}px Arial`;if(!canvas.isConnected){finish(false);return;}const b=canvas.getBoundingClientRect(),sx=b.width/W,sy=b.height/H,indent=['Checkbox','Radio'].includes(c.type)?ctx.measureText('    ').width:0;
+      Object.assign(input.style,{position:'fixed',left:b.left+(r.x+indent)*sx+'px',top:b.top+r.y*sy+'px',width:Math.max(1,r.w-indent)*sx+'px',height:r.h*sy+'px',minWidth:'0',minHeight:'0',maxWidth:'none',maxHeight:'none',margin:'0',boxSizing:'border-box',border:'0',borderRadius:'0',padding:`${(c.type==='Button'?Math.max(1,(r.h-c.font)/2):3)*sy}px ${4*sx}px 0`,fontFamily:'Arial',fontSize:c.font*sy+'px',fontWeight:c.bold?'bold':'normal',lineHeight:(c.font+3)*sy+'px',textAlign:c.type==='Button'?'center':'left',color:c.foreground,background:c.color,resize:'none',overflow:'auto',zIndex:'2147483000',outline:'1px solid #148dff',transform:'none'});
+    };
+    const finish=save=>{if(done)return;done=true;observer.disconnect();window.removeEventListener('keydown',inlineKeys,true);window.removeEventListener('scroll',position,true);window.removeEventListener('resize',position);if(save)c[property]=input.value;input.remove();paint();if(save)onMove();};
+    document.body.append(input);position();observer.observe(canvas);window.addEventListener('scroll',position,true);window.addEventListener('resize',position);
     // Keep calculator/editor shortcuts from consuming Enter while editing a label.
-    const inlineKeys=e=>{if(e.target!==input)return;e.stopImmediatePropagation();if(e.key==='Escape'){e.preventDefault();finish(false);}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finish(true);}};
+    inlineKeys=e=>{if(e.target!==input)return;e.stopImmediatePropagation();if(e.key==='Escape'){e.preventDefault();finish(false);}else if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();finish(true);}};
     window.addEventListener('keydown',inlineKeys,true);input.onblur=()=>finish(true);input.focus();input.select();
   };
   canvas.onkeydown=e=>{if(!['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key))return;e.preventDefault();for(const c of page.components.filter(c=>selectedIds().has(c.id)&&!c.locked&&!c.sourceBinding)){const step=e.shiftKey?10:1;c.x+=e.key==='ArrowRight'?step:e.key==='ArrowLeft'?-step:0;c.y+=e.key==='ArrowDown'?step:e.key==='ArrowUp'?-step:0;}onMove();};
