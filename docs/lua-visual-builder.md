@@ -24,7 +24,7 @@ The editable model supports 50 pages, 200 components per page and 200 nodes per 
 
 Navigation pages have persistent ID-based positions, a minimap, wheel zoom, middle-button pan, Shift/marquee multiselection, snap, alignment/distribution, locks, colored collapsible frames, Fit All and Focus Selected. Drag page headers to arrange freely; positions participate in Undo/Redo and survive tab changes and Lua/JSON export. Hierarchical, horizontal, vertical, radial and grid arrangements use real transitions, handle cycles and disconnected pages, and preserve manual/locked positions. **Reset layout** explicitly replaces manual positions, while locks remain respected. This bounded built-in layout avoids adding a second offline graph dependency.
 
-Each existing transition has its own output port and event/node identity. Reconnecting it edits that specific Navigate node, including conditional branches, while retaining sibling transitions and additional actions. New transitions let you select the owner and applicable event. Page entries are separate input ports. Back links lead to a dynamic history node rather than a fabricated fixed page.
+Each existing transition has its own output port and event/node identity. Reconnecting it edits that specific Navigate node, including conditional branches, while retaining sibling transitions and additional actions. New transitions let you select the owner and applicable event. Page entries are separate input ports. Back remains dynamic. Compact history references are shown on the source page; optional history wires can be enabled in View settings.
 
 Event Graph auto layout separates execution and data dependencies, places data near consumers and branches on separate rows, measures visible nodes, and supports selection-only layout. Reroutes preserve execution or data wires. Frames can be renamed, recolored and collapsed; selected nodes can be aligned, distributed or locked. Inspector edits reconcile existing nodes and retain unchanged IDs, connections, reroutes, positions, comments, breakpoints, frames and selection.
 
@@ -76,7 +76,7 @@ const lua=generateLua(project);
 const restored=decodeProject(lua);
 ```
 
-Use the existing `tns-tool lua check`, `lua preview` and TNS CLI commands on the generated source. Regression tests: `npm run test:visual-builder`. Browser integration: `tools/smoke-lua-visual-builder-v49.cjs` (Electron). The browser test blocks external requests and exercises the actual Lua runtime, explicit original/converted previews, import/apply/restore, movable pages, frames, typed sockets, undo/redo, debug, Syntax Doctor and TNS export.
+Use the existing `tns-tool lua check`, `lua preview` and TNS CLI commands on the generated source. Regression tests: `npm run test:visual-builder`. Browser integration: `tools/smoke-lua-visual-builder-v50.cjs` (Electron). The browser test blocks external requests and exercises the actual Lua runtime, explicit original/converted previews, import/apply/restore, movable pages, frames, typed sockets, undo/redo, debug, Syntax Doctor and TNS export.
 
 Official API references: [window size](https://education.ti.com/html/eguides/nspire/EG_Nspire/EN/content/eg_lua/m_libraries/platformlib/window/height_and_width.HTML), [graphics drawString](https://education.ti.com/html/eguides/nspire/EG_Nspire/EN/content/eg_lua/m_libraries/graphicslib/drawstring.HTML), [D2Editor](https://education.ti.com/html/webhelp/EG_TINspireLUA/EN/content/libraries/2deditorlib/newrichtext.htm).
 
@@ -85,3 +85,27 @@ Official API references: [window size](https://education.ti.com/html/eguides/nsp
 V2 regression coverage includes the exact Menu mouseDown → navigation → mouseMove → mouseUp failure, keyboard and change-triggered navigation, cancellation of delayed actions, formula ASTs, typed wires, joins and reusable flows, migration, renaming, all starter templates, metadata and TNS roundtrip. Browser tests run the actual generated Lua offline and exercise inline editing, navigation/socket dragging, duplicate-with-event, undo/redo, breakpoints/Step/Resume, Syntax Doctor and the existing TNS exporter.
 
 A physical TI-Nspire must still verify actual key/touchpad behavior, font metrics and clipping, D2Editor rendering, CAS results and timer/drawing performance. The browser preview is not a full emulator or hardware certification. Table and Graph components are builder abstractions; peripheral APIs and arbitrary external Lua libraries are outside the generated UI runtime.
+
+
+## V4: approachable logic and runtime visual capture
+
+**Logic opens in Simple mode.** Event Explorer can open events across all pages, with component names, search and a configured-only filter. Sequential actions, nested conditions, target selectors, a formula helper and a readable “What this does” explanation edit the same canonical graph as Advanced mode. Switching modes does not rewrite behavior. Advanced flows that cannot safely be represented as a sequence remain intact behind an expandable block. The formula helper builds ordinary calculations and empty-input conditions without typing Lua; Advanced expression remains available for custom expressions.
+
+Advanced nodes expose their essential parameters directly, with typed execution/data sockets, F3 or Shift+A search, compatible-socket suggestions, insertion on execution wires, reroutes, collapsible frames and reusable flows. Drag an unconnected action onto an execution wire, or Shift+right-click a wire to choose a new action. Right-click a wire to add a typed reroute. The optional inspector retains technical identifiers and advanced properties. Debug Preview reads the generated Lua runtime’s actual execution trace and values.
+
+Navigation uses compact page nodes, recognizable start pages, named transitions, separate input/output ports and live thumbnails. Double-click a heading or thumbnail to open Design. View settings select Compact, Standard or Detailed information; individual nodes can also collapse. Zoom progressively reduces detail. Selection emphasizes related connections. Back references never claim a fixed destination. Rounded routing considers node bounds and tries clear corridors; dense cyclic graphs can still need manual arrangement or reroutes. Auto Layout preserves manually moved or locked nodes; Reset positions explicitly replaces manual placement. Minimap can be hidden, resized and used to pan by click/drag.
+
+The compact File/Edit/View/Window/Help shell includes split Code/Preview views, resizable panels and full screen. Overview links to real pages, events, functions, flows and variables. The template launcher uses model-rendered thumbnails, search/categories and a single Create action.
+
+### Capture an existing Lua application
+
+1. Choose **Current Lua File → Analyze**, or import a `.lua` file. Static analysis never starts the application.
+2. If needed, run **Extended analysis** to resolve bounded helper calls and constant graphics. Unknown or dynamic source remains explicitly read-only.
+3. Select **Start Visual Capture**, then **Start** to execute the original in an isolated preview. Pause, interact, inspect and capture screens deliberately.
+4. Review the actual thumbnail, draw operations, font/color state and original source/function/line bindings. Duplicate screens are selected rather than added again. Screens with the same drawing structure can share a reconstruction group.
+5. Confirm any observed transition you wish to retain as evidence. Capture does not infer that a transition is always valid or generate replacement handlers.
+6. Export the capture session, create a **hybrid** project retaining the original program, or explicitly create a separate editable visual copy of one observed screen. The latter recovers appearance only; its behavior must be configured and verified.
+
+Capture records supported graphics and D2Editor observations from the existing runtime. Helper calls are attributed to their original AST locations before CAS wrappers are added. Session import does not execute Lua. Sampling, operation, screen, source and metadata limits bound memory use: the UI records at most 300 sampled frames, 250,000 operations or two minutes per session. The JSON project still has its 4 MB limit; keep separate session/source backups for large captures. Hardware-only APIs and unsupported external libraries remain explicit preview limitations. No arbitrary Lua-to-visual conversion is guaranteed.
+
+All assets and modules run locally in the Windows portable. No remote graph library or compilation server is required for these builder features. Browser integration tests block external network requests and exercise real generated Lua, helper capture, deduplication, source preservation, Simple/Advanced roundtrips, save/restore, three languages, graph sizes and viewport sizes. These checks do not certify physical calculator compatibility or replace a human beginner usability study.

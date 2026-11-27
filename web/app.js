@@ -8507,7 +8507,7 @@ function showLuaEditor(item) {
   const openVisualBuilder = async () => {
     editMenuPanel.hidden = true;
     try {
-      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261126-builder-v49');
+      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261126-builder-v50');
       await openLuaVisualBuilder({
         language: document.documentElement.lang, editor, item,
         draftKey: `${xmlDoctor.sourcePath}|${item.file}|${item.path}|${item.name}`,
@@ -12538,7 +12538,9 @@ async function loadLuaJsRuntimeSources() {
   return luaJsRuntimeSources;
 }
 
-async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {}) {
+async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {}, captureOptions = null) {
+  let visualCapture=null,captureSource=null;
+  if(captureOptions){const api=await import('../src/lua-visual-builder/capture.js?v=20261126-builder-v50');captureSource=captureOptions.prepared||api.instrumentCaptureSource(code);visualCapture=api.createCaptureRecorder({sites:captureSource.sites,...captureOptions});if(!captureOptions.prepared)code=captureSource.code;}
   const { installLuaDocumentBindings, toLuaDocumentValue } = await import('../src/lua/document-symbols.js?v=20261112-widgets-v39');
   const [{ installLuaStringPatterns }, { installLuaStandardLibrary }] = await Promise.all([
     import('../src/lua/string-patterns.js?v=20261120-lua-compat-v45'),
@@ -12572,6 +12574,12 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   const previewWindow = global.lua_newtable();
   const screenText = [];
   attachLuaJsGc(previewGc, ctx, canvas, screenText);
+  if(visualCapture){
+    const methods=['drawString','drawRect','fillRect','drawLine','drawPolyLine','drawPolygon','fillPolygon','drawArc','fillArc','drawImage','setColorRGB','setFont','clipRect','setPen'];
+    for(const method of methods){const original=global.lua_tableget(previewGc,method);if(typeof original!=='function')continue;global.lua_tableset(previewGc,method,(self,...args)=>{const plain=v=>{if(v?.uints||v?.num||v?.array){const out=[];for(let i=1;i<=256;i++){const x=global.lua_tableget(v,i);if(x==null)break;out.push(x);}return out.length?out:v;}return v;};visualCapture.operation(method,args.map(plain));return original(self,...args);});}
+    global.G.str[captureSource.name]=(id,receiver,method,...args)=>{const restore=visualCapture.site(id);try{return global.lua_call(global.lua_tableget(receiver,method),[receiver,...args]);}finally{restore();}};
+  }
+
   global.lua_tableset(previewWindow, "w", canvas.width);
   global.lua_tableset(previewWindow, "h", canvas.height);
   global.lua_tableset(previewWindow, "gc", previewGc);
@@ -12733,10 +12741,12 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     }
   }
   function repaint(shouldLog = false) {
+    visualCapture?.begin();
     clear();
     try {
       global.callEvent("paint", gc());
       drawLuaJsNativeEditors(ctx, nativeEditors, screenText);
+      visualCapture?.end(nativeEditors,{width:canvas.width,height:canvas.height});
     } catch (error) {
       reportRuntimeError('repaint', 'paint', error);
       global.lua_tableset(windowTable(), "invalidated", false);
@@ -12835,6 +12845,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
   }
   function callEvent(name) {
     const eventName = name.replace(/^on\./, "");
+    visualCapture?.event(eventName);
     const editorFilterMap = {
       enterKey: "enterKey",
       escapeKey: "escapeKey",
@@ -12873,6 +12884,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     }
   }
   function charIn(char) {
+    visualCapture?.event("charIn",[char]);
     try {
       if (dispatchEditorFilter("charIn", [char])) return;
       if (insertEditorText(char)) {
@@ -12897,6 +12909,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     }
   }
   function pointerEvent(name, x, y) {
+    visualCapture?.event(name,[x,y]);
     if (!['mouseDown', 'mouseMove', 'mouseUp'].includes(name)) return;
     try {
       global.callEvent(name, x, y);
@@ -12906,6 +12919,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     }
   }
   function close() {
+    visualCapture?.stop();
     if (timerId) window.clearInterval(timerId);
     window.removeEventListener('tns-document-variables-change', onDocumentVariablesChange);
   }
@@ -12925,7 +12939,7 @@ async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {})
     return {page:read(vb,'current'),error:read(vb,'error')||null,paused:!!read(vb,'paused'),trace:array('trace'),events:array('events'),values:convert(read(vb,'values')),variables:convert(read(vb,'vars')),queue:array('queue').length};
   }
   function builderControl(command){const vb=global.G.str.VB,fn=vb&&global.lua_tableget(vb,command);if(typeof fn==='function')global.lua_call(fn,[]);repaint(true);}
-  return { boot, callEvent, charIn, mouseClick, pointerEvent, repaint, resize, close, getScreenText, getBuilderDiagnostics, builderControl };
+  return { boot, callEvent, charIn, mouseClick, pointerEvent, repaint, resize, close, getScreenText, getBuilderDiagnostics, builderControl, getCapture:()=>visualCapture?.export(),captureScreen:()=>{repaint(false);return visualCapture?.snapshot();},pauseCapture:value=>visualCapture?.pause(value) };
 }
 
 async function createLovePreviewRuntime(code, ctx, canvas, logEl, options = {}) {

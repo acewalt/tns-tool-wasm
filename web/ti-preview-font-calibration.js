@@ -57,8 +57,8 @@
     if (typeof current !== "function") return false;
     if (current.__tnsTiFontCalibrationVersion === VERSION) return true;
 
-    const wrapped = async function (code, ctx, canvas, logEl, symbols = {}) {
-      return current.call(this, code, calibratedContext(ctx), canvas, logEl, symbols);
+    const wrapped = async function (code, ctx, canvas, logEl, symbols = {}, ...runtimeOptions) {
+      return current.call(this, code, calibratedContext(ctx), canvas, logEl, symbols, ...runtimeOptions);
     };
 
     wrapped.__tnsTiFontCalibrationVersion = VERSION;

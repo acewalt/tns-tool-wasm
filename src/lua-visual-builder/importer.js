@@ -1,6 +1,7 @@
 import {parse} from '../../vendor/luaparse/index.js';
-import {createProject,component,page,decodeProject,clone} from './model.js?v=20261126-builder-v49';
-import {actionsToGraph} from './logic.js?v=20261126-builder-v49';
+import {createProject,component,page,decodeProject,clone} from './model.js?v=20261126-builder-v50';
+import {actionsToGraph} from './logic.js?v=20261126-builder-v50';
+import {analyzeHelperDrawings} from './extended-analysis.js';
 
 // Analysis never evaluates Lua. Hybrid edits replace individual AST expression ranges
 // in the original chunk, so closures, upvalues, event registration and statement order stay intact.
@@ -26,7 +27,7 @@ function constant(n,env={}){
 }
 const range=n=>({start:n.range[0],end:n.range[1],line:n.loc.start.line,endLine:n.loc.end.line});
 const text=(s,n)=>s.slice(n.range[0],n.range[1]);
-export function analyzeLuaImport(source,{filename='current.lua'}={}){
+export function analyzeLuaImport(source,{filename='current.lua',extended=false}={}){
  source=String(source);if(source.length>1500000)throw Error('Lua import is limited to 1.5 MB.');
  const report={filename,source,mode:'source',lines:source.split(/\r?\n/).length,functions:[],variables:[],tables:[],events:[],calls:[],drawings:[],editors:[],pages:[],ambiguous:[],fragments:[],math:[],diagnostics:[],units:[],equivalence:'not-verified'};
  try{const native=decodeProject(source);if(native){report.mode='native';report.project=native;report.pages=native.pages.map(p=>({id:p.id,name:p.name}));return report;}}catch(e){report.diagnostics.push({severity:'error',message:'Visual metadata: '+e.message});return report;}
@@ -64,6 +65,7 @@ export function analyzeLuaImport(source,{filename='current.lua'}={}){
   for(const c of children(n))if(!(c.type==='FunctionDeclaration'&&['AssignmentStatement','LocalStatement'].includes(n.type)))visit(c,scope,path);
  }
  ast.body.forEach(n=>visit(n));
+ if(extended){const analysis=analyzeHelperDrawings(ast,source);report.extended=true;report.observations=analysis.drawings.filter(d=>!report.drawings.some(v=>v.start===d.start));report.resolvedCalls=analysis.calls;report.diagnostics.push(...analysis.diagnostics);}
  const styles=new Map();
  // Only on.paint statements with statically known arguments become editable visuals.
  // Other functions/branches remain in the original chunk, never hoisted into generated closures.
@@ -106,6 +108,9 @@ export function projectFromImport(report,{accepted=[]}={}){
   else{const[x,y,w,h]=d.args;c={...component('Shape',Math.min(x,d.method==='drawLine'?w:x),Math.min(y,d.method==='drawLine'?h:y)),w:Math.min(9000,Math.max(4,d.method==='drawLine'?Math.abs(w-x):w)),h:Math.min(9000,Math.max(4,d.method==='drawLine'?Math.abs(h-y):h)),shape:d.method==='drawLine'?'line':'rectangle',foreground:d.style.color,color:d.method==='fillRect'?d.style.color:'#ffffff',text:''};}
   c.id=d.id;c.sourceBinding={method:d.method,args:copy(d.argNodes),initial:copy(c),line:d.line};if(accepted.includes(d.id)&&report.ambiguous.some(a=>a.id===d.id))c.importRole='Button';pg.components.push(c);
  }
+ // Helper observations are useful for reconstruction but are never silently
+ // turned into edits of a shared function, a loop or a dynamic binding.
+ for(const d of report.observations||[]){if(!d.constant||d.conditions.some(c=>c.loop)||!['drawString','fillRect','drawRect','drawLine'].includes(d.method)||p.pages[0].components.length>=200)continue;const a=d.args,c=component(d.method==='drawString'?'Label':'Shape',Number(a[d.method==='drawString'?1:0])||0,Number(a[d.method==='drawString'?2:1])||0);c.id=d.id;c.locked=true;c.foreground=d.style.color;c.text=d.method==='drawString'?a[0]:'';c.w=Math.min(300,Math.max(4,d.method==='drawString'?String(a[0]).length*d.style.font*.65:Number(a[2])||4));c.h=Math.max(4,d.method==='drawString'?d.style.font+5:Number(a[3])||4);c.font=Math.max(6,Math.min(36,d.style.font));c.shape=d.method==='drawLine'?'line':'rectangle';c.captureBinding={status:'Read only',source:{function:d.scope,line:d.line,expression:d.expression},dependencies:d.dependencies};p.pages[0].components.push(c);}
  for(const s of report.structures||[]){const key='app:source_'+s.start,g=actionsToGraph(s.actions,'app','source_'+s.start);g.imported={name:s.name,line:s.line};p.graphs[key]=g;}
  if(JSON.stringify(p).length>3900000){p.graphs={};for(const key of ['drawings','variables','functions','events','calls','tables','math','units','fragments','editors'])p.imported[key]=(p.imported[key]||[]).slice(0,100);p.imported.diagnostics.push({severity:'warning',message:'Structural metadata was limited for this large source file. The complete original Lua is preserved.'});}
  return p;

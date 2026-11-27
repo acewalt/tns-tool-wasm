@@ -1,6 +1,6 @@
 // Serializable source of truth. Generated Lua carries this project as metadata.
-import {NODE_TYPES} from './logic.js?v=20261126-builder-v49';
-import {migrateProject} from './semantics.js?v=20261126-builder-v49';
+import {NODE_TYPES} from './logic.js?v=20261126-builder-v50';
+import {migrateProject} from './semantics.js?v=20261126-builder-v50';
 export const VERSION = 2;
 export const COMPONENTS = ['Label','Input','Button','Panel','Dropdown','Checkbox','Radio','Slider','Table','Graph','Image','Progress','Scroll','Formula','Shape'];
 export const clone = value => JSON.parse(JSON.stringify(value));
