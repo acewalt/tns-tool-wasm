@@ -1,4 +1,4 @@
-import {parseExpression} from './expressions.js?v=20261127-builder-v51';
+import {parseExpression} from './expressions.js?v=20261127-builder-v6';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 // A read-only projection of the same expression AST used by the generator.
 // Never evaluate source text or use the presentation as an execution model.

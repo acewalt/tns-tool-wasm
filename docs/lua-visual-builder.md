@@ -4,6 +4,21 @@ Open a Lua ScriptApp, then choose **Edit → Lua Visual Builder** (also availabl
 
 The builder works locally in the web and portable applications. It generates a standalone Lua 5.1 ScriptApp using TI-Nspire API 2.0. The project is embedded in a Lua comment, so reopening generated Lua restores its visual model. `.tnsvb.json` exports provide an independent backup. The original Lua remains unchanged until **Apply to editor**. V3 also analyzes handwritten Lua and imports the parts it can map safely; it does not promise a complete reverse conversion of arbitrary programs.
 
+
+## V6: precise interaction and progressive template conversion
+
+Logic opens in **Advanced** by default. Dragging from either an input or output opens a typed chooser: recommendations distinguish producers from consumers. The provisional wire stays anchored until confirmation or cancellation. Hovering a choice previews collision-aware placement. Creation and connection form one undo step.
+
+Navigation has a searchable destination picker when a wire is released on empty space, including off-screen pages, thumbnails, current/start indicators, recent destinations and **Create and connect page**. Reconnection retains the previous destination until confirmation. Automatic arrangement measures rendered nodes and preserves manual or locked positions. Unrelated pages wrap into rows rather than a long single column.
+
+Visible sockets have fixed 11-pixel geometry independent of their larger pointer targets. Direct text editing is aligned to the real canvas rectangle, including nested panels, ancestor transforms, scrolling and browser zoom. Long debug values are bounded and retain their full value in a tooltip.
+
+**Current Lua File** now recognizes the original TNS Tool `addPage` templates, even without Visual Builder metadata. A Lua 5.1 IR records function ownership, source ranges, calls and operations before the adapter reconstructs native pages, components, input bindings, form calculations, conditions and recognized navigation. Editing reconstructed math nodes changes executable generated Lua. Future template insertions include an origin/version comment; old scripts continue through structural recognition.
+
+The complete original is retained under **Original / Converted**, with source mappings and a pending-behavior report. This is progressive conversion: custom callbacks/functions, dynamic destinations, menu keyboard/selection behavior, optional menu actions and popup/procedure behavior can still require manual review. Unknown code is preserved in the original; it is not automatically executed beside generated callbacks. Do not replace a script with pending critical behavior until its converted version has been reviewed and tested. Arbitrary Lua, closures and dynamic effects are not guaranteed to become equivalent native graphs.
+
+Validation uses the actual legacy page generator. Original and converted forms both produce `F=15`; changing multiplication to division produces `F=4`, including after project restore and TNS build/extract. `tools/verify-lua-visual-builder-v6.mjs` runs that export check (Python dependencies required). `tools/smoke-lua-visual-builder-v6.cjs` exercises real pointer interaction, three languages, nested inline editing, 4/10/25/50-page layouts and multiple viewport/zoom sizes with external requests blocked.
+
 ## V3: import existing Lua
 
 **Current Lua File** analyzes the active ScriptApp. The start screen also imports external `.lua` and project JSON files, restores drafts and recent projects, and offers searchable templates with live thumbnails and an explicit preview. No Lua executes during analysis. Projects containing valid Visual Builder metadata restore directly.
@@ -89,7 +104,7 @@ A physical TI-Nspire must still verify actual key/touchpad behavior, font metric
 
 ## V4: approachable logic and runtime visual capture
 
-**Logic opens in Simple mode.** Event Explorer can open events across all pages, with component names, search and a configured-only filter. Sequential actions, nested conditions, target selectors, a formula helper and a readable “What this does” explanation edit the same canonical graph as Advanced mode. Switching modes does not rewrite behavior. Advanced flows that cannot safely be represented as a sequence remain intact behind an expandable block. The formula helper builds ordinary calculations and empty-input conditions without typing Lua; Advanced expression remains available for custom expressions.
+**Logic opens in Advanced mode.** Simple mode remains available without changing the canonical graph. Event Explorer can open events across all pages, with component names, search and a configured-only filter. Sequential actions, nested conditions, target selectors, a formula helper and a readable “What this does” explanation edit the same canonical graph as Advanced mode. Switching modes does not rewrite behavior. Advanced flows that cannot safely be represented as a sequence remain intact behind an expandable block. The formula helper builds ordinary calculations and empty-input conditions without typing Lua; Advanced expression remains available for custom expressions.
 
 Advanced nodes expose their essential parameters directly, with typed execution/data sockets, F3 or Shift+A search, compatible-socket suggestions, insertion on execution wires, reroutes, collapsible frames and reusable flows. Drag an unconnected action onto an execution wire, or Shift+right-click a wire to choose a new action. Right-click a wire to add a typed reroute. The optional inspector retains technical identifiers and advanced properties. Debug Preview reads the generated Lua runtime’s actual execution trace and values.
 

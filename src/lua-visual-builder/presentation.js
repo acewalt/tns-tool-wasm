@@ -1,6 +1,6 @@
 // Read-only projections shared by Simple Mode, node editors and navigation.
-import {presentFormula} from './formula-presentation.js?v=20261127-builder-v51';
-import {eventContext,getEventActions} from './semantics.js?v=20261127-builder-v51';
+import {presentFormula} from './formula-presentation.js?v=20261127-builder-v6';
+import {eventContext,getEventActions} from './semantics.js?v=20261127-builder-v6';
 export const friendlyComponent=c=>String(c?.text||c?.name||c?.id||'').replace(/\s+/g,' ').slice(0,60);
 export const words=(lang,en,es,fr)=>lang==='es'?es:lang==='fr'?fr:en;
 export function availableEvents(type,scope='component'){
@@ -39,7 +39,8 @@ export function routeWire(a,b,obstacles=[],{axis='horizontal',lane=0,via}={}){
  if(via)return routeWire(a,via,obstacles,{axis})+' '+routeWire(via,b,obstacles,{axis}).replace(/^M/,'L');
  const vertical=axis==='vertical',s=vertical?{x:a.x,y:a.y+18}:{x:a.x+18,y:a.y},e=vertical?{x:b.x,y:b.y-18}:{x:b.x-18,y:b.y};
  const hit=(p,q,r)=>p.x===q.x?p.x>r.x&&p.x<r.x+r.w&&Math.max(p.y,q.y)>r.y&&Math.min(p.y,q.y)<r.y+r.h:p.y>r.y&&p.y<r.y+r.h&&Math.max(p.x,q.x)>r.x&&Math.min(p.x,q.x)<r.x+r.w;
- const rects=obstacles.filter(r=>![a,b].some(p=>p.x>=r.x-1&&p.x<=r.x+r.w+1&&p.y>=r.y-1&&p.y<=r.y+r.h+1));
+ // Endpoint cards remain obstacles: only the short socket exit/entry may touch their bounds.
+ const rects=obstacles;
  const candidates=[],xs=[(s.x+e.x)/2+lane*7,...rects.flatMap(r=>[r.x-22-lane*3,r.x+r.w+22+lane*3])],ys=[(s.y+e.y)/2+lane*7,...rects.flatMap(r=>[r.y-22-lane*3,r.y+r.h+22+lane*3])];
  for(const x of xs)candidates.push([a,s,{x,y:s.y},{x,y:e.y},e,b]);
  for(const y of ys)candidates.push([a,s,{x:s.x,y},{x:e.x,y},e,b]);
