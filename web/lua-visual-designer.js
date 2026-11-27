@@ -1,4 +1,4 @@
-import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261126-builder-v51';
+import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261127-builder-v51';
 // Design-only renderer. Run mode always executes the generated Lua in its own VM.
 export function mountDesigner(canvas,{project,page,selected,selection=[],zoom=1.5,grid=true,onSelect=()=>{},onSelection=()=>{},onMove=()=>{},onDrop=()=>{},onZoom,interactive=true}) {
   const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,W=320,H=212;

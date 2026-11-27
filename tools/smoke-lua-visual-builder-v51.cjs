@@ -28,7 +28,9 @@ app.whenReady().then(async()=>{
   await js(`q('.lvb-node-menu input').value='navigate';q('.lvb-node-menu input').dispatchEvent(new Event('input'));`);
   const item=await js(`rect(q('[data-add=navigate]'))`);await click(item.x+item.w/2,item.y+item.h/2);await pause(80);
   must(await js(`b.getProject().graphs[key].nodes.length===${stable.count+1}&&b.getProject().graphs[key].edges.length===1`),'create once and connect at '+zoom);
+  must(await js(`!q('.wire-hit[marker-end],.wire-hit[marker-start]')`),'wire hit areas do not duplicate direction markers at '+zoom);
   must(await js(`vp().dataset.interaction==='IDLE'&&!q('.pending-wire')&&!q('.lvb-node-menu')&&!!q('.lvb-node.is-selected')`),'cleanup and selected new node at '+zoom);
+  must(await js(`(()=>{const a=rect(q('.lvb-node.is-selected')),v=rect(vp());return a.x>=v.x-1&&a.y>=v.y-1&&a.x+a.w<=v.x+v.w+1&&a.y+a.h<=v.y+v.h+1})()`),'created node remains visible after collision placement at '+zoom);
   await js(`q('[data-command=undo]').click()`);await pause(100);
   must(await js(`b.getProject().graphs[key].nodes.length===${stable.count}&&b.getProject().graphs[key].edges.length===0`),'atomic undo node plus connection at '+zoom);
   await js(`q('[data-command=redo]').click()`);await pause(80);
@@ -68,6 +70,7 @@ app.whenReady().then(async()=>{
  await js(`q('.lvb-node-menu input').value='setText';q('.lvb-node-menu input').dispatchEvent(new Event('input'));q('.lvb-node-menu input').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}))`);await pause(100);
  must(await js(`b.getProject().graphs[key].edges.length===1&&b.getProject().graphs[key].nodes.find(n=>n.id===b.getProject().graphs[key].edges[0].to).type==='setText'`),'reconnection replaces exact edge');
  must(await js(`noOverlap()`),'contextual placement avoids actual node bounds');
+ fs.writeFileSync(report+'.wire.png',(await win.webContents.capturePage()).toPNG());
  await js(`explorerFixture()`);await pause(100);
  must(await js(`!q('[data-branch="'+key.split(':')[0]+'"] [data-branch="'+key.split(':')[0]+':'+key.split(':')[0]+'"]')`),'no redundant page owner');
  must(await js(`q('[data-event-tree] [data-event-key="'+b.getProject().pages[1].id+':show"]')?.closest('details')?.dataset.branch===b.getProject().pages[1].id`),'page event directly under page');

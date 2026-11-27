@@ -1,7 +1,7 @@
-import {eventEntries,eventLabel,friendlyComponent,words,availableEvents} from '../src/lua-visual-builder/presentation.js?v=20261126-builder-v51';
-import {getEventActions,setEventActions,eventContext,projectDiagnostics,ensureEventGraph} from '../src/lua-visual-builder/semantics.js?v=20261126-builder-v51';
-import {icon,iconButton,escapeHtml as esc,confirmAction} from './lua-visual-ui.js?v=20261126-builder-v51';
-import {askFields} from './lua-visual-dialog.js?v=20261126-builder-v51';
+import {eventEntries,eventLabel,friendlyComponent,words,availableEvents} from '../src/lua-visual-builder/presentation.js?v=20261127-builder-v51';
+import {getEventActions,setEventActions,eventContext,projectDiagnostics,ensureEventGraph} from '../src/lua-visual-builder/semantics.js?v=20261127-builder-v51';
+import {icon,iconButton,escapeHtml as esc,confirmAction} from './lua-visual-ui.js?v=20261127-builder-v51';
+import {askFields} from './lua-visual-dialog.js?v=20261127-builder-v51';
 
 export function mountEventExplorer(host,{project,key,lang='en',state,onContext,onChange,onDesign,onCode,onFlow,onReferences,onError}){
   const t=(a,b,c)=>words(lang,a,b,c),prefsKey='tns-lvb-outliner-v5';
