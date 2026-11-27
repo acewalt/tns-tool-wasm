@@ -1,16 +1,20 @@
 // Read-only projections shared by Simple Mode, node editors and navigation.
-import {presentFormula} from './formula-presentation.js';
-import {eventContext,getEventActions} from './semantics.js';
+import {presentFormula} from './formula-presentation.js?v=20261126-builder-v51';
+import {eventContext,getEventActions} from './semantics.js?v=20261126-builder-v51';
 export const friendlyComponent=c=>String(c?.text||c?.name||c?.id||'').replace(/\s+/g,' ').slice(0,60);
 export const words=(lang,en,es,fr)=>lang==='es'?es:lang==='fr'?fr:en;
+export function availableEvents(type,scope='component'){
+ if(scope==='app')return ['start','timer'];if(scope==='page')return ['show'];
+ return ({Button:['click','enter'],Input:['change','enter'],Dropdown:['change','enter'],Checkbox:['change','click'],Radio:['change','click'],Slider:['change']})[type]||[];
+}
 export function eventLabel(event,lang='en'){
  const labels={click:['When pressed','Al pulsar','Lors de l’appui'],change:['When changed','Al cambiar','Lors du changement'],enter:['When Enter is pressed','Al pulsar Enter','Lors de l’appui sur Entrée'],start:['When application starts','Al iniciar la aplicación','Au démarrage'],timer:['On timer tick','Al activar temporizador','À chaque tick'],show:['When page opens','Al abrir la página','À l’ouverture de la page']};
  return labels[event]?.[lang==='es'?1:lang==='fr'?2:0]||event;
 }
 export function eventEntries(p,lang='en'){
- const list=[],push=(key,pg,c,ev)=>{let count=0;try{count=getEventActions(p,key).length;}catch{}list.push({key,page:pg?.id,component:c?.id,event:ev,label:c?friendlyComponent(c):pg?.name||words(lang,'Application','Aplicación','Application'),pageName:pg?.name||words(lang,'Application','Aplicación','Application'),eventLabel:eventLabel(ev,lang),count});};
+ const list=[],push=(key,pg,c,ev)=>{let count=0;try{count=getEventActions(p,key).length;}catch{count=(p.graphs?.[key]?.nodes||[]).filter(n=>n.type!=='event').length;}list.push({key,page:pg?.id,component:c?.id,event:ev,label:c?friendlyComponent(c):pg?.name||words(lang,'Application','Aplicación','Application'),pageName:pg?.name||words(lang,'Application','Aplicación','Application'),eventLabel:eventLabel(ev,lang),count});};
  for(const ev of ['start','timer'])push('app:'+ev,null,null,ev);
- for(const pg of p.pages){push(pg.id+':show',pg,null,'show');for(const c of pg.components)for(const ev of (['Button','Input','Dropdown','Checkbox','Radio','Slider'].includes(c.type)?['click','change','enter']:Object.keys(p.graphs||{}).filter(k=>k.startsWith(pg.id+':'+c.id+':')).map(k=>k.split(':').at(-1))))push(pg.id+':'+c.id+':'+ev,pg,c,ev);}
+ for(const pg of p.pages){push(pg.id+':show',pg,null,'show');for(const c of pg.components)for(const ev of new Set([...availableEvents(c.type),...Object.keys(p.graphs||{}).filter(k=>k.startsWith(pg.id+':'+c.id+':')).map(k=>k.split(':').at(-1))]))push(pg.id+':'+c.id+':'+ev,pg,c,ev);}
  return list;
 }
 export function describeActions(p,key,lang='en'){

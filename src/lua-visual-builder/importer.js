@@ -1,7 +1,7 @@
 import {parse} from '../../vendor/luaparse/index.js';
-import {createProject,component,page,decodeProject,clone} from './model.js?v=20261126-builder-v50';
-import {actionsToGraph} from './logic.js?v=20261126-builder-v50';
-import {analyzeHelperDrawings} from './extended-analysis.js';
+import {createProject,component,page,decodeProject,clone} from './model.js?v=20261126-builder-v51';
+import {actionsToGraph} from './logic.js?v=20261126-builder-v51';
+import {analyzeHelperDrawings} from './extended-analysis.js?v=20261126-builder-v51';
 
 // Analysis never evaluates Lua. Hybrid edits replace individual AST expression ranges
 // in the original chunk, so closures, upvalues, event registration and statement order stay intact.

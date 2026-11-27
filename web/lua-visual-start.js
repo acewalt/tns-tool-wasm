@@ -1,6 +1,6 @@
-import {icon,iconButton} from './lua-visual-ui.js?v=20261126-builder-v50';
-import {template,createProject} from '../src/lua-visual-builder/model.js?v=20261126-builder-v50';
-import {renderPageThumbnail} from './lua-visual-designer.js?v=20261126-builder-v50';
+import {icon,iconButton} from './lua-visual-ui.js?v=20261126-builder-v51';
+import {template,createProject} from '../src/lua-visual-builder/model.js?v=20261126-builder-v51';
+import {renderPageThumbnail} from './lua-visual-designer.js?v=20261126-builder-v51';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const templates=[
  ['blank','Blank app','Aplicación vacía','Application vide','General','Start from a clean screen.','Empieza con una pantalla vacía.','Commencez avec un écran vide.'],

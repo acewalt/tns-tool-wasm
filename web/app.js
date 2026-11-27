@@ -8507,7 +8507,7 @@ function showLuaEditor(item) {
   const openVisualBuilder = async () => {
     editMenuPanel.hidden = true;
     try {
-      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261126-builder-v50');
+      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261126-builder-v51');
       await openLuaVisualBuilder({
         language: document.documentElement.lang, editor, item,
         draftKey: `${xmlDoctor.sourcePath}|${item.file}|${item.path}|${item.name}`,
@@ -12540,7 +12540,7 @@ async function loadLuaJsRuntimeSources() {
 
 async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {}, captureOptions = null) {
   let visualCapture=null,captureSource=null;
-  if(captureOptions){const api=await import('../src/lua-visual-builder/capture.js?v=20261126-builder-v50');captureSource=captureOptions.prepared||api.instrumentCaptureSource(code);visualCapture=api.createCaptureRecorder({sites:captureSource.sites,...captureOptions});if(!captureOptions.prepared)code=captureSource.code;}
+  if(captureOptions){const api=await import('../src/lua-visual-builder/capture.js?v=20261126-builder-v51');captureSource=captureOptions.prepared||api.instrumentCaptureSource(code);visualCapture=api.createCaptureRecorder({sites:captureSource.sites,...captureOptions});if(!captureOptions.prepared)code=captureSource.code;}
   const { installLuaDocumentBindings, toLuaDocumentValue } = await import('../src/lua/document-symbols.js?v=20261112-widgets-v39');
   const [{ installLuaStringPatterns }, { installLuaStandardLibrary }] = await Promise.all([
     import('../src/lua/string-patterns.js?v=20261120-lua-compat-v45'),
