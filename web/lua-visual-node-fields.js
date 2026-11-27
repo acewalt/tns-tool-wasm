@@ -1,8 +1,8 @@
-import {parseExpression} from '../src/lua-visual-builder/expressions.js?v=20261126-builder-v51';
-import {presentFormula} from '../src/lua-visual-builder/formula-presentation.js?v=20261126-builder-v51';
-import {NODE_TYPES} from '../src/lua-visual-builder/logic.js?v=20261126-builder-v51';
-import {escapeHtml as esc} from './lua-visual-ui.js?v=20261126-builder-v51';
-import {friendlyComponent,words} from '../src/lua-visual-builder/presentation.js?v=20261126-builder-v51';
+import {parseExpression} from '../src/lua-visual-builder/expressions.js?v=20261127-builder-v51';
+import {presentFormula} from '../src/lua-visual-builder/formula-presentation.js?v=20261127-builder-v51';
+import {NODE_TYPES} from '../src/lua-visual-builder/logic.js?v=20261127-builder-v51';
+import {escapeHtml as esc} from './lua-visual-ui.js?v=20261127-builder-v51';
+import {friendlyComponent,words} from '../src/lua-visual-builder/presentation.js?v=20261127-builder-v51';
 export function nodeFields(n,{project,page,graph,lang='en',simple=false}={}){
  const t=(a,b,c)=>words(lang,a,b,c),fields=[],componentChoices=(page?.components||[]).map(c=>({value:c.id,label:friendlyComponent(c)+' · '+c.type}));
  const add=(key,label,value,choices,type='text')=>{const connected=!simple&&graph?.edges?.some(e=>e.to===n.id&&e.input===key);if(!connected){let mode;if(simple&&key==='expression'&&['setText','setValue','setVariable'].includes(n.type)){try{const ast=parseExpression(value);mode=ast.kind==='literal'&&typeof ast.value==='string'?'string':ast.kind==='literal'&&typeof ast.value==='number'?'number':'formula';if(mode==='string')value=ast.value;}catch{mode='formula';}type='simpleValue';}fields.push({key,label,value,choices,type,mode});}};
