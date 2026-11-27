@@ -1,6 +1,6 @@
 // Read-only projections shared by Simple Mode, node editors and navigation.
-import {presentFormula} from './formula-presentation.js?v=20261127-builder-v51';
-import {eventContext,getEventActions} from './semantics.js?v=20261127-builder-v51';
+import {presentFormula} from './formula-presentation.js?v=20261127-builder-v6';
+import {eventContext,getEventActions} from './semantics.js?v=20261127-builder-v6';
 export const friendlyComponent=c=>String(c?.text||c?.name||c?.id||'').replace(/\s+/g,' ').slice(0,60);
 export const words=(lang,en,es,fr)=>lang==='es'?es:lang==='fr'?fr:en;
 export function availableEvents(type,scope='component'){

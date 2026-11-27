@@ -6362,8 +6362,9 @@ ${rows.replaceAll("drawInput(gc, fields[", "self:drawInput(gc, self.fields[")}
   },
 ];
 
-function insertLuaTemplate(editor, text) {
-  const wrappedText = `-- [[TNS_TOOL_TEMPLATE_START]]\n${text}\n-- [[TNS_TOOL_TEMPLATE_END]]`;
+function insertLuaTemplate(editor, text, metadata) {
+  const identity = metadata ? `-- @tns-tool-template:${encodeURIComponent(JSON.stringify({ version: 1, ...metadata }))}\n` : "";
+  const wrappedText = `-- [[TNS_TOOL_TEMPLATE_START]]\n${identity}${text}\n-- [[TNS_TOOL_TEMPLATE_END]]`;
   const start = editor.selectionStart;
   const end = editor.selectionEnd;
   if (start === end) {
@@ -7785,7 +7786,8 @@ function showLuaTemplates(editor) {
     await navigator.clipboard?.writeText(code).catch(() => {});
   });
   const insertCurrentTemplate = () => {
-    insertLuaTemplate(editor, selected.build(currentOptions()));
+    const templateOptions = currentOptions();
+    insertLuaTemplate(editor, selected.build(templateOptions), { id: selected.id, options: templateOptions });
     closeModal(backdrop);
   };
   backdrop.querySelector("#lua-template-insert-top").addEventListener("click", insertCurrentTemplate);
@@ -8507,7 +8509,7 @@ function showLuaEditor(item) {
   const openVisualBuilder = async () => {
     editMenuPanel.hidden = true;
     try {
-      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261127-builder-v51');
+      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261127-builder-v6');
       await openLuaVisualBuilder({
         language: document.documentElement.lang, editor, item,
         draftKey: `${xmlDoctor.sourcePath}|${item.file}|${item.path}|${item.name}`,
@@ -12540,7 +12542,7 @@ async function loadLuaJsRuntimeSources() {
 
 async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {}, captureOptions = null) {
   let visualCapture=null,captureSource=null;
-  if(captureOptions){const api=await import('../src/lua-visual-builder/capture.js?v=20261127-builder-v51');captureSource=captureOptions.prepared||api.instrumentCaptureSource(code);visualCapture=api.createCaptureRecorder({sites:captureSource.sites,...captureOptions});if(!captureOptions.prepared)code=captureSource.code;}
+  if(captureOptions){const api=await import('../src/lua-visual-builder/capture.js?v=20261127-builder-v6');captureSource=captureOptions.prepared||api.instrumentCaptureSource(code);visualCapture=api.createCaptureRecorder({sites:captureSource.sites,...captureOptions});if(!captureOptions.prepared)code=captureSource.code;}
   const { installLuaDocumentBindings, toLuaDocumentValue } = await import('../src/lua/document-symbols.js?v=20261112-widgets-v39');
   const [{ installLuaStringPatterns }, { installLuaStandardLibrary }] = await Promise.all([
     import('../src/lua/string-patterns.js?v=20261120-lua-compat-v45'),

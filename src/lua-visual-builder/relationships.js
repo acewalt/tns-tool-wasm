@@ -1,7 +1,7 @@
 // Read-only projections. Graph geometry never changes application semantics.
-import {eventEntries,eventLabel,friendlyComponent} from './presentation.js?v=20261127-builder-v51';
-import {eventContext} from './semantics.js?v=20261127-builder-v51';
-import {analyzeLuaImport} from './importer.js?v=20261127-builder-v51';
+import {eventEntries,eventLabel,friendlyComponent} from './presentation.js?v=20261127-builder-v6';
+import {eventContext} from './semantics.js?v=20261127-builder-v6';
+import {analyzeLuaImport} from './importer.js?v=20261127-builder-v6';
 
 export function projectRelationships(project,lang='en') {
  const nodes=[],edges=[],known=new Set();
