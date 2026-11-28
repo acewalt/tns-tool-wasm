@@ -65,6 +65,17 @@ def parse_calculator_rich_output(source: str = "") -> list[dict]:
     return result
 
 
+def extract_calculator_draft(widget: ET.Element | str) -> str:
+    """Read the unsubmitted authoring expression without running it."""
+    if isinstance(widget, str):
+        widget = ET.fromstring(widget)
+    auth = widget.find(f"{{{SP_NS}}}auth")
+    try:
+        return _text(ET.fromstring(auth.text or "")) if auth is not None else ""
+    except (ET.ParseError, ValueError):
+        return ""
+
+
 def extract_calculator_rows(widget: ET.Element | str) -> list[dict]:
     if isinstance(widget, str):
         widget = ET.fromstring(widget)
@@ -82,6 +93,24 @@ def extract_calculator_rows(widget: ET.Element | str) -> list[dict]:
             row["output"] = parse_calculator_rich_output(intr)
         rows.append(row)
     return rows
+
+
+def write_calculator_draft(widget: ET.Element, source: str) -> None:
+    auth = widget.find(f"{{{SP_NS}}}auth")
+    if auth is not None and extract_calculator_draft(widget) == source:
+        return
+    if auth is None:
+        auth = ET.SubElement(widget, f"{{{SP_NS}}}auth")
+    tree = ET.Element("r2dtotree", {"version": "1"})
+    try:
+        previous = ET.fromstring(auth.text or "")
+        for child in previous:
+            if child.tag == "formatManager":
+                tree.append(child)
+    except ET.ParseError:
+        pass
+    _append_math(tree, source)
+    auth.text = ET.tostring(tree, encoding="unicode", short_empty_elements=False)
 
 
 def _matrix_rows(source: str) -> list[list[str]] | None:

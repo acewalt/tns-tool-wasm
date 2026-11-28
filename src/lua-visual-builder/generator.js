@@ -1,9 +1,9 @@
-import {validateProject} from './model.js?v=20261127-builder-v6';
-import {compileExpression as expr,luaString as q,luaValue} from './expressions.js?v=20261127-builder-v6';
-import {graphToActions} from './logic.js?v=20261127-builder-v6';
-import {runtimeLua} from './runtime.js?v=20261127-builder-v6';
-import {migrateProject,projectDiagnostics} from './semantics.js?v=20261127-builder-v6';
-import {generateImportedLua} from './importer.js?v=20261127-builder-v6';
+import {validateProject} from './model.js?v=20261128-source-reconstruction-v53';
+import {compileExpression as expr,luaString as q,luaValue} from './expressions.js?v=20261128-source-reconstruction-v53';
+import {graphToActions} from './logic.js?v=20261128-source-reconstruction-v53';
+import {runtimeLua} from './runtime.js?v=20261128-source-reconstruction-v53';
+import {migrateProject,projectDiagnostics} from './semantics.js?v=20261128-source-reconstruction-v53';
+import {generateImportedLua} from './importer.js?v=20261128-source-reconstruction-v53';
 export function generateLua(project,{metadata=true,debug=false}={}) {
   if(project.imported)return generateImportedLua(project,{metadata});
   project=migrateProject(project);

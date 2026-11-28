@@ -1,9 +1,9 @@
 import {parse} from '../../vendor/luaparse/index.js';
-import {analyzeLuaIR} from './semantic-ir.js?v=20261127-builder-v6';
-import {reconstructLegacyTemplate} from './legacy-template.js?v=20261127-builder-v6';
-import {createProject,component,page,decodeProject,clone} from './model.js?v=20261127-builder-v6';
-import {actionsToGraph} from './logic.js?v=20261127-builder-v6';
-import {analyzeHelperDrawings} from './extended-analysis.js?v=20261127-builder-v6';
+import {analyzeLuaIR} from './semantic-ir.js?v=20261128-source-reconstruction-v53';
+import {reconstructLegacyTemplate} from './legacy-template.js?v=20261128-source-reconstruction-v53';
+import {createProject,component,page,decodeProject,clone} from './model.js?v=20261128-source-reconstruction-v53';
+import {actionsToGraph} from './logic.js?v=20261128-source-reconstruction-v53';
+import {analyzeHelperDrawings} from './extended-analysis.js?v=20261128-source-reconstruction-v53';
 
 // Analysis never evaluates Lua. Hybrid edits replace individual AST expression ranges
 // in the original chunk, so closures, upvalues, event registration and statement order stay intact.
@@ -121,11 +121,11 @@ export function projectFromImport(report,{accepted=[]}={}){
 export function generateImportedLua(p,{metadata=true}={}){
  const imported=p.imported,original=imported.original,patches=[];
  for(const pg of p.pages)for(const c of pg.components){const b=c.sourceBinding;if(!b)continue;const mapping=b.method==='drawString'?{text:0,x:1,y:2}:b.method==='drawLine'?{}:{x:0,y:1,w:2,h:3};
-  for(const[prop,index]of Object.entries(mapping)){if(c[prop]===b.initial[prop])continue;const arg=b.args[index];if(!arg?.literal)throw Error(c.id+': '+prop+' is linked to original Lua state and cannot be replaced safely.');const value=typeof c[prop]==='number'?arg.value+c[prop]-b.initial[prop]:c[prop];patches.push({start:arg.start,end:arg.end,replacement:typeof value==='string'?quoteLua(value):String(value),component:c.id,property:prop,line:b.line});}
+  for(const[prop,index]of Object.entries(mapping)){if(c[prop]===b.initial[prop])continue;const arg=b.args[index];if(!arg?.literal&&!arg?.offset)throw Error(c.id+': '+prop+' is linked to original Lua state and cannot be replaced safely.');const value=typeof c[prop]==='number'?arg.value+c[prop]-b.initial[prop]:c[prop];patches.push({start:arg.start,end:arg.end,replacement:arg.offset?'('+original.slice(arg.start,arg.end)+')'+(c[prop]-b.initial[prop]>=0?'+':'')+String(c[prop]-b.initial[prop]):typeof value==='string'?quoteLua(value):String(value),component:c.id,property:prop,line:b.line});}
   for(const prop of ['x','y','w','h'])if(!(prop in mapping)&&c[prop]!==b.initial[prop])throw Error(c.id+': '+prop+' is not an editable source argument.');
   for(const prop of ['type','foreground','color','font','bold','visible','parent'])if(c[prop]!==b.initial[prop])throw Error(c.id+': '+prop+' requires editing the original Lua; this import preserves native handlers.');
  }
- const sorted=patches.sort((a,b)=>b.start-a.start);for(let i=1;i<sorted.length;i++)if(sorted[i].end>sorted[i-1].start)throw Error('Overlapping imported source edits');let out=original;for(const patch of sorted)out=out.slice(0,patch.start)+patch.replacement+out.slice(patch.end);
+ const unique=new Map();for(const patch of patches){const key=patch.start+':'+patch.end,previous=unique.get(key);if(previous&&previous.replacement!==patch.replacement)throw Error('Conflicting edits of a shared Lua source binding');unique.set(key,patch);}const sorted=[...unique.values()].sort((a,b)=>b.start-a.start);for(let i=1;i<sorted.length;i++)if(sorted[i].end>sorted[i-1].start)throw Error('Overlapping imported source edits');let out=original;for(const patch of sorted)out=out.slice(0,patch.start)+patch.replacement+out.slice(patch.end);
  const header=metadata?'-- @tns-visual-builder:'+encodeURIComponent(JSON.stringify(p))+'\n':'';return header+out;
 }
 export function compareImported(p){const converted=generateImportedLua(p,{metadata:false}),original=p.imported.original;const a=original.split('\n'),b=converted.split('\n');return{original,converted,equivalence:'not-verified',changedLines:a.map((s,i)=>s===b[i]?null:{line:i+1,original:s,converted:b[i]??''}).filter(Boolean),mappings:p.pages.flatMap(pg=>pg.components.map(c=>({page:pg.id,component:c.id,line:c.sourceBinding?.line}))),diagnostics:p.imported.diagnostics};}

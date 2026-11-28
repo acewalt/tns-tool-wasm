@@ -84,22 +84,3 @@
 }
 
 @media(max-width:760px){.prgm-preview-overlay{padding:8px}.prgm-preview-modal{padding:17px;max-height:calc(100dvh - 16px)}.prgm-preview-heading{flex-direction:column;gap:12px;margin-bottom:16px}.prgm-preview-workspace{grid-template-columns:minmax(0,1fr);gap:15px}.prgm-preview-center{grid-row:1}.prgm-preview-controls{padding:0;display:grid;grid-template-columns:1fr 1fr}.prgm-preview-pad{grid-column:1/-1;display:flex;margin:0;justify-content:center}.prgm-preview-angle{margin:0}.prgm-preview-controls small{align-self:center}.prgm-preview-inspector{padding:0;display:grid;grid-template-columns:1fr 1fr}.prgm-preview-inspector h3,.prgm-preview-vars{grid-column:1/-1}.prgm-preview-vars{max-height:130px}.prgm-preview-vars>div{grid-template-columns:1fr 1fr}.prgm-preview-support{margin-top:15px}}
-
-/* Match the TI-BASIC Edit action, without changing Run syntax's separate tone. */
-.doctor-toolbar > #xml-prgm-preview-btn {
-  border: none;
-  border-radius: 999px;
-  background: linear-gradient(135deg, var(--lime), var(--lime2));
-  color: #2d3d17;
-  font-weight: 900;
-  box-shadow: 0 0 20px rgb(183 243 77 / 25%);
-  transition: transform .25s ease, box-shadow .25s ease;
-}
-.doctor-toolbar > #xml-prgm-preview-btn:hover:not(:disabled) {
-  transform: translateY(-2px) scale(1.04);
-  background: linear-gradient(135deg, var(--lime), var(--lime2));
-  box-shadow: 0 0 30px rgb(183 243 77 / 35%), 0 0 80px rgb(183 243 77 / 12%);
-}
-[data-theme="dark"] .doctor-toolbar > #xml-prgm-preview-btn:hover:not(:disabled) {
-  color: #fff;
-}

@@ -63,6 +63,15 @@ test('Calculator save rejects stale, missing and foreign identities without fall
   await context.save(item,[{entry:'5',display:'5'}]);await assert.rejects(context.save(item,[{entry:'6',display:'6'}]),/changed/);assert.equal(readSaved(file).rows[0].display,'5');
 });
 
+test('Calculator saves and clears pending native input independently of its history',async t=>{
+  const {context,file,item}=setup(t),before=readSaved(file);
+  let result=await context.save(item,[],'supergeo()');
+  let saved=readSaved(file);assert.match(saved.auth,/supergeo\(\)/);assert.deepEqual(saved.rows,[]);
+  assert.equal(saved.sibling,before.sibling);assert.equal(saved.program,before.program);
+  result=await context.save({...item,file:result.file,raw_xml:result.raw_xml},[],'');
+  saved=readSaved(file);assert.doesNotMatch(saved.auth,/supergeo/);assert.deepEqual(saved.rows,[]);
+});
+
 test('Calculator replacement failure preserves the original file and removes temporary output',async t=>{
   const{context,file,item,stagePath}=setup(t,{failReplace:true}),before=fs.readFileSync(file);
   await assert.rejects(context.save(item,[{entry:'1',display:'1'}]),/simulated replacement failure/);assert.deepEqual(fs.readFileSync(file),before);assert.deepEqual(fs.readdirSync(stagePath).sort(),['Problem1.xml','Problem2.xml']);
@@ -71,6 +80,7 @@ test('Calculator replacement failure preserves the original file and removes tem
 test('document Calculator drafts retain clears, isolate widgets and ignore old-preview disposal',()=>{
   const source=app.slice(app.indexOf('function documentCalculatorHistoryDraft('),app.indexOf('\nasync function openCalculatorInLovePreview('));
   const sessions=new Map(),context={structuredClone,JSON,documentCalculatorSessions:sessions,documentCalculatorFile:file=>file.split('/').at(-1),documentCalculatorMathSession(file){const key=context.documentCalculatorFile(file);if(!sessions.has(key))sessions.set(key,{mathSession:{}});return sessions.get(key).mathSession;},extractCalculatorRowsFromRawXml:raw=>JSON.parse(raw||'[]')};
+  context.extractCalculatorInput=item=>item.detail?.input||'';
   vm.runInNewContext(source+'\nglobalThis.bind=documentCalculatorHistoryDraft;',context);
   const item={file:'/source/Problem1.xml',path:'/prob/card/wdgt[1]',raw_xml:'[]'},one=context.bind(item,{rows:[],input:''});one.remember({rows:[{entry:'1',display:'1',status:'error'}],input:'next'});
   const two=context.bind({...item,file:'/stage/Problem1.xml'},{rows:[],input:''});assert.equal(two.draft.rows.length,1);assert.equal(two.draft.rows[0].status,'error');assert.equal(two.draft.input,'next');

@@ -1,6 +1,7 @@
 import {parse} from '../../vendor/luaparse/index.js';
-import {component,page,createProject,clone} from './model.js?v=20261127-builder-v6';
-import {projectFromImport} from './importer.js?v=20261127-builder-v6';
+import {component,page,createProject,clone} from './model.js?v=20261128-source-reconstruction-v53';
+import {projectFromImport} from './importer.js?v=20261128-source-reconstruction-v53';
+import {bindCapturedComponents} from './captured-bindings.js';
 const methods=new Set(['drawString','drawRect','fillRect','drawLine','drawPolyLine','drawPolygon','fillPolygon','drawArc','fillArc','drawImage','setColorRGB','setFont','clipRect','setPen']);
 const children=n=>Object.entries(n||{}).filter(([k])=>!['loc','range','comments','globals'].includes(k)).flatMap(([,v])=>Array.isArray(v)?v.filter(x=>x?.type):v?.type?[v]:[]);
 export function instrumentCaptureSource(source){
@@ -46,7 +47,9 @@ export function reconstructScreen(frame){
 export function projectFromCapture(report,session){
  const p=projectFromImport(report);p.pages=[];const groups=new Map(),screenPages={};
  for(const screen of session.screens.slice(0,50)){const key=screen.group||screen.id;let pg=groups.get(key);if(!pg){pg=page(screen.name);pg.components=reconstructScreen(screen.frame);pg.captureThumbnail=screen.thumbnail;pg.captureGroup=key;groups.set(key,pg);p.pages.push(pg);}screenPages[screen.id]=pg.id;}
- if(!p.pages.length)throw Error('Capture at least one screen.');p.startPage=p.pages[0].id;p.imported.mode='hybrid';p.imported.capture={format:session.format,version:1,screenPages,screens:session.screens.map(s=>({id:s.id,name:s.name,group:s.group,fingerprint:s.fingerprint})),transitions:clone(session.transitions||[])};return p;
+ if(!p.pages.length)throw Error('Capture at least one screen.');
+ p.imported.metrics.sourceLinkedComponents=bindCapturedComponents(report.source||report.original,p.pages);
+ p.startPage=p.pages[0].id;p.imported.mode='hybrid';p.imported.capture={format:session.format,version:1,screenPages,screens:session.screens.map(s=>({id:s.id,name:s.name,group:s.group,fingerprint:s.fingerprint})),transitions:clone(session.transitions||[])};return p;
 }
 export function nativePageFromCapture(frame,name='Captured page'){
  const pg=page(name);pg.components=reconstructScreen(frame).filter(c=>c.type!=='Image').map(c=>{c.locked=false;c.captureBinding.status='Needs review';return c;});return pg;

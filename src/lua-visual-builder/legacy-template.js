@@ -1,7 +1,7 @@
-import {createProject,page,component} from './model.js?v=20261127-builder-v6';
-import {setEventActions} from './semantics.js?v=20261127-builder-v6';
-import {parseExpression,luaString as q} from './expressions.js?v=20261127-builder-v6';
-import {luaName,luaData,astChildren,paintEvidence,sourceOf} from './semantic-ir.js?v=20261127-builder-v6';
+import {createProject,page,component} from './model.js?v=20261128-source-reconstruction-v53';
+import {setEventActions} from './semantics.js?v=20261128-source-reconstruction-v53';
+import {parseExpression,luaString as q} from './expressions.js?v=20261128-source-reconstruction-v53';
+import {luaName,luaData,astChildren,paintEvidence,sourceOf} from './semantic-ir.js?v=20261128-source-reconstruction-v53';
 
 const fields=n=>Object.fromEntries(n.fields.filter(f=>f.type==='TableKeyString').map(f=>[f.key.name,f.value]));
 const luaify=v=>Array.isArray(v)?Object.fromEntries(v.map((v,i)=>[i+1,luaify(v)])):v&&typeof v==='object'?Object.fromEntries(Object.entries(v).map(([k,v])=>[k,luaify(v)])):v;

@@ -1,4 +1,4 @@
-import { IDENT, key, split, expressionTree, evaluate, evaluatePrgmExpression, createMathContext, formatPrgmValue, formatExpressionValue, normalizeTiMath, supportedMathFunctions, PrgmError } from './math.js?v=20261110-library-runtime-v37';
+import { IDENT, key, split, expressionTree, evaluate, evaluatePrgmExpression, createMathContext, formatPrgmValue, formatExpressionValue, normalizeTiMath, supportedMathFunctions, PrgmError } from './math.js?v=20261128-source-reconstruction-v53';
 import { TI_CATALOG_COMMAND_NAMES } from './catalog-functions.js';
 import {parseStoredTiValue} from './stored-values.js';
 import {captureExactTree} from './exact-format.js';
