@@ -30,6 +30,7 @@
   }
 
   async function status(options = {}) {
+    if (window.TnsDesktop?.compilerStatus) return {...await window.TnsDesktop.compilerStatus(),webBridge:true};
     if (platform() !== "windows") return original?.status ? original.status(options) : { connected:false, toolchainReady:false, platform:platform() || "unknown" };
     const scoped = timeoutSignal(options.timeoutMs || 850, options.signal);
     try {
@@ -59,6 +60,7 @@
   }
 
   function openLocalCompiler() {
+    if (window.TnsDesktop) return null; // Embedded compiler is managed by Electron.
     const a = document.createElement("a");
     a.href = `${PROTOCOL_URL}?origin=${encodeURIComponent(location.origin)}`;
     a.style.display = "none";
@@ -69,6 +71,7 @@
   }
 
   function downloadCompiler(options = {}) {
+    if (window.TnsDesktop) return {unsupported:false,started:false,embedded:true,platform:"windows"};
     if (platform() !== "windows") return original?.downloadCompiler ? original.downloadCompiler(options) : { unsupported:true, started:false, platform:platform() || "unknown" };
     const a = document.createElement("a");
     a.href = DOWNLOAD_URL;
@@ -91,6 +94,7 @@
   function clearDownloadState() { try { localStorage.removeItem("ndless-web-compiler-download"); } catch (_) {} }
 
   async function ensureReady(options = {}) {
+    if (window.TnsDesktop) return status(options);
     let current = await status(options);
     if (current.connected) return current;
     if (options.openIfMissing !== false) openLocalCompiler();
@@ -117,6 +121,21 @@
   }
 
   async function build(project, options = {}) {
+    if (window.TnsDesktop?.buildNdless) {
+      const onProgress = options.onProgress || (()=>{});
+      const ready = await status(options);
+      if (!ready.toolchainReady) {
+        const error = new Error(ready.missing?.join(", ") || "El compilador Ndless integrado no está disponible.");
+        error.code = "DESKTOP_TOOLCHAIN_MISSING";
+        error.missing = ready.missing || [];
+        throw error;
+      }
+      onProgress({stage:"sending",message:"Preparando proyecto Ndless para compilación ARM local…"});
+      const zipBytes = await projectZip(project);
+      const result = await window.TnsDesktop.buildNdless({name:project?.name,zip:zipBytes});
+      return {...result,bytes:new Uint8Array(result.bytes),engine:"desktop",platform:"windows",
+        diagnostics:[],durationMs:0};
+    }
     if (platform() !== "windows" && original?.build) return original.build(project, options);
     const ready = options.status || await status({ signal:options.signal, timeoutMs:900 });
     if (!ready?.connected) throw Object.assign(new Error("Ndless Web Compiler no está abierto."), { code:"LOCAL_BRIDGE_UNAVAILABLE" });
