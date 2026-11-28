@@ -260,6 +260,22 @@ export function evaluate(node, vars, angle = 'RAD', context = createMathContext(
       try{return evaluate(fn.body,scope,currentAngle,context);}finally{context.exactBindings=before;context.exactVariables=beforeVars;}
     } finally { context.calls--; }
   }
+  // Finite definite integrals also run inside stored Func bodies called by
+  // Lua math.eval. Indefinite/symbolic forms still require the CAS.
+  if(n==='integral'&&node.args.length===4){
+    const variable=node.args[1];if(variable.type!=='variable')fail('ARGUMENT_ERROR','La variable de integración debe ser un nombre.');
+    const lo=number(ev(node.args[2])),hi=number(ev(node.args[3]));if(lo===hi)return 0;
+    const scope=Object.assign(Object.create(null),vars);
+    const f=x=>{scope[variable.name]=x;return number(evaluate(node.args[0],scope,currentAngle,context));};
+    const mid=(lo+hi)/2,fa=f(lo),fm=f(mid),fb=f(hi),whole=(hi-lo)*(fa+4*fm+fb)/6;
+    const refine=(a,b,va,vm,vb,estimate,tolerance,depth)=>{
+      const m=(a+b)/2,l=f((a+m)/2),r=f((m+b)/2),left=(m-a)*(va+4*l+vm)/6,right=(b-m)*(vm+4*r+vb)/6,delta=left+right-estimate;
+      if(Math.abs(delta)<=15*tolerance)return left+right+delta/15;
+      if(!depth)fail('RESOURCE_LIMIT','La integral no converge dentro del límite del preview.');
+      return refine(a,m,va,l,vm,left,tolerance/2,depth-1)+refine(m,b,vm,r,vb,right,tolerance/2,depth-1);
+    };
+    return number(refine(lo,hi,fa,fm,fb,whole,1e-10*Math.max(1,Math.abs(whole)),18));
+  }
   if (!NUMERIC_FUNCTIONS.includes(n)) fail('UNSUPPORTED_FUNCTION', 'Función no soportada por el preview numérico: ' + n + '(). Use el CAS para operaciones simbólicas.');
   const arity = (min, max = min) => { if (node.args.length < min || node.args.length > max) fail('ARGUMENT_ERROR', 'Número de argumentos incorrecto para ' + n + '().'); };
   if (n === 'piecewise') { arity(2, 41); const pairs = Math.floor(node.args.length / 2); for (let i = 0; i < pairs; i++) if (truth(ev(node.args[i * 2 + 1]))) return ev(node.args[i * 2]); if (node.args.length % 2) return ev(node.args.at(-1)); fail('UNDEFINED_RESULT', 'Ninguna condición de piecewise es verdadera.'); }

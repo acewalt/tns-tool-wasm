@@ -1,4 +1,4 @@
-import {NODE_TYPES,connectionError,socketType} from './logic.js?v=20261127-builder-v6';
+import {NODE_TYPES,connectionError,socketType} from './logic.js?v=20261128-source-reconstruction-v53';
 
 // A connection intent has one fixed end. It is independent of pointer capture,
 // camera coordinates and the chooser DOM, and is used for both drag directions.

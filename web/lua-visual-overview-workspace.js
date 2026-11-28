@@ -1,7 +1,7 @@
-import {projectRelationships} from '../src/lua-visual-builder/relationships.js?v=20261127-builder-v6';
-import {createGraphInteraction,GraphState} from '../src/lua-visual-builder/interactions.js?v=20261127-builder-v6';
-import {routeWire,words} from '../src/lua-visual-builder/presentation.js?v=20261127-builder-v6';
-import {icon,iconButton,escapeHtml as esc,resizableMinimap} from './lua-visual-ui.js?v=20261127-builder-v6';
+import {projectRelationships} from '../src/lua-visual-builder/relationships.js?v=20261128-source-reconstruction-v53';
+import {createGraphInteraction,GraphState} from '../src/lua-visual-builder/interactions.js?v=20261128-source-reconstruction-v53';
+import {routeWire,words} from '../src/lua-visual-builder/presentation.js?v=20261128-source-reconstruction-v53';
+import {icon,iconButton,escapeHtml as esc,resizableMinimap} from './lua-visual-ui.js?v=20261128-source-reconstruction-v53';
 
 export function mountRelationshipOverview(host,{project,lang='en',state={},onOpen}){
  const t=(a,b,c)=>words(lang,a,b,c),model=projectRelationships(project,lang),byId=new Map(model.nodes.map(n=>[n.id,n]));

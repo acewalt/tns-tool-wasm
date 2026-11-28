@@ -1,12 +1,12 @@
-import {createGraphInteraction,GraphState,freeNodePosition,menuPosition} from '../src/lua-visual-builder/interactions.js?v=20261127-builder-v6';
-import {intentEdge,compatiblePort,nodeChoices} from '../src/lua-visual-builder/choices.js?v=20261127-builder-v6';
-import {nodeFields,bindNodeFields} from './lua-visual-node-fields.js?v=20261127-builder-v6';
-import {icon,iconButton,compactToolbar,graphPointerTools,resizableMinimap} from './lua-visual-ui.js?v=20261127-builder-v6';
-import {routeWire,insertOnWire,eventLabel,friendlyComponent} from '../src/lua-visual-builder/presentation.js?v=20261127-builder-v6';
-import {eventContext} from '../src/lua-visual-builder/semantics.js?v=20261127-builder-v6';
-import {askFields} from './lua-visual-dialog.js?v=20261127-builder-v6';
-import {NODE_TYPES,socketType,connect,connectionError,graphDiagnostics,autoLayout} from '../src/lua-visual-builder/logic.js?v=20261127-builder-v6';
-import {arrangeItems,addReroute} from '../src/lua-visual-builder/workspace.js?v=20261127-builder-v6';
+import {createGraphInteraction,GraphState,freeNodePosition,menuPosition} from '../src/lua-visual-builder/interactions.js?v=20261128-source-reconstruction-v53';
+import {intentEdge,compatiblePort,nodeChoices} from '../src/lua-visual-builder/choices.js?v=20261128-source-reconstruction-v53';
+import {nodeFields,bindNodeFields} from './lua-visual-node-fields.js?v=20261128-source-reconstruction-v53';
+import {icon,iconButton,compactToolbar,graphPointerTools,resizableMinimap} from './lua-visual-ui.js?v=20261128-source-reconstruction-v53';
+import {routeWire,insertOnWire,eventLabel,friendlyComponent} from '../src/lua-visual-builder/presentation.js?v=20261128-source-reconstruction-v53';
+import {eventContext} from '../src/lua-visual-builder/semantics.js?v=20261128-source-reconstruction-v53';
+import {askFields} from './lua-visual-dialog.js?v=20261128-source-reconstruction-v53';
+import {NODE_TYPES,socketType,connect,connectionError,graphDiagnostics,autoLayout} from '../src/lua-visual-builder/logic.js?v=20261128-source-reconstruction-v53';
+import {arrangeItems,addReroute} from '../src/lua-visual-builder/workspace.js?v=20261128-source-reconstruction-v53';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 let clipboard=[];
 export function mountEventGraph(host,{graph,project,page,key,lang='en',name=x=>x,onChange,onError,onCode,readOnly=false}){

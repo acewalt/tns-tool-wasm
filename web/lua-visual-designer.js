@@ -1,4 +1,4 @@
-import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261127-builder-v6';
+import {evaluateExpression} from '../src/lua-visual-builder/expressions.js?v=20261128-source-reconstruction-v53';
 // Design-only renderer. Run mode always executes the generated Lua in its own VM.
 export function mountDesigner(canvas,{project,page,selected,selection=[],zoom=1.5,grid=true,onSelect=()=>{},onSelection=()=>{},onMove=()=>{},onDrop=()=>{},onZoom,interactive=true}) {
   const ctx=canvas.getContext('2d'),dpr=window.devicePixelRatio||1,W=320,H=212;
@@ -36,10 +36,10 @@ export function mountDesigner(canvas,{project,page,selected,selection=[],zoom=1.
   canvas.onpointerdown=e=>{
     if(e.button===1){const viewport=canvas.closest('.lvb-design');pan={viewport,x:e.clientX,y:e.clientY,left:viewport.scrollLeft,top:viewport.scrollTop};canvas.setPointerCapture(e.pointerId);e.preventDefault();return;}
     if(e.button!==0)return;e.preventDefault();canvas.focus();const p=point(e);let c=page.components.find(c=>c.id===selected),handle='';
-    if(c&&!c.locked&&(!c.sourceBinding||['fillRect','drawRect'].includes(c.sourceBinding.method)&&c.sourceBinding.args.slice(0,4).every(a=>a.literal))){const r=rect(c);for(const [hx,hy,name]of [[0,0,'nw'],[.5,0,'n'],[1,0,'ne'],[0,.5,'w'],[1,.5,'e'],[0,1,'sw'],[.5,1,'s'],[1,1,'se']])if(Math.abs(p.x-r.x-r.w*hx)<5&&Math.abs(p.y-r.y-r.h*hy)<5)handle=name;}
+    if(c&&!c.locked&&(!c.sourceBinding||['fillRect','drawRect'].includes(c.sourceBinding.method)&&c.sourceBinding.args.slice(0,4).every(a=>a?.literal||a?.offset))){const r=rect(c);for(const [hx,hy,name]of [[0,0,'nw'],[.5,0,'n'],[1,0,'ne'],[0,.5,'w'],[1,.5,'e'],[0,1,'sw'],[.5,1,'s'],[1,1,'se']])if(Math.abs(p.x-r.x-r.w*hx)<5&&Math.abs(p.y-r.y-r.h*hy)<5)handle=name;}
     if(!handle)c=hit(p);
     if(c){if(e.shiftKey)select(selectedIds().has(c.id)?[...selectedIds()].filter(id=>id!==c.id):[...selectedIds(),c.id]);else if(!selectedIds().has(c.id))select([c.id]);
-      if(!c.locked&&(!c.sourceBinding||(c.sourceBinding.method==='drawString'?c.sourceBinding.args.slice(1,3):c.sourceBinding.method==='drawLine'?[]:c.sourceBinding.args.slice(0,2)).length===2&&(c.sourceBinding.method==='drawString'?c.sourceBinding.args.slice(1,3):c.sourceBinding.args.slice(0,2)).every(a=>a.literal)))drag={id:c.id,origin:p,handle,items:page.components.filter(c=>selectedIds().has(c.id)&&!c.locked).map(c=>({c,start:{x:c.x,y:c.y,w:c.w,h:c.h}}))};
+      if(!c.locked&&(!c.sourceBinding||(c.sourceBinding.method==='drawString'?c.sourceBinding.args.slice(1,3):c.sourceBinding.method==='drawLine'?[]:c.sourceBinding.args.slice(0,2)).length===2&&(c.sourceBinding.method==='drawString'?c.sourceBinding.args.slice(1,3):c.sourceBinding.args.slice(0,2)).every(a=>a?.literal||a?.offset)))drag={id:c.id,origin:p,handle,items:page.components.filter(c=>selectedIds().has(c.id)&&!c.locked).map(c=>({c,start:{x:c.x,y:c.y,w:c.w,h:c.h}}))};
     }else{select(e.shiftKey?[...selectedIds()]:[]);boxSelection={origin:p,end:p,base:[...selection]};}canvas.setPointerCapture(e.pointerId);paint();
   };
   canvas.onpointermove=e=>{

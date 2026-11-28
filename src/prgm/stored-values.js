@@ -1,4 +1,4 @@
-import {createMathContext, evaluate, expressionTree} from './math.js';
+import {createMathContext, evaluate, expressionTree} from './math.js?v=20261128-source-reconstruction-v53';
 
 // Stored TI values are data, not JavaScript. Keep matrix rows, booleans,
 // Unicode minus and TI's doubled quotation marks intact when loading Lua.

@@ -1,7 +1,7 @@
-import {mountRelationshipOverview} from './lua-visual-overview-workspace.js?v=20261127-builder-v6';
-import {eventContext} from '../src/lua-visual-builder/semantics.js?v=20261127-builder-v6';
-import {friendlyComponent,eventLabel} from '../src/lua-visual-builder/presentation.js?v=20261127-builder-v6';
-import {analyzeLuaImport} from '../src/lua-visual-builder/importer.js?v=20261127-builder-v6';
+import {mountRelationshipOverview} from './lua-visual-overview-workspace.js?v=20261128-source-reconstruction-v53';
+import {eventContext} from '../src/lua-visual-builder/semantics.js?v=20261128-source-reconstruction-v53';
+import {friendlyComponent,eventLabel} from '../src/lua-visual-builder/presentation.js?v=20261128-source-reconstruction-v53';
+import {analyzeLuaImport} from '../src/lua-visual-builder/importer.js?v=20261128-source-reconstruction-v53';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function overviewItems(p){
  const out=[],add=(kind,title,data={})=>out.push({kind,title,...data});
