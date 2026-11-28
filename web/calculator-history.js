@@ -32,6 +32,12 @@
       const segments = richSegments(node); return {kind:'disp',text:segments.map(item => item.text).join(''),segments};
     });
   }
+  function parseDraft(source = '') {
+    const xml = parse(source);
+    const auth = xml?.getElementsByTagNameNS(namespace, 'auth')[0];
+    const tree = auth && parse(auth.textContent);
+    return tree ? sourceText(tree.documentElement) : '';
+  }
   function parseRows(source = '') {
     const xml = parse(source); if (!xml) return [];
     return [...xml.getElementsByTagNameNS(namespace,'erow')].map(element => {
@@ -69,5 +75,5 @@
       if (literal) text.textContent = literal;
     }
   }
-  window.TnsCalculatorHistory = Object.freeze({parseRows,parseRichOutput,appendOutputLine,renderSource});
+  window.TnsCalculatorHistory = Object.freeze({parseRows,parseDraft,parseRichOutput,appendOutputLine,renderSource});
 })();

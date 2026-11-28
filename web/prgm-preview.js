@@ -1,6 +1,6 @@
-import {createPrgmPreview,formatPrgmValue} from '../src/prgm/runtime.js?v=20261110-library-runtime-v37';
-import {renderPrgmGraphics} from '../src/prgm/drawing.js?v=20261110-library-runtime-v37';
-import {createCalculatorSession} from '../src/prgm/calculator-session.js?v=20261121-calculator-v46';
+import {createPrgmPreview,formatPrgmValue} from '../src/prgm/runtime.js?v=20261128-source-reconstruction-v53';
+import {renderPrgmGraphics} from '../src/prgm/drawing.js?v=20261128-source-reconstruction-v53';
+import {createCalculatorSession} from '../src/prgm/calculator-session.js?v=20261128-source-reconstruction-v53';
 
 const COPY={
   es:{title:'Preview Prgm',note:'Simulación TI-BASIC · entradas, texto y dibujos CX II.',run:'Ejecutar',pause:'Pausar',step:'Paso',stop:'Detener',restart:'Reiniciar / actualizar',expand:'Vista ampliada',normal:'Tamaño calculadora',close:'Cerrar',variables:'Variables',empty:'Todavía no hay valores.',copy:'Copiar salida',copied:'Salida copiada.',ok:'OK',cancel:'Cancelar',done:'Hecho',line:'Línea',ready:'Listo',waiting:'Esperando entrada',paused:'Pausado',running:'Ejecutando',stopped:'Detenido',error:'Error',support:'Cobertura del preview',help:'Calcula o llama a los programas del problema con Enter. Se simulan entradas, texto y dibujos CX II. Las operaciones no soportadas muestran su error y línea; no es un emulador completo de la calculadora.',keys:'Enter: aceptar · Esc: cancelar entrada · ↑/↓: desplazar salida',angle:'Ángulos (reinicia)',request:'Entrada del programa',viewLine:'Ver línea en editor'},
@@ -206,7 +206,7 @@ function open(initial,options={}) {
     $('[data-finish]').hidden=!['done','stopped','error'].includes(state.status);$('[data-finish]').textContent=state.error?state.error.message:state.status==='done'?t.done:t.stopped;
     const error=inputError||state.error;$('[data-error]').hidden=!error;$('[data-error]').textContent=error?`${t.line} ${error.line||state.line} · ${error.message}`:'';
     $('[data-request]').hidden=!request;
-    if(request){$('[data-prompt]').textContent=request.prompt;const token=state.executed+':'+request.line;if(requestToken!==token){requestToken=token;$('[data-input]').value='';$('[data-input]').focus({preventScroll:true});}}
+    if(request){const messageOnly=request.kind==='text';$('[data-input]').hidden=messageOnly;$('[data-cancel]').hidden=messageOnly;$('[data-prompt]').textContent=request.prompt;const token=state.executed+':'+request.line;if(requestToken!==token){requestToken=token;$('[data-input]').value='';$(messageOnly?'[data-ok]':'[data-input]').focus({preventScroll:true});}}
     else requestToken='';
     const layoutChanged=layoutOutput();
     if(changed||layoutChanged)followOutput();

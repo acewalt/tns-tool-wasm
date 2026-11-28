@@ -1,11 +1,11 @@
-import {createGraphInteraction,GraphState,menuPosition} from '../src/lua-visual-builder/interactions.js?v=20261127-builder-v6';
-import {page as newPage} from '../src/lua-visual-builder/model.js?v=20261127-builder-v6';
-import {icon,iconButton,compactToolbar,graphPointerTools,resizableMinimap} from './lua-visual-ui.js?v=20261127-builder-v6';
-import {routeWire,navigationLabel,friendlyComponent,eventLabel,availableEvents} from '../src/lua-visual-builder/presentation.js?v=20261127-builder-v6';
-import {askFields} from './lua-visual-dialog.js?v=20261127-builder-v6';
-import {navigationLinks,setNavigationTarget,eventContext,projectDiagnostics} from '../src/lua-visual-builder/semantics.js?v=20261127-builder-v6';
-import {navigationWorkspace,layoutPages,arrangeItems,PAGE_WIDTH,pageHeight} from '../src/lua-visual-builder/workspace.js?v=20261127-builder-v6';
-import {renderPageThumbnail} from './lua-visual-designer.js?v=20261127-builder-v6';
+import {createGraphInteraction,GraphState,menuPosition} from '../src/lua-visual-builder/interactions.js?v=20261128-source-reconstruction-v53';
+import {page as newPage} from '../src/lua-visual-builder/model.js?v=20261128-source-reconstruction-v53';
+import {icon,iconButton,compactToolbar,graphPointerTools,resizableMinimap} from './lua-visual-ui.js?v=20261128-source-reconstruction-v53';
+import {routeWire,navigationLabel,friendlyComponent,eventLabel,availableEvents} from '../src/lua-visual-builder/presentation.js?v=20261128-source-reconstruction-v53';
+import {askFields} from './lua-visual-dialog.js?v=20261128-source-reconstruction-v53';
+import {navigationLinks,setNavigationTarget,eventContext,projectDiagnostics} from '../src/lua-visual-builder/semantics.js?v=20261128-source-reconstruction-v53';
+import {navigationWorkspace,layoutPages,arrangeItems,PAGE_WIDTH,pageHeight} from '../src/lua-visual-builder/workspace.js?v=20261128-source-reconstruction-v53';
+import {renderPageThumbnail} from './lua-visual-designer.js?v=20261128-source-reconstruction-v53';
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function mountNavigation(host,{project,lang,onEditPage,onGraph,onChange,onError}){
  const captureLinks=()=>{const c=project.imported?.capture;return (c?.transitions||[]).filter(v=>v.confirmed&&c.screenPages[v.from]!==c.screenPages[v.to]).map((v,i)=>({from:c.screenPages[v.from],to:c.screenPages[v.to],key:'observed',node:'capture_'+i,event:v.event?.type||'observed',type:'observed',owner:'original'}));};

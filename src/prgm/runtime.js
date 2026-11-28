@@ -1,8 +1,9 @@
 // Shared, DOM-free TI-BASIC text and CX II graphics preview.
-import { IDENT, key, PrgmError, fail, number, truth, split, expressionTree, evaluate, createMathContext, formatPrgmValue, formatExpressionValue, normalizeTiMath, evaluatePrgmExpression } from './math.js?v=20261110-library-runtime-v37';
+import { IDENT, key, PrgmError, fail, number, truth, split, expressionTree, evaluate, createMathContext, formatPrgmValue, formatExpressionValue, normalizeTiMath, evaluatePrgmExpression } from './math.js?v=20261128-source-reconstruction-v53';
 import {PrgmDrawing, isDrawingCommand} from './drawing.js?v=20261105-sonar-runtime-v32';
 import {captureExactTree} from './exact-format.js';
-export { PrgmError, formatPrgmValue, evaluatePrgmExpression } from './math.js?v=20261110-library-runtime-v37';
+import {displayExpression} from './display-expression.js?v=20261128-source-reconstruction-v53';
+export { PrgmError, formatPrgmValue, evaluatePrgmExpression } from './math.js?v=20261128-source-reconstruction-v53';
 const routineHeader=/^Define\s+(?:(?:LibPub|LibPriv)\s+)?([\p{L}_][\p{L}\p{N}_]*)\(([^)]*)\)\s*=\s*(Prgm|Func)?$/iu;
 export function compilePrgm(source) {
   const statements=[];
@@ -65,6 +66,11 @@ function compileStatements(statements) {
         op.kind='drawing';op.command=key(match[1]);op.args=match[2].trim()?split(match[2],',').map(parsed):[];
       }
       else if((match=/^Wait\s+(.+)$/i.exec(text))){op.kind='wait';op.expr=parsed(match[1]);}
+      else if((match=/^Text\b\s*(.*)$/i.exec(text))){
+        const args=split(match[1],',');if(!args[0]?.trim()||args.length>2)fail('SYNTAX_ERROR','Text requiere un mensaje y una opción de historial.');
+        if(documentKind==='func')fail('SYNTAX_ERROR','Text no se admite dentro de Func.');
+        op.kind='text';op.prompt=parsed(args[0]);op.flag=args[1]?parsed(args[1]):null;
+      }
       else if((match=/^(DispAt|Disp|RequestStr|Request)\b\s*(.*)$/i.exec(text))){
         op.kind=key(match[1]);const args=split(match[2],',').map(s=>s.trim());
         if(op.kind.startsWith('request')){if(args.length<2||args.length>4)fail('SYNTAX_ERROR','Request requiere mensaje, variable y hasta dos opciones.');op.prompt=parsed(args[0]);op.name=variable(args[1]);op.flag=args[2]?parsed(args[2]):null;op.statusName=args[3]?variable(args[3]):null;}
@@ -255,9 +261,10 @@ export class PrgmPreview {
       else if(op.kind==='drawing'){this.graphics.execute(op.command,op.args.map(n=>this.ev(n)));this.event({type:'graphics',command:op.command,revision:this.graphics.revision,line:op.line});if(op.command==='paintbuffer'){this.frameYield=true;this.checkpoint();}}
       else if(op.kind==='wait'){const seconds=number(this.ev(op.expr));if(seconds<0||seconds>86400)fail('DOMAIN_ERROR','Wait requiere un tiempo entre 0 y 86400 segundos.');if(!this.options.skipWait)this.waitUntil=(this.options.now||Date.now)()+seconds*1000;this.checkpoint();}
       else if(op.kind==='disp'||op.kind==='dispat') {
-        const args=op.args.map(n=>this.ev(n));
+        this.mathContext.steps=0;
+        const displays=op.args.map(n=>{this.mathContext.steps=0;this.mathContext.exactBindings=this.exact;this.mathContext.exactVariables=this.vars;const d=displayExpression(n,this.vars,this.angleMode,this.mathContext);this.angleMode=this.mathContext.modes[2]===2?'DEG':this.mathContext.modes[2]===3?'GRAD':'RAD';return d;}),args=displays.map(d=>d.value);
         if(op.kind==='disp'){
-          const segments=args.map((value,index)=>({kind:typeof value==='string'?'text':'math',text:formatExpressionValue(op.args[index],value,this.mathContext)}));
+          const segments=displays.map(({kind,text})=>({kind,text}));
           this.append(segments.map(segment=>segment.text).join('\u2009'),'disp',{values:args.map(copyValue),segments});
         }
         else {const row=number(args.shift());if(!Number.isInteger(row)||row<1||row>8)fail('DOMAIN_ERROR','DispAt requiere una fila entre 1 y 8.');while(this.output.length<row)this.append('');this.output[row-1]={text:args.map(formatPrgmValue).join('\u2009'),kind:'disp',line:op.line};}
@@ -267,7 +274,7 @@ export class PrgmPreview {
       else if(op.kind==='endtry')this.tries=this.tries.filter(t=>t.start!==op.start);
       else if(op.kind==='clrerr'){this.vars.errcode=0;this.lastCaughtError=null;}
       else if(op.kind==='passerr'){if(this.lastCaughtError)throw this.lastCaughtError;fail('NO_ACTIVE_ERROR','PassErr requiere un error capturado.');}
-      else if(op.kind==='request'||op.kind==='requeststr') {
+      else if(op.kind==='text'||op.kind==='request'||op.kind==='requeststr') {
         if(this.graphics.active)fail('GRAPHICS_MODE_REQUEST','Request/RequestStr no puede ejecutarse en el modo gráfico.');
         const prompt=this.ev(op.prompt);if(typeof prompt!=='string')fail('TYPE_ERROR','El mensaje Request debe ser texto.');
         this.pending={kind:op.kind,prompt,variable:op.name,display:op.flag?this.ev(op.flag)!==0:true,statusVariable:op.statusName,line:op.line};this.status='waiting';
@@ -317,10 +324,10 @@ export class PrgmPreview {
     if(this.status!=='waiting')return this.snapshot();
     const pending=this.pending;
     // Invalid input is recoverable: keep the same dialog and program counter.
-    if(!cancel){try{this.mathContext.steps=0;const value=pending.kind==='requeststr'?String(raw):evaluatePrgmExpression(String(raw),this.vars,{angleMode:this.angleMode,context:this.mathContext});this.vars[pending.variable]=value;}catch(error){return {...this.snapshot(),success:false,inputError:{code:error.code||'INPUT_ERROR',message:error.message,line:pending.line}};}}
+    if(!cancel&&pending.kind!=='text'){try{this.mathContext.steps=0;const value=pending.kind==='requeststr'?String(raw):evaluatePrgmExpression(String(raw),this.vars,{angleMode:this.angleMode,context:this.mathContext});this.vars[pending.variable]=value;}catch(error){return {...this.snapshot(),success:false,inputError:{code:error.code||'INPUT_ERROR',message:error.message,line:pending.line}};}}
     try {
       if(pending.statusVariable)this.vars[pending.statusVariable]=cancel?0:1;
-      if(!cancel&&pending.display)this.append(pending.prompt+' '+String(raw),'input');
+      if(!cancel&&pending.display)this.append(pending.prompt+(pending.kind==='text'?'':' '+String(raw)),'input');
       this.event({type:cancel?'cancel':'answer',line:pending.line,variable:pending.variable,input:cancel?null:String(raw)});
       this.pending=null;this.status='paused';this.checkpoint();
     }catch(error){this.handleError(error);}

@@ -2,7 +2,7 @@ const statusEl = document.querySelector("#runtime-status");
 const logEl = document.querySelector("#log");
 const startupLoaderEl = document.querySelector("#startup-loader");
 let startupLoaderCloseTimer = null;
-const SOURCE_VERSION = "2026-11-21-layout-guide-v46";
+const SOURCE_VERSION = "20261128-source-reconstruction-v53";
 
 function setRuntimeStatus(message, state = "loading") {
   if (statusEl) {
@@ -2504,13 +2504,13 @@ for xml_file in sorted(root_path.rglob("*.xml")):
                 content_label = "Graph"
                 detail.update({"function": graph_name, "expression": graph_expr})
             elif widget_type == "TI.Scratchpad":
-                from calculator_history import extract_calculator_rows
+                from calculator_history import extract_calculator_rows, extract_calculator_draft
                 summary["calculators"] += 1
                 detail_rows = extract_calculator_rows(element)
                 rows = [f"Entrada: {row['entry']}\\nExacto: {row['exact']}\\nResultado: {row['display']}" for row in detail_rows]
                 content = "\\n\\n".join(rows)
                 content_label = "Scratchpad"
-                detail.update({"rows": detail_rows, "rowCount": len(detail_rows)})
+                detail.update({"rows": detail_rows, "rowCount": len(detail_rows), "input": extract_calculator_draft(element)})
             items.append({"type": "Widget", "name": widget_type, "file": str(xml_file), "path": element_path(element, parent_map), "detail": detail, "content": content, "content_label": content_label, "raw_xml": raw_xml(element)})
         elif lname == "script":
             text = element.text or ""
@@ -7140,7 +7140,7 @@ function convertTnsToLuaInEditor(editor, currentLuaItem = null) {
 async function showLuaGuide(editor = null, item = null) {
   const { openLuaGuide } = await import(`./lua-guide.js?v=${SOURCE_VERSION}`);
   return openLuaGuide({ language, editor, item, closeModal,
-    preview: code => showLovePreview(code, null, null, {}),
+    preview: code => showLovePreview(code, null, item, {}),
   });
 }
 
@@ -8509,12 +8509,13 @@ function showLuaEditor(item) {
   const openVisualBuilder = async () => {
     editMenuPanel.hidden = true;
     try {
-      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261127-builder-v6');
+      const { openLuaVisualBuilder } = await import('./lua-visual-builder.js?v=20261128-source-reconstruction-v53');
       await openLuaVisualBuilder({
         language: document.documentElement.lang, editor, item,
+        symbols: await loadLuaPreviewSymbols(item, editor.value),
         draftKey: `${xmlDoctor.sourcePath}|${item.file}|${item.path}|${item.name}`,
         mathSession: documentCalculatorMathSession(item.file),
-        preview: code => showLovePreview(code, null, null, {}),
+        preview: code => showLovePreview(code, null, item, {}),
         apply: async code => {
           await saveLuaScriptToStage(item, code);
           editor.value = code;
@@ -9092,6 +9093,7 @@ end`;
 const TI_CALCULATOR_AUTH_B64 = "PHIyZHRvdHJlZSB2ZXJzaW9uPSIxIj48Zm9ybWF0TWFuYWdlciB0YWJsZVNpemU9IjMiIGNhcGFjaXR5PSIxMCI+PGZvcm1hdEVudHJ5IGVudHJ5SW5kZXg9IjAiIGVudHJ5SUQ9IjAiIGVudHJ5UmVmQ250PSIzIiB0Yz0iMSIgZmM9IjI2ODQzNTE5OSIgZnM9IjExIiBmc3Q9IjAiIGNjPSIwIiBmZXN0PSIwIiBmZXVuPSIwIiBmZXN1Yj0iMCIgZmVzdXA9IjAiIGZuMD0iVEktTnNwaXJlIj48L2Zvcm1hdEVudHJ5Pjxmb3JtYXRFbnRyeSBlbnRyeUluZGV4PSIxIiBlbnRyeUlEPSIxIiBlbnRyeVJlZkNudD0iMCIgdGM9IjEiIGZjPSIyNjg0MzUxOTkiIGZzPSIxMSIgZnN0PSIyIiBjYz0iMCIgZmVzdD0iMCIgZmV1bj0iMCIgZmVzdWI9IjAiIGZlc3VwPSIwIiBmbjA9IlRJLU5zcGlyZSI+PC9mb3JtYXRFbnRyeT48Zm9ybWF0RW50cnkgZW50cnlJbmRleD0iMiIgZW50cnlJRD0iMiIgZW50cnlSZWZDbnQ9IjAiIHRjPSIxIiBmYz0iMjY4NDM1MTk5IiBmcz0iMTEiIGZzdD0iMCIgY2M9IjEiIGZlc3Q9IjAiIGZldW49IjAiIGZlc3ViPSIwIiBmZXN1cD0iMCIgZm4wPSJUSS1Oc3BpcmUiPjwvZm9ybWF0RW50cnk+PC9mb3JtYXRNYW5hZ2VyPjxub2RlIG5hbWU9IjBlbCIgaWQwPSIwIj48bGVhZiBuYW1lPSIwdGV4dCIgbnA9IjEiIGlkMD0iMCIgcHAwPSIwIj48Y3Vyc29yIGluZGV4PSIwIi8+PC9sZWFmPjwvbm9kZT48L3IyZHRvdHJlZT4=";
 const TI_CALCULATOR_TEMPLATES = [
 ["01_fraccion.jpg","()/()","Fracción"],["02_exponente.jpg","^()","Exponente"],["03_raiz_cuadrada.jpg","√()","Raíz cuadrada"],["04_raiz_enesima.jpg","root(,)","Raíz enésima"],["05_exponencial_e.jpg","e^()","Exponencial e"],["06_logaritmo_base.jpg","log(,)","Logaritmo base"],["07_funcion_por_partes_2.jpg","piecewise(, , , )","Función por partes"],["08_funcion_por_partes_n.jpg","piecewise(, , , , , )","Función por partes N"],["09_sistema_2_ecuaciones.jpg","system(,)","Sistema 2"],["10_sistema_n_ecuaciones.jpg","system(,,)","Sistema N"],["11_valor_absoluto.jpg","abs()","Valor absoluto"],["12_grados_minutos_segundos.jpg","30°30'0''","Grados/min/seg"],["13_matriz_2x2.jpg","[[1,2][3,4]]","Matriz 2×2"],["14_matriz_1x2.jpg","[[1,2]]","Matriz 1×2"],["15_matriz_2x1.jpg","[[1][2]]","Matriz 2×1"],["16_matriz_mxn.jpg","[[1,2][3,4][5,6]]","Matriz M×N"],["17_sumatoria.jpg","∑(k,k,1,4)","Sumatoria"],["18_productoria.jpg","∏(k,k,1,4)","Productoria"],["19_primera_derivada.jpg","d(x^2,x)","Primera derivada"],["20_segunda_derivada.jpg","d(x^2,x,2)","Segunda derivada"],["21_derivada_enesima.jpg","d(x^4,x,3)","Derivada enésima"],["22_integral_definida.jpg","∫(x,x,0,2)","Integral definida"],["23_integral_indefinida.jpg","∫(x^2,x)","Integral indefinida"],["24_limite.jpg","lim(sin(x)/x,x,0)","Límite"],["25_indicador_blanco_negro.jpg","","Indicador"]];
+function extractCalculatorInput(item){return item.raw_xml && window.TnsCalculatorHistory?.parseDraft ? window.TnsCalculatorHistory.parseDraft(item.raw_xml) : item.detail?.input || '';}
 function extractCalculatorRowsFromRawXml(rawXml=""){return window.TnsCalculatorHistory?.parseRows(rawXml) || [];}
 function normalizeCalculatorEntry(t=""){return String(t||"").replace(/−/g,"-").replace(//g,"e").replace(//g,"d").trim();}
 function calcNum(expr,vars={}){let s=normalizeCalculatorEntry(expr).replace(/π/g,"Math.PI").replace(/\be\b/g,"Math.E").replace(/\^/g,"**").replace(/√\s*\(/g,"Math.sqrt(").replace(/\bsin\s*\(/gi,"Math.sin(").replace(/\bcos\s*\(/gi,"Math.cos(").replace(/\btan\s*\(/gi,"Math.tan(").replace(/\bln\s*\(/gi,"Math.log(").replace(/\babs\s*\(/gi,"Math.abs(");s=s.replace(/\blog\(([^,]+),([^\)]+)\)/gi,"(Math.log($1)/Math.log($2))").replace(/\broot\(([^,]+),([^\)]+)\)/gi,"Math.pow($1,1/($2))");try{const f=Function(...Object.keys(vars),`"use strict";return (${s});`),v=f(...Object.values(vars));return typeof v==="number"&&Number.isFinite(v)?v:NaN;}catch(_){return NaN;}}
@@ -9618,18 +9620,19 @@ def q(ns,n): return f"{{{ns}}}{n}" if ns else n
 card=ET.Element(q(pns,"card"),{"clay":"0","h1":"10000","h2":"10000","w1":"10000","w2":"10000"});ET.SubElement(card,q(pns,"isDummyCard")).text="0";ET.SubElement(card,q(pns,"flag")).text="0";w=ET.SubElement(card,q(pns,"wdgt"),{"type":"TI.Scratchpad","ver":"1.0"});ET.SubElement(w,q(sns,"mFlags")).text="0";ET.SubElement(w,q(sns,"value")).text="0";ET.SubElement(w,q(sns,"auth")).text=base64.b64decode(wasm_calc_auth_b64).decode();root.append(card);xf.write_bytes(b'<?xml version="1.0" encoding="UTF-8" ?>'+ET.tostring(root,encoding="UTF-8",short_empty_elements=False));cards=[x for x in root if local_name(x.tag)=="card"];i=cards.index(card)+1
 json.dumps({"type":"Widget","name":"TI.Scratchpad","file":str(xf),"path":f"/prob/card[{i}]/wdgt","detail":{"rows":[],"rowCount":0},"content":"","content_label":"Scratchpad","raw_xml":ET.tostring(w,encoding="unicode",short_empty_elements=False)})
 `);xmlDoctor.embedded=true;xmlDoctor.stagePrepared=true;const item=JSON.parse(payload);xmlLog(t("calculatorWidgetAdded"));return item;}
-async function saveCalculatorWidgetToStage(item,rows){
+async function saveCalculatorWidgetToStage(item,rows,input){
   await ensureXmlStageCopy();
   pyodide.globals.set('wasm_calc_save_file',item?.file||'');
   pyodide.globals.set('wasm_calc_save_path',item?.path||'');
   pyodide.globals.set('wasm_calc_save_snapshot',item?.raw_xml||'');
   pyodide.globals.set('wasm_calc_rows_json',JSON.stringify(rows||[]));
+  pyodide.globals.set('wasm_calc_input_json',JSON.stringify(input??null));
   const payload=await pyodide.runPythonAsync(`
 import json, xml.etree.ElementTree as ET
 from pathlib import Path
 from xml.dom import Node
 from page_layout import PROBLEM_NS, _atomic_write, _elements, _parse, _path, _signature
-from calculator_history import SP_NS, write_calculator_rows
+from calculator_history import SP_NS, write_calculator_rows, write_calculator_draft
 sr=Path("${xmlDoctor.sourcePath}").resolve(); st=Path("${xmlDoctor.stagePath}").resolve()
 if not wasm_calc_save_file or not wasm_calc_save_path or not wasm_calc_save_snapshot:
     raise ValueError("An inspected Calculator file, path and snapshot are required.")
@@ -9655,8 +9658,12 @@ if not isinstance(rows,list) or not all(isinstance(row,dict) for row in rows):
     raise ValueError("Calculator history must contain rows.")
 # Replace only native history rows, preserving authoring data and sibling apps.
 temporary=ET.Element("wdgt"); write_calculator_rows(temporary,rows)
+input_text=json.loads(wasm_calc_input_json)
+if input_text is not None:
+    author=ET.fromstring(wasm_calc_save_snapshot); write_calculator_draft(author,str(input_text))
+    temporary.append(author.find("{"+SP_NS+"}auth"))
 for node in list(_elements(w)):
-    if node.namespaceURI==SP_NS and node.localName=="erow": w.removeChild(node)
+    if node.namespaceURI==SP_NS and (node.localName=="erow" or input_text is not None and node.localName=="auth"): w.removeChild(node)
 for row in temporary:
     native=_parse(ET.tostring(row,encoding="unicode",short_empty_elements=False)).documentElement
     w.appendChild(document.importNode(native,True))
@@ -9780,14 +9787,14 @@ window.TnsOpenDocumentLibrary = async file => {
 function documentCalculatorHistoryDraft(item, fallback, onDraft) {
   const mathSession=documentCalculatorMathSession(item.file), scope=documentCalculatorSessions.get(documentCalculatorFile(item.file));
   const drafts=scope.historyDrafts||(scope.historyDrafts=new Map()), key=String(item.path||'');
-  const nativeRows=extractCalculatorRowsFromRawXml(item.raw_xml||''),signature=JSON.stringify(nativeRows.map(({rawXml,...row})=>row));
+  const nativeRows=extractCalculatorRowsFromRawXml(item.raw_xml||''),signature=JSON.stringify([nativeRows.map(({rawXml,...row})=>row),extractCalculatorInput(item)]);
   const previous=drafts.get(key), token={};
   const copy=value=>structuredClone(value||{rows:[],input:''});
-  const record={signature,token,draft:copy(previous?(previous.signature===signature?previous.draft:{rows:nativeRows,input:''}):fallback)};
+  const record={signature,token,draft:copy(previous?(previous.signature===signature?previous.draft:{rows:nativeRows,input:extractCalculatorInput(item)}):fallback)};
   drafts.set(key,record);
   return {mathSession,draft:record.draft,
     remember(value){if(drafts.get(key)?.token!==token)return;record.draft=copy(value);onDraft?.(copy(value));},
-    saved(value){if(drafts.get(key)?.token!==token)return;record.signature=JSON.stringify(extractCalculatorRowsFromRawXml(value.raw_xml||'').map(({rawXml,...row})=>row));},
+    saved(value){if(drafts.get(key)?.token!==token)return;record.signature=JSON.stringify([extractCalculatorRowsFromRawXml(value.raw_xml||'').map(({rawXml,...row})=>row),extractCalculatorInput(value)]);},
   };
 }
 async function openCalculatorInLovePreview(item, options = {}) {
@@ -9797,12 +9804,12 @@ async function openCalculatorInLovePreview(item, options = {}) {
   item=await readStoredDocumentWidget(item,'TI.Scratchpad');
   xmlDoctor.previewFile=item.file;
   const a=extractCalculatorRowsFromRawXml(item?.raw_xml||''),b=Array.isArray(item?.detail?.rows)?item.detail.rows:[];
-  const historyDraft=documentCalculatorHistoryDraft(item,options.draft||{rows:a.length?a:b,input:''},options.setDraft);
+  const historyDraft=documentCalculatorHistoryDraft(item,options.draft||{rows:a.length?a:b,input:extractCalculatorInput(item)},options.setDraft);
   const draft=historyDraft.draft,initialRows=(draft.rows||(a.length?a:b)).map(row=>({...row}));
   const context=documentCalculatorContext(item.file);initializeCalculatorHistoryAnswer(context.mathSession,initialRows);
   let preview;
   const save=async rows=>{
-    const result=await saveCalculatorWidgetToStage(item,rows);
+    const result=await saveCalculatorWidgetToStage(item,rows,preview?.getInput()||'');
     item.raw_xml=result.raw_xml||item.raw_xml;item.file=result.file||item.file;
     item.detail={...(item.detail||{}),rows:rows.map(row=>({...row})),rowCount:rows.length};
     historyDraft.saved(result);
@@ -12542,7 +12549,7 @@ async function loadLuaJsRuntimeSources() {
 
 async function createLuaJsPreviewRuntime(code, ctx, canvas, logEl, symbols = {}, captureOptions = null) {
   let visualCapture=null,captureSource=null;
-  if(captureOptions){const api=await import('../src/lua-visual-builder/capture.js?v=20261127-builder-v6');captureSource=captureOptions.prepared||api.instrumentCaptureSource(code);visualCapture=api.createCaptureRecorder({sites:captureSource.sites,...captureOptions});if(!captureOptions.prepared)code=captureSource.code;}
+  if(captureOptions){const api=await import('../src/lua-visual-builder/capture.js?v=20261128-source-reconstruction-v53');captureSource=captureOptions.prepared||api.instrumentCaptureSource(code);visualCapture=api.createCaptureRecorder({sites:captureSource.sites,...captureOptions});if(!captureOptions.prepared)code=captureSource.code;}
   const { installLuaDocumentBindings, toLuaDocumentValue } = await import('../src/lua/document-symbols.js?v=20261112-widgets-v39');
   const [{ installLuaStringPatterns }, { installLuaStandardLibrary }] = await Promise.all([
     import('../src/lua/string-patterns.js?v=20261120-lua-compat-v45'),
@@ -17348,8 +17355,8 @@ function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
       await embedXmlCode();
     } else if (kind === 'calculators') {
       const rows = instance.getRows();
-      if (JSON.stringify(rows) !== JSON.stringify(extractCalculatorRowsFromRawXml(item.raw_xml || ''))) {
-        const result = await saveCalculatorWidgetToStage(item, rows);
+      if (JSON.stringify(rows) !== JSON.stringify(extractCalculatorRowsFromRawXml(item.raw_xml || '')) || instance.getInput() !== extractCalculatorInput(item)) {
+        const result = await saveCalculatorWidgetToStage(item, rows, instance.getInput());
         item.raw_xml = result.raw_xml || item.raw_xml; item.file = result.file || item.file;
         calculatorDraft?.saved(result);
       }
@@ -17381,7 +17388,7 @@ function mountDocumentEmbeddedPreview(host, app, context, options = {}) {
         },
       });
     } else if (mode === 'calculator') {
-      const fallback=drafts[mode]||{rows:kind==='calculators'?extractCalculatorRowsFromRawXml(item.raw_xml||''):[],input:data?.name?data.name+'()':''};
+      const fallback=drafts[mode]||{rows:kind==='calculators'?extractCalculatorRowsFromRawXml(item.raw_xml||''):[],input:kind==='calculators'?extractCalculatorInput(item):data?.name?data.name+'()':''};
       calculatorDraft=kind==='calculators'?documentCalculatorHistoryDraft(item,fallback,common.setDraft):null;
       const binding=calculatorDraft,calculatorState=binding?.draft||fallback,initialRows=calculatorState.rows||[];
       initializeCalculatorHistoryAnswer(context.mathSession, initialRows);
@@ -18504,7 +18511,7 @@ async function saveXmlZip() {
   const zip = new JSZip();
   collectFiles(xmlDoctor.stagePath, zip);
   const blob = await zip.generateAsync({ type: "uint8array" });
-  downloadBytes("syntax_doctor_xml_output.zip", blob, "application/zip");
+  downloadBytes(xmlDoctorTnsOutputName().replace(/\.tns$/i, ".zip"), blob, "application/zip");
   xmlLog(t("xmlZipDownloaded"));
 }
 

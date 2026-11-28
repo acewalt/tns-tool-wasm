@@ -72,4 +72,22 @@ class CalculatorHistoryTests(unittest.TestCase):
         self.assertEqual(parse_calculator_rich_output('<script>alert(1)'),[])
         self.assertEqual(extract_calculator_rows('<wdgt />'),[])
 
+class CalculatorDraftTests(unittest.TestCase):
+    def test_pending_input_is_restored_without_creating_a_history_row(self):
+        from calculator_history import extract_calculator_draft, write_calculator_draft
+        w=ET.fromstring('<wdgt xmlns:sp="urn:TI.Scratchpad"><sp:auth /></wdgt>')
+        write_calculator_draft(w,'supergeo()')
+        self.assertEqual(extract_calculator_draft(w),'supergeo()')
+        self.assertEqual(extract_calculator_rows(w),[])
+        before=ET.tostring(w)
+        write_calculator_draft(w,'supergeo()')
+        self.assertEqual(ET.tostring(w),before)
+        write_calculator_draft(w,'')
+        self.assertEqual(extract_calculator_draft(w),'')
+        write_calculator_draft(w,'[[1,2][3,4]]')
+        self.assertEqual(extract_calculator_draft(w),'[[1,2][3,4]]')
+        w=ET.fromstring('<wdgt />')
+        write_calculator_draft(w,'')
+        self.assertIsNotNone(w.find('{urn:TI.Scratchpad}auth'))
+
 if __name__=='__main__':unittest.main()
